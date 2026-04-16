@@ -1,0 +1,14 @@
+## Title: |cffDA8CFFTOG Profession Master |c999999FFVanilla
+## Version: @project-version@
+## Author: Pimptasty
+## Interface: 11508
+## X-Min-Interface: 11508
+## Category: Professions
+## IconTexture: Interface\AddOns\TOGProfessionMaster\icons\TOGPM_MMB_Icon
+## SavedVariables:
+## SavedVariablesPerCharacter:
+## X-Curse-Project-ID: 1513588
+
+libs\LibDataBroker-1.1.lua
+libs\LibDBIcon-1.0.lua
+libs\LibGuildRoster-1.0\LibGuildRoster-1.0.lua

@@ -1,5 +1,5 @@
-## Interface: 11508
-## Title: |cffDA8CFFTOG Profession Master |c999999FFVanilla
+## Interface: 20504
+## Title: |cffDA8CFFTOG Profession Master |c999999FFTBC
 ## Version: @project-version@
 ## Author: Pimptasty
 ## Category: Professions

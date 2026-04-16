@@ -1,0 +1,239 @@
+-- TOG Profession Master
+-- Author: Pimptasty
+-- Guild profession browser, cooldown tracker, and reagent planner for Classic WoW.
+
+local addonName, addon = ...
+
+-- ---------------------------------------------------------------------------
+-- Addon global
+-- Other files access the addon via the upvalue `addon` (from `...`) or via
+-- the global `TOGPM` which is set below for any external callers.
+-- ---------------------------------------------------------------------------
+TOGPM       = TOGPM or {}
+TOGPM.addon = addon
+addon.name  = addonName
+
+-- Version (resolved from .toc, works on all Classic builds)
+local _GetAddOnMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+addon.Version = _GetAddOnMetadata(addonName, "Version") or "dev"
+
+-- ---------------------------------------------------------------------------
+-- AceAddon
+-- Mixin order: AceConsole for slash, AceEvent for WoW events, AceTimer for
+-- deferred work, AceComm + AceSerializer needed by DeltaSync.
+-- ---------------------------------------------------------------------------
+local Ace = LibStub("AceAddon-3.0"):NewAddon(
+    addonName,
+    "AceConsole-3.0",
+    "AceEvent-3.0",
+    "AceTimer-3.0",
+    "AceComm-3.0",
+    "AceSerializer-3.0"
+)
+addon.lib = Ace
+
+-- Convenient shorthand used throughout the addon files.
+-- `addon.lib:RegisterEvent(...)` → Ace's event system.
+-- `addon.lib:Print(...)` → prefixed chat output.
+
+-- ---------------------------------------------------------------------------
+-- AceDB schema
+-- Guild data lives in `db.global` (account-wide) so all characters on the
+-- same account share one copy, regardless of which realm they are on.
+-- The composite key "Faction-NormalizedRealm-GuildName" (built by GetGuildKey)
+-- segregates guilds cleanly while treating connected-realm clusters as one
+-- unit — GetNormalizedRealmName() returns the same string for every realm in
+-- a cluster, unlike GetRealmName() which differs per physical realm.
+-- Per-character UI state lives in `db.char`.
+-- ---------------------------------------------------------------------------
+local DB_DEFAULTS = {
+    global = {
+        -- All guild-specific data.
+        -- Key format: "Alliance-Grobbulus-Knights of TOG"
+        -- db.global.guilds[compositeKey] = {
+        --   guildData       = { ["Name-Realm"] = { professions = { [profId] = {...} } } }
+        --   cooldowns       = { ["Name-Realm"] = { [spellId] = expiresAt } }
+        --   syncTimes       = { ["Name-Realm"] = timestamp }
+        --   specializations = { ["Name-Realm"] = { [profId] = spellId } }
+        --   factions        = { ["Name-Realm"] = "Alliance"|"Horde" }
+        -- }
+        guilds = {},
+        -- Sync log ring buffer — capped at 200 entries by Modules/SyncLog.lua
+        -- Each entry: { ts, event, peer, bytes }
+        syncLog = {},
+    },
+    profile = {
+        -- UI
+        minimapButton   = true,
+        mailReadyOnly   = false,
+        debug           = false,
+    },
+    char = {
+        -- Shopping list: [spellId] = { quantity = N }
+        shoppingList    = {},
+
+        -- Reagent watch list: [itemId] = true
+        reagentWatch    = {},
+
+        -- Shopping list alert flags: [spellId] = true
+        shoppingAlerts  = {},
+
+        -- Window positions / sizes saved by AceGUI.
+        frames          = {},
+    },
+}
+
+-- ---------------------------------------------------------------------------
+-- Slash commands (registered in OnEnable once AceConsole is ready)
+-- ---------------------------------------------------------------------------
+local SLASH_COMMANDS = {
+    [""]          = "OpenBrowser",
+    ["reagents"]  = "OpenReagents",
+    ["minimap"]   = "ShowMinimapButton",
+    ["purge"]     = "OpenPurge",
+    ["sync"]      = "ForceSync",
+    ["debug"]     = "ToggleDebug",
+    ["help"]      = "PrintHelp",
+}
+
+-- ---------------------------------------------------------------------------
+-- Lifecycle
+-- ---------------------------------------------------------------------------
+
+function Ace:OnInitialize()
+    -- Set up SavedVariables via AceDB.
+    self.db = LibStub("AceDB-3.0"):New("TOGPM_DB", DB_DEFAULTS, true)
+
+    -- Restore debug flag from profile so DebugPrint works before OnEnable.
+    addon.debug = self.db.profile.debug
+
+    -- Register with VersionCheck-1.0 so we participate in guild version
+    -- broadcasts.  VersionCheck fires after PLAYER_ENTERING_WORLD so the
+    -- guild channel is available by the time it broadcasts.
+    local VC = LibStub("VersionCheck-1.0", true)
+    if VC then
+        VC:Enable(self)
+    end
+
+    addon:DebugPrint("OnInitialize complete. Version:", addon.Version)
+end
+
+function Ace:OnEnable()
+    -- Slash command: /togpm [subcommand]
+    self:RegisterChatCommand("togpm", "OnSlashCommand")
+
+    -- Core events.
+    self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
+    self:RegisterEvent("PLAYER_LOGOUT",         "OnPlayerLogout")
+
+    addon:DebugPrint("OnEnable complete.")
+end
+
+-- ---------------------------------------------------------------------------
+-- Event handlers (stubs — filled in by later modules)
+-- ---------------------------------------------------------------------------
+
+function Ace:OnPlayerEnteringWorld(event, isInitialLogin, isReloadingUi)
+    addon:DebugPrint("PLAYER_ENTERING_WORLD", "login:", isInitialLogin, "reload:", isReloadingUi)
+    -- Modules hook into this via AceEvent on their own tables.
+end
+
+function Ace:OnPlayerLogout()
+    -- Flush any pending state to AceDB before the session ends.
+    addon:DebugPrint("PLAYER_LOGOUT")
+end
+
+-- ---------------------------------------------------------------------------
+-- Slash command dispatcher
+-- ---------------------------------------------------------------------------
+
+function Ace:OnSlashCommand(input)
+    local cmd = strtrim(input or ""):lower()
+    local handler = SLASH_COMMANDS[cmd]
+    if handler and addon[handler] then
+        addon[handler](addon)
+    elseif handler and Ace[handler] then
+        Ace[handler](Ace)
+    else
+        Ace:PrintHelp()
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Slash command handlers (stubs — UI modules override these)
+-- ---------------------------------------------------------------------------
+
+function addon:OpenBrowser()    addon:DebugPrint("OpenBrowser — UI not yet loaded") end
+function addon:OpenReagents()   addon:DebugPrint("OpenReagents — UI not yet loaded") end
+function addon:ShowMinimapButton() addon:DebugPrint("ShowMinimapButton — UI not yet loaded") end
+function addon:OpenPurge()      addon:DebugPrint("OpenPurge — UI not yet loaded") end
+function addon:ForceSync()      addon:DebugPrint("ForceSync — sync not yet loaded") end
+
+function addon:ToggleDebug()
+    addon.debug = not addon.debug
+    Ace.db.profile.debug = addon.debug
+    Ace:Print("Debug output " .. (addon.debug and "|cff00ff00enabled|r" or "|cffff4444disabled|r"))
+end
+
+function Ace:PrintHelp()
+    self:Print("|cffda8cffTOG Profession Master|r — commands:")
+    self:Print("  /togpm              — open profession browser")
+    self:Print("  /togpm reagents     — open missing reagents")
+    self:Print("  /togpm minimap      — show minimap button")
+    self:Print("  /togpm purge        — open purge dialog")
+    self:Print("  /togpm sync         — force full guild re-sync")
+    self:Print("  /togpm debug        — toggle debug output")
+    self:Print("  /togpm help         — show this list")
+end
+
+-- ---------------------------------------------------------------------------
+-- Utility
+-- ---------------------------------------------------------------------------
+
+function addon:Print(...)
+    Ace:Print(...)
+end
+
+function addon:DebugPrint(...)
+    if not addon.debug then return end
+    Ace:Print("|cffaaaaff[DEBUG]|r", ...)
+end
+
+-- Build a stable character key used as the primary identifier throughout.
+-- Format: "Name-NormalizedRealm" — GetNormalizedRealmName() is the same for
+-- all realms in a connected-realm cluster, so cross-realm guild mates share
+-- consistent keys.
+function addon:GetCharacterKey(name, realm)
+    local r = realm or (GetNormalizedRealmName and GetNormalizedRealmName()) or ""
+    return (name or UnitName("player")) .. "-" .. r
+end
+
+-- Return a composite guild key: "Faction-NormalizedRealm-GuildName".
+-- This is the primary key used in db.global.guilds.
+-- Returns nil when the player is not in a guild.
+function addon:GetGuildKey()
+    local guildName = GetGuildInfo("player")
+    if not guildName or guildName == "" then return nil end
+    local faction = UnitFactionGroup("player") or "Neutral"
+    local realm   = (GetNormalizedRealmName and GetNormalizedRealmName()) or ""
+    return faction .. "-" .. realm .. "-" .. guildName
+end
+
+-- Return (and lazily create) the guild-scoped sub-table for the current guild.
+-- Returns nil when the player is not in a guild — callers must guard.
+function addon:GetGuildDb()
+    local guildKey = self:GetGuildKey()
+    if not guildKey then return nil end
+
+    local g = Ace.db.global.guilds
+    if not g[guildKey] then
+        g[guildKey] = {
+            guildData       = {},
+            cooldowns       = {},
+            syncTimes       = {},
+            specializations = {},
+            factions        = {},
+        }
+    end
+    return g[guildKey]
+end

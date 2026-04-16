@@ -1,9 +1,7 @@
-# .pkgmeta
 package-as: TOGProfessionMaster
 
 curseforge-project-id: 1513588
 
-# Enable TOC file creation for multi-version support
 enable-toc-creation: no
 enable-nolib-creation: yes
 
@@ -11,7 +9,15 @@ manual-changelog:
   filename: CHANGELOG.md
   markup-type: markdown
 
-# Keep noise out of the zip
+required-dependencies:
+  - ace3
+  - acecommqueue-1.0
+  - versioncheck-1.0
+
+optional-dependencies:
+  - togbankclassic
+  - greenwall
+
 ignore:
   - .git/
   - .github/

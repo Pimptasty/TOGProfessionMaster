@@ -189,6 +189,30 @@ end
 -- Profession scanning — TradeSkill frame
 -- ---------------------------------------------------------------------------
 
+--- Build a name → spellId lookup from the player's spellbook.
+-- GetSpellInfo() does not return spellID on Classic Era clients (that return
+-- value was added in retail patch 7.1).  GetSpellBookItemInfo() always returns
+-- the spellID as its 2nd value and works on all Classic builds.
+-- Only covers spells the local player knows; linked scans get spellId = nil.
+function Scanner:BuildSpellNameCache()
+    local cache = {}
+    local numTabs = GetNumSpellTabs and GetNumSpellTabs() or 0
+    for tab = 1, numTabs do
+        local _, _, offset, numSpells = GetSpellTabInfo(tab)
+        for j = 1, numSpells do
+            local idx = offset + j
+            local _, spellId = GetSpellBookItemInfo(idx, "spell")
+            if spellId then
+                local spellName = GetSpellInfo(spellId)
+                if spellName then
+                    cache[spellName] = spellId
+                end
+            end
+        end
+    end
+    return cache
+end
+
 --- Scan the currently open trade-skill window and store the result in AceDB.
 -- @param charKey   "Name-Realm" string for the character being scanned
 -- @param isLinked  true when viewing another player's linked trade skill
@@ -202,31 +226,41 @@ function Scanner:ScanTradeSkillInto(charKey, isLinked)  --luacheck: ignore isLin
         return
     end
 
-    -- Collect all recipe spell IDs that have a learnable difficulty colour.
+    -- Build name → spellId map from local spellbook once per scan.
+    -- Works for local scans; linked profession scans leave spellId nil.
+    local spellNameCache = (not isLinked) and self:BuildSpellNameCache() or {}
+
+    -- Collect all recipe spell IDs.  Only include rows with a real difficulty
+    -- rating; "header" separators and any other non-recipe rows are skipped.
     local recipes = {}
     local total   = GetNumTradeSkills()
     for i = 1, total do
-        local _, diffColour = GetTradeSkillInfo(i)
-        -- "header" rows are section separators, not learnable recipes.
-        if diffColour and diffColour ~= "header" then
-            local spellId = self:ExtractTradeSkillSpellId(i)
-            if spellId then
-                recipes[spellId] = true
+        local recipeName, tradeSkillType = GetTradeSkillInfo(i)
+        if tradeSkillType == "optimal" or tradeSkillType == "medium"
+        or tradeSkillType == "easy"    or tradeSkillType == "trivial" then
+            local recipeId, isSpell = self:ExtractTradeSkillId(i)
+            if recipeId then
+                -- [1]=name [2]=icon [3]=isSpell [4]=spellId [5]=recipeLink [6]=itemLink [7]=reagents
+                local spellId    = spellNameCache[recipeName]
+                local recipeLink = GetTradeSkillRecipeLink and GetTradeSkillRecipeLink(i)
+                local itemLink   = GetTradeSkillItemLink(i)
+                -- Capture reagents while the trade skill window is open.
+                local reagents = {}
+                local numReagents = GetTradeSkillNumReagents(i) or 0
+                for r = 1, numReagents do
+                    local rName, _, rCount = GetTradeSkillReagentInfo(i, r)
+                    if rName then
+                        table.insert(reagents, { name = rName, count = rCount or 1 })
+                    end
+                end
+                recipes[recipeId] = { recipeName, GetTradeSkillIcon(i), isSpell, spellId, recipeLink, itemLink, reagents }
             end
         end
     end
 
     local gdb = addon:GetGuildDb()
     if not gdb then return end
-    if not gdb.guildData[charKey] then
-        gdb.guildData[charKey] = { professions = {} }
-    end
-    gdb.guildData[charKey].professions[profId] = {
-        name      = skillName,
-        skillRank = skillRank or 0,
-        skillMax  = skillMax  or 300,
-        recipes   = recipes,
-    }
+    self:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, recipes)
 
     -- Spec detection is own-character only and only available from TBC onwards.
     if not isLinked and not addon.isVanilla then
@@ -237,22 +271,81 @@ function Scanner:ScanTradeSkillInto(charKey, isLinked)  --luacheck: ignore isLin
         "—", (function() local n = 0; for _ in pairs(recipes) do n = n + 1 end; return n end)(), "recipes")
 end
 
---- Extract the recipe spell ID from a trade-skill row.
--- GetTradeSkillItemLink returns an "enchant:N" link for actual spells (most cases),
--- and falls back to GetTradeSkillRecipeLink which always gives an enchant link.
-function Scanner:ExtractTradeSkillSpellId(index)
-    -- Try the item-output link first.
-    local link = GetTradeSkillItemLink(index)
+--- Merge a scanned recipe table into the recipe-centric guild DB.
+-- Stores recipe metadata once; adds charKey to each recipe's crafters set.
+-- Removes charKey from recipes for this prof that are no longer known.
+function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, recipes)
+    -- Ensure new-structure fields exist (backwards-compat for old saved vars).
+    if not gdb.recipes   then gdb.recipes   = {} end
+    if not gdb.skills    then gdb.skills    = {} end
+    if not gdb.guildData then gdb.guildData = {} end
+
+    -- Mark member as known (membership index only).
+    gdb.guildData[charKey] = gdb.guildData[charKey] or {}
+
+    -- Update skill rank/max.
+    if not gdb.skills[charKey] then gdb.skills[charKey] = {} end
+    gdb.skills[charKey][profId] = { skillRank = skillRank or 0, skillMax = skillMax or 300 }
+
+    -- Remove charKey from any existing recipe crafters for this prof
+    -- (covers recipes they may have unlearned).
+    if gdb.recipes[profId] then
+        for _, rd in pairs(gdb.recipes[profId]) do
+            if rd.crafters then rd.crafters[charKey] = nil end
+        end
+    else
+        gdb.recipes[profId] = {}
+    end
+
+    -- Add/update recipe entries.
+    for recipeId, rd in pairs(recipes) do
+        local existing = gdb.recipes[profId][recipeId]
+        if existing then
+            existing.name    = rd[1]
+            existing.icon    = rd[2]
+            existing.isSpell = rd[3]
+            -- [4]=spellId, [5]=recipeLink, [6]=itemLink — only present from local scans
+            -- (wire data only carries [1]-[4]); only overwrite when non-nil.
+            if rd[4] ~= nil then existing.spellId    = rd[4] end
+            if rd[5] ~= nil then existing.recipeLink = rd[5] end
+            if rd[6] ~= nil then existing.itemLink   = rd[6] end
+            if rd[7] ~= nil then existing.reagents   = rd[7] end
+            existing.crafters[charKey] = true
+        else
+            gdb.recipes[profId][recipeId] = {
+                name       = rd[1],
+                icon       = rd[2],
+                isSpell    = rd[3],
+                spellId    = rd[4],
+                recipeLink = rd[5],
+                itemLink   = rd[6],
+                reagents   = rd[7],
+                crafters   = { [charKey] = true },
+            }
+        end
+    end
+end
+
+--- Extract a numeric recipe key from a trade-skill row.
+-- Returns id, isSpell where isSpell=true means id is a spell/enchant ID,
+-- false means id is the crafted item ID.
+function Scanner:ExtractTradeSkillId(index)
+    -- Retail / modern Classic: recipe link always has enchant:SPELLID.
+    local link = GetTradeSkillRecipeLink and GetTradeSkillRecipeLink(index)
     if link then
         local id = tonumber(link:match("enchant:(%d+)"))
-        if id then return id end
+        if id then return id, true end
     end
-    -- Fall back to the recipe link (contains the spell ID directly).
-    link = GetTradeSkillRecipeLink and GetTradeSkillRecipeLink(index)
+    -- Classic Era: GetTradeSkillItemLink returns enchant:SPELLID for Enchanting,
+    -- or item:ITEMID (the crafted product) for all other professions.
+    link = GetTradeSkillItemLink(index)
     if link then
-        return tonumber(link:match("enchant:(%d+)"))
+        local id = tonumber(link:match("enchant:(%d+)"))
+        if id then return id, true end
+        id = tonumber(link:match("item:(%d+)"))
+        if id then return id, false end
     end
-    return nil
+    return nil, nil
 end
 
 -- ---------------------------------------------------------------------------
@@ -274,27 +367,21 @@ function Scanner:ScanCraftSkillInto(charKey)
     local recipes = {}
     local total   = GetNumCrafts and GetNumCrafts() or 0
     for i = 1, total do
-        local _, _, craftType = GetCraftInfo(i)
-        if craftType and craftType ~= "header" then
+        local craftName, _, craftType = GetCraftInfo(i)
+        if craftType == "optimal" or craftType == "medium"
+        or craftType == "easy"    or craftType == "trivial" then
             local link    = GetCraftItemLink and GetCraftItemLink(i)
             local spellId = link and tonumber(link:match("enchant:(%d+)"))
             if spellId then
-                recipes[spellId] = true
+                local craftIcon = GetCraftIcon and GetCraftIcon(i)
+                recipes[spellId] = { craftName, craftIcon }
             end
         end
     end
 
     local gdb = addon:GetGuildDb()
     if not gdb then return end
-    if not gdb.guildData[charKey] then
-        gdb.guildData[charKey] = { professions = {} }
-    end
-    gdb.guildData[charKey].professions[profId] = {
-        name      = skillName,
-        skillRank = 0,
-        skillMax  = 300,
-        recipes   = recipes,
-    }
+    self:MergeRecipesIntoGdb(gdb, charKey, profId, 0, 300, recipes)
 
     addon:DebugPrint("Scanner: scanned craft", skillName, "for", charKey,
         "—", (function() local n = 0; for _ in pairs(recipes) do n = n + 1 end; return n end)(), "recipes")
@@ -510,10 +597,32 @@ function Scanner:BuildPayload()
         cdPayload[spellId] = remaining > 0 and remaining or 0
     end
 
+    -- Reconstruct per-char professions from the inverted recipe index.
+    local professions = {}
+    if gdb.recipes then
+        for profId, profRecipes in pairs(gdb.recipes) do
+            local myRecipes = {}
+            for recipeId, rd in pairs(profRecipes) do
+                if rd.crafters and rd.crafters[charKey] then
+                    -- Wire format: [1]=name [2]=icon [3]=isSpell [4]=spellId
+                    myRecipes[recipeId] = { rd.name, rd.icon, rd.isSpell, rd.spellId }
+                end
+            end
+            if next(myRecipes) then
+                local skill = gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId] or {}
+                professions[profId] = {
+                    skillRank = skill.skillRank or 0,
+                    skillMax  = skill.skillMax  or 300,
+                    recipes   = myRecipes,
+                }
+            end
+        end
+    end
+
     return {
         charKey         = charKey,
-        guildKey        = guildKey,   -- receiver uses this to write into the correct guild bucket
-        professions     = (gdb.guildData[charKey] or {}).professions or {},
+        guildKey        = guildKey,
+        professions     = professions,
         cooldowns       = cdPayload,
         specializations = gdb.specializations[charKey] or {},
         timestamp       = now,
@@ -547,21 +656,23 @@ function Scanner:OnGuildDataReceived(sender, data)
     local g = Ace.db.global.guilds
     if not g[guildKey] then
         g[guildKey] = {
-            guildData = {}, cooldowns = {},
+            recipes = {}, skills = {}, guildData = {}, cooldowns = {},
             syncTimes = {}, specializations = {}, factions = {},
         }
     end
     local gdb = g[guildKey]
+    -- Lazy-init new fields for buckets created before this version.
+    if not gdb.recipes then gdb.recipes = {} end
+    if not gdb.skills  then gdb.skills  = {} end
     local now = GetServerTime()
 
-    -- Merge profession records.
+    -- Merge profession records into the recipe-centric index.
     if type(data.professions) == "table" then
-        if not gdb.guildData[charKey] then
-            gdb.guildData[charKey] = { professions = {} }
-        end
         for profId, profInfo in pairs(data.professions) do
             if type(profInfo) == "table" then
-                gdb.guildData[charKey].professions[profId] = profInfo
+                local wireRecipes = type(profInfo.recipes) == "table" and profInfo.recipes or {}
+                self:MergeRecipesIntoGdb(gdb, charKey, profId,
+                    profInfo.skillRank, profInfo.skillMax, wireRecipes)
             end
         end
     end

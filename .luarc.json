@@ -72,11 +72,18 @@
         "GetTradeSkillInfo",
         "GetTradeSkillItemLink",
         "GetTradeSkillRecipeLink",
+        "GetTradeSkillIcon",
+        "GetTradeSkillNumReagents",
+        "GetTradeSkillReagentInfo",
         "GetCraftDisplaySkillLine",
         "GetNumCrafts",
         "GetCraftInfo",
         "GetCraftItemLink",
+        "GetCraftIcon",
         "IsTradeSkillLinked",
+        "GetNumSpellTabs",
+        "GetSpellTabInfo",
+        "GetSpellBookItemInfo",
 
         "SendChatMessage",
         "ChatFrame_AddMessageEventFilter",
@@ -94,6 +101,10 @@
         "GetAddOnMetadata",
         "UpdateAddOnMemoryUsage",
         "GetAddOnMemoryUsage",
+        "IsAddOnLoaded",
+        "GetContainerNumSlots",
+        "GetContainerItemLink",
+        "GetContainerItemInfo",
 
         "StaticPopupDialogs",
         "StaticPopup_Show",
@@ -157,6 +168,7 @@
         "InterfaceOptionsFrame",
         "TOGBankClassic_Guild",
         "TOGBankClassic_Options",
+        "TOGBankClassic",
         "LibGuildRoster10Frame",
         "HandleModifiedItemClick",
         "GetSpellTexture",
@@ -172,7 +184,10 @@
     "diagnostics.disable": [
         "need-check-nil",
         "deprecated",
-        "param-type-mismatch"
+        "param-type-mismatch",
+        "inject-field",
+        "undefined-field",
+        "invisible"
     ],
     "workspace.ignoreDir": [
         "libs"

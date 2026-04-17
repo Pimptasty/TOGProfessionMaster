@@ -86,9 +86,9 @@ end
 -- Append lines to a GameTooltip frame
 -- ---------------------------------------------------------------------------
 
-local HEADER_COLOR  = "|cff00ccff"
-local ONLINE_COLOR  = "|cffffffff"
-local OFFLINE_COLOR = "|cff888888"
+local HEADER_COLOR  = "|c" .. (addon.BrandColor  or "ffDA8CFF")
+local ONLINE_COLOR  = "|c" .. (addon.ColorOnline  or "ffffffff")
+local OFFLINE_COLOR = "|c" .. (addon.ColorOffline or "ff888888")
 local RESET_COLOR   = "|r"
 
 local function AppendCrafters(tooltip, itemID)

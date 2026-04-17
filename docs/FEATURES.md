@@ -37,16 +37,19 @@
 ## 4. Communication Layer
 
 ### 4.1 Transport
+
 - **DeltaSync-1.0** is the comm backend — handles version broadcast, full data sync, delta sync, and P2P sessions
 - **AceCommQueue-1.0** wraps all `SendCommMessage` calls to prevent CRC errors from chunk interleaving
 - TOGPM registers a single DeltaSync instance keyed to `"TOGPM"` on `OnInitialize`
 
 ### 4.2 Data that syncs
+
 - Own profession list (profession ID, skill level, all known recipe IDs, specialization)
 - Own profession cooldown states (spell ID → expiry timestamp)
 - Character identity (name, realm, faction)
 
 ### 4.3 Sync triggers
+
 - `PLAYER_ENTERING_WORLD` — initial broadcast
 - `TRADE_SKILL_SHOW` / `TRADE_SKILL_UPDATE` — rescan and delta-sync professions
 - `BAG_UPDATE_COOLDOWN` — rescan and delta-sync cooldowns
@@ -54,6 +57,7 @@
 - Manual `/pm sync` command
 
 ### 4.4 GreenWall support (optional dep)
+
 - On guild announce, also relay to GreenWall confederate channel if `GreenWall` is loaded
 
 ---
@@ -61,20 +65,24 @@
 ## 5. Profession Data
 
 ### 5.1 Scanning own professions
+
 - `GetProfessions()` → iterate each slot → `GetProfessionInfo()` → `GetNumTradeSkills()` / `GetTradeSkillInfo()` for recipes
 - Specialization detection from `specialization-spells` data table (keyed per expansion)
 - All data stored in `AceDB` account-wide table, keyed by `characterKey` (`Name-Realm`)
 
 ### 5.2 Skills data tables
+
 - Static Lua tables per expansion: `vanilla-skills`, `bcc-skills`, `wrath-skills`, `cata-skills`, `mop-skills`
 - Each entry: `{ spellId, itemId, reagents = { {itemId, count}, ... } }`
 - Loaded on demand based on version flag — only the relevant expansion's table is used
 
 ### 5.3 Profession icon map
+
 - Static table mapping profession ID → icon texture path
 - Used for UI display; missing entries fall back to a generic trade icon (never crashes)
 
 ### 5.4 BOP item list
+
 - Static table of item IDs that are bind-on-pickup — used to suppress irrelevant tooltip entries
 
 ---
@@ -122,6 +130,7 @@ Built with `AceGUI-3.0`:
 ## 9. Bucket List & Missing Reagents
 
 ### 9.1 Bucket List
+
 - Stored in `AceDB` per-character: `{ spellId → { quantity, note } }`
 - Add from recipe row via "+" button in the main browser
 - Displayed in a separate `AceGUI` panel (accessible from main window tab or `/pm reagents`)
@@ -129,6 +138,7 @@ Built with `AceGUI-3.0`:
 - **[Bank] button** per row — same TOGBankClassic integration as cooldowns panel
 
 ### 9.2 Missing Reagents
+
 - Aggregate all reagents needed across bucket list entries × quantity
 - Subtract current bag contents (scanned via `GetContainerItemInfo` with Classic/Dragonflight compat shim)
 - Display shortfall per reagent — item name, quantity needed, quantity in bags
@@ -137,11 +147,13 @@ Built with `AceGUI-3.0`:
 - **[Bank] button** per row — TOGBankClassic integration
 
 ### 9.3 Reagent Watch
+
 - Separate list of watched item IDs — tracked in `AceDB`
 - Shows current bag count per watched item
 - Updates on `BAG_UPDATE`
 
 ### 9.4 Bucket List Alerts
+
 - `AceTimer` polling: check bag counts vs bucket list requirements on `BAG_UPDATE`
 - Fire a chat notification when all reagents for a queued craft are available
 
@@ -187,7 +199,7 @@ Built with `AceGUI-3.0`:
 All registered via `AceConsole-3.0`:
 
 | Command | Action |
-|---|---|
+| --- | --- |
 | `/pm` | Open profession browser |
 | `/pm reagents` | Open missing reagents |
 | `/pm minimap` | Show minimap button |
@@ -228,7 +240,7 @@ All registered via `AceConsole-3.0`:
 All Classic versions share one codebase; version-specific branches are isolated to:
 
 | Area | Handling |
-|---|---|
+| --- | --- |
 | API compat | Version flag checked once at startup; compat shims defined in `compat.lua` |
 | `GuildRoster()` vs `C_GuildInfo.GuildRoster()` | LibGuildRoster-1.0 already handles this |
 | `C_Container` vs legacy bag APIs | Shim in inventory module |

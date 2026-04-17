@@ -109,6 +109,8 @@ local OPTIONS = {
             func  = function()
                 local gdb = addon:GetGuildDb()
                 if gdb then
+                    gdb.recipes         = {}
+                    gdb.skills          = {}
                     gdb.guildData       = {}
                     gdb.cooldowns       = {}
                     gdb.syncTimes       = {}
@@ -133,6 +135,15 @@ local OPTIONS = {
                 local charKey = addon:GetCharacterKey()
                 local gdb     = addon:GetGuildDb()
                 if gdb then
+                    -- Remove charKey from all recipe crafters lists.
+                    if gdb.recipes then
+                        for _, profRecipes in pairs(gdb.recipes) do
+                            for _, rd in pairs(profRecipes) do
+                                if rd.crafters then rd.crafters[charKey] = nil end
+                            end
+                        end
+                    end
+                    if gdb.skills  then gdb.skills[charKey]          = nil end
                     gdb.guildData[charKey]       = nil
                     gdb.cooldowns[charKey]        = nil
                     gdb.syncTimes[charKey]        = nil

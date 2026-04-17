@@ -4,7 +4,6 @@
 -- Left-click        → open profession browser
 -- Right-click       → open missing reagents (shopping list)
 -- Shift+Left-click  → open settings
--- Shift+Right-click → hide minimap button
 
 local _, addon = ...
 local Ace = addon.lib
@@ -32,15 +31,7 @@ local dataObj = LDB:NewDataObject("TOGProfessionMaster", {
                 addon:OpenBrowser()
             end
         elseif button == "RightButton" then
-            if IsShiftKeyDown() then
-                -- Hide the button; re-show via /togpm minimap
-                Ace.db.profile.minimapButton = false
-                local icon = LibStub("LibDBIcon-1.0", true)
-                if icon then icon:Hide("TOGProfessionMaster") end
-                addon:Print("Minimap button hidden. Use |cffda8cff/togpm minimap|r to restore.")
-            else
-                addon:OpenReagents()
-            end
+            addon:OpenReagents()
         end
     end,
 
@@ -50,7 +41,6 @@ local dataObj = LDB:NewDataObject("TOGProfessionMaster", {
         tt:AddLine("|cffffd100Left-click|r to open profession browser")
         tt:AddLine("|cffffd100Right-click|r to open reagents")
         tt:AddLine("|cffffd100Shift+Left|r to open settings")
-        tt:AddLine("|cffffd100Shift+Right|r to hide this button")
     end,
 })
 
@@ -65,16 +55,16 @@ local function SetupMinimapButton()
         return
     end
 
-    -- AceDB profile table is the minimap options table expected by LibDBIcon.
-    -- It reads/writes `minimapButton.hide` (bool) and `minimapButton.minimapPos`.
-    -- We store a flat `minimapButton` bool in profile, so we wrap it here.
-    if not Ace.db.profile.minimapPos then
-        Ace.db.profile.minimapPos = {}
+    -- LibDBIcon expects a db table with:
+    --   minimapPos  (number)  — angle in degrees, default 220
+    --   hide        (bool)    — whether the button is hidden
+    if type(Ace.db.profile.minimapPos) ~= "number" then
+        Ace.db.profile.minimapPos = 220
     end
 
     local minimapData = {
-        hide        = not Ace.db.profile.minimapButton,
-        minimapPos  = Ace.db.profile.minimapPos,
+        hide       = not Ace.db.profile.minimapButton,
+        minimapPos = Ace.db.profile.minimapPos,
     }
 
     icon:Register("TOGProfessionMaster", dataObj, minimapData)

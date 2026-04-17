@@ -118,7 +118,7 @@ function ShoppingListTab:Draw(container)
 
     -- Subscribe to bag-change notifications so the watch list stays current
     if not self._watchCallbackRegistered then
-        addon.callbacks:RegisterCallback("REAGENT_WATCH_UPDATED", function()
+        addon:RegisterCallback("REAGENT_WATCH_UPDATED", function()
             if self._rwSection then
                 self._rwSection:ReleaseChildren()
                 self:FillReagentWatch(self._rwSection)
@@ -428,7 +428,7 @@ function ShoppingListTab:Redraw()
     if not self._container then return end
     -- Unsubscribe before releasing so we re-subscribe cleanly in Draw()
     if self._watchCallbackRegistered then
-        addon.callbacks:UnregisterCallback("REAGENT_WATCH_UPDATED", self)
+        addon:UnregisterCallback("REAGENT_WATCH_UPDATED", self)
         self._watchCallbackRegistered = false
     end
     self._container:ReleaseChildren()

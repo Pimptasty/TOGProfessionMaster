@@ -61,18 +61,18 @@ end
 --   SYNC_REQ    (peer)
 --   SYNC_VER    (peer)
 
-addon.callbacks:RegisterCallback("SYNC_SENT", function(_, peer, bytes)
+addon:RegisterCallback("SYNC_SENT", function(_, peer, bytes)
     SyncLog:Record("send", peer, bytes)
 end)
 
-addon.callbacks:RegisterCallback("SYNC_RECV", function(_, peer, bytes)
+addon:RegisterCallback("SYNC_RECV", function(_, peer, bytes)
     SyncLog:Record("recv", peer, bytes)
 end)
 
-addon.callbacks:RegisterCallback("SYNC_REQ", function(_, peer)
+addon:RegisterCallback("SYNC_REQ", function(_, peer)
     SyncLog:Record("request", peer, 0)
 end)
 
-addon.callbacks:RegisterCallback("SYNC_VER", function(_, peer)
+addon:RegisterCallback("SYNC_VER", function(_, peer)
     SyncLog:Record("version", peer, 0)
 end)

@@ -46,27 +46,15 @@ function MainWindow:Open(tabKey)
     f:SetTitle(L["WindowTitle"])
     f:SetStatusText(addon.Version)
     f:SetLayout("Fill")
-    f:SetWidth(720)
-    f:SetHeight(500)
     f:EnableResize(true)
 
-    -- Restore saved position / size.
-    local saved = Ace.db.char.frames.mainWindow
-    if saved then
-        f:SetPoint(saved.anchor or "CENTER", UIParent,
-                   saved.anchor or "CENTER",
-                   saved.x     or 0,
-                   saved.y     or 0)
-        if saved.w and saved.h then
-            f:SetWidth(saved.w)
-            f:SetHeight(saved.h)
-        end
-    else
-        f:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-    end
+    -- Let AceGUI own position/size persistence.  It writes top/left/width/height
+    -- directly into this sub-table on every move/resize — no manual save needed.
+    local frames = Ace.db.char.frames
+    frames.mainWindow = frames.mainWindow or { width = 720, height = 500 }
+    f:SetStatusTable(frames.mainWindow)
 
     f:SetCallback("OnClose", function(_widget)
-        self:SavePosition()
         AceGUI:Release(_widget)
         self.frame = nil
         self.tabs  = nil
@@ -95,7 +83,6 @@ end
 
 function MainWindow:Close()
     if self.frame then
-        self:SavePosition()
         AceGUI:Release(self.frame)
         self.frame = nil
         self.tabs  = nil
@@ -147,24 +134,6 @@ function MainWindow:Refresh()
 end
 
 -- ---------------------------------------------------------------------------
--- Position persistence
--- ---------------------------------------------------------------------------
-
-function MainWindow:SavePosition()
-    if not self.frame then return end
-    local point, _, _, x, y = self.frame.frame:GetPoint()
-    local w = self.frame.frame:GetWidth()
-    local h = self.frame.frame:GetHeight()
-    Ace.db.char.frames.mainWindow = {
-        anchor = point,
-        x = math.floor(x or 0),
-        y = math.floor(y or 0),
-        w = math.floor(w),
-        h = math.floor(h),
-    }
-end
-
--- ---------------------------------------------------------------------------
 -- Slash command stubs (override the ones created in TOGProfessionMaster.lua)
 -- ---------------------------------------------------------------------------
 
@@ -181,12 +150,7 @@ end
 -- ---------------------------------------------------------------------------
 
 hooksecurefunc(Ace, "OnEnable", function(_self)
-    -- Wire up the AceEvent-less callback bus that Scanner fires.
-    -- We use AceEvent on the Ace object since Scanner fires addon.callbacks.
-    if not addon.callbacks then
-        addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
-    end
-    addon.callbacks:RegisterCallback("GUILD_DATA_UPDATED", function(_event, _charKey)
+    addon:RegisterCallback("GUILD_DATA_UPDATED", function(_event, _charKey)
         MainWindow:Refresh()
     end)
 end)

@@ -13,6 +13,13 @@ TOGPM       = TOGPM or {}
 TOGPM.addon = addon
 addon.name  = addonName
 
+-- UI colors — change here to update everywhere.
+addon.BrandColor       = "ffFF8000"   -- Legendary quality orange (Thunderfury)
+addon.ColorYou         = "ffffff00"   -- WoW gold, used for the current player's name
+addon.ColorCrafter     = "ffaaaaaa"   -- muted gray for other crafters
+addon.ColorOnline      = "ffffffff"   -- white for online guild members
+addon.ColorOffline     = "ff888888"   -- dark gray for offline guild members
+
 -- Version (resolved from .toc, works on all Classic builds)
 local _GetAddOnMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
 addon.Version = _GetAddOnMetadata(addonName, "Version") or "dev"
@@ -31,6 +38,10 @@ local Ace = LibStub("AceAddon-3.0"):NewAddon(
     "AceSerializer-3.0"
 )
 addon.lib = Ace
+
+-- Custom callback bus used by Scanner.lua and Modules/SyncLog.lua.
+-- CallbackHandler-1.0 ships with Ace3 so it is always available.
+addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
 
 -- Convenient shorthand used throughout the addon files.
 -- `addon.lib:RegisterEvent(...)` → Ace's event system.
@@ -51,7 +62,9 @@ local DB_DEFAULTS = {
         -- All guild-specific data.
         -- Key format: "Alliance-Grobbulus-Knights of TOG"
         -- db.global.guilds[compositeKey] = {
-        --   guildData       = { ["Name-Realm"] = { professions = { [profId] = {...} } } }
+        --   recipes[profId][recipeId] = { name, icon, isSpell, crafters={["Name-Realm"]=true} }
+        --   skills["Name-Realm"][profId] = { skillRank, skillMax }
+        --   guildData       = { ["Name-Realm"] = {} }  -- membership index only
         --   cooldowns       = { ["Name-Realm"] = { [spellId] = expiresAt } }
         --   syncTimes       = { ["Name-Realm"] = timestamp }
         --   specializations = { ["Name-Realm"] = { [profId] = spellId } }
@@ -65,6 +78,7 @@ local DB_DEFAULTS = {
     profile = {
         -- UI
         minimapButton   = true,
+        minimapPos      = 220,   -- LibDBIcon angle in degrees
         mailReadyOnly   = false,
         debug           = false,
     },
@@ -90,10 +104,11 @@ local SLASH_COMMANDS = {
     [""]          = "OpenBrowser",
     ["reagents"]  = "OpenReagents",
     ["minimap"]   = "ShowMinimapButton",
-    ["purge"]     = "OpenPurge",
-    ["sync"]      = "ForceSync",
-    ["debug"]     = "ToggleDebug",
-    ["help"]      = "PrintHelp",
+    ["purge"]      = "OpenPurge",
+    ["sync"]       = "ForceSync",
+    ["debug"]      = "ToggleDebug",
+    ["spellcache"] = "DumpSpellCache",
+    ["help"]       = "PrintHelp",
 }
 
 -- ---------------------------------------------------------------------------
@@ -169,6 +184,30 @@ function addon:ShowMinimapButton() addon:DebugPrint("ShowMinimapButton — UI no
 function addon:OpenPurge()      addon:DebugPrint("OpenPurge — UI not yet loaded") end
 function addon:ForceSync()      addon:DebugPrint("ForceSync — sync not yet loaded") end
 
+--- /togpm spellcache — dump the spellbook name→id cache to chat for debugging.
+function addon:DumpSpellCache()
+    local cache = addon.Scanner:BuildSpellNameCache()
+    local count = 0
+    for name, id in pairs(cache) do
+        count = count + 1
+    end
+    Ace:Print("Spellbook cache: " .. count .. " entries")
+    if count == 0 then
+        Ace:Print("|cffff4444No entries — spellbook may be empty or API unavailable|r")
+    else
+        -- Print first 10 as a sample
+        local i = 0
+        for name, id in pairs(cache) do
+            i = i + 1
+            if i > 10 then
+                Ace:Print("  ... (" .. (count - 10) .. " more)")
+                break
+            end
+            Ace:Print("  [" .. id .. "] " .. name)
+        end
+    end
+end
+
 function addon:ToggleDebug()
     addon.debug = not addon.debug
     Ace.db.profile.debug = addon.debug
@@ -228,12 +267,18 @@ function addon:GetGuildDb()
     local g = Ace.db.global.guilds
     if not g[guildKey] then
         g[guildKey] = {
-            guildData       = {},
+            recipes         = {},  -- [profId][recipeId] = { name, icon, isSpell, crafters }
+            skills          = {},  -- [charKey][profId]  = { skillRank, skillMax }
+            guildData       = {},  -- [charKey] = {}  (membership index)
             cooldowns       = {},
             syncTimes       = {},
             specializations = {},
             factions        = {},
         }
     end
-    return g[guildKey]
+    -- Lazy-init fields for buckets created before this version.
+    local b = g[guildKey]
+    if not b.recipes then b.recipes = {} end
+    if not b.skills  then b.skills  = {} end
+    return b
 end

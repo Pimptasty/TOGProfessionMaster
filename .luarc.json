@@ -173,6 +173,12 @@
         "HandleModifiedItemClick",
         "GetSpellTexture",
 
+        "RegisterAddonMessagePrefix",
+        "SendAddonMessage",
+        "FCF_SetWindowName",
+        "FCF_DockFrame",
+        "FCF_Close",
+
         "ClickSendMailItemButton",
         "GetSendMailItem",
         "ATTACHMENTS_MAX_SEND",

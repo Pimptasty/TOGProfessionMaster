@@ -59,6 +59,7 @@ local SPEC_SPELLS = {
 }
 
 -- ---------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 -- DeltaSync initialisation
 -- Called on PLAYER_ENTERING_WORLD (initial login or UI reload only).
 -- ---------------------------------------------------------------------------
@@ -95,6 +96,76 @@ function Scanner:InitDeltaSync()
     })
 
     self.DS = DS
+
+    -- ── P2P catch-up sync ────────────────────────────────────────────────────
+    -- Two-phase hierarchical sync via HashManager:
+    --   Phase 1: broadcast guild:cooldowns + guild:recipes (top-level roll-ups).
+    --            Peers who differ whisper back a hash-offer, we request from them.
+    --   onSyncAccepted("guild:*"): drill down by broadcasting the matching
+    --            per-member (cooldown:*) or per-profession (recipes:*) level map.
+    --   onSyncAccepted("cooldown:*"|"recipes:*"): leaf — call DS:RequestData to
+    --            pull the full character payload from the peer.
+    DS:InitP2P({
+        -- Phase 1 broadcast: two guild-level roll-up hashes.
+        -- Rebuild from scratch if the cache is empty (first login after a wipe).
+        getMyHashes = function()
+            local gdb = addon:GetGuildDb()
+            if not gdb then return {} end
+            local HM = addon.HashManager
+            if not gdb.hashes or not gdb.hashes["guild:cooldowns"] then
+                HM:RebuildAll(DS, gdb)
+            end
+            return HM:GetGuildLevelMap(gdb)
+        end,
+
+        -- We can serve data for itemKeys we own (see HashManager:HasContent).
+        hasContent = function(itemKey)
+            local gdb = addon:GetGuildDb()
+            if not gdb then return false end
+            return addon.HashManager:HasContent(gdb, itemKey)
+        end,
+
+        -- True when any online guildmate has no entry in our cooldown hash cache.
+        hasMissingItems = function()
+            local gdb = addon:GetGuildDb()
+            if not gdb then return false end
+            if not gdb.hashes or not gdb.hashes["guild:cooldowns"] then return true end
+            local me = DS:GetNormalizedPlayer()
+            for _, name in ipairs(DS:GetOnlineGuildMembers()) do
+                if name ~= me and not gdb.hashes["cooldown:" .. name] then
+                    return true
+                end
+            end
+            return false
+        end,
+
+        -- Multi-phase dispatch:
+        --   guild:cooldowns → free slot, broadcast per-member level for drill-down
+        --   guild:recipes   → free slot, broadcast per-profession level for drill-down
+        --   cooldown:*       → leaf reached; pull full payload from peer
+        --   recipes:*        → leaf reached; pull full payload from peer
+        onSyncAccepted = function(itemKey, sender)
+            local gdb = addon:GetGuildDb()
+            if not gdb then return end
+            local HM = addon.HashManager
+
+            if itemKey == "guild:cooldowns" then
+                -- Phase 1 → 2: free guild-level session slot, drill to per-member map.
+                if DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
+                DS:BroadcastItemHashes(HM:GetCooldownLevelMap(gdb), "BULK")
+
+            elseif itemKey == "guild:recipes" then
+                -- Phase 1 → 2: drill to per-profession map.
+                if DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
+                DS:BroadcastItemHashes(HM:GetProfessionLevelMap(gdb), "BULK")
+
+            elseif itemKey:sub(1, 9) == "cooldown:" or itemKey:sub(1, 8) == "recipes:" then
+                -- Phase 2 leaf: peer has data we need; request their full payload.
+                DS:RequestData(sender)
+            end
+        end,
+    })
+
     addon:DebugPrint("Scanner: DeltaSync initialized for", DS.namespace)
 end
 
@@ -118,6 +189,16 @@ function Scanner:Init()
     Ace:ScheduleTimer(function()
         Scanner:ScanCooldowns()
         Scanner:ScheduleBroadcast()
+        -- Kick off P2P catch-up: broadcast our hash map so online peers can
+        -- identify any charKeys we're missing and offer to fill them in.
+        local DS = Scanner.DS
+        if DS and type(DS.BroadcastItemHashes) == "function" then
+            local p2p = DS.p2p
+            if p2p and p2p.cb and type(p2p.cb.hasMissingItems) == "function" and p2p.cb.hasMissingItems() then
+                local hashes = type(p2p.cb.getMyHashes) == "function" and p2p.cb.getMyHashes() or {}
+                DS:BroadcastItemHashes(hashes, "BULK")
+            end
+        end
     end, 2)
 
     addon:DebugPrint("Scanner: Init complete")
@@ -267,6 +348,12 @@ function Scanner:ScanTradeSkillInto(charKey, isLinked)  --luacheck: ignore isLin
         self:DetectSpecializations(charKey)
     end
 
+    -- Invalidate the per-profession recipe hash and the guild:recipes roll-up.
+    local DS = self.DS
+    if DS then
+        addon.HashManager:InvalidateProfession(DS, gdb, profId)
+    end
+
     addon:DebugPrint("Scanner: scanned", skillName, "for", charKey,
         "—", (function() local n = 0; for _ in pairs(recipes) do n = n + 1 end; return n end)(), "recipes")
 end
@@ -382,6 +469,12 @@ function Scanner:ScanCraftSkillInto(charKey)
     local gdb = addon:GetGuildDb()
     if not gdb then return end
     self:MergeRecipesIntoGdb(gdb, charKey, profId, 0, 300, recipes)
+
+    -- Invalidate the per-profession recipe hash and the guild:recipes roll-up.
+    local DS = self.DS
+    if DS then
+        addon.HashManager:InvalidateProfession(DS, gdb, profId)
+    end
 
     addon:DebugPrint("Scanner: scanned craft", skillName, "for", charKey,
         "—", (function() local n = 0; for _ in pairs(recipes) do n = n + 1 end; return n end)(), "recipes")
@@ -502,6 +595,13 @@ function Scanner:ScanCooldowns()
     end
 
     gdb.syncTimes[charKey] = now
+
+    -- Update the per-member cooldown hash and the guild:cooldowns roll-up.
+    local DS = self.DS
+    if DS then
+        addon.HashManager:InvalidateCharCooldowns(DS, gdb, charKey)
+    end
+
     addon:DebugPrint("Scanner: cooldown scan complete for", charKey)
 end
 
@@ -703,6 +803,25 @@ function Scanner:OnGuildDataReceived(sender, data)
     end
 
     addon:DebugPrint("Scanner: merged data for", charKey, "guild:", guildKey, "from", sender)
+
+    -- Rebuild all hash levels to reflect the newly merged data.
+    -- Also notifies P2P that leaf sessions for this character are complete,
+    -- freeing inbound session slots for the next pending dispatch.
+    local DS = self.DS
+    if DS then
+        addon.HashManager:RebuildAll(DS, gdb)
+
+        -- Complete the cooldown leaf session (and any per-profession recipe
+        -- sessions) so P2P can dispatch pending items for other members.
+        if DS.p2p then
+            DS.p2p:OnItemCompleted("cooldown:" .. charKey, sender)
+            if type(data.professions) == "table" then
+                for profId in pairs(data.professions) do
+                    DS.p2p:OnItemCompleted("recipes:" .. tostring(profId), sender)
+                end
+            end
+        end
+    end
 
     if addon.callbacks then
         addon.callbacks:Fire("SYNC_RECV", sender, 0)

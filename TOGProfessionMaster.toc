@@ -26,6 +26,7 @@ Compat.lua
 Data\ProfessionIcons.lua
 Data\CooldownIds.lua
 Scanner.lua
+Modules\HashManager.lua
 Modules\ReagentWatch.lua
 Modules\SyncLog.lua
 GUI\MinimapButton.lua

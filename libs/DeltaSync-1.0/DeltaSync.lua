@@ -3,11 +3,22 @@
 -- Version: 1.0.0
 -- A standalone, embeddable Lua library for efficient data synchronization using delta compression
 
-local MAJOR, MINOR = "DeltaSync-1.0", 1
+local MAJOR, MINOR = "DeltaSync-1.0", 2
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not lib then
     return -- Already loaded
+end
+
+-- Embed AceSerializer-3.0 immediately at load time so lib:Serialize() /
+-- lib:Deserialize() are available before Initialize() is called.
+-- The guard prevents double-embedding across LibStub reloads.
+do
+    local AceSer = LibStub and LibStub:GetLibrary("AceSerializer-3.0", true)
+    if AceSer and not lib.__AceSer_embedded then
+        AceSer:Embed(lib)
+        lib.__AceSer_embedded = true
+    end
 end
 
 -- ============================================================================
@@ -443,11 +454,14 @@ end
 --      (the root cause of CRC errors when messages of different priorities share a prefix).
 -- Falls back to raw WoW API when AceComm is unavailable.
 function lib:RegisterCommChannels()
-    -- Step 0: Embed AceSerialization-3.0 so lib:Serialize() / lib:Deserialize() are available.
-    local AceSer = LibStub and LibStub:GetLibrary("AceSerialization-3.0", true)
-    if AceSer and not lib.__AceSer_embedded then
-        AceSer:Embed(lib)
-        lib.__AceSer_embedded = true
+    -- AceSerializer-3.0 is embedded at load time (see top of file).
+    -- If it somehow wasn't available then, try again now.
+    if not lib.__AceSer_embedded then
+        local AceSer = LibStub and LibStub:GetLibrary("AceSerializer-3.0", true)
+        if AceSer then
+            AceSer:Embed(lib)
+            lib.__AceSer_embedded = true
+        end
     end
 
     local AceComm = LibStub and LibStub:GetLibrary("AceComm-3.0", true)
@@ -943,6 +957,28 @@ function lib:SendHandshake(target, payload, priority)
     local message = self:SerializeWithChecksum(payload)
     if not message then return false end
     return self:SendMessage("HANDSHAKE", message, "WHISPER", target, priority or "NORMAL")
+end
+
+-- Initialize the P2P session manager.
+-- Must be called after lib:Initialize().  Delegates to P2PSession.lua's P2P:Init().
+-- @param config  see P2PSession.lua module header for full field list:
+--   config.getMyHashes()         → {itemKey → {hash, updatedAt}}
+--   config.hasContent(itemKey)   → bool
+--   config.hasMissingItems()     → bool
+--   config.onSyncAccepted(itemKey, sender)
+--   config.isValidPeer(name)     → bool  (optional, defaults to IsInGuild)
+--   config.collectWindow         number  (default 10)
+--   config.maxActiveSessions     number  (default 3)
+--   config.maxActiveSends        number  (default 3)
+--   config.retryDelay            number  (default 20)
+--   config.catchUpDelay          number  (default 45)
+--   config.maxCatchUpCycles      number  (default 5)
+--   config.deliveryTimeout       number  (default 180)
+function lib:InitP2P(config)
+    if not self.p2p then
+        error("DeltaSync:InitP2P() — P2PSession module not loaded (P2PSession.lua missing)")
+    end
+    self.p2p:Init(config)
 end
 
 -- ============================================================================

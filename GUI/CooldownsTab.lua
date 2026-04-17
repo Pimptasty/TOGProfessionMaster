@@ -546,13 +546,47 @@ function CooldownsTab:DrawRow(parent, row, now)
     end)
     rowGroup:AddChild(charLbl)
 
-    -- ── Column 2a: Cooldown icon + name (220px) ───────────────────────────────
-    -- AceGUI Label places image LEFT of text when (width - imageWidth) >= 200.
-    -- 220 - 14 = 206 >= 200, so icon appears left of the cooldown name. ✓
-    local cdLbl = AceGUI:Create("InteractiveLabel")
-    cdLbl:SetWidth(220)  -- must be set before SetImage so UpdateImageAnchor uses correct width
+    -- ── Column 2: fixed 306px container — ALL cooldown content lives inside here ──
+    -- This SimpleGroup acts as a hard column boundary: charLbl ends at 190px,
+    -- col2 spans 190–496px, timeLbl starts at 496px regardless of inner content.
 
-    -- Resolve icon texture (matches reference CreateRow icon logic)
+    -- Pre-check bank stock now so we can compute exact inner widths before
+    -- creating any widgets (avoids dynamic resize after layout).
+    local itemId   = row.reagentItemId
+    local hasBank  = false
+    if itemId and addon:IsAddOnLoaded("TOGBankClassic") then
+        local TOG = _G["TOGBankClassic_Guild"]
+        if TOG and TOG.Info and TOG.Info.alts then
+            for _, alt in pairs(TOG.Info.alts) do
+                for _, entry in ipairs(alt.items or {}) do
+                    if entry.ID == itemId and (entry.Count or 0) > 0 then
+                        hasBank = true; break
+                    end
+                end
+                if hasBank then break end
+            end
+        end
+    end
+
+    -- Width budget inside col2 (306px):
+    --   With reagent + bank : cdLblW = 306-64-42-20 = 180px
+    --   With reagent only   : cdLblW = 306-64-20    = 222px
+    --   No reagent          : cdLblW = 306px
+    local mailW    = itemId and 20 or 0
+    local bankW    = (itemId and hasBank) and 42 or 0
+    local reagentW = itemId and 64 or 0
+    local cdLblW   = 306 - reagentW - bankW - mailW
+
+    local col2 = AceGUI:Create("SimpleGroup")
+    col2:SetLayout("Flow")
+    col2:SetWidth(306)
+    rowGroup:AddChild(col2)
+
+    -- Cooldown icon + name
+    local cdLbl = AceGUI:Create("InteractiveLabel")
+    cdLbl:SetWidth(cdLblW)
+
+    -- Resolve icon texture
     local iconTexture
     if row.isTransmuteGroup then
         iconTexture = "Interface\\Icons\\Trade_Alchemy"
@@ -561,7 +595,6 @@ function CooldownsTab:DrawRow(parent, row, now)
     elseif row.iconItemId then
         iconTexture = select(10, GetItemInfo(row.iconItemId))
         if not iconTexture then
-            -- Item not in cache yet; request async load, fall back to spell texture now
             local iconItem = Item:CreateFromItemID(row.iconItemId)
             iconItem:ContinueOnItemLoad(function()
                 local t = select(10, GetItemInfo(row.iconItemId))
@@ -576,10 +609,9 @@ function CooldownsTab:DrawRow(parent, row, now)
     else
         iconTexture = row.spellId and GetSpellTexture(row.spellId)
     end
-
     if iconTexture then
         cdLbl:SetImage(iconTexture)
-        cdLbl.image:SetTexCoord(0.08, 0.92, 0.08, 0.92)  -- trim icon border
+        cdLbl.image:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         cdLbl:SetImageSize(14, 14)
     end
     local cdText = row.isGroup and ("[+] " .. row.cdName) or row.cdName
@@ -612,15 +644,13 @@ function CooldownsTab:DrawRow(parent, row, now)
         end)
         cdLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
     end
-    rowGroup:AddChild(cdLbl)
+    col2:AddChild(cdLbl)
 
-    -- ── Column 2b: Reagent (86px, right-justified) ────────────────────────────
-    -- 220 + 86 = 306px total cooldown area, matching the reference column width.
-    local reagentLbl = AceGUI:Create("InteractiveLabel")
-    reagentLbl:SetWidth(86)
-    reagentLbl:SetJustifyH("RIGHT")
-    if row.reagentItemId then
-        local itemId = row.reagentItemId
+    -- Reagent + [Bank] + mail — all inside col2, only when a reagent exists
+    if itemId then
+        -- Reagent name
+        local reagentLbl = AceGUI:Create("InteractiveLabel")
+        reagentLbl:SetWidth(reagentW)
         local reagentName = GetItemInfo(itemId)
         if reagentName then
             reagentLbl:SetText("|cffaaaaaa" .. reagentName .. "|r")
@@ -644,57 +674,16 @@ function CooldownsTab:DrawRow(parent, row, now)
                 if link then HandleModifiedItemClick(link) end
             end
         end)
-    end
-    rowGroup:AddChild(reagentLbl)
+        col2:AddChild(reagentLbl)
 
-    -- ── Column 3: Time Remaining (80px) ──────────────────────────────────────
-    local timeLbl = AceGUI:Create("Label")
-    timeLbl:SetText(timeColor .. timeStr .. "|r")
-    timeLbl:SetWidth(80)
-    rowGroup:AddChild(timeLbl)
-
-    -- ── Mail icon (16x16) — shown when reagent is known ───────────────────────
-    if row.reagentItemId then
-        local mailBtn = AceGUI:Create("InteractiveLabel")
-        mailBtn:SetImage("Interface\\Icons\\INV_Letter_15")
-        mailBtn:SetImageSize(16, 16)
-        mailBtn:SetText("")
-        mailBtn:SetWidth(20)
-        mailBtn:SetCallback("OnClick", function()
-            local cdName = row.isTransmuteGroup and L["Transmute"] or row.cdName
-            CdMail_PrepareSupplyMail(row.charKey, cdName, row.reagentItemId, row.reagentQty or 1)
-        end)
-        mailBtn:SetCallback("OnEnter", function(_widget)
-            GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
-            GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1)
-            GameTooltip:AddLine(L["MailBtnTooltipDesc"] or "Open a mailbox, then click to attach reagents.", nil, nil, nil, true)
-            GameTooltip:Show()
-        end)
-        mailBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-        rowGroup:AddChild(mailBtn)
-    end
-
-    -- ── [Bank] green text — shown when TOGBankClassic has reagent in stock ────
-    if row.reagentItemId and addon:IsAddOnLoaded("TOGBankClassic") then
-        local TOG = _G["TOGBankClassic_Guild"]
-        local hasStock = false
-        if TOG and TOG.Info and TOG.Info.alts then
-            for _, alt in pairs(TOG.Info.alts) do
-                for _, entry in ipairs(alt.items or {}) do
-                    if entry.ID == row.reagentItemId and (entry.Count or 0) > 0 then
-                        hasStock = true; break
-                    end
-                end
-                if hasStock then break end
-            end
-        end
-        if hasStock then
+        -- [Bank] button
+        if hasBank then
             local bankBtn = AceGUI:Create("InteractiveLabel")
             bankBtn:SetText("|cFF88FF88[Bank]|r")
-            bankBtn:SetWidth(42)
+            bankBtn:SetWidth(bankW)
             bankBtn:SetCallback("OnClick", function()
                 if TOGBankClassic and TOGBankClassic.RequestItem then
-                    TOGBankClassic.RequestItem(row.reagentItemId)
+                    TOGBankClassic.RequestItem(itemId)
                 end
             end)
             bankBtn:SetCallback("OnEnter", function(_widget)
@@ -704,9 +693,34 @@ function CooldownsTab:DrawRow(parent, row, now)
                 GameTooltip:Show()
             end)
             bankBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-            rowGroup:AddChild(bankBtn)
+            col2:AddChild(bankBtn)
         end
+
+        -- Mail icon
+        local mailBtn = AceGUI:Create("InteractiveLabel")
+        mailBtn:SetImage("Interface\\Icons\\INV_Letter_15")
+        mailBtn:SetImageSize(16, 16)
+        mailBtn:SetText("")
+        mailBtn:SetWidth(mailW)
+        mailBtn:SetCallback("OnClick", function()
+            local cdName = row.isTransmuteGroup and L["Transmute"] or row.cdName
+            CdMail_PrepareSupplyMail(row.charKey, cdName, itemId, row.reagentQty or 1)
+        end)
+        mailBtn:SetCallback("OnEnter", function(_widget)
+            GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
+            GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1)
+            GameTooltip:AddLine(L["MailBtnTooltipDesc"] or "Open a mailbox, then click to attach reagents.", nil, nil, nil, true)
+            GameTooltip:Show()
+        end)
+        mailBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+        col2:AddChild(mailBtn)
     end
+
+    -- ── Column 3: Time Remaining (80px) — always at 496px, never displaced ───
+    local timeLbl = AceGUI:Create("Label")
+    timeLbl:SetText(timeColor .. timeStr .. "|r")
+    timeLbl:SetWidth(80)
+    rowGroup:AddChild(timeLbl)
 end
 
 --- Show a popup listing all individual spells inside a cooldown group.

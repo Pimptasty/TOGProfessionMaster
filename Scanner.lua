@@ -40,6 +40,7 @@ local PROF_NAME_TO_ID = {
     ["Cooking"]        = 185,
     ["Enchanting"]     = 333,
     ["Engineering"]    = 202,
+    ["First Aid"]      = 129,
     ["Fishing"]        = 356,
     ["Herbalism"]      = 182,
     ["Inscription"]    = 773,

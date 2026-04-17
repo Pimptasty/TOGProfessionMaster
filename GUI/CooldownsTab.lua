@@ -107,7 +107,7 @@ local function BuildRows(readyOnly)
                 else
                     -- Regular single-spell cooldown row.
                     if not readyOnly or remaining <= 0 then
-                        local cdName = data.cooldowns[spellId] or tostring(spellId)
+                        local cdName = data.cooldowns[spellId] or GetSpellInfo(spellId) or tostring(spellId)
                         local reagentItemId = data.reagents[spellId] and data.reagents[spellId].id
                         local reagentQty    = data.reagents[spellId] and data.reagents[spellId].qty or 1
                         local iconItemId    = data.iconOverrides and data.iconOverrides[spellId]
@@ -424,9 +424,12 @@ function CooldownsTab:DrawHeaders(parent, container)
     -- 3 columns matching reference: Character (190) | Cooldown (306) | Remaining (80)
     -- The Cooldown header spans both icon+name (220px) and reagent (86px) = 306px total.
     local cols = {
-        { key = "char", label = L["ColCharacter"], width = 190 },
-        { key = "cd",   label = L["ColCooldown"],  width = 306 },
-        { key = "time", label = L["ColTimeLeft"],  width = 80  },
+        { key = "char", label = L["ColCharacter"], width = 190,
+          tip = "Character", tipDesc = "The guild member who has this cooldown. Right-click a row to whisper them." },
+        { key = "cd",   label = L["ColCooldown"],  width = 306,
+          tip = "Cooldown", tipDesc = "The name of the profession cooldown spell." },
+        { key = "time", label = L["ColTimeLeft"],  width = 80,
+          tip = "Time Left", tipDesc = "How long until this cooldown is ready. Green = ready now." },
     }
     local texTop    = self._sortAsc and 0.6875 or 0.0
     local texBottom = self._sortAsc and 0.0    or 0.6875
@@ -434,20 +437,37 @@ function CooldownsTab:DrawHeaders(parent, container)
     for _, col in ipairs(cols) do
         local isActive = (self._sortCol == col.key)
         local btn = AceGUI:Create("InteractiveLabel")
-        btn:SetText(col.label)
+        btn:SetText("|c" .. (addon.BrandColor or "ffFF8000") .. col.label .. "|r")
         btn:SetWidth(col.width)
 
+        -- Tooltip on hover
+        local tipTitle = col.tip
+        local tipBody  = col.tipDesc
+        btn:SetCallback("OnEnter", function(_w)
+            GameTooltip:SetOwner(_w.frame, "ANCHOR_BOTTOMLEFT")
+            GameTooltip:SetText(tipTitle, 1, 1, 1)
+            GameTooltip:AddLine(tipBody, nil, nil, nil, true)
+            GameTooltip:Show()
+        end)
+        btn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+
         -- Arrow texture: show only on the active sort column.
-        -- Position is deferred via C_Timer so GetStringWidth() is valid after layout.
-        local arrow = btn.frame:CreateTexture(nil, "OVERLAY")
-        arrow:SetTexture("Interface\\Calendar\\MoreArrow")
-        arrow:SetSize(12, 9)
+        -- AceGUI pools and reuses widget frames, so CreateTexture would stack a
+        -- new texture on top of the old one every redraw.  Reuse the stored ref.
+        local arrow = btn.frame._togpmSortArrow
+        if not arrow then
+            arrow = btn.frame:CreateTexture(nil, "OVERLAY")
+            arrow:SetTexture("Interface\\Calendar\\MoreArrow")
+            arrow:SetSize(12, 9)
+            btn.frame._togpmSortArrow = arrow
+        end
         if isActive then
             arrow:SetTexCoord(0.0, 0.9375, texTop, texBottom)
             arrow:Show()
         else
             arrow:Hide()
         end
+        -- Position is deferred via C_Timer so GetStringWidth() is valid after layout.
         C_Timer.After(0, function()
             if btn.label then
                 local sw = btn.label:GetStringWidth()
@@ -568,23 +588,29 @@ function CooldownsTab:DrawRow(parent, row, now)
         end
     end
 
-    -- Width budget inside col2 (306px):
-    --   With reagent + bank : cdLblW = 306-64-42-20 = 180px
-    --   With reagent only   : cdLblW = 306-64-20    = 222px
-    --   No reagent          : cdLblW = 306px
-    local mailW    = itemId and 20 or 0
-    local bankW    = (itemId and hasBank) and 42 or 0
-    local reagentW = itemId and 64 or 0
-    local cdLblW   = 306 - reagentW - bankW - mailW
+    -- Width budget inside col2 (306px).
+    -- The icon is a SEPARATE 18px widget so AceGUI's Label never hits the
+    -- "(width - imageWidth) < 200" threshold that stacks text below the icon.
+    --   With reagent + bank : cdNameW = 306-18-96-40-20 = 132px
+    --   With reagent only   : cdNameW = 306-18-96-20    = 172px
+    --   No reagent          : cdNameW = 306-18           = 288px
+    local iconColW  = 18
+    local mailW     = itemId and 20 or 0
+    local bankW     = (itemId and hasBank) and 40 or 0
+    local reagentW  = itemId and 96 or 0
+    local cdNameW   = 306 - iconColW - reagentW - bankW - mailW
 
     local col2 = AceGUI:Create("SimpleGroup")
     col2:SetLayout("Flow")
     col2:SetWidth(306)
     rowGroup:AddChild(col2)
 
-    -- Cooldown icon + name
-    local cdLbl = AceGUI:Create("InteractiveLabel")
-    cdLbl:SetWidth(cdLblW)
+    -- Icon widget (image only, empty text).
+    -- Keeping it separate from the name avoids AceGUI's Label threshold:
+    -- when (width - imageWidth) < 200 it stacks text below the icon vertically.
+    local iconW = AceGUI:Create("Label")
+    iconW:SetWidth(iconColW)
+    iconW:SetImageSize(14, 14)
 
     -- Resolve icon texture
     local iconTexture
@@ -598,10 +624,10 @@ function CooldownsTab:DrawRow(parent, row, now)
             local iconItem = Item:CreateFromItemID(row.iconItemId)
             iconItem:ContinueOnItemLoad(function()
                 local t = select(10, GetItemInfo(row.iconItemId))
-                if t and cdLbl.image then
-                    cdLbl.image:SetTexture(t)
-                    cdLbl.image:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-                    cdLbl.imageshown = true
+                if t and iconW.image then
+                    iconW.image:SetTexture(t)
+                    iconW.image:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                    iconW.imageshown = true
                 end
             end)
             iconTexture = row.spellId and GetSpellTexture(row.spellId)
@@ -610,14 +636,18 @@ function CooldownsTab:DrawRow(parent, row, now)
         iconTexture = row.spellId and GetSpellTexture(row.spellId)
     end
     if iconTexture then
-        cdLbl:SetImage(iconTexture)
-        cdLbl.image:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        cdLbl:SetImageSize(14, 14)
+        iconW:SetImage(iconTexture)
+        iconW.image:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     end
+    col2:AddChild(iconW)
+
+    -- Cooldown name (text only — no image, so no stacking threshold applies)
+    local cdNameLbl = AceGUI:Create("InteractiveLabel")
+    cdNameLbl:SetWidth(cdNameW)
     local cdText = row.isGroup and ("[+] " .. row.cdName) or row.cdName
-    cdLbl:SetText(cdText)
+    cdNameLbl:SetText(cdText)
     if row.isGroup then
-        cdLbl:SetCallback("OnEnter", function(_widget)
+        cdNameLbl:SetCallback("OnEnter", function(_widget)
             GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
             if row.isTransmuteGroup then
                 GameTooltip:AddLine("Click to see transmutes", 1, 1, 1)
@@ -626,12 +656,12 @@ function CooldownsTab:DrawRow(parent, row, now)
             end
             GameTooltip:Show()
         end)
-        cdLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-        cdLbl:SetCallback("OnClick", function(_widget, _event, button)
+        cdNameLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+        cdNameLbl:SetCallback("OnClick", function(_widget, _event, button)
             if button == "LeftButton" then self:ShowGroupPopup(row, now) end
         end)
     else
-        cdLbl:SetCallback("OnEnter", function(_widget)
+        cdNameLbl:SetCallback("OnEnter", function(_widget)
             GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
             if row.spellId then
                 if GetSpellInfo(row.spellId) then
@@ -642,9 +672,9 @@ function CooldownsTab:DrawRow(parent, row, now)
             end
             GameTooltip:Show()
         end)
-        cdLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+        cdNameLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
     end
-    col2:AddChild(cdLbl)
+    col2:AddChild(cdNameLbl)
 
     -- Reagent + [Bank] + mail — all inside col2, only when a reagent exists
     if itemId then
@@ -682,9 +712,9 @@ function CooldownsTab:DrawRow(parent, row, now)
             bankBtn:SetText("|cFF88FF88[Bank]|r")
             bankBtn:SetWidth(bankW)
             bankBtn:SetCallback("OnClick", function()
-                if TOGBankClassic and TOGBankClassic.RequestItem then
-                    TOGBankClassic.RequestItem(itemId)
-                end
+                local name = GetItemInfo(itemId)
+                local link = select(2, GetItemInfo(itemId))
+                addon.Bank.ShowRequestDialog(itemId, name, link)
             end)
             bankBtn:SetCallback("OnEnter", function(_widget)
                 GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")

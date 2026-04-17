@@ -185,7 +185,9 @@
         "MailFrame",
         "SendMailNameEditBox",
         "SendMailSubjectEditBox",
-        "SendMailBodyEditBox"
+        "SendMailBodyEditBox",
+        "SplitContainerItem",
+        "PickupContainerItem"
     ],
     "diagnostics.disable": [
         "need-check-nil",

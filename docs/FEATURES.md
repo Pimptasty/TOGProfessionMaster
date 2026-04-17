@@ -250,3 +250,11 @@ All Classic versions share one codebase; version-specific branches are isolated 
 | Cooldown IDs | Per-expansion static table loaded by version flag |
 
 Supported interface versions: Vanilla (1.x) · TBC (2.x) · Wrath (3.x) · Cata (4.x) · MoP (5.x)
+
+---
+
+## Backlog / Ideas
+
+Quick notes — not yet designed or scheduled.
+
+- **Professions tab tooltip — TOGBank stock line:** When hovering a recipe row, append a "In bank: N" line to the custom tooltip if `TOGBankClassic_Guild` has stock of the crafted item.

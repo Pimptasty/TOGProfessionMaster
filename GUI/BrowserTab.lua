@@ -30,6 +30,11 @@ addon.BrowserTab = BrowserTab
 local ROW_HEIGHT  = 22
 local POOL_SIZE   = 35  -- enough rows to fill any window height
 
+-- ---------------------------------------------------------------------------
+-- TOGBankClassic integration helpers
+-- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
 -- Hidden tooltip used to scrape raw item data without triggering other addon hooks.
 local _itemScraper
 local function GetItemScraper()
@@ -162,6 +167,13 @@ function BrowserTab:Draw(container)
     self._container = container
     container:SetLayout("List")
 
+    -- Clean up a raw headerBar left over from a previous Draw() or tab switch.
+    if self._headerBar then
+        self._headerBar:Hide()
+        self._headerBar:SetParent(UIParent)
+        self._headerBar = nil
+    end
+
     -- ---- Toolbar -----------------------------------------------------------
     local toolbar = AceGUI:Create("SimpleGroup")
     toolbar:SetLayout("Flow")
@@ -178,7 +190,7 @@ function BrowserTab:Draw(container)
     end
 
     local profDD = AceGUI:Create("Dropdown")
-    profDD:SetLabel(L["PanelProfessions"])
+    profDD:SetLabel("|c" .. (addon.BrandColor or "ffFF8000") .. L["PanelProfessions"] .. "|r")
     profDD:SetWidth(180)
     profDD:SetList(profList, profOrder)
     profDD:SetValue(self._selectedProfId or 0)
@@ -186,6 +198,13 @@ function BrowserTab:Draw(container)
         self._selectedProfId = value
         self:RefreshList()
     end)
+    profDD.frame:SetScript("OnEnter", function(f)
+        GameTooltip:SetOwner(f, "ANCHOR_BOTTOMLEFT")
+        GameTooltip:SetText("Profession Filter", 1, 1, 1)
+        GameTooltip:AddLine("Filter the recipe list to a single profession, or show all.", nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    profDD.frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
     toolbar:AddChild(profDD)
 
     -- Spacer
@@ -195,13 +214,20 @@ function BrowserTab:Draw(container)
 
     -- Search box
     local search = AceGUI:Create("EditBox")
-    search:SetLabel(L["SearchPlaceholder"])
+    search:SetLabel("|c" .. (addon.BrandColor or "ffFF8000") .. L["SearchPlaceholder"] .. "|r")
     search:SetWidth(220)
     search:SetText(self._searchText)
     search:SetCallback("OnTextChanged", function(_w, _e, text)
         self._searchText = text
         self:RefreshList()
     end)
+    search.frame:SetScript("OnEnter", function(f)
+        GameTooltip:SetOwner(f, "ANCHOR_BOTTOMLEFT")
+        GameTooltip:SetText("Search Recipes", 1, 1, 1)
+        GameTooltip:AddLine("Type to filter recipes by name.", nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    search.frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
     toolbar:AddChild(search)
 
     -- Spacer
@@ -229,6 +255,50 @@ function BrowserTab:Draw(container)
     end)
     toolbar:AddChild(viewDD)
 
+    -- ---- Column headers (raw frame – not managed by AceGUI layout) ---------
+    -- Anchoring to toolbar.frame directly means AceGUI layout passes cannot
+    -- override the font-string positions.
+    local headerBar = CreateFrame("Frame", nil, container.content)
+    headerBar:SetHeight(18)
+    headerBar:SetPoint("TOPLEFT",  toolbar.frame, "BOTTOMLEFT",  0, 0)
+    headerBar:SetPoint("TOPRIGHT", toolbar.frame, "BOTTOMRIGHT", 0, 0)
+    self._headerBar = headerBar
+
+    -- Positions match the pool row layout: icon(4+14+4=22), crafterLbl at 290.
+    local recipeHdr = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    recipeHdr:ClearAllPoints()
+    recipeHdr:SetPoint("LEFT", headerBar, "LEFT", 24, 0)
+    recipeHdr:SetText("|c" .. (addon.BrandColor or "ffFF8000") .. "Recipes|r")
+
+    local recipeHdrHit = CreateFrame("Frame", nil, headerBar)
+    recipeHdrHit:SetPoint("LEFT",  recipeHdr, "LEFT",  -2, 0)
+    recipeHdrHit:SetPoint("RIGHT", recipeHdr, "RIGHT",  2, 0)
+    recipeHdrHit:SetHeight(18)
+    recipeHdrHit:SetScript("OnEnter", function(f)
+        GameTooltip:SetOwner(f, "ANCHOR_BOTTOMLEFT")
+        GameTooltip:SetText("Recipe", 1, 1, 1)
+        GameTooltip:AddLine("The name of the craftable item or spell.", nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    recipeHdrHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    local craftersHdr = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    craftersHdr:ClearAllPoints()
+    craftersHdr:SetPoint("LEFT", headerBar, "LEFT", 292, 0)
+    craftersHdr:SetText("|c" .. (addon.BrandColor or "ffFF8000") .. "Crafters|r")
+
+    local craftersHdrHit = CreateFrame("Frame", nil, headerBar)
+    craftersHdrHit:SetPoint("LEFT",  craftersHdr, "LEFT",  -2, 0)
+    craftersHdrHit:SetPoint("RIGHT", craftersHdr, "RIGHT",  2, 0)
+    craftersHdrHit:SetHeight(18)
+    craftersHdrHit:SetScript("OnEnter", function(f)
+        GameTooltip:SetOwner(f, "ANCHOR_BOTTOMLEFT")
+        GameTooltip:SetText("Crafters", 1, 1, 1)
+        GameTooltip:AddLine("Guild members who know this recipe.", nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    craftersHdrHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     -- ---- Recipe scroll list ------------------------------------------------
     -- Pool cleanup if Draw() is being called a second time (e.g. view mode change).
     if self._pool then
@@ -242,18 +312,25 @@ function BrowserTab:Draw(container)
     -- destroy the pool so its frames are not still parented to content.
     scroll:SetCallback("OnRelease", function()
         self:DestroyPool()
+        -- headerBar is a raw WoW frame not tracked by AceGUI; hide and detach
+        -- it here so it doesn't bleed onto other tabs that share container.content.
+        if self._headerBar then
+            self._headerBar:Hide()
+            self._headerBar:SetParent(UIParent)
+            self._headerBar = nil
+        end
     end)
     container:AddChild(scroll)
     self._scroll = scroll
 
     -- AceGUI List layout has no fill-remaining-height support, so we anchor
-    -- the scroll's raw frame directly below the toolbar and pin its bottom to
+    -- the scroll's raw frame directly below the header row and pin its bottom to
     -- the container.  container.LayoutFinished re-applies the anchors after
     -- every DoLayout pass (window resize, tab redraw, etc.).
     local function AnchorScrollToFill()
         if not (self._scroll and self._scroll.frame) then return end
         self._scroll.frame:ClearAllPoints()
-        self._scroll.frame:SetPoint("TOPLEFT",     toolbar.frame,     "BOTTOMLEFT",  0, 0)
+        self._scroll.frame:SetPoint("TOPLEFT",     headerBar, "BOTTOMLEFT",  0, 0)
         self._scroll.frame:SetPoint("BOTTOMRIGHT", container.content, "BOTTOMRIGHT", 0, 0)
     end
     container.LayoutFinished = function() AnchorScrollToFill() end
@@ -345,10 +422,32 @@ function BrowserTab:BuildPool(parent)
 
         local nameLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         nameLbl:SetPoint("LEFT", icon, "RIGHT", 4, 0)
-        nameLbl:SetWidth(260)
+        nameLbl:SetWidth(210)
         nameLbl:SetJustifyH("LEFT")
         nameLbl:SetWordWrap(false)
         f.nameLbl = nameLbl
+
+        -- [Bank] button: visible only when TOGBankClassic holds the crafted item.
+        local bankBtn = CreateFrame("Button", nil, f)
+        bankBtn:SetSize(52, 14)
+        bankBtn:SetPoint("LEFT", nameLbl, "RIGHT", 4, 0)
+        bankBtn:SetNormalFontObject(GameFontNormalSmall)
+        bankBtn:SetText("|cFF88FF88[Bank]|r")
+        bankBtn:Hide()
+        bankBtn:SetScript("OnClick", function()
+            local entry = f._entry
+            if not entry or not entry._bankItemId then return end
+            local name = entry.itemLink and entry.itemLink:match("%[(.-)%]") or entry.name
+            addon.Bank.ShowRequestDialog(entry._bankItemId, name, entry.itemLink)
+        end)
+        bankBtn:SetScript("OnEnter", function()
+            GameTooltip:SetOwner(bankBtn, "ANCHOR_TOPRIGHT")
+            GameTooltip:SetText("Request from Bank", 1, 1, 1)
+            GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker.", nil, nil, nil, true)
+            GameTooltip:Show()
+        end)
+        bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        f.bankBtn = bankBtn
 
         local crafterLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         crafterLbl:SetPoint("LEFT", f, "LEFT", 290, 0)
@@ -620,6 +719,15 @@ function BrowserTab:UpdateVirtualRows()
             f.nameLbl:SetText(colorHex and ("|c" .. colorHex .. entry.name .. "|r") or entry.name)
             local cc = "|c" .. (addon.ColorCrafter or "ffaaaaaa")
             f.crafterLbl:SetText(cc .. table.concat(entry.crafters, cc .. ", ") .. "|r")
+            -- [Bank] button: extract numeric item ID from itemLink, check TOGBankClassic stock.
+            local bankItemId = entry.itemLink and tonumber(entry.itemLink:match("item:(%d+)"))
+            if bankItemId and _G["TOGBankClassic_Guild"] and addon.Bank.GetStock(bankItemId) > 0 then
+                entry._bankItemId = bankItemId
+                f.bankBtn:Show()
+            else
+                entry._bankItemId = nil
+                f.bankBtn:Hide()
+            end
             local y = -((recipeIdx - 1) * ROW_HEIGHT)
             f:ClearAllPoints()
             f:SetPoint("TOPLEFT",  scroll.content, "TOPLEFT",  0, y)

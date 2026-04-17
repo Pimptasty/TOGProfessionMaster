@@ -138,11 +138,11 @@ end
 -- ---------------------------------------------------------------------------
 
 function addon:OpenBrowser()
-    MainWindow:Open("browser")
+    MainWindow:Toggle("browser")
 end
 
 function addon:OpenReagents()
-    MainWindow:Open("bucket")
+    MainWindow:Toggle("bucket")
 end
 
 -- ---------------------------------------------------------------------------

@@ -197,7 +197,12 @@ end)
 -- ---------------------------------------------------------------------------
 
 function addon:OpenSettings()
-    AceDialog:Open("TOGProfessionMaster")
+    local frame = AceDialog.OpenFrames and AceDialog.OpenFrames["TOGProfessionMaster"]
+    if frame and frame:IsShown() then
+        AceDialog:Close("TOGProfessionMaster")
+    else
+        AceDialog:Open("TOGProfessionMaster")
+    end
 end
 
 -- ---------------------------------------------------------------------------

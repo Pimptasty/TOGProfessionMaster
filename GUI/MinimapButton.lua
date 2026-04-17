@@ -38,8 +38,8 @@ local dataObj = LDB:NewDataObject("TOGProfessionMaster", {
     OnTooltipShow = function(tt)
         tt:AddLine("|cffda8cffTOG Profession Master|r")
         tt:AddLine(" ")
-        tt:AddLine("|cffffd100Left-click|r to open profession browser")
-        tt:AddLine("|cffffd100Right-click|r to open reagents")
+        tt:AddLine("|cffffd100Left-click|r to toggle profession browser")
+        tt:AddLine("|cffffd100Right-click|r to toggle reagents")
         tt:AddLine("|cffffd100Shift+Left|r to open settings")
     end,
 })

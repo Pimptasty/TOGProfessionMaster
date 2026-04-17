@@ -1,1 +1,12 @@
 *.code-workspace
+
+# Legacy / third-party files that must never be committed
+models/
+services/
+views/
+TOGProfessionMaster_Vanilla.toc
+docs/BUGS.md
+docs/Curseforge_Description.html
+docs/FEATURE_IMPROVEMENTS.md
+libs/CallbackHandler-1.0.lua
+libs/LibStub.lua

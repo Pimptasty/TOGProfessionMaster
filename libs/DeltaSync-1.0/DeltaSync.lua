@@ -496,8 +496,8 @@ function lib:RegisterCommChannels()
         -- Step 4: Register comm handlers using lib's own RegisterComm.
         for channelName, prefix in pairs(self.prefixes) do
             local handlerName = "OnComm_" .. channelName
-            lib:RegisterComm(prefix, function(p, message, distribution, sender)
-                lib[handlerName](lib, p, message, distribution, sender)
+            lib:RegisterComm(prefix, function(msg, dist, sndr)
+                lib[handlerName](lib, prefix, msg, dist, sndr)
             end)
             self:Debug("COMMS", "REGISTER", "Registered AceComm channel: %s", prefix)
         end

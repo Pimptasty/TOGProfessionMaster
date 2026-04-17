@@ -653,7 +653,7 @@ function Scanner:OnGuildDataReceived(sender, data)
     -- Resolve (and lazily create) the guild-scoped storage bucket.
     -- We use the sender's composite guildKey directly so data is always stored
     -- under the guild it came from, even if the receiver is temporarily guildless.
-    local g = Ace.db.global.guilds
+    local g = addon.guildDb.global.guilds
     if not g[guildKey] then
         g[guildKey] = {
             recipes = {}, skills = {}, guildData = {}, cooldowns = {},
@@ -662,8 +662,13 @@ function Scanner:OnGuildDataReceived(sender, data)
     end
     local gdb = g[guildKey]
     -- Lazy-init new fields for buckets created before this version.
-    if not gdb.recipes then gdb.recipes = {} end
-    if not gdb.skills  then gdb.skills  = {} end
+    if not gdb.recipes         then gdb.recipes         = {} end
+    if not gdb.skills          then gdb.skills          = {} end
+    if not gdb.guildData       then gdb.guildData       = {} end
+    if not gdb.cooldowns       then gdb.cooldowns       = {} end
+    if not gdb.syncTimes       then gdb.syncTimes       = {} end
+    if not gdb.specializations then gdb.specializations = {} end
+    if not gdb.factions        then gdb.factions        = {} end
     local now = GetServerTime()
 
     -- Merge profession records into the recipe-centric index.

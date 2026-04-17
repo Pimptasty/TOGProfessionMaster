@@ -11,8 +11,8 @@ manual-changelog:
 
 required-dependencies:
   - ace3
-  - acecommqueue-1.0
-  - versioncheck-1.0
+  - acccommqueue
+  - versioncheck
 
 optional-dependencies:
   - togbankclassic

@@ -23,7 +23,7 @@ local CooldownsTab = {}
 addon.CooldownsTab = CooldownsTab
 
 -- Sort state persisted across redraws (but not saved to AceDB for now).
-CooldownsTab._sortCol   = "time"    -- "char" | "cd" | "reagent" | "time"
+CooldownsTab._sortCol   = "time"    -- "char" | "cd" | "time"
 CooldownsTab._sortAsc   = true
 CooldownsTab._readyOnly = false
 
@@ -43,7 +43,8 @@ end
 
 --- Build the flat list of rows to render.
 -- Returns array of:
--- { charKey, shortName, spellId, cdName, reagentItemId, expiresAt, isGroup, group }
+-- { charKey, shortName, spellId, cdName, reagentItemId, expiresAt,
+--   isGroup, group, isTransmuteGroup, transmutes, transmuteReagents }
 local function BuildRows(readyOnly)
     local gdb = addon:GetGuildDb()
     if not gdb then return {} end
@@ -52,21 +53,31 @@ local function BuildRows(readyOnly)
     local now  = GetServerTime()
     local rows = {}
 
-    -- Collect all spellIds that belong to a group so we can skip them as
-    -- individual rows and only emit one group-header row per character.
-    -- (Group rows are expanded interactively.)
+    -- Accumulate transmute spells per player before emitting rows.
+    -- All transmutes for one player collapse into a single "Transmute" group row.
+    local transmuteGroups = {}  -- [charKey] = { spellIds={}, expiresAt }
 
     for charKey, charCds in pairs(gdb.cooldowns) do
         local shortName = charKey:match("^(.-)%-") or charKey
 
-        -- Track which group keys we've already emitted for this character.
+        -- Track which non-transmute group keys we've already emitted.
         local emittedGroups = {}
 
-        -- Iterate every stored cooldown for this character.
         for spellId, expiresAt in pairs(charCds) do
             local remaining = expiresAt - now
-            if readyOnly and remaining > 0 then
-                -- skip
+
+            if data.transmutes[spellId] then
+                -- Accumulate into this player's transmute group.
+                if not transmuteGroups[charKey] then
+                    transmuteGroups[charKey] = { shortName = shortName, spellIds = {}, expiresAt = now - 1 }
+                end
+                local tg = transmuteGroups[charKey]
+                tg.spellIds[#tg.spellIds + 1] = spellId
+                -- Track the active expiry (past = ready; keep the most-future value).
+                if expiresAt > now and expiresAt > tg.expiresAt then
+                    tg.expiresAt = expiresAt
+                end
+
             else
                 local group = data.groupBySpell and data.groupBySpell[spellId]
                 if group then
@@ -82,41 +93,61 @@ local function BuildRows(readyOnly)
                         local groupRemaining = groupExpiry - now
                         if not readyOnly or groupRemaining <= 0 then
                             table.insert(rows, {
-                                charKey      = charKey,
-                                shortName    = shortName,
-                                spellId      = spellId,
-                                cdName       = group.label,
+                                charKey       = charKey,
+                                shortName     = shortName,
+                                spellId       = spellId,
+                                cdName        = group.label,
                                 reagentItemId = nil,
-                                expiresAt    = groupExpiry,
-                                isGroup      = true,
-                                group        = group,
+                                expiresAt     = groupExpiry,
+                                isGroup       = true,
+                                group         = group,
                             })
                         end
                     end
                 else
                     -- Regular single-spell cooldown row.
-                    local cdName = (data.cooldowns[spellId] or data.transmutes[spellId]) or tostring(spellId)
-                    local reagentItemId = nil
-                    if data.reagents[spellId] then
-                        reagentItemId = data.reagents[spellId].id
-                    elseif data.transReagents[spellId] then
-                        reagentItemId = data.transReagents[spellId].id
+                    if not readyOnly or remaining <= 0 then
+                        local cdName = data.cooldowns[spellId] or tostring(spellId)
+                        local reagentItemId = data.reagents[spellId] and data.reagents[spellId].id
+                        local reagentQty    = data.reagents[spellId] and data.reagents[spellId].qty or 1
+                        local iconItemId    = data.iconOverrides and data.iconOverrides[spellId]
+                        table.insert(rows, {
+                            charKey       = charKey,
+                            shortName     = shortName,
+                            spellId       = spellId,
+                            cdName        = cdName,
+                            reagentItemId = reagentItemId,
+                            reagentQty    = reagentQty,
+                            iconItemId    = iconItemId,
+                            expiresAt     = expiresAt,
+                            isGroup       = false,
+                        })
                     end
-                    -- Icon override for display
-                    local iconItemId = (data.iconOverrides and data.iconOverrides[spellId]) or nil
-                    table.insert(rows, {
-                        charKey       = charKey,
-                        shortName     = shortName,
-                        spellId       = spellId,
-                        cdName        = cdName,
-                        reagentItemId = reagentItemId,
-                        iconItemId    = iconItemId,
-                        expiresAt     = expiresAt,
-                        isGroup       = false,
-                        group         = nil,
-                    })
                 end
             end
+        end
+    end
+
+    -- Emit one transmute row per player.
+    for charKey, tg in pairs(transmuteGroups) do
+        local remaining = tg.expiresAt - now
+        if not readyOnly or remaining <= 0 then
+            -- Sort transmute spell IDs by name for a stable popup order.
+            table.sort(tg.spellIds, function(a, b)
+                return (GetSpellInfo(a) or tostring(a)) < (GetSpellInfo(b) or tostring(b))
+            end)
+            table.insert(rows, {
+                charKey           = charKey,
+                shortName         = tg.shortName,
+                spellId           = tg.spellIds[1],
+                cdName            = L["Transmute"],
+                reagentItemId     = nil,
+                expiresAt         = tg.expiresAt,
+                isGroup           = true,
+                isTransmuteGroup  = true,
+                transmutes        = tg.spellIds,
+                transmuteReagents = data.transReagents,
+            })
         end
     end
 
@@ -128,12 +159,9 @@ local function SortRows(rows, col, asc)
     table.sort(rows, function(a, b)
         local va, vb
         if col == "char" then
-            va, vb = a.shortName, b.shortName
+            va, vb = a.shortName:lower(), b.shortName:lower()
         elseif col == "cd" then
-            va, vb = a.cdName, b.cdName
-        elseif col == "reagent" then
-            va = a.reagentItemId and (GetItemInfo(a.reagentItemId) or "") or ""
-            vb = b.reagentItemId and (GetItemInfo(b.reagentItemId) or "") or ""
+            va, vb = a.cdName:lower(), b.cdName:lower()
         else  -- "time"
             va, vb = a.expiresAt - now, b.expiresAt - now
             -- Ready (<=0) sorts to the top when ascending.
@@ -142,6 +170,212 @@ local function SortRows(rows, col, asc)
         end
         if asc then return va < vb else return va > vb end
     end)
+end
+
+-- ---------------------------------------------------------------------------
+-- Supply mail helpers (ported from reference cooldowns-panel.lua)
+-- ---------------------------------------------------------------------------
+
+--- Scan bags 0-4 for all stacks of itemId.
+-- Returns total (number), stacks ({ {bag,slot,count}, ... })
+local function CdMail_CountItemInBags(itemId)
+    local total, stacks = 0, {}
+    for bag = 0, 4 do
+        local numSlots = C_Container and C_Container.GetContainerNumSlots(bag)
+                         or GetContainerNumSlots(bag)
+        for slot = 1, (numSlots or 0) do
+            local info = C_Container and C_Container.GetContainerItemInfo(bag, slot)
+            local itemID = info and info.itemID
+            local stackCount = info and info.stackCount
+            if not info then
+                -- classic-era fallback
+                local link = GetContainerItemLink(bag, slot)
+                itemID    = link and tonumber(link:match("item:(%d+)")) or nil
+                stackCount = link and (select(2, GetContainerItemInfo(bag, slot))) or 0
+            end
+            if itemID == itemId and (stackCount or 0) > 0 then
+                total = total + stackCount
+                table.insert(stacks, { bag = bag, slot = slot, count = stackCount })
+            end
+        end
+    end
+    return total, stacks
+end
+
+--- Greedy fulfillment plan — returns { canFulfill, reason, stacksToAttach, splitStack, totalAttachable }.
+local function CdMail_CalculateFulfillmentPlan(items, qtyNeeded, totalInBags)
+    if not items or #items == 0 then
+        return { canFulfill = false, reason = "No items found in bags.", stacksToAttach = {}, totalAttachable = 0 }
+    end
+    for i, item in ipairs(items) do item.originalIndex = i end
+    table.sort(items, function(a, b)
+        if a.count == b.count then return a.originalIndex < b.originalIndex end
+        return a.count > b.count
+    end)
+    local accumulated, attachList = 0, {}
+    for _, item in ipairs(items) do
+        local remaining = qtyNeeded - accumulated
+        if item.count <= remaining then
+            accumulated = accumulated + item.count
+            table.insert(attachList, { bag = item.bag, slot = item.slot, count = item.count, originalIndex = item.originalIndex })
+        end
+    end
+    if accumulated == qtyNeeded then
+        return { canFulfill = true, stacksToAttach = attachList, totalAttachable = accumulated }
+    end
+    if accumulated < qtyNeeded and totalInBags >= qtyNeeded then
+        local bestAcc, bestList = accumulated, attachList
+        for skipIdx = 1, math.min(5, #items) do
+            local testAcc, testList = 0, {}
+            for i, item in ipairs(items) do
+                if i ~= skipIdx then
+                    local rem = qtyNeeded - testAcc
+                    if item.count <= rem then
+                        testAcc = testAcc + item.count
+                        table.insert(testList, { bag = item.bag, slot = item.slot, count = item.count, originalIndex = item.originalIndex })
+                    end
+                end
+            end
+            if testAcc == qtyNeeded then
+                return { canFulfill = true, stacksToAttach = testList, totalAttachable = testAcc }
+            end
+            if testAcc > bestAcc and testAcc < qtyNeeded then bestAcc, bestList = testAcc, testList end
+        end
+        accumulated, attachList = bestAcc, bestList
+    end
+    if accumulated < qtyNeeded and totalInBags >= qtyNeeded then
+        local remaining = qtyNeeded - accumulated
+        for _, item in ipairs(items) do
+            if item.count >= remaining then
+                local alreadyIn = false
+                for _, a in ipairs(attachList) do
+                    if a.originalIndex == item.originalIndex then alreadyIn = true; break end
+                end
+                if not alreadyIn then
+                    return { canFulfill = true,
+                             reason = string.format("Split %d from stack of %d.", remaining, item.count),
+                             stacksToAttach = attachList,
+                             splitStack = { bag = item.bag, slot = item.slot, count = item.count, amount = remaining },
+                             totalAttachable = accumulated }
+                end
+            end
+        end
+    end
+    if accumulated == 0 and totalInBags >= qtyNeeded then
+        local s = items[1]
+        return { canFulfill = true,
+                 reason = string.format("Split from stack of %d.", s.count),
+                 stacksToAttach = {},
+                 splitStack = { bag = s.bag, slot = s.slot, count = s.count, amount = qtyNeeded },
+                 totalAttachable = 0 }
+    end
+    return { canFulfill = false,
+             reason = string.format("Need %d more.", qtyNeeded - totalInBags),
+             stacksToAttach = {}, totalAttachable = totalInBags }
+end
+
+if not StaticPopupDialogs["TOGPM_SPLIT_STACK"] then
+    StaticPopupDialogs["TOGPM_SPLIT_STACK"] = {
+        text = "%s",
+        button1 = "Split",
+        button2 = "Cancel",
+        OnAccept = function(self, data)
+            if not data then return end
+            ClearCursor()
+            local emptyBag, emptySlot
+            for bag = 0, 4 do
+                local n = (C_Container and C_Container.GetContainerNumSlots(bag)) or GetContainerNumSlots(bag)
+                for slot = 1, (n or 0) do
+                    local hasItem = C_Container and C_Container.GetContainerItemInfo(bag, slot)
+                                    or GetContainerItemLink(bag, slot)
+                    if not hasItem then emptyBag, emptySlot = bag, slot; break end
+                end
+                if emptyBag then break end
+            end
+            if not emptyBag then
+                DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r No empty bag slot to split into.")
+                return
+            end
+            if C_Container then
+                C_Container.SplitContainerItem(data.bag, data.slot, data.amount)
+                C_Timer.After(0.1, function()
+                    C_Container.PickupContainerItem(emptyBag, emptySlot)
+                    C_Timer.After(0.05, function()
+                        DEFAULT_CHAT_FRAME:AddMessage(string.format(
+                            "|cFF88CCCCTOG Profession Master:|r Split %d x %s — click Mail again to attach.",
+                            data.amount, (data.itemName or "items")))
+                    end)
+                end)
+            else
+                SplitContainerItem(data.bag, data.slot, data.amount)
+                C_Timer.After(0.1, function()
+                    PickupContainerItem(emptyBag, emptySlot)
+                end)
+            end
+        end,
+        OnCancel = function() end,
+        timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
+    }
+end
+
+--- Open mailbox, attach reagents, pre-fill recipient/subject/body.
+local function CdMail_PrepareSupplyMail(playerName, cooldownName, reagentId, reagentQty)
+    if not MailFrame or not MailFrame:IsShown() then
+        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r Open a mailbox first.")
+        return
+    end
+    if GetSendMailItem(1) then
+        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r Mail already has items attached — send or clear them first.")
+        return
+    end
+    local reagentName = GetItemInfo(reagentId) or ("item:" .. reagentId)
+    local totalInBags, stacks = CdMail_CountItemInBags(reagentId)
+    if totalInBags == 0 then
+        DEFAULT_CHAT_FRAME:AddMessage(string.format("|cFFFF4444TOG Profession Master:|r You have no %s in your bags.", reagentName))
+        return
+    end
+    local plan = CdMail_CalculateFulfillmentPlan(stacks, reagentQty, totalInBags)
+    if not plan.canFulfill then
+        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. (plan.reason or "Cannot fulfill."))
+        return
+    end
+    if plan.splitStack then
+        local s = plan.splitStack
+        local dialog = StaticPopup_Show("TOGPM_SPLIT_STACK",
+            string.format("Split %d from stack of %d %s?", s.amount, s.count, reagentName))
+        if dialog then
+            dialog.data = { bag = s.bag, slot = s.slot, amount = s.amount, itemName = reagentName }
+        end
+        return
+    end
+    local attached, attachSlot = 0, 1
+    local maxSlots = ATTACHMENTS_MAX_SEND or 12
+    for _, stack in ipairs(plan.stacksToAttach) do
+        if attached >= reagentQty or attachSlot > maxSlots then break end
+        ClearCursor()
+        if C_Container then
+            C_Container.PickupContainerItem(stack.bag, stack.slot)
+        else
+            PickupContainerItem(stack.bag, stack.slot)
+        end
+        ClickSendMailItemButton(attachSlot)
+        attached = attached + stack.count
+        attachSlot = attachSlot + 1
+    end
+    if attached == 0 then
+        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r Could not attach items.")
+        return
+    end
+    local baseName = playerName:match("^([^%-]+)") or playerName
+    if SendMailNameEditBox then SendMailNameEditBox:SetText(baseName) end
+    if SendMailSubjectEditBox then SendMailSubjectEditBox:SetText("Cooldown supply: " .. cooldownName) end
+    if SendMailBodyEditBox then
+        SendMailBodyEditBox:SetText(string.format(
+            "Hi %s! Here are your %s for the %s cooldown. Please send me what you craft — thanks!",
+            baseName, reagentName, cooldownName))
+    end
+    DEFAULT_CHAT_FRAME:AddMessage(string.format(
+        "|cFF88CCCCTOG Profession Master:|r Attached %dx %s for %s.", attached, reagentName, baseName))
 end
 
 -- ---------------------------------------------------------------------------
@@ -187,20 +421,41 @@ function CooldownsTab:Draw(container)
 end
 
 function CooldownsTab:DrawHeaders(parent, container)
+    -- 3 columns matching reference: Character (190) | Cooldown (306) | Remaining (80)
+    -- The Cooldown header spans both icon+name (220px) and reagent (86px) = 306px total.
     local cols = {
-        { key = "char",    label = L["ColCharacter"], width = 130 },
-        { key = "cd",      label = L["ColCooldown"],  width = 160 },
-        { key = "reagent", label = L["ColReagent"],   width = 140 },
-        { key = "time",    label = L["ColTimeLeft"],  width = 90  },
+        { key = "char", label = L["ColCharacter"], width = 190 },
+        { key = "cd",   label = L["ColCooldown"],  width = 306 },
+        { key = "time", label = L["ColTimeLeft"],  width = 80  },
     }
+    local texTop    = self._sortAsc and 0.6875 or 0.0
+    local texBottom = self._sortAsc and 0.0    or 0.6875
+
     for _, col in ipairs(cols) do
+        local isActive = (self._sortCol == col.key)
         local btn = AceGUI:Create("InteractiveLabel")
-        local arrow = ""
-        if self._sortCol == col.key then
-            arrow = self._sortAsc and " ▲" or " ▼"
-        end
-        btn:SetText("|cffffd100" .. col.label .. arrow .. "|r")
+        btn:SetText(col.label)
         btn:SetWidth(col.width)
+
+        -- Arrow texture: show only on the active sort column.
+        -- Position is deferred via C_Timer so GetStringWidth() is valid after layout.
+        local arrow = btn.frame:CreateTexture(nil, "OVERLAY")
+        arrow:SetTexture("Interface\\Calendar\\MoreArrow")
+        arrow:SetSize(12, 9)
+        if isActive then
+            arrow:SetTexCoord(0.0, 0.9375, texTop, texBottom)
+            arrow:Show()
+        else
+            arrow:Hide()
+        end
+        C_Timer.After(0, function()
+            if btn.label then
+                local sw = btn.label:GetStringWidth()
+                arrow:ClearAllPoints()
+                arrow:SetPoint("LEFT", btn.frame, "LEFT", sw + 4, 0)
+            end
+        end)
+
         local key = col.key
         btn:SetCallback("OnClick", function()
             if self._sortCol == key then
@@ -241,112 +496,389 @@ end
 function CooldownsTab:DrawRow(parent, row, now)
     local remaining = row.expiresAt - now
     local timeStr   = SecondsToString(remaining)
-
-    -- Reagent name (item info may not be in cache — that's fine, shows nil gracefully)
-    local reagentName = ""
-    if row.reagentItemId then
-        reagentName = GetItemInfo(row.reagentItemId) or "|cffaaaaaa(loading…)|r"
-    end
+    local timeColor = remaining <= 0 and "|cff00ff00" or
+                      (remaining < 7200 and "|cffffff00" or "|cffaaaaaa")
 
     local rowGroup = AceGUI:Create("SimpleGroup")
     rowGroup:SetLayout("Flow")
     rowGroup:SetFullWidth(true)
     parent:AddChild(rowGroup)
 
-    -- Character
+    -- Shared whisper helper (right-click on char label OR anywhere on the row)
+    local function openWhisper(target)
+        if ChatEdit_GetActiveWindow then
+            local box = ChatEdit_GetActiveWindow()
+            if box then
+                box:SetText("/w " .. target .. " ")
+                box:SetFocus()
+                box:SetCursorPosition(#box:GetText())
+                return
+            end
+        end
+        ChatFrame_OpenChat("/w " .. target .. " ", DEFAULT_CHAT_FRAME)
+    end
+    local function doWhisper(anchorFrame)
+        local shortName = row.shortName
+        local fullKey   = row.charKey
+        if Menu and Menu.CreateContextMenu then
+            Menu.CreateContextMenu(anchorFrame, function(_, root)
+                root:CreateTitle(shortName)
+                root:CreateButton(shortName, function() openWhisper(fullKey) end)
+            end)
+        else
+            openWhisper(fullKey)
+        end
+    end
+    rowGroup.frame:EnableMouse(true)
+    rowGroup.frame:SetScript("OnMouseDown", function(f, button)
+        if button == "RightButton" then doWhisper(f) end
+    end)
+
+    -- ── Column 1: Character (190px) — online=white, offline=grey ─────────────
     local charLbl = AceGUI:Create("InteractiveLabel")
     local DS = addon.Scanner and addon.Scanner.DS
     local online = DS and DS:IsPlayerOnline(row.charKey) or false
-    local nameColour = online and "|cffffffff" or "|cffaaaaaa"
-    charLbl:SetText(nameColour .. row.shortName .. "|r")
-    charLbl:SetWidth(130)
-    -- Right-click → whisper
+    local nameColor = online and "|cffffffff" or "|cffaaaaaa"
+    charLbl:SetText(nameColor .. row.shortName .. "|r")
+    charLbl:SetWidth(190)
     charLbl:SetCallback("OnClick", function(_widget, _event, button)
-        if button == "RightButton" then
-            ChatFrame_OpenChat("/w " .. row.shortName .. " ")
-        end
+        if button == "RightButton" then doWhisper(_widget.frame) end
     end)
     rowGroup:AddChild(charLbl)
 
-    -- Cooldown name
+    -- ── Column 2a: Cooldown icon + name (220px) ───────────────────────────────
+    -- AceGUI Label places image LEFT of text when (width - imageWidth) >= 200.
+    -- 220 - 14 = 206 >= 200, so icon appears left of the cooldown name. ✓
     local cdLbl = AceGUI:Create("InteractiveLabel")
-    local cdText = row.isGroup and ("|cffffd100[+] |r" .. row.cdName) or row.cdName
+    cdLbl:SetWidth(220)  -- must be set before SetImage so UpdateImageAnchor uses correct width
+
+    -- Resolve icon texture (matches reference CreateRow icon logic)
+    local iconTexture
+    if row.isTransmuteGroup then
+        iconTexture = "Interface\\Icons\\Trade_Alchemy"
+    elseif row.isGroup then
+        iconTexture = row.spellId and GetSpellTexture(row.spellId)
+    elseif row.iconItemId then
+        iconTexture = select(10, GetItemInfo(row.iconItemId))
+        if not iconTexture then
+            -- Item not in cache yet; request async load, fall back to spell texture now
+            local iconItem = Item:CreateFromItemID(row.iconItemId)
+            iconItem:ContinueOnItemLoad(function()
+                local t = select(10, GetItemInfo(row.iconItemId))
+                if t and cdLbl.image then
+                    cdLbl.image:SetTexture(t)
+                    cdLbl.image:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                    cdLbl.imageshown = true
+                end
+            end)
+            iconTexture = row.spellId and GetSpellTexture(row.spellId)
+        end
+    else
+        iconTexture = row.spellId and GetSpellTexture(row.spellId)
+    end
+
+    if iconTexture then
+        cdLbl:SetImage(iconTexture)
+        cdLbl.image:SetTexCoord(0.08, 0.92, 0.08, 0.92)  -- trim icon border
+        cdLbl:SetImageSize(14, 14)
+    end
+    local cdText = row.isGroup and ("[+] " .. row.cdName) or row.cdName
     cdLbl:SetText(cdText)
-    cdLbl:SetWidth(160)
-    if not row.isGroup then
+    if row.isGroup then
         cdLbl:SetCallback("OnEnter", function(_widget)
             GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
-            GameTooltip:SetSpellByID(row.spellId)
+            if row.isTransmuteGroup then
+                GameTooltip:AddLine("Click to see transmutes", 1, 1, 1)
+            else
+                GameTooltip:AddLine("Click to see " .. (row.cdName or "details"), 1, 1, 1)
+            end
             GameTooltip:Show()
         end)
         cdLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-    else
-        -- Group row expand popup
-        cdLbl:SetCallback("OnClick", function()
-            self:ShowGroupPopup(row, now)
+        cdLbl:SetCallback("OnClick", function(_widget, _event, button)
+            if button == "LeftButton" then self:ShowGroupPopup(row, now) end
         end)
+    else
+        cdLbl:SetCallback("OnEnter", function(_widget)
+            GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
+            if row.spellId then
+                if GetSpellInfo(row.spellId) then
+                    GameTooltip:SetHyperlink("spell:" .. row.spellId)
+                else
+                    GameTooltip:SetHyperlink("item:" .. row.spellId)
+                end
+            end
+            GameTooltip:Show()
+        end)
+        cdLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
     end
     rowGroup:AddChild(cdLbl)
 
-    -- Reagent
+    -- ── Column 2b: Reagent (86px, right-justified) ────────────────────────────
+    -- 220 + 86 = 306px total cooldown area, matching the reference column width.
     local reagentLbl = AceGUI:Create("InteractiveLabel")
-    reagentLbl:SetText(reagentName)
-    reagentLbl:SetWidth(140)
+    reagentLbl:SetWidth(86)
+    reagentLbl:SetJustifyH("RIGHT")
     if row.reagentItemId then
         local itemId = row.reagentItemId
+        local reagentName = GetItemInfo(itemId)
+        if reagentName then
+            reagentLbl:SetText("|cffaaaaaa" .. reagentName .. "|r")
+        else
+            reagentLbl:SetText("")
+            local rItem = Item:CreateFromItemID(itemId)
+            rItem:ContinueOnItemLoad(function()
+                local name = rItem:GetItemName()
+                if name then reagentLbl:SetText("|cffaaaaaa" .. name .. "|r") end
+            end)
+        end
         reagentLbl:SetCallback("OnEnter", function(_widget)
             GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
-            GameTooltip:SetItemByID(itemId)
+            GameTooltip:SetHyperlink("item:" .. itemId)
             GameTooltip:Show()
         end)
         reagentLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+        reagentLbl:SetCallback("OnClick", function(_widget, _event, button)
+            if button == "LeftButton" and IsShiftKeyDown() then
+                local link = select(2, GetItemInfo(itemId))
+                if link then HandleModifiedItemClick(link) end
+            end
+        end)
     end
     rowGroup:AddChild(reagentLbl)
 
-    -- Time Left
+    -- ── Column 3: Time Remaining (80px) ──────────────────────────────────────
     local timeLbl = AceGUI:Create("Label")
-    timeLbl:SetText(timeStr)
-    timeLbl:SetWidth(90)
+    timeLbl:SetText(timeColor .. timeStr .. "|r")
+    timeLbl:SetWidth(80)
     rowGroup:AddChild(timeLbl)
 
-    -- [Bank] button — shown when TOGBankClassic is loaded and has the reagent
-    if row.reagentItemId and addon:IsAddOnLoaded("TOGBankClassic") then
-        local bankBtn = AceGUI:Create("Button")
-        bankBtn:SetText(L["BankBtn"])
-        bankBtn:SetWidth(60)
-        bankBtn:SetCallback("OnClick", function()
-            if TOGBankClassic and TOGBankClassic.RequestItem then
-                TOGBankClassic.RequestItem(row.reagentItemId)
-            end
+    -- ── Mail icon (16x16) — shown when reagent is known ───────────────────────
+    if row.reagentItemId then
+        local mailBtn = AceGUI:Create("InteractiveLabel")
+        mailBtn:SetImage("Interface\\Icons\\INV_Letter_15")
+        mailBtn:SetImageSize(16, 16)
+        mailBtn:SetText("")
+        mailBtn:SetWidth(20)
+        mailBtn:SetCallback("OnClick", function()
+            local cdName = row.isTransmuteGroup and L["Transmute"] or row.cdName
+            CdMail_PrepareSupplyMail(row.charKey, cdName, row.reagentItemId, row.reagentQty or 1)
         end)
-        rowGroup:AddChild(bankBtn)
+        mailBtn:SetCallback("OnEnter", function(_widget)
+            GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
+            GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1)
+            GameTooltip:AddLine(L["MailBtnTooltipDesc"] or "Open a mailbox, then click to attach reagents.", nil, nil, nil, true)
+            GameTooltip:Show()
+        end)
+        mailBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+        rowGroup:AddChild(mailBtn)
+    end
+
+    -- ── [Bank] green text — shown when TOGBankClassic has reagent in stock ────
+    if row.reagentItemId and addon:IsAddOnLoaded("TOGBankClassic") then
+        local TOG = _G["TOGBankClassic_Guild"]
+        local hasStock = false
+        if TOG and TOG.Info and TOG.Info.alts then
+            for _, alt in pairs(TOG.Info.alts) do
+                for _, entry in ipairs(alt.items or {}) do
+                    if entry.ID == row.reagentItemId and (entry.Count or 0) > 0 then
+                        hasStock = true; break
+                    end
+                end
+                if hasStock then break end
+            end
+        end
+        if hasStock then
+            local bankBtn = AceGUI:Create("InteractiveLabel")
+            bankBtn:SetText("|cFF88FF88[Bank]|r")
+            bankBtn:SetWidth(42)
+            bankBtn:SetCallback("OnClick", function()
+                if TOGBankClassic and TOGBankClassic.RequestItem then
+                    TOGBankClassic.RequestItem(row.reagentItemId)
+                end
+            end)
+            bankBtn:SetCallback("OnEnter", function(_widget)
+                GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
+                GameTooltip:SetText("Request from Bank", 1, 1, 1)
+                GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker.", nil, nil, nil, true)
+                GameTooltip:Show()
+            end)
+            bankBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+            rowGroup:AddChild(bankBtn)
+        end
     end
 end
 
---- Show a small popup listing all individual spells inside a cooldown group.
+--- Show a popup listing all individual spells inside a cooldown group.
+-- For transmute groups: shows each spell with its per-spell reagent and a mail button.
+-- For other groups: shows spell name and time remaining.
+-- Clicking the same row again or clicking outside closes the popup.
 function CooldownsTab:ShowGroupPopup(row, now)
-    local popup = AceGUI:Create("Window")
-    popup:SetTitle(row.cdName)
-    popup:SetWidth(280)
-    popup:SetHeight(200)
-    popup:SetLayout("List")
-    popup:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-
-    local gdb      = addon:GetGuildDb()
-    local charCds  = gdb and gdb.cooldowns[row.charKey] or {}
-
-    for spellId, spellName in pairs(row.group.spells) do
-        local expiresAt = charCds[spellId]
-        local timeStr   = expiresAt and SecondsToString(expiresAt - now) or "|cffaaaaaa(unknown)|r"
-        local lbl = AceGUI:Create("Label")
-        lbl:SetText(string.format("%s  %s", spellName, timeStr))
-        lbl:SetFullWidth(true)
-        popup:AddChild(lbl)
+    -- Toggle off if the same row was clicked again.
+    if self._groupPopup then
+        local wasRow = self._groupPopup._sourceRow == row
+        self._groupPopup:Hide()
+        self._groupPopup = nil
+        if wasRow then return end
     end
 
-    local closeBtn = AceGUI:Create("Button")
-    closeBtn:SetText(L["CloseBtn"])
-    closeBtn:SetFullWidth(true)
-    closeBtn:SetCallback("OnClick", function() AceGUI:Release(popup) end)
-    popup:AddChild(closeBtn)
+    local spells = row.transmutes or (row.group and row.group.spells and
+        (function()
+            local t = {}
+            for id in pairs(row.group.spells) do t[#t + 1] = id end
+            table.sort(t, function(a, b)
+                return (GetSpellInfo(a) or tostring(a)) < (GetSpellInfo(b) or tostring(b))
+            end)
+            return t
+        end)())
+    if not spells or #spells == 0 then return end
+
+    local reagentsMap = row.transmuteReagents  -- nil for non-transmute groups
+    local charKey     = row.charKey
+    local gdb         = addon:GetGuildDb()
+    local charCds     = gdb and gdb.cooldowns[charKey] or {}
+
+    local rowH   = 20
+    local pad    = 6
+    local popupW = 340
+    local totalH = pad + #spells * rowH + pad
+
+    local popup = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+    popup:SetWidth(popupW)
+    popup:SetHeight(totalH)
+    popup:SetFrameStrata("TOOLTIP")
+    popup:SetBackdrop({
+        bgFile   = [[Interface\Tooltips\UI-Tooltip-Background]],
+        edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]],
+        edgeSize = 12,
+        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
+    })
+    popup:SetBackdropColor(0.06, 0.06, 0.06, 0.95)
+    popup:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+    popup:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    popup._sourceRow = row
+
+    -- Click-outside-to-close overlay
+    local closeOnClick = CreateFrame("Frame", nil, UIParent)
+    closeOnClick:SetAllPoints(UIParent)
+    closeOnClick:SetFrameStrata("DIALOG")
+    closeOnClick:EnableMouse(true)
+    closeOnClick:SetScript("OnMouseDown", function()
+        popup:Hide(); closeOnClick:Hide()
+        if CooldownsTab._groupPopup == popup then CooldownsTab._groupPopup = nil end
+    end)
+    popup:EnableMouse(true)
+    popup:SetScript("OnMouseDown", function() end)  -- block click-through
+    popup:SetScript("OnHide", function() closeOnClick:Hide() end)
+
+    local mailW    = reagentsMap and 20 or 0
+    local reagentW = reagentsMap and 110 or 0
+    local timeW    = 70
+    local nameW    = popupW - pad * 2 - reagentW - mailW - timeW - 4
+
+    for i, spellId in ipairs(spells) do
+        local expiresAt = charCds[spellId]
+        local timeStr   = expiresAt and SecondsToString(expiresAt - now) or "|cffaaaaaa?|r"
+        local timeColor = (expiresAt and (expiresAt - now) <= 0) and "|cff00ff00" or "|cffaaaaaa"
+        local reagentEntry = reagentsMap and reagentsMap[spellId]
+        local reagentId    = reagentEntry and reagentEntry.id
+        local reagentQty   = reagentEntry and reagentEntry.qty or 1
+
+        local yOff = -(pad + (i - 1) * rowH)
+
+        local entry = CreateFrame("Frame", nil, popup)
+        entry:SetHeight(rowH)
+        entry:SetPoint("TOPLEFT",  popup, "TOPLEFT",  pad, yOff)
+        entry:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -pad, yOff)
+
+        -- Spell name
+        local nameLbl = entry:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        nameLbl:SetPoint("LEFT", 0, 0)
+        nameLbl:SetWidth(nameW)
+        nameLbl:SetJustifyH("LEFT")
+        nameLbl:SetText(GetSpellInfo(spellId) or ("Spell " .. spellId))
+
+        local nameZone = CreateFrame("Frame", nil, entry)
+        nameZone:SetPoint("TOPLEFT",     entry, "TOPLEFT",    0, 0)
+        nameZone:SetPoint("BOTTOMRIGHT", entry, "BOTTOMLEFT", nameW, 0)
+        nameZone:EnableMouse(true)
+        nameZone:SetScript("OnEnter", function()
+            nameLbl:SetTextColor(1, 1, 0, 1)
+            GameTooltip:SetOwner(nameZone, "ANCHOR_RIGHT")
+            GameTooltip:SetHyperlink("spell:" .. spellId)
+            GameTooltip:Show()
+        end)
+        nameZone:SetScript("OnLeave", function()
+            nameLbl:SetTextColor(1, 1, 1, 1)
+            GameTooltip:Hide()
+        end)
+
+        -- Time remaining
+        local timeLbl = entry:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        timeLbl:SetPoint("LEFT", nameW + 4, 0)
+        timeLbl:SetWidth(timeW)
+        timeLbl:SetJustifyH("LEFT")
+        timeLbl:SetText(timeColor .. timeStr .. "|r")
+
+        -- Reagent and mail button (transmute groups only)
+        if reagentId then
+            local reagentLbl = entry:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            reagentLbl:SetPoint("RIGHT", entry, "RIGHT", -(mailW + 2), 0)
+            reagentLbl:SetWidth(reagentW)
+            reagentLbl:SetJustifyH("RIGHT")
+            reagentLbl:SetTextColor(0.65, 0.65, 0.65, 1)
+            local rName = GetItemInfo(reagentId)
+            if rName then
+                reagentLbl:SetText(rName)
+            else
+                reagentLbl:SetText("")
+                local rItem = Item:CreateFromItemID(reagentId)
+                rItem:ContinueOnItemLoad(function()
+                    reagentLbl:SetText(rItem:GetItemName() or "")
+                end)
+            end
+
+            local reagentZone = CreateFrame("Frame", nil, entry)
+            reagentZone:SetPoint("TOPLEFT",     entry, "TOPRIGHT",    -(reagentW + mailW + 2), 0)
+            reagentZone:SetPoint("BOTTOMRIGHT", entry, "BOTTOMRIGHT", -(mailW + 2), 0)
+            reagentZone:EnableMouse(true)
+            reagentZone:SetScript("OnEnter", function()
+                reagentLbl:SetTextColor(1, 1, 0, 1)
+                GameTooltip:SetOwner(reagentZone, "ANCHOR_RIGHT")
+                GameTooltip:SetHyperlink("item:" .. reagentId)
+                GameTooltip:Show()
+            end)
+            reagentZone:SetScript("OnLeave", function()
+                reagentLbl:SetTextColor(0.65, 0.65, 0.65, 1)
+                GameTooltip:Hide()
+            end)
+            reagentZone:SetScript("OnMouseUp", function(_, button)
+                if button == "LeftButton" and IsShiftKeyDown() then
+                    local link = select(2, GetItemInfo(reagentId))
+                    if link then HandleModifiedItemClick(link) end
+                end
+            end)
+
+            -- Mail icon button
+            local mailBtn = CreateFrame("Button", nil, entry)
+            mailBtn:SetSize(16, 16)
+            mailBtn:SetPoint("RIGHT", entry, "RIGHT", 0, 0)
+            mailBtn:SetNormalTexture("Interface\\Icons\\INV_Letter_15")
+            mailBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+            mailBtn:SetScript("OnClick", function()
+                local spellName = GetSpellInfo(spellId) or ("Spell " .. spellId)
+                CdMail_PrepareSupplyMail(charKey, spellName, reagentId, reagentQty)
+            end)
+            mailBtn:SetScript("OnEnter", function()
+                GameTooltip:SetOwner(mailBtn, "ANCHOR_RIGHT")
+                GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1)
+                GameTooltip:AddLine(L["MailBtnTooltipDesc"] or "Open a mailbox, then click to mail reagents to this player.", nil, nil, nil, true)
+                GameTooltip:Show()
+            end)
+            mailBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        end
+    end
+
+    popup:Show()
+    self._groupPopup = popup
 end

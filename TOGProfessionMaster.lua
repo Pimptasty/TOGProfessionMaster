@@ -57,11 +57,16 @@ addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
 -- a cluster, unlike GetRealmName() which differs per physical realm.
 -- Per-character UI state lives in `db.char`.
 -- ---------------------------------------------------------------------------
-local DB_DEFAULTS = {
+-- ---------------------------------------------------------------------------
+-- AceDB schema — split into two SavedVariables:
+--   TOGPM_GuildDB   : guild-wide data (global scope, shared across characters)
+--   TOGPM_Settings  : per-user settings and per-character UI state
+-- ---------------------------------------------------------------------------
+local GUILD_DB_DEFAULTS = {
     global = {
         -- All guild-specific data.
         -- Key format: "Alliance-Grobbulus-Knights of TOG"
-        -- db.global.guilds[compositeKey] = {
+        -- guildDb.global.guilds[compositeKey] = {
         --   recipes[profId][recipeId] = { name, icon, isSpell, crafters={["Name-Realm"]=true} }
         --   skills["Name-Realm"][profId] = { skillRank, skillMax }
         --   guildData       = { ["Name-Realm"] = {} }  -- membership index only
@@ -75,6 +80,9 @@ local DB_DEFAULTS = {
         -- Each entry: { ts, event, peer, bytes }
         syncLog = {},
     },
+}
+
+local SETTINGS_DEFAULTS = {
     profile = {
         -- UI
         minimapButton   = true,
@@ -116,8 +124,11 @@ local SLASH_COMMANDS = {
 -- ---------------------------------------------------------------------------
 
 function Ace:OnInitialize()
-    -- Set up SavedVariables via AceDB.
-    self.db = LibStub("AceDB-3.0"):New("TOGPM_DB", DB_DEFAULTS, true)
+    -- Set up SavedVariables via AceDB (two separate SVs).
+    -- TOGPM_Settings: profile (UI prefs) and char (shopping list, reagent watch, frames)
+    self.db       = LibStub("AceDB-3.0"):New("TOGPM_Settings", SETTINGS_DEFAULTS, true)
+    -- TOGPM_GuildDB: global guild-wide data (recipes, skills, cooldowns, sync log)
+    addon.guildDb = LibStub("AceDB-3.0"):New("TOGPM_GuildDB", GUILD_DB_DEFAULTS, true)
 
     -- Restore debug flag from profile so DebugPrint works before OnEnable.
     addon.debug = self.db.profile.debug
@@ -264,7 +275,7 @@ function addon:GetGuildDb()
     local guildKey = self:GetGuildKey()
     if not guildKey then return nil end
 
-    local g = Ace.db.global.guilds
+    local g = addon.guildDb.global.guilds
     if not g[guildKey] then
         g[guildKey] = {
             recipes         = {},  -- [profId][recipeId] = { name, icon, isSpell, crafters }
@@ -278,7 +289,12 @@ function addon:GetGuildDb()
     end
     -- Lazy-init fields for buckets created before this version.
     local b = g[guildKey]
-    if not b.recipes then b.recipes = {} end
-    if not b.skills  then b.skills  = {} end
+    if not b.recipes         then b.recipes         = {} end
+    if not b.skills          then b.skills          = {} end
+    if not b.guildData       then b.guildData       = {} end
+    if not b.cooldowns       then b.cooldowns       = {} end
+    if not b.syncTimes       then b.syncTimes       = {} end
+    if not b.specializations then b.specializations = {} end
+    if not b.factions        then b.factions        = {} end
     return b
 end

@@ -1,10 +1,11 @@
-## Interface: 50400
+## Interface: 50503
+## X-Min-Interface: 50503
 ## Title: |cffDA8CFFTOG Profession Master |c999999FFMists
 ## Version: @project-version@
 ## Author: Pimptasty
 ## Category: Professions
 ## IconTexture: Interface\AddOns\TOGProfessionMaster\icons\TOGPM_MMB_Icon
-## SavedVariables: TOGPM_DB
+## SavedVariables: TOGPM_Settings TOGPM_GuildDB
 ## SavedVariablesPerCharacter:
 ## X-Curse-Project-ID: 1513588
 ## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0

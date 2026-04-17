@@ -23,7 +23,7 @@ addon.SyncLog = SyncLog
 -- @param peer   string  normalised "Name-Realm" of the other party
 -- @param bytes  number  payload size in bytes (0 if unknown)
 function SyncLog:Record(event, peer, bytes)
-    local log = Ace.db.global.syncLog
+    local log = addon.guildDb.global.syncLog
     table.insert(log, {
         ts    = time(),
         event = event or "?",
@@ -38,7 +38,7 @@ end
 
 --- Return a copy of all entries, newest first.
 function SyncLog:GetEntries()
-    local log = Ace.db.global.syncLog
+    local log = addon.guildDb.global.syncLog
     local out = {}
     for i = #log, 1, -1 do
         out[#out + 1] = log[i]
@@ -48,7 +48,7 @@ end
 
 --- Clear all log entries.
 function SyncLog:Clear()
-    Ace.db.global.syncLog = {}
+    addon.guildDb.global.syncLog = {}
 end
 
 -- ---------------------------------------------------------------------------

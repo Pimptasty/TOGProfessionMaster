@@ -1,10 +1,11 @@
 ## Interface: 11508
+## X-Min-Interface: 11508
 ## Title: |cffFF8000TOG Profession Master |c999999FFVanilla
 ## Version: @project-version@
 ## Author: Pimptasty
 ## Category: Professions
 ## IconTexture: Interface\AddOns\TOGProfessionMaster\icons\TOGPM_MMB_Icon
-## SavedVariables: TOGPM_DB
+## SavedVariables: TOGPM_Settings TOGPM_GuildDB
 ## SavedVariablesPerCharacter:
 ## X-Curse-Project-ID: 1513588
 ## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0

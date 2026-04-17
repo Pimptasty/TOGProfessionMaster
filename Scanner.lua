@@ -528,6 +528,23 @@ function Scanner:DetectSpecializations(charKey)
 end
 
 -- ---------------------------------------------------------------------------
+-- Cooldown-remaining helper (mirrors ProfessionCooldown GetCooldownLeftOnItem)
+-- Handles the WoW GetTime() 2^32 ms (~49.7-day) rollover.
+-- ---------------------------------------------------------------------------
+
+local function GetCooldownLeft(start, duration)
+    if start < GetTime() then
+        return (start + duration) - GetTime()
+    end
+    -- Post-rollover case: start is from the previous epoch.
+    local luaTime     = time()
+    local startupTime = luaTime - GetTime()
+    local cdTime      = (2 ^ 32) / 1000 - start
+    local cdStartTime = startupTime - cdTime
+    return (cdStartTime + duration) - luaTime
+end
+
+-- ---------------------------------------------------------------------------
 -- Cooldown scanning
 -- ---------------------------------------------------------------------------
 
@@ -550,7 +567,7 @@ function Scanner:ScanCooldowns()
     for spellId in pairs(data.transmutes) do
         local start, duration = GetSpellCooldown(spellId)
         if start and start > 0 and duration and duration > 1.5 then
-            local remaining = (start + duration) - GetTime()
+            local remaining = GetCooldownLeft(start, duration)
             if remaining > 0 and remaining < 691200 then
                 transmuteExpiry = math.floor(now + remaining)
                 break
@@ -573,7 +590,7 @@ function Scanner:ScanCooldowns()
     for spellId in pairs(data.cooldowns) do
         local start, duration = GetSpellCooldown(spellId)
         if start and start > 0 and duration and duration > 1.5 then
-            local remaining = (start + duration) - GetTime()
+            local remaining = GetCooldownLeft(start, duration)
             if remaining > 0 and remaining < 2592000 then
                 stored[spellId] = math.floor(now + remaining)
             end
@@ -608,26 +625,22 @@ end
 
 function Scanner:ScanSaltShaker(stored, now, itemId)
     local start, duration
-
-    -- Try C_Container first (Cata+), then legacy GetItemCooldown
     if C_Container and C_Container.GetItemCooldown then
         start, duration = C_Container.GetItemCooldown(itemId)
-    elseif GetItemCooldown then
-        start, duration = GetItemCooldown(itemId)
     end
 
     if start and start > 0 and duration and duration > 1.5 then
-        local remaining = (start + duration) - GetTime()
-        if remaining > 0 then
+        local remaining = GetCooldownLeft(start, duration)
+        if remaining > 0 and remaining < 345600 then
             stored[itemId] = math.floor(now + remaining)
             return
         end
     end
 
-    -- Seed Ready entry if the player carries the Salt Shaker.
-    if not stored[itemId] then
+    -- Not on cooldown (or bogus value). Seed to Ready if player owns item (incl. bank).
+    if not stored[itemId] or (stored[itemId] - now) > 691200 then
         local count = GetItemCount and GetItemCount(itemId, true) or 0
-        if count > 0 then
+        if count and count > 0 then
             stored[itemId] = now - 1
         end
     end

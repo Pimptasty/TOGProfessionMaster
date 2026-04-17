@@ -174,12 +174,14 @@ end
 -- ---------------------------------------------------------------------------
 
 function Ace:OnSlashCommand(input)
-    local cmd = strtrim(input or ""):lower()
+    local trimmed = strtrim(input or "")
+    local cmd, args = trimmed:match("^(%S*)%s*(.*)$")
+    cmd = (cmd or ""):lower()
     local handler = SLASH_COMMANDS[cmd]
     if handler and addon[handler] then
-        addon[handler](addon)
+        addon[handler](addon, args)
     elseif handler and Ace[handler] then
-        Ace[handler](Ace)
+        Ace[handler](Ace, args)
     else
         Ace:PrintHelp()
     end
@@ -219,8 +221,15 @@ function addon:DumpSpellCache()
     end
 end
 
-function addon:ToggleDebug()
-    addon.debug = not addon.debug
+function addon:ToggleDebug(args)
+    local arg = strtrim(args or ""):lower()
+    if arg == "on" then
+        addon.debug = true
+    elseif arg == "off" then
+        addon.debug = false
+    else
+        addon.debug = not addon.debug
+    end
     Ace.db.profile.debug = addon.debug
     Ace:Print("Debug output " .. (addon.debug and "|cff00ff00enabled|r" or "|cffff4444disabled|r"))
 end

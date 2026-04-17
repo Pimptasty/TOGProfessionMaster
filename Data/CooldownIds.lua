@@ -13,7 +13,7 @@ local _, addon = ...
 -- Vanilla
 local VANILLA_COOLDOWNS = {
     [18560] = "Mooncloth",            -- Tailoring, 4-day
-    -- Salt Shaker (15846) is item-based; scanned separately via GetItemCooldown
+    -- Salt Shaker (15846) is item-based; excluded here and handled by ScanSaltShaker.
 }
 
 -- TBC
@@ -201,6 +201,13 @@ local TRANSMUTE_REAGENTS = {
     [114780] = { id = 72095, qty = 6 }, -- Living Steel → Trillium Bar
 }
 
+-- Output item name overrides — for cooldowns where the spell/item name is NOT the
+-- produced item (e.g. Salt Shaker produces Refined Deeprock Salt, not "Salt Shaker").
+-- Any ID not listed here falls back to the cooldown display name at runtime.
+local OUTPUT_OVERRIDES = {
+    [15846] = "Refined Deeprock Salt",  -- Salt Shaker tool → product name
+}
+
 -- Spell IDs where GetSpellTexture returns a bad/missing icon.
 -- Value is the item ID whose icon should be used instead.
 local ICON_OVERRIDES = {
@@ -293,6 +300,7 @@ local function Build()
         reagents       = REAGENTS,
         transReagents  = TRANSMUTE_REAGENTS,
         iconOverrides  = ICON_OVERRIDES,
+        outputOverrides = OUTPUT_OVERRIDES,
         groups         = COOLDOWN_GROUPS,
         groupBySpell   = groupBySpell,
         saltShakerItem = 15846,

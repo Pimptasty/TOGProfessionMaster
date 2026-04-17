@@ -36,8 +36,13 @@ local function SecondsToString(secs)
     local d = math.floor(secs / 86400)
     local h = math.floor((secs % 86400) / 3600)
     local m = math.floor((secs % 3600) / 60)
-    if d > 0 then return string.format("%dd %dh", d, h) end
-    if h > 0 then return string.format("%dh %dm", h, m) end
+    if d > 0 then
+        if h > 0 then return string.format("%dd %dh", d, h) end
+        return string.format("%dd", d)
+    elseif h > 0 then
+        if m > 0 and h < 24 then return string.format("%dh %dm", h, m) end
+        return string.format("%dh", h)
+    end
     return string.format("%dm", m)
 end
 
@@ -107,15 +112,17 @@ local function BuildRows(readyOnly)
                 else
                     -- Regular single-spell cooldown row.
                     if not readyOnly or remaining <= 0 then
-                        local cdName = data.cooldowns[spellId] or GetSpellInfo(spellId) or tostring(spellId)
+                        local cdName = data.cooldowns[spellId] or GetSpellInfo(spellId) or GetItemInfo(spellId) or tostring(spellId)
                         local reagentItemId = data.reagents[spellId] and data.reagents[spellId].id
                         local reagentQty    = data.reagents[spellId] and data.reagents[spellId].qty or 1
                         local iconItemId    = data.iconOverrides and data.iconOverrides[spellId]
+                        local outputName    = (data.outputOverrides and data.outputOverrides[spellId]) or cdName
                         table.insert(rows, {
                             charKey       = charKey,
                             shortName     = shortName,
                             spellId       = spellId,
                             cdName        = cdName,
+                            outputName    = outputName,
                             reagentItemId = reagentItemId,
                             reagentQty    = reagentQty,
                             iconItemId    = iconItemId,
@@ -181,21 +188,12 @@ end
 local function CdMail_CountItemInBags(itemId)
     local total, stacks = 0, {}
     for bag = 0, 4 do
-        local numSlots = C_Container and C_Container.GetContainerNumSlots(bag)
-                         or GetContainerNumSlots(bag)
+        local numSlots = addon:GetContainerNumSlots(bag)
         for slot = 1, (numSlots or 0) do
-            local info = C_Container and C_Container.GetContainerItemInfo(bag, slot)
-            local itemID = info and info.itemID
-            local stackCount = info and info.stackCount
-            if not info then
-                -- classic-era fallback
-                local link = GetContainerItemLink(bag, slot)
-                itemID    = link and tonumber(link:match("item:(%d+)")) or nil
-                stackCount = link and (select(2, GetContainerItemInfo(bag, slot))) or 0
-            end
-            if itemID == itemId and (stackCount or 0) > 0 then
-                total = total + stackCount
-                table.insert(stacks, { bag = bag, slot = slot, count = stackCount })
+            local info = addon:GetContainerItemInfo(bag, slot)
+            if info and info.itemID == itemId and (info.stackCount or 0) > 0 then
+                total = total + info.stackCount
+                table.insert(stacks, { bag = bag, slot = slot, count = info.stackCount })
             end
         end
     end
@@ -284,11 +282,11 @@ if not StaticPopupDialogs["TOGPM_SPLIT_STACK"] then
             ClearCursor()
             local emptyBag, emptySlot
             for bag = 0, 4 do
-                local n = (C_Container and C_Container.GetContainerNumSlots(bag)) or GetContainerNumSlots(bag)
+                local n = addon:GetContainerNumSlots(bag)
                 for slot = 1, (n or 0) do
-                    local hasItem = C_Container and C_Container.GetContainerItemInfo(bag, slot)
-                                    or GetContainerItemLink(bag, slot)
-                    if not hasItem then emptyBag, emptySlot = bag, slot; break end
+                    if not addon:GetContainerItemInfo(bag, slot) then
+                        emptyBag, emptySlot = bag, slot; break
+                    end
                 end
                 if emptyBag then break end
             end
@@ -319,7 +317,7 @@ if not StaticPopupDialogs["TOGPM_SPLIT_STACK"] then
 end
 
 --- Open mailbox, attach reagents, pre-fill recipient/subject/body.
-local function CdMail_PrepareSupplyMail(playerName, cooldownName, reagentId, reagentQty)
+local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, reagentId, reagentQty)
     if not MailFrame or not MailFrame:IsShown() then
         DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r Open a mailbox first.")
         return
@@ -369,10 +367,11 @@ local function CdMail_PrepareSupplyMail(playerName, cooldownName, reagentId, rea
     local baseName = playerName:match("^([^%-]+)") or playerName
     if SendMailNameEditBox then SendMailNameEditBox:SetText(baseName) end
     if SendMailSubjectEditBox then SendMailSubjectEditBox:SetText("Cooldown supply: " .. cooldownName) end
-    if SendMailBodyEditBox then
-        SendMailBodyEditBox:SetText(string.format(
-            "Hi %s! Here are your %s for the %s cooldown. Please send me what you craft — thanks!",
-            baseName, reagentName, cooldownName))
+    local bodyBox = MailEditBox or SendMailBodyEditBox
+    if bodyBox then
+        bodyBox:SetText(string.format(
+            "Hi %s! Please use these materials to make %s. Please send me the %s when you have time to craft it. Thanks!",
+            baseName, outputName, outputName))
     end
     DEFAULT_CHAT_FRAME:AddMessage(string.format(
         "|cFF88CCCCTOG Profession Master:|r Attached %dx %s for %s.", attached, reagentName, baseName))
@@ -421,60 +420,35 @@ function CooldownsTab:Draw(container)
 end
 
 function CooldownsTab:DrawHeaders(parent, container)
-    -- 3 columns matching reference: Character (190) | Cooldown (306) | Remaining (80)
-    -- The Cooldown header spans both icon+name (220px) and reagent (86px) = 306px total.
+    -- Column widths: Character=190, Cooldown=456, TimeLeft=80
+    -- Sort indicator is embedded directly in the button label text (▲/▼) so
+    -- there are no textures on the headers SimpleGroup frame.  AceGUI recycles
+    -- SimpleGroup frames when ReleaseChildren() is called; any texture parented
+    -- to a recycled frame follows it onto data rows.  Text in the button label
+    -- has no such lifetime — it's just a string, created fresh each Draw().
     local cols = {
         { key = "char", label = L["ColCharacter"], width = 190,
           tip = "Character", tipDesc = "The guild member who has this cooldown. Right-click a row to whisper them." },
-        { key = "cd",   label = L["ColCooldown"],  width = 306,
+        { key = "cd",   label = L["ColCooldown"],  width = 456,
           tip = "Cooldown", tipDesc = "The name of the profession cooldown spell." },
         { key = "time", label = L["ColTimeLeft"],  width = 80,
           tip = "Time Left", tipDesc = "How long until this cooldown is ready. Green = ready now." },
     }
-    local texTop    = self._sortAsc and 0.6875 or 0.0
-    local texBottom = self._sortAsc and 0.0    or 0.6875
 
     for _, col in ipairs(cols) do
-        local isActive = (self._sortCol == col.key)
         local btn = AceGUI:Create("InteractiveLabel")
         btn:SetText("|c" .. (addon.BrandColor or "ffFF8000") .. col.label .. "|r")
         btn:SetWidth(col.width)
 
-        -- Tooltip on hover
         local tipTitle = col.tip
         local tipBody  = col.tipDesc
         btn:SetCallback("OnEnter", function(_w)
-            GameTooltip:SetOwner(_w.frame, "ANCHOR_BOTTOMLEFT")
+            GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
             GameTooltip:SetText(tipTitle, 1, 1, 1)
             GameTooltip:AddLine(tipBody, nil, nil, nil, true)
             GameTooltip:Show()
         end)
         btn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-
-        -- Arrow texture: show only on the active sort column.
-        -- AceGUI pools and reuses widget frames, so CreateTexture would stack a
-        -- new texture on top of the old one every redraw.  Reuse the stored ref.
-        local arrow = btn.frame._togpmSortArrow
-        if not arrow then
-            arrow = btn.frame:CreateTexture(nil, "OVERLAY")
-            arrow:SetTexture("Interface\\Calendar\\MoreArrow")
-            arrow:SetSize(12, 9)
-            btn.frame._togpmSortArrow = arrow
-        end
-        if isActive then
-            arrow:SetTexCoord(0.0, 0.9375, texTop, texBottom)
-            arrow:Show()
-        else
-            arrow:Hide()
-        end
-        -- Position is deferred via C_Timer so GetStringWidth() is valid after layout.
-        C_Timer.After(0, function()
-            if btn.label then
-                local sw = btn.label:GetStringWidth()
-                arrow:ClearAllPoints()
-                arrow:SetPoint("LEFT", btn.frame, "LEFT", sw + 4, 0)
-            end
-        end)
 
         local key = col.key
         btn:SetCallback("OnClick", function()
@@ -516,8 +490,16 @@ end
 function CooldownsTab:DrawRow(parent, row, now)
     local remaining = row.expiresAt - now
     local timeStr   = SecondsToString(remaining)
-    local timeColor = remaining <= 0 and "|cff00ff00" or
-                      (remaining < 7200 and "|cffffff00" or "|cffaaaaaa")
+    local timeColor
+    if remaining <= 0 then
+        timeColor = "|cff00ff00"   -- green: ready
+    elseif remaining < 28800 then
+        timeColor = "|cffffff00"   -- yellow: < 8h
+    elseif remaining < 86400 then
+        timeColor = "|cffff8800"   -- orange: < 24h
+    else
+        timeColor = "|cffff2200"   -- red: >= 24h
+    end
 
     local rowGroup = AceGUI:Create("SimpleGroup")
     rowGroup:SetLayout("Flow")
@@ -564,6 +546,13 @@ function CooldownsTab:DrawRow(parent, row, now)
     charLbl:SetCallback("OnClick", function(_widget, _event, button)
         if button == "RightButton" then doWhisper(_widget.frame) end
     end)
+    charLbl:SetCallback("OnEnter", function(_widget)
+        GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+        GameTooltip:SetText(row.shortName, 1, 1, 1)
+        GameTooltip:AddLine("Right-click to whisper", 0.7, 0.7, 0.7)
+        GameTooltip:Show()
+    end)
+    charLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
     rowGroup:AddChild(charLbl)
 
     -- ── Column 2: fixed 306px container — ALL cooldown content lives inside here ──
@@ -591,18 +580,18 @@ function CooldownsTab:DrawRow(parent, row, now)
     -- Width budget inside col2 (306px).
     -- The icon is a SEPARATE 18px widget so AceGUI's Label never hits the
     -- "(width - imageWidth) < 200" threshold that stacks text below the icon.
-    --   With reagent + bank : cdNameW = 306-18-96-40-20 = 132px
-    --   With reagent only   : cdNameW = 306-18-96-20    = 172px
-    --   No reagent          : cdNameW = 306-18           = 288px
+    --   With reagent + bank : cdNameW = 456-18-96-40-20 = 282px
+    --   With reagent only   : cdNameW = 456-18-96-20    = 322px
+    --   No reagent          : cdNameW = 456-18           = 438px
     local iconColW  = 18
     local mailW     = itemId and 20 or 0
     local bankW     = (itemId and hasBank) and 40 or 0
     local reagentW  = itemId and 96 or 0
-    local cdNameW   = 306 - iconColW - reagentW - bankW - mailW
+    local cdNameW   = 456 - iconColW - reagentW - bankW - mailW
 
     local col2 = AceGUI:Create("SimpleGroup")
     col2:SetLayout("Flow")
-    col2:SetWidth(306)
+    col2:SetWidth(456)
     rowGroup:AddChild(col2)
 
     -- Icon widget (image only, empty text).
@@ -648,7 +637,7 @@ function CooldownsTab:DrawRow(parent, row, now)
     cdNameLbl:SetText(cdText)
     if row.isGroup then
         cdNameLbl:SetCallback("OnEnter", function(_widget)
-            GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
+            GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
             if row.isTransmuteGroup then
                 GameTooltip:AddLine("Click to see transmutes", 1, 1, 1)
             else
@@ -662,11 +651,15 @@ function CooldownsTab:DrawRow(parent, row, now)
         end)
     else
         cdNameLbl:SetCallback("OnEnter", function(_widget)
-            GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
             if row.spellId then
                 if GetSpellInfo(row.spellId) then
+                    -- Spell tooltip: ANCHOR_CURSOR works fine for spells
+                    GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
                     GameTooltip:SetHyperlink("spell:" .. row.spellId)
                 else
+                    local _, rowTop = _widget.frame:GetCenter()
+                    local anchor = (rowTop and rowTop > GetScreenHeight() / 2) and "ANCHOR_BOTTOMLEFT" or "ANCHOR_TOPLEFT"
+                    GameTooltip:SetOwner(_widget.frame, anchor)
                     GameTooltip:SetHyperlink("item:" .. row.spellId)
                 end
             end
@@ -693,7 +686,9 @@ function CooldownsTab:DrawRow(parent, row, now)
             end)
         end
         reagentLbl:SetCallback("OnEnter", function(_widget)
-            GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
+            local _, rowTop = _widget.frame:GetCenter()
+            local anchor = (rowTop and rowTop > GetScreenHeight() / 2) and "ANCHOR_BOTTOMLEFT" or "ANCHOR_TOPLEFT"
+            GameTooltip:SetOwner(_widget.frame, anchor)
             GameTooltip:SetHyperlink("item:" .. itemId)
             GameTooltip:Show()
         end)
@@ -717,7 +712,7 @@ function CooldownsTab:DrawRow(parent, row, now)
                 addon.Bank.ShowRequestDialog(itemId, name, link)
             end)
             bankBtn:SetCallback("OnEnter", function(_widget)
-                GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
+                GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
                 GameTooltip:SetText("Request from Bank", 1, 1, 1)
                 GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker.", nil, nil, nil, true)
                 GameTooltip:Show()
@@ -733,11 +728,12 @@ function CooldownsTab:DrawRow(parent, row, now)
         mailBtn:SetText("")
         mailBtn:SetWidth(mailW)
         mailBtn:SetCallback("OnClick", function()
-            local cdName = row.isTransmuteGroup and L["Transmute"] or row.cdName
-            CdMail_PrepareSupplyMail(row.charKey, cdName, itemId, row.reagentQty or 1)
+            local cdName    = row.isTransmuteGroup and L["Transmute"] or row.cdName
+            local outputName = row.outputName or cdName
+            CdMail_PrepareSupplyMail(row.charKey, cdName, outputName, itemId, row.reagentQty or 1)
         end)
         mailBtn:SetCallback("OnEnter", function(_widget)
-            GameTooltip:SetOwner(_widget.frame, "ANCHOR_TOPRIGHT")
+            GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
             GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1)
             GameTooltip:AddLine(L["MailBtnTooltipDesc"] or "Open a mailbox, then click to attach reagents.", nil, nil, nil, true)
             GameTooltip:Show()
@@ -848,7 +844,7 @@ function CooldownsTab:ShowGroupPopup(row, now)
         nameZone:EnableMouse(true)
         nameZone:SetScript("OnEnter", function()
             nameLbl:SetTextColor(1, 1, 0, 1)
-            GameTooltip:SetOwner(nameZone, "ANCHOR_RIGHT")
+            GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
             GameTooltip:SetHyperlink("spell:" .. spellId)
             GameTooltip:Show()
         end)
@@ -888,7 +884,9 @@ function CooldownsTab:ShowGroupPopup(row, now)
             reagentZone:EnableMouse(true)
             reagentZone:SetScript("OnEnter", function()
                 reagentLbl:SetTextColor(1, 1, 0, 1)
-                GameTooltip:SetOwner(reagentZone, "ANCHOR_RIGHT")
+                local _, rowTop = reagentZone:GetCenter()
+                local anchor = (rowTop and rowTop > GetScreenHeight() / 2) and "ANCHOR_BOTTOMLEFT" or "ANCHOR_TOPLEFT"
+                GameTooltip:SetOwner(reagentZone, anchor)
                 GameTooltip:SetHyperlink("item:" .. reagentId)
                 GameTooltip:Show()
             end)
@@ -914,7 +912,7 @@ function CooldownsTab:ShowGroupPopup(row, now)
                 CdMail_PrepareSupplyMail(charKey, spellName, reagentId, reagentQty)
             end)
             mailBtn:SetScript("OnEnter", function()
-                GameTooltip:SetOwner(mailBtn, "ANCHOR_RIGHT")
+                GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
                 GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1)
                 GameTooltip:AddLine(L["MailBtnTooltipDesc"] or "Open a mailbox, then click to mail reagents to this player.", nil, nil, nil, true)
                 GameTooltip:Show()

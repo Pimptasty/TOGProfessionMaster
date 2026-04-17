@@ -12,7 +12,7 @@ addon.L = L
 -- ---------------------------------------------------------------------------
 -- Main window
 -- ---------------------------------------------------------------------------
-L["WindowTitle"]        = "|cffda8cffTOG Profession Master|r"
+L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "TOG Profession Master|r"
 L["SyncLogTitle"]       = "TOG Profession Master \226\128\148 Sync Log"
 
 -- Tab labels

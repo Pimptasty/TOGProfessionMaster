@@ -60,6 +60,80 @@ function MainWindow:Open(tabKey)
         self.tabs  = nil
     end)
 
+    -- Shrink the default status bar right edge to create room for the help icon.
+    -- Default AceGUI statusbg goes to BOTTOMRIGHT -132; we push it to -163 so a
+    -- 24px icon fits in the gap (matching the TOGBankClassic pattern).
+    local statusbg = f.statustext:GetParent()
+    statusbg:ClearAllPoints()
+    statusbg:SetPoint("BOTTOMLEFT",  f.frame, "BOTTOMLEFT",   15, 15)
+    statusbg:SetPoint("BOTTOMRIGHT", f.frame, "BOTTOMRIGHT", -163, 15)
+
+    -- Help "i" icon
+    local helpIcon = CreateFrame("Frame", nil, f.frame)
+    helpIcon:SetSize(24, 24)
+    helpIcon:SetPoint("BOTTOMRIGHT", f.frame, "BOTTOMRIGHT", -133, 15)
+    helpIcon:EnableMouse(true)
+    local helpTex = helpIcon:CreateTexture(nil, "OVERLAY")
+    helpTex:SetAllPoints(helpIcon)
+    helpTex:SetTexture("Interface\\Common\\help-i")
+
+    local brand = "|c" .. (addon.BrandColor or "ffFF8000")
+    local TAB_HELP = {
+        browser = {
+            title = "Profession Browser",
+            lines = {
+                "Shows all recipes known by guild members.",
+                " ",
+                brand .. "Recipes:|r The craftable recipe or spell name.",
+                brand .. "Crafters:|r Guild members who know it. " .. brand .. "You|r is listed first.",
+                " ",
+                brand .. "Profession dropdown:|r Filter to a single profession.",
+                brand .. "Search box:|r Filter recipes by name.",
+                brand .. "View toggle:|r Guild (all members) vs Mine (your characters).",
+                " ",
+                brand .. "[Bank] button:|r Appears when TOGBankClassic has the reagent in stock. Click to request it.",
+            },
+        },
+        cooldowns = {
+            title = "Cooldowns Tracker",
+            lines = {
+                "Tracks profession cooldowns for all guild members who have the addon.",
+                " ",
+                brand .. "Character:|r Guild member. Right-click any row to whisper them.",
+                brand .. "Cooldown:|r Profession spell name and icon.",
+                brand .. "Reagent:|r Primary reagent required.",
+                brand .. "Time Left:|r |cff00ff00Green|r = ready. |cffffff00Yellow|r = <2h. |cffaaaaaaGrey|r = on cooldown.",
+                " ",
+                brand .. "[Bank]:|r Request the reagent from TOGBankClassic.",
+                brand .. "Mail icon:|r Open a mailbox first, then click to attach reagents and pre-fill the mail.",
+                " ",
+                brand .. "Column headers:|r Click to sort. Click again to reverse.",
+                brand .. "Ready Only toggle:|r Hide cooldowns that are not yet ready.",
+            },
+        },
+        bucket = {
+            title = "Shopping List & Reagents",
+            lines = {
+                "Tracks reagents needed for queued crafts.",
+            },
+        },
+    }
+
+    helpIcon:SetScript("OnEnter", function(self)
+        local tab  = MainWindow.activeTab or "browser"
+        local help = TAB_HELP[tab] or TAB_HELP.browser
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:ClearLines()
+        GameTooltip:AddLine(help.title, 1, 0.82, 0, true)
+        for _, line in ipairs(help.lines) do
+            GameTooltip:AddLine(line, 0.9, 0.9, 0.9, true)
+        end
+        GameTooltip:Show()
+    end)
+    helpIcon:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+
     -- TabGroup
     local tg = AceGUI:Create("TabGroup")
     tg:SetTabs(TAB_DEFS)

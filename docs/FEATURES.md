@@ -124,6 +124,7 @@ Built with `AceGUI-3.0`:
 - Right-click row → whisper context menu (pre-fills `/w CharacterName`)
 - **[Bank] button** per row — visible when `TOGBankClassic` is loaded and has the reagent in stock; opens bank request dialog
 - **[Mail] button** per row — visible when at a mailbox; opens pre-composed supply mail to cooldown owner with reagent attached from bags
+- **TODO: Sort indicator on active column header** — show a sort arrow (▲/▼) next to the active sort column label. Attempted via `|T|t` inline texture and Unicode characters; both failed in Classic Era. Needs a working WoW Classic–compatible approach (e.g. a Blizzard sort-arrow texture that actually exists in the Classic client, or a FontString texture approach).
 
 ---
 

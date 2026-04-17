@@ -186,8 +186,10 @@
         "SendMailNameEditBox",
         "SendMailSubjectEditBox",
         "SendMailBodyEditBox",
+        "MailEditBox",
         "SplitContainerItem",
-        "PickupContainerItem"
+        "PickupContainerItem",
+        "GetContainerItemCooldown"
     ],
     "diagnostics.disable": [
         "need-check-nil",

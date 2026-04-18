@@ -436,7 +436,7 @@ function Scanner:ScanTradeSkillInto(charKey, isLinked)  --luacheck: ignore isLin
         or tradeSkillType == "easy"    or tradeSkillType == "trivial" then
             local recipeId, isSpell = self:ExtractTradeSkillId(i)
             if recipeId then
-                -- [1]=name [2]=icon [3]=isSpell [4]=spellId [5]=recipeLink [6]=itemLink [7]=reagents
+                -- [1]=name [2]=icon [3]=isSpell [4]=spellId [5]=itemLink [6]=reagents [7]=recipeLink
                 local spellId    = spellNameCache[recipeName]
                 local recipeLink = GetTradeSkillRecipeLink and GetTradeSkillRecipeLink(i)
                 local itemLink   = GetTradeSkillItemLink(i)
@@ -449,7 +449,7 @@ function Scanner:ScanTradeSkillInto(charKey, isLinked)  --luacheck: ignore isLin
                         table.insert(reagents, { name = rName, count = rCount or 1 })
                     end
                 end
-                recipes[recipeId] = { recipeName, GetTradeSkillIcon(i), isSpell, spellId, recipeLink, itemLink, reagents }
+                recipes[recipeId] = { recipeName, GetTradeSkillIcon(i), isSpell, spellId, itemLink, reagents, recipeLink }
             end
         end
     end
@@ -506,12 +506,12 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
             existing.name    = rd[1]
             existing.icon    = rd[2]
             existing.isSpell = rd[3]
-            -- [4]=spellId, [5]=recipeLink, [6]=itemLink — only present from local scans
-            -- (wire data only carries [1]-[4]); only overwrite when non-nil.
+            -- [4]=spellId [5]=itemLink [6]=reagents [7]=recipeLink — only overwrite when non-nil.
+            -- recipeLink ([7]) only comes from local scans (GetTradeSkillRecipeLink).
             if rd[4] ~= nil then existing.spellId    = rd[4] end
-            if rd[5] ~= nil then existing.recipeLink = rd[5] end
-            if rd[6] ~= nil then existing.itemLink   = rd[6] end
-            if rd[7] ~= nil then existing.reagents   = rd[7] end
+            if rd[5] ~= nil then existing.itemLink   = rd[5] end
+            if rd[6] ~= nil then existing.reagents   = rd[6] end
+            if rd[7] ~= nil then existing.recipeLink = rd[7] end
             existing.crafters[charKey] = true
         else
             gdb.recipes[profId][recipeId] = {
@@ -519,9 +519,9 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
                 icon       = rd[2],
                 isSpell    = rd[3],
                 spellId    = rd[4],
-                recipeLink = rd[5],
-                itemLink   = rd[6],
-                reagents   = rd[7],
+                itemLink   = rd[5],
+                reagents   = rd[6],
+                recipeLink = rd[7],
                 crafters   = { [charKey] = true },
             }
         end
@@ -838,8 +838,8 @@ function Scanner:BuildPayload()
             local myRecipes = {}
             for recipeId, rd in pairs(profRecipes) do
                 if rd.crafters and rd.crafters[charKey] then
-                    -- Wire format: [1]=name [2]=icon [3]=isSpell [4]=spellId
-                    myRecipes[recipeId] = { rd.name, rd.icon, rd.isSpell, rd.spellId }
+                    -- Wire format: [1]=name [2]=icon [3]=isSpell [4]=spellId [5]=itemLink [6]=reagents
+                    myRecipes[recipeId] = { rd.name, rd.icon, rd.isSpell, rd.spellId, rd.itemLink, rd.reagents }
                 end
             end
             if next(myRecipes) then

@@ -136,11 +136,6 @@ function Ace:OnInitialize()
     -- TOGPM_GuildDB: global guild-wide data (recipes, skills, cooldowns, sync log)
     addon.guildDb = LibStub("AceDB-3.0"):New("TOGPM_GuildDB", GUILD_DB_DEFAULTS, true)
 
-    -- Register this character as one of the player's own characters.
-    -- accountChars is account-wide (global scope) so it persists across all alts.
-    local myKey = addon:GetCharacterKey()
-    addon.guildDb.global.accountChars[myKey] = true
-
     -- Restore debug flag from profile so DebugPrint works before OnEnable.
     addon.debug = self.db.profile.debug
 
@@ -172,6 +167,19 @@ end
 
 function Ace:OnPlayerEnteringWorld(event, isInitialLogin, isReloadingUi)
     addon:DebugPrint("PLAYER_ENTERING_WORLD", "login:", isInitialLogin, "reload:", isReloadingUi)
+
+    -- Register this character in the account-wide accountChars table.
+    -- Done here (not OnInitialize) because GetNormalizedRealmName() returns ""
+    -- before PLAYER_ENTERING_WORLD fires.
+    local myKey = addon:GetCharacterKey()
+    local ac = addon.guildDb.global.accountChars
+    ac[myKey] = true
+    -- Self-heal: remove any stale "Name-" key (empty realm) written by older code.
+    local staleName = UnitName("player")
+    if staleName and ac[staleName .. "-"] then
+        ac[staleName .. "-"] = nil
+    end
+
     -- Modules hook into this via AceEvent on their own tables.
 end
 

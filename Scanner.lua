@@ -882,6 +882,12 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     if not charKey  or type(charKey)  ~= "string" then return end
     if not guildKey or type(guildKey) ~= "string" then return end
 
+    -- Normalize bare names (same-server senders have no realm suffix).
+    local DS = self.DS
+    if DS then
+        charKey = DS:NormalizeName(charKey) or charKey
+    end
+
     -- Ignore echoes of our own broadcast.
     if charKey == addon:GetCharacterKey() then return end
 
@@ -942,7 +948,6 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     -- Rebuild all hash levels to reflect the newly merged data.
     -- Also notifies P2P that leaf sessions for this character are complete,
     -- freeing inbound session slots for the next pending dispatch.
-    local DS = self.DS
     if DS then
         addon.HashManager:RebuildAll(DS, gdb)
 

@@ -35,14 +35,11 @@ end
 --- Canonicalize a player name to "Name-Realm" form.
 -- Handles bare names, fully-qualified names, and spacing variants ("Name - Realm").
 --
--- Connected-realm note: on Classic Era, GetNormalizedRealmName() returns the
--- same canonical string for all physical realms in a connected cluster (e.g.
--- every player on OldBlanchy, Azuresong, Myzrael or Atiesh all get "OldBlanchy").
--- AceComm delivers sender strings with the physical realm ("Name-Azuresong"),
--- not the canonical one.  To keep keys consistent with addon:GetCharacterKey(),
--- we always strip any existing realm suffix and re-append GetNormalizedRealmName()
--- so that "Shamanoodles-Azuresong" and "Shamanoodles-OldBlanchy" both resolve
--- to the same key on every client in the cluster.
+-- Connected-realm note: AceComm delivers sender strings with the physical realm
+-- suffix when the sender is on a different realm ("Name-Myzrael"), or with no
+-- suffix when the sender is on the same realm as the receiver.
+-- We only add the local realm when the name has no realm suffix at all.
+-- Cross-realm names keep their original realm so data is stored per-realm.
 --
 -- @param name  string — raw name from WoW API, AceComm sender, or chat
 -- @return      string "Name-Realm", or nil for empty / malformed input
@@ -56,17 +53,18 @@ function lib:NormalizeName(name)
     -- Canonicalize hyphen spacing: "Name - Realm" / "Name- Realm" → "Name-Realm"
     trimmed = trimmed:gsub("%s*%-%s*", "-")
 
-    -- Strip any realm suffix to extract just the character name, then
-    -- re-append GetNormalizedRealmName() as the authoritative realm.
-    -- This collapses all physical-realm variants to the cluster canonical form.
-    local baseName = trimmed:match("^(.+)%-[^%-]+$") or trimmed
+    -- If the name already has a realm suffix, leave it as-is.
+    -- Only append the local realm for bare names (same-server players).
+    if trimmed:match("%-[^%-]+$") then
+        return trimmed
+    end
 
     local realm = GetCurrentRealm()
     if realm ~= "" then
-        return baseName .. "-" .. realm
+        return trimmed .. "-" .. realm
     end
 
-    return baseName
+    return trimmed
 end
 
 --- Return the local player's canonical "Name-Realm" string.

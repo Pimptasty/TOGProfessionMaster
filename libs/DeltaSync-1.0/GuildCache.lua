@@ -34,6 +34,16 @@ end
 
 --- Canonicalize a player name to "Name-Realm" form.
 -- Handles bare names, fully-qualified names, and spacing variants ("Name - Realm").
+--
+-- Connected-realm note: on Classic Era, GetNormalizedRealmName() returns the
+-- same canonical string for all physical realms in a connected cluster (e.g.
+-- every player on OldBlanchy, Azuresong, Myzrael or Atiesh all get "OldBlanchy").
+-- AceComm delivers sender strings with the physical realm ("Name-Azuresong"),
+-- not the canonical one.  To keep keys consistent with addon:GetCharacterKey(),
+-- we always strip any existing realm suffix and re-append GetNormalizedRealmName()
+-- so that "Shamanoodles-Azuresong" and "Shamanoodles-OldBlanchy" both resolve
+-- to the same key on every client in the cluster.
+--
 -- @param name  string — raw name from WoW API, AceComm sender, or chat
 -- @return      string "Name-Realm", or nil for empty / malformed input
 function lib:NormalizeName(name)
@@ -46,19 +56,17 @@ function lib:NormalizeName(name)
     -- Canonicalize hyphen spacing: "Name - Realm" / "Name- Realm" → "Name-Realm"
     trimmed = trimmed:gsub("%s*%-%s*", "-")
 
-    -- If already has a non-empty realm suffix, return as-is
-    local left, right = trimmed:match("^(.-)%-(.+)$")
-    if left and right and left ~= "" and right ~= "" then
-        return trimmed
-    end
+    -- Strip any realm suffix to extract just the character name, then
+    -- re-append GetNormalizedRealmName() as the authoritative realm.
+    -- This collapses all physical-realm variants to the cluster canonical form.
+    local baseName = trimmed:match("^(.+)%-[^%-]+$") or trimmed
 
-    -- Bare name — append current realm
     local realm = GetCurrentRealm()
     if realm ~= "" then
-        return trimmed .. "-" .. realm
+        return baseName .. "-" .. realm
     end
 
-    return trimmed
+    return baseName
 end
 
 --- Return the local player's canonical "Name-Realm" string.

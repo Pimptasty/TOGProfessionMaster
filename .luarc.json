@@ -189,7 +189,8 @@
         "MailEditBox",
         "SplitContainerItem",
         "PickupContainerItem",
-        "GetContainerItemCooldown"
+        "GetContainerItemCooldown",
+        "GetCooldownTimestamp"
     ],
     "diagnostics.disable": [
         "need-check-nil",

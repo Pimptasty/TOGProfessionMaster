@@ -86,41 +86,48 @@ function Scanner:InitDeltaSync()
             Scanner:OnGuildDataReceived(sender, data, bytes or 0)
         end,
 
-        -- Another member broadcast their version token; we can request data
-        -- if we have no record for them yet (or their data is older than 1 week).
-        onVersionReceived = function(sender, _version, _hash)
-            local norm = DS:NormalizeName(sender)
-            if not norm then return end
-            local gdb = addon:GetGuildDb()
-            if not gdb then return end
-            local STALE_SECONDS = 7 * 86400
-            local ts = gdb.syncTimes and gdb.syncTimes[norm]
-            if ts and (GetServerTime() - ts) < STALE_SECONDS then return end
-            DS:RequestData(sender)
-        end,
+        -- onVersionReceived: DeltaSync's own VERSION channel — not used by this
+        -- addon (nothing calls DS:BroadcastVersion). Version checking is handled
+        -- by VersionCheck-1.0 via a separate comm protocol.
     })
 
     self.DS = DS
 
     -- ── P2P catch-up sync ────────────────────────────────────────────────────
-    -- Two-phase hierarchical sync via HashManager:
-    --   Phase 1: broadcast guild:cooldowns + guild:recipes (top-level roll-ups).
-    --            Peers who differ whisper back a hash-offer, we request from them.
-    --   onSyncAccepted("guild:*"): drill down by broadcasting the matching
-    --            per-member (cooldown:*) or per-profession (recipes:*) level map.
+    -- Single-phase leaf-level sync via HashManager:
+    --   Broadcast all per-member cooldown + per-profession recipe leaf hashes.
+    --   Peers who have fresher data for any specific leaf whisper back a hash-offer.
     --   onSyncAccepted("cooldown:*"|"recipes:*"): leaf — call DS:RequestData to
     --            pull the full character payload from the peer.
+    --
+    -- NOTE: guild:cooldowns / guild:recipes roll-ups are NOT broadcast here.
+    -- HasContent() returns false for guild:* items so no peer could ever offer
+    -- them, which made the old two-phase approach a no-op.
     DS:InitP2P({
-        -- Phase 1 broadcast: two guild-level roll-up hashes.
-        -- Rebuild from scratch if the cache is empty (first login after a wipe).
+        -- Broadcast all leaf-level hashes so peers can identify stale items.
+        -- Rebuild the hash cache if it is empty (first login after a wipe).
         getMyHashes = function()
             local gdb = addon:GetGuildDb()
             if not gdb then return {} end
             local HM = addon.HashManager
-            if not gdb.hashes or not gdb.hashes["guild:cooldowns"] then
+            if not gdb.hashes then
                 HM:RebuildAll(DS, gdb)
             end
-            return HM:GetGuildLevelMap(gdb)
+            -- Combine cooldown and recipe leaf maps into one broadcast payload.
+            local map = {}
+            for k, v in pairs(HM:GetCooldownLevelMap(gdb))   do map[k] = v end
+            for k, v in pairs(HM:GetProfessionLevelMap(gdb)) do map[k] = v end
+            -- Insert zero-sentinel entries for any online member whose cooldown
+            -- data we haven't received yet.  Without this, peers don't know to
+            -- offer their own data to us (the P2P protocol only offers items
+            -- that appear in the broadcaster's hash-list).
+            for _, name in ipairs(DS:GetOnlineGuildMembers()) do
+                local key = "cooldown:" .. name
+                if not map[key] then
+                    map[key] = { hash = 0, updatedAt = 0 }
+                end
+            end
+            return map
         end,
 
         -- We can serve data for itemKeys we own (see HashManager:HasContent).
@@ -134,38 +141,18 @@ function Scanner:InitDeltaSync()
         hasMissingItems = function()
             local gdb = addon:GetGuildDb()
             if not gdb then return false end
-            if not gdb.hashes or not gdb.hashes["guild:cooldowns"] then return true end
             local me = DS:GetNormalizedPlayer()
             for _, name in ipairs(DS:GetOnlineGuildMembers()) do
-                if name ~= me and not gdb.hashes["cooldown:" .. name] then
+                if name ~= me and not (gdb.hashes and gdb.hashes["cooldown:" .. name]) then
                     return true
                 end
             end
             return false
         end,
 
-        -- Multi-phase dispatch:
-        --   guild:cooldowns → free slot, broadcast per-member level for drill-down
-        --   guild:recipes   → free slot, broadcast per-profession level for drill-down
-        --   cooldown:*       → leaf reached; pull full payload from peer
-        --   recipes:*        → leaf reached; pull full payload from peer
+        -- Leaf sync accepted: peer has data we need; request their full payload.
         onSyncAccepted = function(itemKey, sender)
-            local gdb = addon:GetGuildDb()
-            if not gdb then return end
-            local HM = addon.HashManager
-
-            if itemKey == "guild:cooldowns" then
-                -- Phase 1 → 2: free guild-level session slot, drill to per-member map.
-                if DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
-                DS:BroadcastItemHashes(HM:GetCooldownLevelMap(gdb), "BULK")
-
-            elseif itemKey == "guild:recipes" then
-                -- Phase 1 → 2: drill to per-profession map.
-                if DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
-                DS:BroadcastItemHashes(HM:GetProfessionLevelMap(gdb), "BULK")
-
-            elseif itemKey:sub(1, 9) == "cooldown:" or itemKey:sub(1, 8) == "recipes:" then
-                -- Phase 2 leaf: peer has data we need; request their full payload.
+            if itemKey:sub(1, 9) == "cooldown:" or itemKey:sub(1, 8) == "recipes:" then
                 DS:RequestData(sender)
             end
         end,
@@ -194,12 +181,14 @@ function Scanner:Init()
     Ace:ScheduleTimer(function()
         Scanner:ScanCooldowns()
         Scanner:ScheduleBroadcast()
-        -- Kick off P2P catch-up: broadcast our hash map so online peers can
-        -- identify any charKeys we're missing and offer to fill them in.
+        -- Kick off P2P catch-up: always broadcast on login so peers can compare
+        -- hashes and offer fresher data. hasMissingItems() only checks for absent
+        -- entries, not stale ones, so gating here would prevent refreshing
+        -- cooldown data that changed while we were offline.
         local DS = Scanner.DS
         if DS and type(DS.BroadcastItemHashes) == "function" then
             local p2p = DS.p2p
-            if p2p and p2p.cb and type(p2p.cb.hasMissingItems) == "function" and p2p.cb.hasMissingItems() then
+            if p2p and p2p.cb then
                 local hashes = type(p2p.cb.getMyHashes) == "function" and p2p.cb.getMyHashes() or {}
                 DS:BroadcastItemHashes(hashes, "BULK")
             end
@@ -696,18 +685,34 @@ function Scanner:ScanCooldowns()
     local stored = gdb.cooldowns[charKey]
 
     -- ---- Transmutes --------------------------------------------------------
-    -- All transmutes share one cooldown bucket.  Find the active expiry by
-    -- querying every spell until we find one that is on CD, then stamp every
-    -- *known* transmute with that same expiry.
+    -- All transmutes share one cooldown category.  GetCooldownTimestamp queries
+    -- the category directly — it works even for spells the player does NOT know
+    -- and returns the absolute server-time UNIX expiry (nil = no cooldown).
+    -- GetSpellCooldown fallback is kept for any client that lacks the API.
 
     local transmuteExpiry = nil
-    for spellId in pairs(data.transmutes) do
-        local start, duration = GetSpellCooldown(spellId)
-        if start and start > 0 and duration and duration > 1.5 then
-            local remaining = GetCooldownLeft(start, duration)
-            if remaining > 0 and remaining < 691200 then
-                transmuteExpiry = math.floor(now + remaining)
-                break
+    if GetCooldownTimestamp then
+        -- Take the highest (most-future) expiry across all known transmute IDs.
+        -- In Vanilla all transmutes share one 24h bucket, so they should all
+        -- agree; taking the max handles expansions where durations differ.
+        for spellId in pairs(data.transmutes) do
+            local ts = GetCooldownTimestamp(spellId)
+            if ts and ts > now and ts < (now + 691200) then
+                if not transmuteExpiry or ts > transmuteExpiry then
+                    transmuteExpiry = ts
+                end
+            end
+        end
+    else
+        -- Fallback: GetSpellCooldown only works for spells in the spellbook.
+        for spellId in pairs(data.transmutes) do
+            local start, duration = GetSpellCooldown(spellId)
+            if start and start > 0 and duration and duration > 1.5 then
+                local remaining = GetCooldownLeft(start, duration)
+                if remaining > 0 and remaining < 691200 then
+                    transmuteExpiry = math.floor(now + remaining)
+                    break
+                end
             end
         end
     end
@@ -828,6 +833,11 @@ function Scanner:SendDataTo(target)
     local serialized = DS:SerializeData(payload)
     local bytes      = serialized and #serialized or 0
     DS:SendData(target, payload, false)
+    -- Release the P2P outbound send slot so further requests are not blocked.
+    -- HandleSyncRequest acquired this slot; the send is now complete.
+    if DS.p2p then
+        DS.p2p:ReleaseSendSlot(target)
+    end
     addon:DebugPrint("Scanner: sent data to", target, "(", bytes, "bytes)")
     if addon.callbacks then
         addon.callbacks:Fire("SYNC_SENT", target, bytes)

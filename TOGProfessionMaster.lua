@@ -115,15 +115,16 @@ local SETTINGS_DEFAULTS = {
 -- Slash commands (registered in OnEnable once AceConsole is ready)
 -- ---------------------------------------------------------------------------
 local SLASH_COMMANDS = {
-    [""]          = "OpenBrowser",
-    ["reagents"]  = "OpenReagents",
-    ["minimap"]   = "ShowMinimapButton",
-    ["purge"]      = "OpenPurge",
-    ["sync"]       = "ForceSync",
-    ["status"]     = "PrintStatus",
-    ["debug"]      = "ToggleDebug",
-    ["spellcache"] = "DumpSpellCache",
-    ["help"]       = "PrintHelp",
+    [""]             = "OpenBrowser",
+    ["reagents"]     = "OpenReagents",
+    ["minimap"]      = "ShowMinimapButton",
+    ["purge"]        = "OpenPurge",
+    ["sync"]         = "ForceSync",
+    ["status"]       = "PrintStatus",
+    ["versioncheck"] = "PrintVersionCheck",
+    ["debug"]        = "ToggleDebug",
+    ["spellcache"]   = "DumpSpellCache",
+    ["help"]         = "PrintHelp",
 }
 
 -- ---------------------------------------------------------------------------
@@ -303,6 +304,46 @@ function addon:ToggleDebug(args)
     Ace:Print("Debug output " .. (addon.debug and "|cff00ff00enabled|r" or "|cffff4444disabled|r"))
 end
 
+--- /togpm versioncheck — broadcast version check and print responses.
+function addon:PrintVersionCheck()
+    local VC = LibStub and LibStub:GetLibrary("VersionCheck-1.0", true)
+    if not VC then
+        Ace:Print("|cffff4444VersionCheck-1.0 library not available|r")
+        return
+    end
+    local hostEntry = VC.hosts and VC.hosts[addonName]
+    if not hostEntry then
+        Ace:Print("|cffff4444" .. addonName .. " not registered with VersionCheck-1.0|r")
+        return
+    end
+    -- FireBatch broadcasts VC10_REQ to guild; peers reply via whisper (VC10_RSP)
+    -- with up to 8s jitter; VC collects for 12s. Wait 21s to capture all responses.
+    VC:FireBatch()
+    Ace:Print("Version check broadcast sent — waiting 21 seconds for responses...")
+    C_Timer.After(21, function()
+        local myVersion = addon.Version or "dev"
+        local myPlayer  = addon:GetCharacterKey()
+        local responses = hostEntry.VersionResponses or {}
+        local list = {}
+        for sender, version in pairs(responses) do
+            table.insert(list, { name = sender, version = tostring(version) })
+        end
+        table.sort(list, function(a, b)
+            local cmp = VC:CompareVersion(b.version, a.version)
+            if cmp ~= 0 then return cmp > 0 end
+            return a.name < b.name
+        end)
+        Ace:Print("Version check: " .. #list .. " guild member(s) responded")
+        Ace:Print("  " .. myPlayer .. ": " .. myVersion .. " (you)")
+        for _, entry in ipairs(list) do
+            Ace:Print("  " .. entry.name .. ": " .. entry.version)
+        end
+        if #list == 0 then
+            Ace:Print("  No responses received.")
+        end
+    end)
+end
+
 function Ace:PrintHelp()
     self:Print("|cffda8cffTOG Profession Master|r — commands:")
     self:Print("  /togpm              — open profession browser")
@@ -311,6 +352,7 @@ function Ace:PrintHelp()
     self:Print("  /togpm purge        — open purge dialog")
     self:Print("  /togpm sync         — force full guild re-sync")
     self:Print("  /togpm status       — dump sync/comm diagnostic info")
+    self:Print("  /togpm versioncheck — check addon versions across guild")
     self:Print("  /togpm debug        — toggle debug output")
     self:Print("  /togpm help         — show this list")
 end

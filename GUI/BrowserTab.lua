@@ -73,6 +73,7 @@ local ALL_PROFESSIONS = {
     { profId = 202, name = "Engineering"    },
     { profId = 129, name = "First Aid"      },
     { profId = 165, name = "Leatherworking" },
+    { profId = 186, name = "Mining"         },
     { profId = 197, name = "Tailoring"      },
 }
 

@@ -15,7 +15,7 @@ addon.name  = addonName
 
 -- UI colors — change here to update everywhere.
 addon.BrandColor       = "ffFF8000"   -- Legendary quality orange (Thunderfury)
-addon.ColorYou         = "ffffff00"   -- WoW gold, used for the current player's name
+addon.ColorYou         = addon.BrandColor  -- same as brand color for the current player's name
 addon.ColorCrafter     = "ffaaaaaa"   -- muted gray for other crafters
 addon.ColorOnline      = "ffffffff"   -- white for online guild members
 addon.ColorOffline     = "ff888888"   -- dark gray for offline guild members
@@ -74,8 +74,13 @@ local GUILD_DB_DEFAULTS = {
         --   syncTimes       = { ["Name-Realm"] = timestamp }
         --   specializations = { ["Name-Realm"] = { [profId] = spellId } }
         --   factions        = { ["Name-Realm"] = "Alliance"|"Horde" }
+        --   altGroups       = { ["Name-Realm"] = {"Name-Realm", "Alt-Realm", ...} }
         -- }
         guilds = {},
+        -- Account-wide set of all own characters that have ever logged in with
+        -- this addon.  Key = "Name-Realm", value = true.
+        -- Used to mark crafters as "you" in the UI across all your alts.
+        accountChars = {},
         -- Sync log ring buffer — capped at 200 entries by Modules/SyncLog.lua
         -- Each entry: { ts, event, peer, bytes }
         syncLog = {},
@@ -130,6 +135,11 @@ function Ace:OnInitialize()
     self.db       = LibStub("AceDB-3.0"):New("TOGPM_Settings", SETTINGS_DEFAULTS, true)
     -- TOGPM_GuildDB: global guild-wide data (recipes, skills, cooldowns, sync log)
     addon.guildDb = LibStub("AceDB-3.0"):New("TOGPM_GuildDB", GUILD_DB_DEFAULTS, true)
+
+    -- Register this character as one of the player's own characters.
+    -- accountChars is account-wide (global scope) so it persists across all alts.
+    local myKey = addon:GetCharacterKey()
+    addon.guildDb.global.accountChars[myKey] = true
 
     -- Restore debug flag from profile so DebugPrint works before OnEnable.
     addon.debug = self.db.profile.debug
@@ -307,5 +317,13 @@ function addon:GetGuildDb()
     if not b.syncTimes       then b.syncTimes       = {} end
     if not b.specializations then b.specializations = {} end
     if not b.factions        then b.factions        = {} end
+    if not b.altGroups       then b.altGroups       = {} end
     return b
+end
+
+--- Return true if charKey belongs to the local player's account.
+-- Checks the account-wide accountChars table (all characters that have ever
+-- logged in on this account with TOGPM installed).
+function addon:IsMyCharacter(charKey)
+    return addon.guildDb.global.accountChars[charKey] == true
 end

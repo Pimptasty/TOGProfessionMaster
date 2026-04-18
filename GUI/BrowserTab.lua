@@ -110,20 +110,55 @@ local function BuildRecipeList(profId, viewMode, searchText)
         local profIconId = addon.ProfessionIcons and addon.ProfessionIcons[thisProfId] or (addon.ProfessionIconFallback or 134400)
         for recipeId, rd in pairs(profRecipes) do
             if rd.crafters then
-                local visible = (viewMode == "mine") and rd.crafters[myKey] or next(rd.crafters)
+                local mineVisible = false
+                if viewMode == "mine" then
+                    for ck in pairs(rd.crafters) do
+                        if addon:IsMyCharacter(ck) then mineVisible = true; break end
+                    end
+                end
+                local visible = mineVisible or (viewMode ~= "mine" and next(rd.crafters))
                 if visible then
                     local name = rd.name or tostring(recipeId)
                     if filter == "" or name:lower():find(filter, 1, true) then
-                        local youStr   = "|c" .. (addon.ColorYou or "ffffff00") .. L["You"] .. "|r"
-                        local isYou    = rd.crafters[myKey]
-                        local crafters = {}
+                        -- Check if any crafter in this recipe belongs to our account.
+                        local isYou = false
                         for ck in pairs(rd.crafters) do
-                            if ck ~= myKey then
-                                table.insert(crafters, ck:match("^(.-)%-") or ck)
+                            if addon:IsMyCharacter(ck) then
+                                isYou = true
+                                break
                             end
                         end
-                        table.sort(crafters)
-                        if isYou then table.insert(crafters, 1, youStr) end
+                        local DS     = addon.Scanner and addon.Scanner.DS
+                        -- crafters: array of {name=shortName, online=bool}
+                        local crafterObjs = {}
+                        for ck in pairs(rd.crafters) do
+                            if not addon:IsMyCharacter(ck) then
+                                local shortName = ck:match("^(.-)%-") or ck
+                                local online = DS and DS:IsPlayerOnline(ck) or false
+                                local displayName = shortName
+                                -- If the crafter is offline, check whether one of their alts
+                                -- is online so we can show "OnlineAlt (CrafterName)".
+                                if not online and gdb.altGroups and gdb.altGroups[ck] then
+                                    for _, altCk in ipairs(gdb.altGroups[ck]) do
+                                        if altCk ~= ck and DS and DS:IsPlayerOnline(altCk) then
+                                            local altShort = altCk:match("^(.-)%-") or altCk
+                                            displayName = altShort .. " (" .. shortName .. ")"
+                                            online = true   -- reachable via alt
+                                            break
+                                        end
+                                    end
+                                end
+                                table.insert(crafterObjs, { name = displayName, online = online })
+                            end
+                        end
+                        table.sort(crafterObjs, function(a, b)
+                            if a.online ~= b.online then return a.online end
+                            return a.name < b.name
+                        end)
+                        -- Insert self at front with distinct color
+                        if isYou then
+                            table.insert(crafterObjs, 1, { name = L["You"], online = true, isYou = true })
+                        end
                         table.insert(list, {
                             id         = recipeId,
                             name       = name,
@@ -135,7 +170,7 @@ local function BuildRecipeList(profId, viewMode, searchText)
                             recipeLink = rd.recipeLink,
                             itemLink   = rd.itemLink,
                             reagents   = rd.reagents,
-                            crafters   = crafters,
+                            crafters   = crafterObjs,
                         })
                     end
                 end
@@ -519,9 +554,17 @@ function BrowserTab:BuildPool(parent)
                 end
                 if entry.crafters and #entry.crafters > 0 then
                     GameTooltip:AddLine(" ")
-                    local iconStr   = entry.profIconId and ("|T" .. entry.profIconId .. ":14:14:0:0|t ") or ""
+                    local iconStr    = entry.profIconId and ("|T" .. entry.profIconId .. ":14:14:0:0|t ") or ""
                     local brandColor = "|c" .. (addon.BrandColor or "ffDA8CFF")
-                    GameTooltip:AddLine(iconStr .. brandColor .. "[TOGPM]|r " .. table.concat(entry.crafters, ", "), 1, 1, 1, true)
+                    local colorOnline  = "|c" .. (addon.ColorOnline  or "ffffffff")
+                    local colorOffline = "|c" .. (addon.ColorOffline or "ffaaaaaa")
+                    local colorYou     = "|c" .. (addon.ColorYou     or addon.BrandColor or "ffDA8CFF")
+                    local parts = {}
+                    for _, c in ipairs(entry.crafters) do
+                        local col = c.isYou and colorYou or (c.online and colorOnline or colorOffline)
+                        table.insert(parts, col .. c.name .. "|r")
+                    end
+                    GameTooltip:AddLine(iconStr .. brandColor .. "[TOGPM]|r " .. table.concat(parts, ", "), 1, 1, 1, true)
                 end
                 GameTooltip:Show()
                 return
@@ -717,8 +760,15 @@ function BrowserTab:UpdateVirtualRows()
             -- time; nil for wire-received entries → plain white name).
             local colorHex = entry.itemLink and entry.itemLink:match("|c(ff%x%x%x%x%x%x)|H")
             f.nameLbl:SetText(colorHex and ("|c" .. colorHex .. entry.name .. "|r") or entry.name)
-            local cc = "|c" .. (addon.ColorCrafter or "ffaaaaaa")
-            f.crafterLbl:SetText(cc .. table.concat(entry.crafters, cc .. ", ") .. "|r")
+            local colorOnline  = "|c" .. (addon.ColorOnline  or "ffffffff")
+            local colorOffline = "|c" .. (addon.ColorOffline or "ffaaaaaa")
+            local colorYou     = "|c" .. (addon.ColorYou     or addon.BrandColor or "ffDA8CFF")
+            local parts = {}
+            for _, c in ipairs(entry.crafters) do
+                local col = c.isYou and colorYou or (c.online and colorOnline or colorOffline)
+                table.insert(parts, col .. c.name .. "|r")
+            end
+            f.crafterLbl:SetText(table.concat(parts, ", "))
             -- [Bank] button: extract numeric item ID from itemLink, check TOGBankClassic stock.
             local bankItemId = entry.itemLink and tonumber(entry.itemLink:match("item:(%d+)"))
             if bankItemId and _G["TOGBankClassic_Guild"] and addon.Bank.GetStock(bankItemId) > 0 then

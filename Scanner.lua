@@ -860,6 +860,8 @@ function Scanner:BuildPayload()
         cooldowns       = cdPayload,
         specializations = gdb.specializations[charKey] or {},
         timestamp       = now,
+        -- All own characters on this account, so receivers can link alts.
+        accountChars    = addon.guildDb.global.accountChars,
     }
 end
 
@@ -910,6 +912,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     if not gdb.syncTimes       then gdb.syncTimes       = {} end
     if not gdb.specializations then gdb.specializations = {} end
     if not gdb.factions        then gdb.factions        = {} end
+    if not gdb.altGroups       then gdb.altGroups       = {} end
     local now = GetServerTime()
 
     -- Merge profession records into the recipe-centric index.
@@ -941,6 +944,24 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     -- Record sync time.
     if type(data.timestamp) == "number" then
         gdb.syncTimes[charKey] = data.timestamp
+    end
+
+    -- Merge the sender's alt group into altGroups.
+    -- data.accountChars is { ["Name-Realm"] = true } for all their characters.
+    -- We store gdb.altGroups[anyMemberKey] = { key1, key2, ... } so any
+    -- member key can quickly resolve the full alt group.
+    if type(data.accountChars) == "table" and next(data.accountChars) then
+        -- Collect all keys that belong to this alt group.
+        local group = {}
+        for ck in pairs(data.accountChars) do
+            if type(ck) == "string" then
+                table.insert(group, ck)
+            end
+        end
+        -- Write the group under every member key for O(1) lookup.
+        for _, ck in ipairs(group) do
+            gdb.altGroups[ck] = group
+        end
     end
 
     addon:DebugPrint("Scanner: merged data for", charKey, "guild:", guildKey, "from", sender, "(", bytes or 0, "bytes)")

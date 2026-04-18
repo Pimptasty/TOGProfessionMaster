@@ -538,10 +538,31 @@ function CooldownsTab:DrawRow(parent, row, now)
 
     -- ── Column 1: Character (190px) — online=white, offline=grey ─────────────
     local charLbl = AceGUI:Create("InteractiveLabel")
-    local DS = addon.Scanner and addon.Scanner.DS
+    local DS  = addon.Scanner and addon.Scanner.DS
+    local gdb = addon:GetGuildDb()
     local online = DS and DS:IsPlayerOnline(row.charKey) or false
-    local nameColor = online and "|cffffffff" or "|cffaaaaaa"
-    charLbl:SetText(nameColor .. row.shortName .. "|r")
+    local displayName = row.shortName
+    local isYou = addon:IsMyCharacter(row.charKey)
+
+    if isYou then
+        displayName = L["You"]
+    elseif not online and gdb and gdb.altGroups and gdb.altGroups[row.charKey] then
+        -- Crafter offline — check if one of their alts is online.
+        for _, altCk in ipairs(gdb.altGroups[row.charKey]) do
+            if altCk ~= row.charKey and DS and DS:IsPlayerOnline(altCk) then
+                local altShort = altCk:match("^(.-)%-") or altCk
+                displayName = altShort .. " (" .. row.shortName .. ")"
+                online = true
+                break
+            end
+        end
+    end
+
+    local colorYou     = "|c" .. (addon.ColorYou    or addon.BrandColor or "ffDA8CFF")
+    local colorOnline  = "|c" .. (addon.ColorOnline  or "ffffffff")
+    local colorOffline = "|c" .. (addon.ColorOffline or "ffaaaaaa")
+    local nameColor = isYou and colorYou or (online and colorOnline or colorOffline)
+    charLbl:SetText(nameColor .. displayName .. "|r")
     charLbl:SetWidth(190)
     charLbl:SetCallback("OnClick", function(_widget, _event, button)
         if button == "RightButton" then doWhisper(_widget.frame) end

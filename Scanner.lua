@@ -89,11 +89,14 @@ function Scanner:InitDeltaSync()
         -- Another member broadcast their version token; we can request data
         -- if we have no record for them yet (or their data is older than 1 week).
         onVersionReceived = function(sender, _version, _hash)
-            local gdb  = addon:GetGuildDb()
             local norm = DS:NormalizeName(sender)
-            if norm and gdb and not (gdb.guildData and gdb.guildData[norm]) then
-                DS:RequestData(sender)
-            end
+            if not norm then return end
+            local gdb = addon:GetGuildDb()
+            if not gdb then return end
+            local STALE_SECONDS = 7 * 86400
+            local ts = gdb.syncTimes and gdb.syncTimes[norm]
+            if ts and (GetServerTime() - ts) < STALE_SECONDS then return end
+            DS:RequestData(sender)
         end,
     })
 
@@ -377,8 +380,28 @@ end
 
 function Scanner:OnBagCooldownEvent()
     if not addon.isVanilla then return end
+    -- BAG_UPDATE_COOLDOWN fires for every item that gains/loses a cooldown, which
+    -- happens constantly in play (potions, food, engineering items, etc.).
+    -- We only care about the Salt Shaker, and only when its state actually changes.
+    local data   = addon:GetCooldownData()
+    local itemId = data and data.saltShakerItem
+    if not itemId then return end
+
+    -- Skip entirely if the player doesn't own a Salt Shaker.
+    local count = GetItemCount and GetItemCount(itemId, true) or 0
+    if not count or count == 0 then return end
+
+    local gdb     = addon:GetGuildDb()
+    local charKey = addon:GetCharacterKey()
+    if not gdb or not charKey then return end
+
+    local prevExpiry = gdb.cooldowns[charKey] and gdb.cooldowns[charKey][itemId]
     self:ScanCooldowns()
-    self:ScheduleBroadcast()
+    local newExpiry = gdb.cooldowns[charKey] and gdb.cooldowns[charKey][itemId]
+
+    if newExpiry ~= prevExpiry then
+        self:ScheduleBroadcast()
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -884,6 +907,10 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     if not charKey  or type(charKey)  ~= "string" then return end
     if not guildKey or type(guildKey) ~= "string" then return end
 
+    -- Normalize any old "Faction-Realm-GuildName" key from peers who haven't
+    -- updated yet so their data lands in the same bucket as local data.
+    guildKey = addon:NormalizeGuildKey(guildKey)
+
     -- Normalize bare names (same-server senders have no realm suffix).
     local DS = self.DS
     if DS then
@@ -894,8 +921,6 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     if charKey == addon:GetCharacterKey() then return end
 
     -- Resolve (and lazily create) the guild-scoped storage bucket.
-    -- We use the sender's composite guildKey directly so data is always stored
-    -- under the guild it came from, even if the receiver is temporarily guildless.
     local g = addon.guildDb.global.guilds
     if not g[guildKey] then
         g[guildKey] = {

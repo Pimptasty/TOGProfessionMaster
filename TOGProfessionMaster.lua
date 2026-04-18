@@ -275,7 +275,8 @@ end
 
 function addon:DebugPrint(...)
     if not addon.debug then return end
-    Ace:Print("|cffaaaaff[DEBUG]|r", ...)
+    local t = date("%H:%M:%S")
+    Ace:Print("|cffaaaaff[DEBUG " .. t .. "]|r", ...)
 end
 
 -- Build a stable character key used as the primary identifier throughout.

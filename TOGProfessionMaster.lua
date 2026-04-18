@@ -114,6 +114,7 @@ local SLASH_COMMANDS = {
     ["minimap"]   = "ShowMinimapButton",
     ["purge"]      = "OpenPurge",
     ["sync"]       = "ForceSync",
+    ["status"]     = "PrintStatus",
     ["debug"]      = "ToggleDebug",
     ["spellcache"] = "DumpSpellCache",
     ["help"]       = "PrintHelp",
@@ -241,6 +242,7 @@ function Ace:PrintHelp()
     self:Print("  /togpm minimap      — show minimap button")
     self:Print("  /togpm purge        — open purge dialog")
     self:Print("  /togpm sync         — force full guild re-sync")
+    self:Print("  /togpm status       — dump sync/comm diagnostic info")
     self:Print("  /togpm debug        — toggle debug output")
     self:Print("  /togpm help         — show this list")
 end

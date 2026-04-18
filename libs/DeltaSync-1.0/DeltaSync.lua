@@ -494,9 +494,11 @@ function lib:RegisterCommChannels()
         end
 
         -- Step 4: Register comm handlers using lib's own RegisterComm.
+        -- AceComm calls handlers with (prefix, message, distribution, sender).
+        -- The leading _ discards the redundant prefix (already captured in the closure).
         for channelName, prefix in pairs(self.prefixes) do
             local handlerName = "OnComm_" .. channelName
-            lib:RegisterComm(prefix, function(msg, dist, sndr)
+            lib:RegisterComm(prefix, function(_, msg, dist, sndr)
                 lib[handlerName](lib, prefix, msg, dist, sndr)
             end)
             self:Debug("COMMS", "REGISTER", "Registered AceComm channel: %s", prefix)
@@ -755,7 +757,7 @@ function lib:OnComm_RESPONSE(prefix, message, distribution, sender)
     
     -- Notify host addon
     if self.callbacks.onDataReceived then
-        self.callbacks.onDataReceived(sender, data)
+        self.callbacks.onDataReceived(sender, data, #message)
     end
 end
 
@@ -778,7 +780,7 @@ function lib:OnComm_DATA(prefix, message, distribution, sender)
     
     -- Notify host addon
     if self.callbacks.onDataReceived then
-        self.callbacks.onDataReceived(sender, data)
+        self.callbacks.onDataReceived(sender, data, #message)
     end
 end
 
@@ -808,7 +810,7 @@ function lib:OnComm_DELTA(prefix, message, distribution, sender)
 
     -- Notify host addon (they will apply it)
     if self.callbacks.onDataReceived then
-        self.callbacks.onDataReceived(sender, delta)
+        self.callbacks.onDataReceived(sender, delta, #message)
     end
 end
 

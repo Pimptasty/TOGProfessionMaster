@@ -81,8 +81,9 @@ function Scanner:InitDeltaSync()
         end,
 
         -- Incoming guild-member data (full payload or delta).
-        onDataReceived = function(sender, data)
-            Scanner:OnGuildDataReceived(sender, data)
+        -- bytes is the raw wire size passed through by DeltaSync.
+        onDataReceived = function(sender, data, bytes)
+            Scanner:OnGuildDataReceived(sender, data, bytes or 0)
         end,
 
         -- Another member broadcast their version token; we can request data
@@ -223,6 +224,119 @@ function addon:ForceSync()
     Scanner._lastBroadcastAt = 0   -- bypass debounce
     Scanner:BroadcastOwnData()
     addon:Print("Force sync sent.")
+end
+
+-- /togpm status — dump comm/sync diagnostic snapshot to chat.
+function addon:PrintStatus()
+    local sep = "|cffaaaaaa----------------------------------------|r"
+    addon:Print("|cffda8cffTOG Profession Master — Status|r")
+    addon:Print(sep)
+
+    -- ── DeltaSync ────────────────────────────────────────────────────────────
+    local DS = Scanner.DS
+    if not DS then
+        addon:Print("|cffff4444DeltaSync: NOT initialized|r")
+        addon:Print("  └ Scanner.DS is nil — was PLAYER_ENTERING_WORLD missed?")
+    else
+        addon:Print("|cff00ff00DeltaSync: initialized|r  namespace=" .. tostring(DS.namespace))
+        addon:Print("  AceComm=" .. tostring(DS.useAceComm)
+            .. "  AceCommQueue=" .. tostring(DS.useAceCommQueue))
+
+        -- Communication prefixes (7 channels)
+        if DS.prefixes then
+            local pList = {}
+            for k, v in pairs(DS.prefixes) do
+                table.insert(pList, k .. "=" .. v)
+            end
+            table.sort(pList)
+            addon:Print("  Prefixes: " .. table.concat(pList, "  "))
+        end
+    end
+
+    addon:Print(sep)
+
+    -- ── Guild ────────────────────────────────────────────────────────────────
+    local guildKey = addon:GetGuildKey()
+    addon:Print("Guild key: " .. (guildKey or "|cffff4444(not in a guild)|r"))
+
+    local gdb = addon:GetGuildDb()
+    if gdb then
+        local memberCount, profCount, cdCount = 0, 0, 0
+        for _ in pairs(gdb.guildData  or {}) do memberCount = memberCount + 1 end
+        for _ in pairs(gdb.recipes    or {}) do profCount   = profCount   + 1 end
+        for _ in pairs(gdb.cooldowns  or {}) do cdCount     = cdCount     + 1 end
+        addon:Print("  Stored members=" .. memberCount
+            .. "  profession buckets=" .. profCount
+            .. "  cooldown members=" .. cdCount)
+        addon:Print("  Hash cache entries: " ..
+            (function()
+                local n = 0
+                for _ in pairs(gdb.hashes or {}) do n = n + 1 end
+                return n
+            end)())
+    else
+        addon:Print("  |cffff4444No guild DB available|r")
+    end
+
+    addon:Print(sep)
+
+    -- ── Online roster ────────────────────────────────────────────────────────
+    if DS then
+        local online = DS:GetOnlineGuildMembers()
+        addon:Print("Online guild members: " .. #online)
+        for _, name in ipairs(online) do
+            local inGdb = gdb and gdb.guildData and gdb.guildData[name]
+            addon:Print("  " .. name .. (inGdb and "" or "  |cffff4444(no data)|r"))
+        end
+    end
+
+    addon:Print(sep)
+
+    -- ── P2P state ─────────────────────────────────────────────────────────────
+    if DS and DS.p2p then
+        local p2p = DS.p2p
+        local totalSends = 0
+        for _, c in pairs(p2p.activeSends or {}) do totalSends = totalSends + c end
+        addon:Print("P2P  active sessions=" .. (p2p.activeSessions or 0)
+            .. "  active sends=" .. totalSends
+            .. "  collecting=" .. tostring(p2p.isCollecting or false)
+            .. "  catchUpCycles=" .. (p2p.catchUpCycles or 0))
+
+        -- List in-flight sessions
+        local sessions = p2p.sessions or {}
+        local count = 0
+        for _ in pairs(sessions) do count = count + 1 end
+        if count > 0 then
+            addon:Print("  Active sessions:")
+            for sid, s in pairs(sessions) do
+                addon:Print(("    [%s] %s → %s (%s)"):format(
+                    s.state or "?", s.itemKey or "?", s.peer or "?", sid))
+            end
+        else
+            addon:Print("  No active P2P sessions")
+        end
+    else
+        addon:Print("P2P: not initialized")
+    end
+
+    addon:Print(sep)
+
+    -- ── Broadcast debounce ───────────────────────────────────────────────────
+    local lastBc  = Scanner._lastBroadcastAt or 0
+    local elapsed = (GetServerTime() - lastBc)
+    addon:Print("Last broadcast: "
+        .. (lastBc > 0 and (elapsed .. "s ago") or "never")
+        .. "  debounce=" .. Scanner._broadcastSeconds .. "s")
+
+    -- ── Sync log summary ─────────────────────────────────────────────────────
+    local log = addon.guildDb and addon.guildDb.global.syncLog or {}
+    local sends, recvs = 0, 0
+    for _, e in ipairs(log) do
+        if e.event == "send" then sends = sends + 1
+        elseif e.event == "recv" then recvs = recvs + 1 end
+    end
+    addon:Print("Sync log: " .. #log .. " entries  sends=" .. sends .. "  recvs=" .. recvs)
+    addon:Print(sep)
 end
 
 -- ---------------------------------------------------------------------------
@@ -672,12 +786,14 @@ function Scanner:BroadcastOwnData()
         return
     end
 
-    local payload = self:BuildPayload()
+    local payload    = self:BuildPayload()
+    local serialized = DS:SerializeData(payload)
+    local bytes      = serialized and #serialized or 0
     DS:BroadcastData(payload)
     self._lastBroadcastAt = now
-    addon:DebugPrint("Scanner: broadcast sent for", payload.charKey)
+    addon:DebugPrint("Scanner: broadcast sent for", payload.charKey, "(", bytes, "bytes)")
     if addon.callbacks then
-        addon.callbacks:Fire("SYNC_SENT", "guild", 0)
+        addon.callbacks:Fire("SYNC_SENT", "guild", bytes)
     end
 end
 
@@ -685,9 +801,13 @@ end
 function Scanner:SendDataTo(target)
     local DS = self.DS
     if not DS then return end
-    DS:SendData(target, self:BuildPayload(), false)
+    local payload    = self:BuildPayload()
+    local serialized = DS:SerializeData(payload)
+    local bytes      = serialized and #serialized or 0
+    DS:SendData(target, payload, false)
+    addon:DebugPrint("Scanner: sent data to", target, "(", bytes, "bytes)")
     if addon.callbacks then
-        addon.callbacks:Fire("SYNC_SENT", target, 0)
+        addon.callbacks:Fire("SYNC_SENT", target, bytes)
     end
 end
 
@@ -750,7 +870,8 @@ end
 --- Called by DeltaSync when a guild member's data arrives.
 -- @param sender  normalised "Name-Realm" string from DeltaSync
 -- @param data    table as built by BuildPayload() on the sender's machine
-function Scanner:OnGuildDataReceived(sender, data)
+-- @param bytes   raw wire size of the message in bytes
+function Scanner:OnGuildDataReceived(sender, data, bytes)
     if not data or type(data) ~= "table" then
         addon:DebugPrint("Scanner: malformed data from", sender)
         return
@@ -816,7 +937,7 @@ function Scanner:OnGuildDataReceived(sender, data)
         gdb.syncTimes[charKey] = data.timestamp
     end
 
-    addon:DebugPrint("Scanner: merged data for", charKey, "guild:", guildKey, "from", sender)
+    addon:DebugPrint("Scanner: merged data for", charKey, "guild:", guildKey, "from", sender, "(", bytes or 0, "bytes)")
 
     -- Rebuild all hash levels to reflect the newly merged data.
     -- Also notifies P2P that leaf sessions for this character are complete,
@@ -838,7 +959,7 @@ function Scanner:OnGuildDataReceived(sender, data)
     end
 
     if addon.callbacks then
-        addon.callbacks:Fire("SYNC_RECV", sender, 0)
+        addon.callbacks:Fire("SYNC_RECV", sender, bytes or 0)
         addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey)
     end
 end

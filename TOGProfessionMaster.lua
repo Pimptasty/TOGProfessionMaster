@@ -51,10 +51,11 @@ addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
 -- AceDB schema
 -- Guild data lives in `db.global` (account-wide) so all characters on the
 -- same account share one copy, regardless of which realm they are on.
--- The composite key "Faction-NormalizedRealm-GuildName" (built by GetGuildKey)
--- segregates guilds cleanly while treating connected-realm clusters as one
--- unit — GetNormalizedRealmName() returns the same string for every realm in
--- a cluster, unlike GetRealmName() which differs per physical realm.
+-- The composite key "Faction-GuildName" (built by GetGuildKey) segregates
+-- guilds cleanly. The realm is intentionally omitted — all realms in a
+-- connected-realm cluster share the same guild roster, so including the realm
+-- would create separate buckets for the same guild. Guild names cannot contain
+-- hyphens in WoW, so "Faction-GuildName" is unambiguous.
 -- Per-character UI state lives in `db.char`.
 -- ---------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------
@@ -180,6 +181,55 @@ function Ace:OnPlayerEnteringWorld(event, isInitialLogin, isReloadingUi)
         ac[staleName .. "-"] = nil
     end
 
+    -- Migrate old "Faction-Realm-GuildName" guild buckets to the new
+    -- "Faction-GuildName" format so connected-realm peers share one bucket.
+    local newKey = addon:GetGuildKey()
+    if newKey then
+        local g = addon.guildDb.global.guilds
+        local dst = addon:GetGuildDb()  -- creates/returns the new bucket
+        local toMigrate = {}
+        for key in pairs(g) do
+            if key ~= newKey and addon:NormalizeGuildKey(key) == newKey then
+                table.insert(toMigrate, key)
+            end
+        end
+        for _, key in ipairs(toMigrate) do
+            local src = g[key]
+            -- recipes: profId → recipeId → {crafters, ...}
+            for profId, recipes in pairs(src.recipes or {}) do
+                if not dst.recipes[profId] then dst.recipes[profId] = {} end
+                for recipeId, rd in pairs(recipes) do
+                    if not dst.recipes[profId][recipeId] then
+                        dst.recipes[profId][recipeId] = rd
+                    else
+                        local drd = dst.recipes[profId][recipeId]
+                        if not drd.crafters then drd.crafters = {} end
+                        for ck, ci in pairs(rd.crafters or {}) do
+                            if not drd.crafters[ck] then drd.crafters[ck] = ci end
+                        end
+                    end
+                end
+            end
+            -- Flat char-keyed tables: copy if destination has no entry.
+            for _, field in ipairs({"skills","guildData","cooldowns","specializations","factions","altGroups"}) do
+                if src[field] then
+                    if not dst[field] then dst[field] = {} end
+                    for ck, v in pairs(src[field]) do
+                        if not dst[field][ck] then dst[field][ck] = v end
+                    end
+                end
+            end
+            -- syncTimes: take the newer timestamp.
+            for ck, ts in pairs(src.syncTimes or {}) do
+                if not dst.syncTimes[ck] or ts > dst.syncTimes[ck] then
+                    dst.syncTimes[ck] = ts
+                end
+            end
+            g[key] = nil
+            addon:DebugPrint("Migrated guild bucket", key, "→", newKey)
+        end
+    end
+
     -- Modules hook into this via AceEvent on their own tables.
 end
 
@@ -288,15 +338,29 @@ function addon:GetCharacterKey(name, realm)
     return (name or UnitName("player")) .. "-" .. r
 end
 
--- Return a composite guild key: "Faction-NormalizedRealm-GuildName".
--- This is the primary key used in db.global.guilds.
+-- Return a composite guild key: "Faction-GuildName".
+-- Realm is intentionally omitted — connected-realm clusters share one guild
+-- roster, so including the realm would splinter one guild into many buckets.
+-- Guild names in WoW cannot contain hyphens, so this format is unambiguous.
 -- Returns nil when the player is not in a guild.
 function addon:GetGuildKey()
     local guildName = GetGuildInfo("player")
     if not guildName or guildName == "" then return nil end
     local faction = UnitFactionGroup("player") or "Neutral"
-    local realm   = (GetNormalizedRealmName and GetNormalizedRealmName()) or ""
-    return faction .. "-" .. realm .. "-" .. guildName
+    return faction .. "-" .. guildName
+end
+
+-- Normalize a guild key that may be in the old "Faction-Realm-GuildName"
+-- format (produced by pre-fix versions) to the new "Faction-GuildName" format.
+-- WoW realm names are always a single alphanumeric token (no spaces/hyphens),
+-- so we can reliably strip the middle component.
+function addon:NormalizeGuildKey(key)
+    -- Match: faction (no hyphens) – realm (alphanumeric only) – guild name
+    local faction, _, guild = key:match("^([^%-]+)%-([%a%d]+)%-(.+)$")
+    if faction then
+        return faction .. "-" .. guild
+    end
+    return key  -- Already new format: "Faction-GuildName"
 end
 
 -- Return (and lazily create) the guild-scoped sub-table for the current guild.

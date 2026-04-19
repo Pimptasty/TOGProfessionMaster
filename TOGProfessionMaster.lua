@@ -91,10 +91,12 @@ local GUILD_DB_DEFAULTS = {
 local SETTINGS_DEFAULTS = {
     profile = {
         -- UI
-        minimapButton   = true,
-        minimapPos      = 220,   -- LibDBIcon angle in degrees
-        mailReadyOnly   = false,
-        debug           = false,
+        minimapButton     = true,
+        minimapPos        = 220,   -- LibDBIcon angle in degrees
+        mailReadyOnly     = false,
+        debug             = false,
+        persistProfFilter = false,
+        savedProfFilter   = 0,
     },
     char = {
         -- Shopping list: [spellId] = { quantity = N }

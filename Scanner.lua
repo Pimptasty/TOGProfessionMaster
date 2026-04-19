@@ -458,7 +458,8 @@ function Scanner:ScanTradeSkillInto(charKey, isLinked)  --luacheck: ignore isLin
                 for r = 1, numReagents do
                     local rName, _, rCount = GetTradeSkillReagentInfo(i, r)
                     if rName then
-                        table.insert(reagents, { name = rName, count = rCount or 1 })
+                        local rLink = GetTradeSkillReagentItemLink and GetTradeSkillReagentItemLink(i, r)
+                        table.insert(reagents, { name = rName, count = rCount or 1, itemLink = rLink })
                     end
                 end
                 recipes[recipeId] = { recipeName, GetTradeSkillIcon(i), isSpell, spellId, itemLink, reagents, recipeLink }

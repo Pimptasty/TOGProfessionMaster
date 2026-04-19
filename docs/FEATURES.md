@@ -259,3 +259,5 @@ Supported interface versions: Vanilla (1.x) · TBC (2.x) · Wrath (3.x) · Cata 
 Quick notes — not yet designed or scheduled.
 
 - **Professions tab tooltip — TOGBank stock line:** When hovering a recipe row, append a "In bank: N" line to the custom tooltip if `TOGBankClassic_Guild` has stock of the crafted item.
+
+- **Equipment slot filter in Guild Profession Browser** — A filter dropdown or button bar in the browser that lets the player pick an equipment slot (Head, Shoulder, Back, Chest, etc.) to show all craftable items of that type across *all* professions at once. For example selecting "Back" would surface cloaks made by Leatherworking, Tailoring, and Blacksmithing in a single merged list, each row labelled with the crafting profession and the guild member who knows it. Useful when a player knows what slot they need but not which profession covers it. Requires item slot data added to the per-expansion skills tables (currently only `spellId`, `itemId`, and `reagents` are stored). Requested by user April 2026.

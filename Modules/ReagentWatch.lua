@@ -48,7 +48,6 @@ end
 -- ---------------------------------------------------------------------------
 
 --- Add an item to the watch list.
---- @param itemId  number   raw item ID
 function RW:Watch(itemId)
     itemId = tonumber(itemId)
     if not itemId then return end

@@ -75,6 +75,7 @@
         "GetTradeSkillIcon",
         "GetTradeSkillNumReagents",
         "GetTradeSkillReagentInfo",
+        "GetTradeSkillReagentItemLink",
         "GetCraftDisplaySkillLine",
         "GetNumCrafts",
         "GetCraftInfo",

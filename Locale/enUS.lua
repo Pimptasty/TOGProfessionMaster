@@ -83,8 +83,10 @@ L["ColItem"]                = "Item"
 -- Settings
 -- ---------------------------------------------------------------------------
 L["SettingsDisplayHeader"]  = "Display"
-L["SettingsMinimapBtn"]     = "Show minimap button"
-L["SettingsMinimapBtnDesc"] = "Show or hide the minimap launcher button."
+L["SettingsMinimapBtn"]          = "Show minimap button"
+L["SettingsMinimapBtnDesc"]      = "Show or hide the minimap launcher button."
+L["SettingsPersistProfFilter"]     = "Remember profession filter"
+L["SettingsPersistProfFilterDesc"] = "Restore the selected profession when you log in or reload."
 L["SettingsCooldownsHeader"]= "Cooldowns"
 L["SettingsMailReadyOnly"]  = "Mail: show ready cooldowns only"
 L["SettingsMailReadyOnlyDesc"] = "When composing supply mail from the cooldowns panel, only list guild members whose cooldown is ready."

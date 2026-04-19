@@ -49,6 +49,20 @@ local OPTIONS = {
             end,
         },
 
+        persistProfFilter = {
+            name  = L["SettingsPersistProfFilter"],
+            desc  = L["SettingsPersistProfFilterDesc"],
+            type  = "toggle",
+            order = 3,
+            get   = function() return Ace.db.profile.persistProfFilter end,
+            set   = function(_, val)
+                Ace.db.profile.persistProfFilter = val
+                if not val then
+                    Ace.db.profile.savedProfFilter = 0
+                end
+            end,
+        },
+
         -- ---- Cooldowns -----------------------------------------------------
         cooldownsHeader = {
             name  = L["SettingsCooldownsHeader"],

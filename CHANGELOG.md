@@ -14,6 +14,10 @@
 
 - **Shopping list alert toggle always staying enabled** — The `!` button on shopping list rows used `cur and nil or true` to toggle, which always evaluates to `true` in Lua because `nil` is falsy. Replaced with an explicit if/else. Location: `GUI/BrowserTab.lua`.
 
+### Improvements
+
+- **VersionCheck-1.0 version field wired correctly** — `Ace.Version` was nil, so VersionCheck-1.0 fell back to `GetAddOnMetadata` to read the version string. Fixed by setting `self.Version = addon.Version` on the Ace object in `OnInitialize` before calling `VC:Enable(self)`, so the library reads the version directly without the fallback. Location: `TOGProfessionMaster.lua`.
+
 ---
 
 ## [v0.0.15] (2026-04-19) - Reagent Tracker & Professions Tab Master-Detail Layout

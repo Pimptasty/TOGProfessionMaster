@@ -147,6 +147,10 @@ function Ace:OnInitialize()
     -- Restore debug flag from profile so DebugPrint works before OnEnable.
     addon.debug = self.db.profile.debug
 
+    -- Expose version on the Ace object so VersionCheck-1.0 reads it directly
+    -- from hostEntry.host.Version rather than falling back to GetAddOnMetadata.
+    self.Version = addon.Version
+
     -- Register with VersionCheck-1.0 so we participate in guild version
     -- broadcasts.  VersionCheck fires after PLAYER_ENTERING_WORLD so the
     -- guild channel is available by the time it broadcasts.

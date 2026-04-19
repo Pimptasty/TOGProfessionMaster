@@ -31,32 +31,28 @@ local TAB_DEFS = {
 -- ---------------------------------------------------------------------------
 -- ESC proxy
 -- ---------------------------------------------------------------------------
--- One invisible frame registered in UISpecialFrames handles all ESC presses
--- while the main window is open:
---   • First press  → closes all open popups (recipe popup, group popup)
---   • Second press → closes the main window
--- BrowserTab no longer registers TOGPMRecipePopup in UISpecialFrames; this
--- proxy owns ESC for the entire addon.
+-- An invisible frame registered in UISpecialFrames at load time intercepts
+-- every ESC press while the main window is open.  UIParent_HandleEscape
+-- iterates UISpecialFrames FORWARD and stops after hiding the first visible
+-- entry — so this proxy (registered before the later-created AceGUI frame)
+-- always fires first, giving us full control over close priority.
+--
+--   First ESC  → close ALL open popups simultaneously, then re-arm
+--   Second ESC → close the main window
 
 local _escProxy = CreateFrame("Frame", "TOGPMEscProxy", UIParent)
 _escProxy:SetSize(1, 1)
 _escProxy:SetAlpha(0)
 _escProxy:SetPoint("CENTER")
+_escProxy:Hide()
 tinsert(UISpecialFrames, "TOGPMEscProxy")
 
 _escProxy:SetScript("OnHide", function()
-    if not MainWindow.frame then return end  -- window not open; guard re-entry
+    if not MainWindow.frame then return end
 
     local closedAny = false
 
-    -- Recipe popup (BrowserTab)
-    local bt = addon.BrowserTab
-    if bt and bt._popup and bt._popup.frame and bt._popup.frame:IsShown() then
-        bt._popup:Hide()
-        closedAny = true
-    end
-
-    -- Group / transmute popup (CooldownsTab)
+    -- Group / transmute popup (CooldownsTab) — raw frame, not in UISpecialFrames
     local ct = addon.CooldownsTab
     if ct and ct._groupPopup and ct._groupPopup:IsShown() then
         ct._groupPopup:Hide()
@@ -64,13 +60,19 @@ _escProxy:SetScript("OnHide", function()
         closedAny = true
     end
 
+    -- Bank request dialog (Compat.lua)
+    local bd = _G["TOGPMBankRequestDialog"]
+    if bd and bd:IsShown() then
+        bd:Hide()
+        closedAny = true
+    end
+
     if closedAny then
-        -- Re-show after this frame so the next ESC can close the main window.
+        -- Re-arm after one frame so the next ESC closes the main window.
         C_Timer.After(0, function()
             if MainWindow.frame then _escProxy:Show() end
         end)
     else
-        -- No popups open — close the main window.
         MainWindow:Close()
     end
 end)
@@ -102,8 +104,8 @@ function MainWindow:Open(tabKey)
     f:SetCallback("OnClose", function(_widget)
         self.frame = nil
         self.tabs  = nil
-        AceGUI:Release(_widget)
         _escProxy:Hide()
+        AceGUI:Release(_widget)
     end)
 
     -- Shrink the default status bar right edge to create room for the help icon.
@@ -193,8 +195,7 @@ function MainWindow:Open(tabKey)
     self.frame = f
     self.tabs  = tg
 
-    _escProxy:Show()  -- arm ESC handling for this window session
-
+    _escProxy:Show()
     tg:SelectTab(tabKey or self.activeTab or "browser")
 end
 

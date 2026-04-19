@@ -858,10 +858,10 @@ function BrowserTab:BuildPool(parent)
             local entry = f._entry
             if not entry then return end
             addon.Tooltip.Owner(f)
-            if entry.recipeLink then
+            -- Only use recipeLink if it is a real item link; enchanting stores
+            -- enchant:SPELLID here which produces an unhelpful tooltip.
+            if entry.recipeLink and entry.recipeLink:find("|Hitem:") then
                 GameTooltip:SetHyperlink(entry.recipeLink)
-            elseif entry.spellId then
-                GameTooltip:SetSpellByID(entry.spellId)
             elseif entry.reagents and #entry.reagents > 0 then
                 local parts = {}
                 for _, r in ipairs(entry.reagents) do
@@ -873,7 +873,8 @@ function BrowserTab:BuildPool(parent)
                 GameTooltip:ClearLines()
                 GameTooltip:AddLine("|cffffff00" .. header .. "|r")
                 GameTooltip:AddLine(reagentLine, 1, 1, 1, true)
-                if entry.itemLink then
+                -- Only scrape crafted-item tooltip for real item links (not enchant:).
+                if entry.itemLink and entry.itemLink:find("|Hitem:") then
                     local scraper = GetItemScraper()
                     scraper:ClearLines()
                     scraper:SetHyperlink(entry.itemLink)
@@ -901,8 +902,10 @@ function BrowserTab:BuildPool(parent)
                 end
                 GameTooltip:Show()
                 return
-            elseif entry.itemLink then
+            elseif entry.itemLink and entry.itemLink:find("|Hitem:") then
                 GameTooltip:SetHyperlink(entry.itemLink)
+            elseif entry.spellId then
+                GameTooltip:SetSpellByID(entry.spellId)
             elseif entry.isSpell then
                 GameTooltip:SetSpellByID(entry.id)
             else
@@ -1162,7 +1165,8 @@ function BrowserTab:DrawDetail(entry)
     self._dpName:SetText("|c" .. titleColor .. entry.name .. "|r")
 
     -- Tooltip + shift-click to insert link on the header button
-    local nameLink = entry.itemLink or entry.recipeLink
+    local nameLink = (entry.itemLink   and entry.itemLink:find("|Hitem:")   and entry.itemLink)
+                 or (entry.recipeLink and entry.recipeLink:find("|Hitem:") and entry.recipeLink)
     if nameLink then
         self._dpHdrBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(self._dpHdrBtn)

@@ -589,7 +589,17 @@ function Scanner:ScanCraftSkillInto(charKey)
             local spellId = link and tonumber(link:match("enchant:(%d+)"))
             if spellId then
                 local craftIcon = GetCraftIcon and GetCraftIcon(i)
-                recipes[spellId] = { craftName, craftIcon }
+                local reagents = {}
+                local numR = GetCraftNumReagents and GetCraftNumReagents(i) or 0
+                for r = 1, numR do
+                    local rName, _, rCount = GetCraftReagentInfo(i, r)
+                    if rName then
+                        local rLink = GetCraftReagentItemLink and GetCraftReagentItemLink(i, r)
+                        table.insert(reagents, { name = rName, count = rCount or 1, itemLink = rLink })
+                    end
+                end
+                -- [1]=name [2]=icon [3]=isSpell [4]=spellId [5]=itemLink [6]=reagents
+                recipes[spellId] = { craftName, craftIcon, true, nil, nil, reagents }
             end
         end
     end

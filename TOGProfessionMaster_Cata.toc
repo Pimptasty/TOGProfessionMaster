@@ -34,5 +34,6 @@ GUI\MainWindow.lua
 GUI\BrowserTab.lua
 GUI\CooldownsTab.lua
 GUI\ShoppingListTab.lua
+GUI\ReagentTracker.lua
 GUI\Settings.lua
 Tooltip.lua

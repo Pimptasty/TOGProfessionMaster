@@ -268,9 +268,7 @@ function addon:OpenBrowser()
     MainWindow:Toggle("browser")
 end
 
-function addon:OpenReagents()
-    MainWindow:Toggle("browser")
-end
+-- addon:OpenReagents() is defined in GUI/ReagentTracker.lua
 
 -- ---------------------------------------------------------------------------
 -- React to guild data updates from Scanner

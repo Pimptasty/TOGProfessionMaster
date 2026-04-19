@@ -128,6 +128,40 @@ All tabs follow the same structure:
 - **TOGBankClassic** — when loaded, adds "Bank" stock buttons in the recipe browser
 - **GreenWall** — when loaded, cooldown announcements relay to confederate guild channel
 
+## Changelog & Commit Process (Always Follow)
+
+**Before every commit, you MUST:**
+
+1. Ask the user: "What version should I use for this commit? (current latest is vX.X.Y)" — check `CHANGELOG.md` for the current latest.
+2. Wait for their answer before writing the changelog entry or running `git commit`.
+3. Stage **all** modified and untracked addon files — never cherry-pick only the files you worked on. Run `git status` first and add everything relevant.
+
+**Changelog rules:**
+
+- `CHANGELOG.md` lives at the repo root. Update it on every commit — never skip it.
+- Always prepend a new entry. Never edit existing entries.
+
+**Format:**
+
+```markdown
+## [v0.0.X] (YYYY-MM-DD) - Short Title
+
+### New Features
+- **Feature name** — What it does, why it matters, where to find it. Location: `GUI/File.lua`.
+
+### Bug Fixes
+- **Bug description** — Root cause and fix. Location: `Module/File.lua`.
+
+### Improvements
+- **Improvement** — What changed and why.
+
+---
+```
+
+- Increment patch (Z) for bug fixes/polish; minor (Y) for new user-facing features.
+- Today's date is always available in the system context as `currentDate`.
+- File locations reference TOGProfessionMaster paths (e.g. `GUI/BrowserTab.lua`), not copy-addon paths.
+
 ## Common Slash Commands
 
 ```text

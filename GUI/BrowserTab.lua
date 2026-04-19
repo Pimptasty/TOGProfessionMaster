@@ -693,6 +693,7 @@ end
 
 function BrowserTab:RefreshShoppingList()
     if not self._container then return end
+    if addon.ReagentTracker then addon.ReagentTracker:QueueRefresh() end
 
     if self._slSection then
         local bl    = Ace.db.char.shoppingList

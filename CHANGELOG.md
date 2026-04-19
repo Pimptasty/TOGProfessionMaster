@@ -1,158 +1,203 @@
 # TOG Profession Master Changelog
 
-## [v1.1.5] (2026-04-15) - TBC Compatibility Fix
+## [v0.0.15] (2026-04-19) - Reagent Tracker & Professions Tab Master-Detail Layout
 
 ### New Features
 
-- **`[Bank]` button in the Skills List and Bucket List panels** — A `[Bank]` button now appears next to any craftable item that TOGBankClassic currently has in guild-bank stock. In the Skills List panel the button sits to the right of the item name; in the Bucket List panel it sits to the left of the craft `[x]` button. Clicking it opens the TOGBankClassic bank-request dialog pre-filled with the item. The button is hidden when TOGBankClassic is not loaded or when the item is not in stock, so it never clutters rows that don't need it. Location: `views/skills-list-panel.lua`, `views/bucket-list-panel.lua`.
+- **Reagent Tracker window** — Standalone floating window (no backdrop or border) opened by right-clicking the minimap button or `/togpm reagents`. Consolidates every reagent across all shopping list entries (e.g. 1 Runecloth from one recipe + 10 from another = 11 required). Each row shows the item icon, name coloured by item rarity, a have/need count (green = satisfied, yellow = partial, red = none), and a `[Bank]` button when a TOGBankClassic banker alt has stock. "Have" is live player bags + all banker alt stock via `TOGBankClassic_Guild`. Window position is saved per character. Refreshes automatically on `BAG_UPDATE` and whenever the shopping list changes. Location: `GUI/ReagentTracker.lua`.
 
-- **Full reagent data for all expansions + multi-spell cooldown grouping** ([CD-016]) — `GetReagents()` and `GetTransmuteReagents()` are now fully populated for TBC, Wrath, Cata, and MoP. Multi-spell groups — Dreamcloth (×5), Inscription Research (×2), JC Daily Cut (×7), Magnificence (×2), BS Ingot (×2) — now collapse into a single row with a click popup listing each individual spell and its reagent, using the same pattern as the Transmute group. Location: `models/cooldown-ids.lua` (`GetCooldownGroups()`, `GetCooldownGroupSet()`), `services/cooldowns-service.lua`, `views/cooldowns-panel.lua`.
+- **Master-detail split layout in Professions tab** — The floating recipe popup is replaced by a persistent right-side detail panel (268 px wide) inline in the Professions tab. Clicking any recipe row populates the panel without opening a separate window. The panel shows: recipe icon + name (hover for item tooltip, shift-click to insert link), right-justified shopping list qty controls (`−` qty `+` `×`), per-reagent `[Bank]` buttons, and full crafter list with right-click-to-whisper. Location: `GUI/BrowserTab.lua`.
+
+- **`[Bank]` button in recipe list rows** — Each left-column recipe row now shows a `[Bank]` button when any reagent is in TOGBankClassic stock. Recipe name column widened from 150 to 160 px; crafter column narrowed to RIGHT−56 to accommodate. Location: `GUI/BrowserTab.lua` `BuildPool()`, `UpdateVirtualRows()`.
 
 ### Bug Fixes
 
-- **Movement keys blocked / search box auto-focused on login** — Two related issues prevented normal movement while the addon window was open. (1) The main professions frame called `EnableKeyboard()` without propagating unhandled keys, swallowing W/A/S/D and arrow input. Fixed by adding `SetPropagateKeyboardInput(true)` as the default; the `OnKeyDown` handler now calls `SetPropagateKeyboardInput(false)` only for ESC and ENTER. (2) `SelectTab(1)` was calling `FocusSearch()` on every tab switch and window open, which after a `/reload` stole keyboard focus to the search EditBox and blocked movement keys. Fixed by removing the automatic `FocusSearch()` call from `SelectTab`; the search box still auto-focuses when the player explicitly picks a profession or addon from the dropdowns. Location: `views/professions-view.lua`.
+- **Bank buttons missing for ~5 minutes after login** — `TOGBankClassic_Guild.Info` is `nil` until `GUILD_RANKS_UPDATE` fires. Fixed by registering a one-shot event watcher in `FillList()` that triggers a deferred refresh of the recipe list, detail panel, and shopping list section once bank data is ready. Location: `GUI/BrowserTab.lua`.
 
-- **`GuildRoster()` crash on TBC+ clients** ([API-006]) — `LibGuildRoster-1.0` called the global `GuildRoster()` unconditionally in `OnPlayerLogin`, the `OnGuildRosterUpdate` retry loop, and the `OnChatMsgSystem` guild-join handler. In TBC Classic (2.5.x) and all later clients this global was removed in favour of `C_GuildInfo.GuildRoster()`. On TBC+ the call during `PLAYER_LOGIN` threw `attempt to call global 'GuildRoster' (a nil value)`, preventing the guild roster from ever populating and breaking all guild-membership checks and online-status detection. Fixed by resolving the correct function at load time: `local RequestGuildRoster = (C_GuildInfo and C_GuildInfo.GuildRoster) or GuildRoster`. All three call sites now use `RequestGuildRoster()`. Classic Era (1.x) is unaffected — it continues to call the original global. Location: `libs/LibGuildRoster-1.0/LibGuildRoster-1.0.lua`.
+- **ESC proxy cleanup** — Removed stale popup check from the ESC proxy `OnHide` handler; the recipe popup no longer exists as a floating frame. Location: `GUI/MainWindow.lua`.
 
 ---
 
-## [v1.1.4] (2026-04-15) - Cooldown Icons, Ready Only Filter & Bug Fixes
-
-### New Features
-
-- **Spell icon in Cooldown column** ([CD-008]) — A 14×14 icon now appears to the left of each cooldown name in the Cooldowns tab. The transmute group row always shows the Alchemy trade icon (`Interface\Icons\Trade_Alchemy`). All other cooldowns use `GetSpellTexture(spellId)`. A new `GetIconItemIds()` method on `cooldown-ids.lua` provides item ID overrides for cooldowns whose spell texture is absent or misleading: Mooncloth (spell 18560) resolves to item 14342, Salt Shaker (item 15846) resolves to its own item icon. Override icons are loaded asynchronously via `ContinueOnItemLoad` when not yet in the client cache. Icon is trimmed with `SetTexCoord(0.08, 0.92, 0.08, 0.92)` to remove the default border. Cooldown text offset shifted right from 192 to 210px to accommodate. Location: `models/cooldown-ids.lua` `GetIconItemIds()`, `views/cooldowns-panel.lua`.
-
-- **"Ready Only" filter toggle** ([CD-009]) — A toggle button in the top-right of the Cooldowns panel header filters the list to show only cooldowns whose timer has expired (i.e. ready to use). The button highlights green when active and reverts to grey when inactive. State is stored on the panel instance and re-applied on every `Refresh()`. Button label and tooltip are localised in all 10 supported languages (`CooldownsFilterReadyOnly`, `CooldownsFilterReadyOnlyTooltip`). Location: `views/cooldowns-panel.lua` `Create()` / `Refresh()`, `models/locales.lua`.
-
-- **Column header sort** ([CD-011]) — Clicking a column header (Character, Cooldown, Time Left) sorts the Cooldowns panel by that column ascending; clicking again toggles to descending. The active column shows a `Interface\Calendar\MoreArrow` indicator (up = asc, down = desc). Sort state (`cdSortCol`, `cdSortDir`) is persisted in `TOGPM_CharacterSettings` so it survives UI reloads. When a column sort is active it fully overrides the default ready-first sort from `GetAllCooldowns()`. Cooldown column sorts by display name (transmute group sorts as "Transmute"); character and cooldown sorts are case-insensitive. Location: `views/cooldowns-panel.lua` `Create()` / `Refresh()`.
-
-- **Mail ready cooldowns only setting** ([CD-017]) — A new "Mail ready cooldowns only" checkbox has been added under a "Cooldowns" section in ESC > Options > Addons > TOG Profession Master. When unchecked (default), the mail icon appears on every cooldown row with a known reagent. When checked, the icon is hidden for any cooldown that isn't yet ready (`remaining > 0`), so mail can only be sent for cooldowns that are up. Setting is stored in `TOGPM_Settings.mailReadyOnly`. Location: `views/settings-view.lua`, `views/cooldowns-panel.lua`, `models/locales.lua`.
-
-- **Cooldown supply mail** ([CD-014]) — A mail icon button (envelope icon, matching TOGBankClassic's style) now appears to the right of the `[Bank]` button on each Cooldowns panel row that has a known reagent. Clicking it opens a pre-composed mail to the cooldown owner: reagents are attached from your bags using a greedy fulfillment algorithm that handles multi-stack attachment and split-stack prompts (matching the TOGBankClassic fulfillment logic). If a stack needs to be split first, a confirmation popup appears — click Split, then click the mail icon again to attach the split stack. The mail subject and body are pre-filled. The same mail icon is available per-spell in the transmute click popup. Requires a mailbox to be open. Location: `views/cooldowns-panel.lua` `CdMail_PrepareSupplyMail()`, `CdMail_CountItemInBags()`, `CdMail_CalculateFulfillmentPlan()`, `StaticPopupDialogs["TOGPM_SPLIT_STACK"]`.
+## [v0.0.14] (2026-04-19) - Restore BrowserTab, CooldownsTab, MainWindow & Compat Work
 
 ### Bug Fixes
 
-- **`[Bank]` button not appearing until tab away** — The bank button show/hide logic was only evaluated in the synchronous `GetItemInfo` path. When the reagent name wasn't yet cached, `ContinueOnItemLoad` set the text but never called the bank button logic, so the button stayed hidden until the next full `Refresh()`. Fixed by extracting `ApplyBankButton(itemId)` as a local helper and calling it from inside the `ContinueOnItemLoad` callback as well as the synchronous path. Location: `views/cooldowns-panel.lua` `Refresh()`.
+- **Restored Apr 18 evening work** — A version-sync script bug was self-copying the wrong directory, silently discarding an evening's worth of changes. Recovered and recommitted: BrowserTab virtual scroll pool, CooldownsTab group/transmute popup, MainWindow ESC proxy wiring, and Compat API shims. Location: `GUI/BrowserTab.lua`, `GUI/CooldownsTab.lua`, `GUI/MainWindow.lua`, `Compat.lua`.
 
-- **Transmute popup mail icon invisible** — The per-spell mail icon button inside the transmute click popup was still using `Interface\GossipFrame\MailGossipIcon` (invisible on Classic Era). Fixed to `Interface\Icons\INV_Letter_15`, matching all other mail buttons. Location: `views/cooldowns-panel.lua` `ShowTransmutePopup()`.
-
-- **Mail icon invisible / bag scan Lua error** — The mail button was using `Interface\GossipFrame\MailGossipIcon` which renders as an invisible texture on Classic Era. Replaced with `Interface\Icons\INV_Letter_15`, matching TOGBankClassic's Fulfill button icon. The bag-scanning helpers (`CdMail_CountItemInBags`, the split-stack popup) were calling the removed Classic Era global `GetContainerNumSlots` (and related globals) instead of `C_Container.*`, causing a Lua error on click. All bag API calls now use `C_Container` exclusively, matching TOGBankClassic. Location: `views/cooldowns-panel.lua`.
-
-- **Ready Only filter showing wrong empty-state text** — When the Ready Only filter was active and no cooldowns were ready, the panel displayed the generic "no data" message that instructs the player to open profession windows. Added a distinct `CooldownsNoReady` locale key ("No cooldowns are currently ready.") shown only when the filter is the reason for an empty list. Location: `views/cooldowns-panel.lua` `Refresh()`, `models/locales.lua`.
+- **Version-sync script self-copy bug** — The `wow-version-replication.ps1` sync script was incorrectly including itself in the source glob, causing it to overwrite the destination copy with stale content. Fixed source path exclusion. Location: `.vscode/tasks.json`.
 
 ---
 
-## [v1.1.3] (2026-04-15) - Transmute Redesign, Reagent Display & TOGBank Integration
-
-### New Features
-
-- **Spell tooltip on cooldown name hover** — Hovering the cooldown name cell in the Cooldowns tab now shows the native WoW spell tooltip (profession name, description, cooldown duration) via `GameTooltip:SetHyperlink`. Works for all spell-based cooldowns. Location: `views/cooldowns-panel.lua`.
-
-- **Per-spell transmute tracking** — Transmutes are now stored individually per spell ID (e.g. Fire→Earth, Air→Water) rather than all under a single canonical ID. This fixes the root cause of transmute entries never appearing for players who don't know the specific water-to-air transmute (spell 17562) used as the old canonical key. `ScanTransmuteCooldown` now finds the active expiry once by scanning all transmute IDs, then seeds an entry under every transmute spell the player knows. `CheckMessage` accumulates transmute IDs permanently so guildmates' known transmutes are retained across sessions. Location: `models/cooldown-ids.lua`, `services/cooldowns-service.lua`.
-
-- **"Transmute" grouped row with click popup** — All of a player's transmutes are collapsed into a single "Transmute" row in the Cooldowns panel. Clicking the row opens a floating popup listing every transmute that player knows (by spell name), each with its own spell tooltip on hover. The popup anchors directly to the right of the "Transmute" text using `GetStringWidth()` and dismisses when clicking outside. Location: `views/cooldowns-panel.lua` `ShowTransmutePopup()`.
-
-- **Reagent column in Cooldowns panel** ([CD-003]) — The primary reagent for each cooldown is now shown right-aligned in the cooldown row (e.g. "Felcloth" for Mooncloth, "Deeprock Salt" for Salt Shaker, the primary input for each transmute). Reagent names are loaded lazily via `ContinueOnItemLoad` when not yet in the client cache. Hovering a reagent name shows the native item tooltip. Shift-clicking inserts an item link into chat. `GetReagents()` and `GetTransmuteReagents()` added to `models/cooldown-ids.lua` (Vanilla only; CD-016 tracks remaining expansion reagent IDs). Location: `models/cooldown-ids.lua`, `views/cooldowns-panel.lua`.
-
-- **TOGBank `[Bank]` button & reagent tooltips** ([CD-004]) — When TOGBankClassic has the cooldown's primary reagent in stock, a `[Bank]` button appears next to the reagent name. Clicking it opens the TOGBank bank request dialog pre-filled for that item. The transmute popup is extended with a reagent column: each row shows the transmute's primary reagent on the right with an item tooltip on hover; clicking with TOGBank stock opens the bank request dialog. `reagentHover` frame is narrowed when the `[Bank]` button is visible to prevent overlap. Location: `views/cooldowns-panel.lua`.
-
-### Improvements
-
-- **"Remaining" column renamed to "Time Left"** ([CD-005]) — The third column header in the Cooldowns panel is now labelled "Time Left" across all 10 supported languages (EN, DE, RU, ES, FR, IT, KO, PT, zhCN, zhTW). Hovering the column header now shows a tooltip explaining what the column displays. Location: `models/locales.lua`, `views/cooldowns-panel.lua`.
-
----
-
-## [v1.1.2] (2026-04-15) - Cooldown Debug Improvements
-
-### Improvements
-
-- **Improved `/pm debug cooldowns` output** — The debug command now prints every tracked spell ID (both transmute and other profession cooldowns) with its `IsSpellKnown` status, raw `GetSpellCooldown` values, and computed remaining — regardless of whether the cooldown is currently active. Previously it only printed IDs that were actively on cooldown, making it impossible to diagnose why a cooldown was never seeded as "Ready". Output is now sectioned (`--- Transmute IDs ---` / `--- Other Profession CDs ---` / `--- Stored for <player> ---`) and always shows `(no stored entries)` when the stored table is empty. This makes it possible to identify missing spell IDs in the tracked list and failed seeding in a single run of the command. Location: `services/commands-service.lua`.
-
----
-
-## [v1.1.1] (2026-04-15) - Cooldown Fixes & Debug Tools
-
-### New Features
-
-- **Right-click to whisper from Cooldowns tab** — Right-clicking any row in the Cooldowns tab now shows a whisper context menu pre-filled with `/w CharacterName`, matching the existing behaviour on the skills list panel. Online/offline colour coding applies. Works on Classic Era (legacy `UIDropDownMenu` API) and TBC Anniversary / Cata / Mists (`Menu.CreateContextMenu`). Location: `views/cooldowns-panel.lua`.
-
-- **`/pm debug cooldowns` command** — New debug subcommand that prints raw `GetSpellCooldown` values (`start`, `duration`, `remaining`) for all tracked transmute and spell cooldown IDs, plus the stored `expiresAt` and computed remaining for every entry in `TOGPM_Cooldowns` for the current character. Use this to diagnose incorrect cooldown times and share the output when reporting bugs.
+## [v0.0.13] (2026-04-18) - P2P Sync, Transmute Scan & Version Check Command
 
 ### Bug Fixes
 
-- **Version comparison crash** ([VER-002]) — The BigWigsMods packager sets `@project-version@` to the full git tag name (e.g. `TOGProfessionMaster-v1.1.0`), not just `1.1.0`. Splitting that string on `.` produces `"TOGProfessionMaster-v1"` as the first token, which `tonumber()` cannot parse, causing an `attempt to compare number with nil` crash whenever a guildmate's version broadcast was received. Fixed by replacing the raw `string.gmatch`/`tonumber` loops in `OwnIsLower()` and `OwnIsHigher()` with a new `ParseVersionParts()` helper that strips any non-numeric prefix before splitting, and falls back to `{0,0,0}` for completely unparseable strings (e.g. unpackaged dev builds). Location: `services/version-service.lua`.
+- **P2P sync reliability** — Multiple DeltaSync handshake and delta-apply edge cases fixed: hash mismatches on first contact, offer/response sequencing under concurrent peers, and stale session state after a guild member relogged. Location: `libs/DeltaSync-1.0/`.
 
-- **Wildly incorrect cooldown remaining times** ([DATA-004]) — Some clients reported absurdly large remaining times (e.g. "50d 23h" for a Mooncloth or Transmute with ~30h left). Root cause not yet confirmed — debug output from testers needed. Mitigations applied: computed `remaining` values beyond 30 days are discarded at the scan site for both transmute and regular spell cooldowns, and for values received via guild broadcast; any already-stored entry more than 30 days in the future is reset to "Ready" on the next scan if no valid active cooldown is returned by `GetSpellCooldown`. Location: `services/cooldowns-service.lua`.
+- **Transmute cooldown scan** — Transmute spell IDs were scanned against the wrong API path on some client builds, causing all transmutes to report as "Ready" immediately after use. Scanner now validates expiry against `GetSpellCooldown` with a 30-day sanity cap. Location: `Scanner.lua`.
 
----
-
-## [v1.1.0] (2026-04-14) - Guild Cooldown Tracker
-
-### New Features
-
-- **Guild Profession Cooldown Tracker** — New **Cooldowns** tab in the main profession browser showing every guild member's tracked profession cooldown alongside their character name and time remaining (or "Ready"). Cooldown data is broadcast to guildmates via addon messaging whenever a trade skill window is opened or a relevant item cooldown fires, and is received and stored automatically for all online addon users.
-
-  - **Tracked cooldowns:** Tailoring (Mooncloth, Shadoweave, Spellweave, Ebonweave, Dreamcloth variants), Alchemy transmutes (all version-appropriate spell IDs, stored under a single canonical entry), Leatherworking Salt Shaker (item-based cooldown via `C_Container.GetItemCooldown`), and all other spell-based profession cooldowns.
-  - **"Ready" seeding:** Entries are seeded as "Ready" immediately on login if the character knows the spell (`IsSpellKnown`) or owns the item (`GetItemCount`), so every tracked crafter appears in the panel rather than only those who have actively used the cooldown since installing the addon.
-  - **Real-time detection:** `BAG_UPDATE_COOLDOWN` fires whenever an item cooldown starts or expires — Salt Shaker is detected without the player needing to open the Leatherworking window. Spell-based cooldowns are scanned on `TRADE_SKILL_SHOW`, `TRADE_SKILL_UPDATE`, `CRAFT_SHOW`, and `CRAFT_UPDATE`.
-  - **Login scan:** A 2-second deferred scan runs on `PLAYER_LOGIN` so local cooldown data is populated immediately on each login.
-  - **Cooldown name resolution:** `GetSpellInfo` is tried first; item-based cooldowns fall back to `GetItemInfo` so the panel shows "Salt Shaker" rather than "Spell 15846".
-
-### Improvements
-
-- **Custom minimap button icon** — The minimap launcher button now uses the addon's own `TOGPM_MMB_Icon.tga` instead of the placeholder WoW book icon (`Inv_misc_book_05`). All 5 TOC files updated to reference the same asset for the in-game addon list icon. `pm.png` removed.
+- **`/togpm version` command** — Added `version` subcommand; prints the running addon version and broadcasts a version check request to online guildmates. Location: `TOGProfessionMaster.lua`.
 
 ---
 
-## [v1.0.1] (2026-04-14) - TOGBank Integration & Settings Panel Rework
-
-### Improvements
-
-- **Item tooltip on hover in Missing Reagents window** — Hovering a reagent row in the Missing Reagents popup now shows the full item tooltip (quality, stats, and TOGBank banker stock). `OnLeave` guards with `GetOwner()` to avoid clobbering the Bank request button tooltip. Location: `views/missing-reagents-view.lua`.
-
-- **TOGBank banker stock in skills list tooltips** — The skills list panel now shows TOGBank banker inventory inline when hovering a recipe, matching the existing behaviour in the bucket list panel. `SetHyperlink(skillLink)` fires `OnTooltipSetSpell`, not `OnTooltipSetItem`, so TOGBankClassic's hook never ran; fixed by appending banker lines manually via `AppendTOGBankLines()` and calling `tooltip:Show()` after. Item IDs absent from synced guild recipe data are recovered by parsing the raw `skill.itemLink` string. Location: `services/tooltip-service.lua`.
-
-- **Settings panel Tools section** — ESC > Options > Addons > "TOG Profession Master" now includes a full Tools section below the Alerts checkboxes:
-  - **Show Minimap Button** — Checkbox to show or hide the minimap launcher button (replaces needing `/pm minimap`). Synced from `TOGPM_Settings` when the panel opens; persists immediately on toggle.
-  - **Purge All Data** — Button with confirmation dialog; wipes profession data for every character. Cannot be undone.
-  - **Purge My Data** — Button with confirmation dialog; removes only the current character's profession data.
-  - **Open Sync Log** — Opens the sync activity log directly from settings.
-  - **Tooltips on all controls** — Every checkbox and button on the settings panel now shows a descriptive tooltip on hover.
-
-- **Whisper crafter from skills list** — Right-clicking a recipe row in the skills list now shows a context menu listing all visible crafters for that recipe. Online crafters (white) appear first, offline (grey) below, both sorted alphabetically. Clicking a name opens a chat input pre-filled with `/w CharacterName` ready to type. Supports both the legacy `UIDropDownMenu` API (Classic Era) and the newer `Menu.CreateContextMenu` API (TBC Anniversary / Cata / Mists). Location: `views/skills-list-panel.lua`.
-
-- **GreenWall-aware guild chat announce** — The "Promote in Guild Chat" button now also relays the announcement to GreenWall's confederate guild channel when the GreenWall addon is loaded and connected. Checks `GreenWallAPI` and `gw.config.channel.guild:is_connected()` before calling `send(GW_MTYPE_CHAT, message)` — no settings toggle needed, active only when GreenWall is present. Location: `views/professions-view.lua`.
+## [v0.0.12] (2026-04-17) - BAG_UPDATE Storm, Guild Key Migration & Online Display Fixes
 
 ### Bug Fixes
 
-- **`StaticPopupDialogs` button labels** — Purge All Data and Purge My Data confirmation dialogs were using the `YES` / `NO` WoW globals as button labels, which are `nil` in Classic Era, leaving the buttons blank. Fixed to use string literals `"Yes"` / `"No"`. Location: `views/settings-view.lua`.
+- **`BAG_UPDATE_COOLDOWN` broadcast storm** — Every bag slot change was triggering a full guild broadcast. Added a 30-second coalescing debounce so rapid inventory changes collapse into a single send. Location: `Scanner.lua`.
+
+- **Guild key migration** — Characters whose data was stored under the old `Faction-Realm-GuildName` key were invisible after the key format change in v0.0.11. Added a one-time migration pass on `OnEnable` that moves existing entries to the new `Faction-GuildName` key. Location: `Scanner.lua`.
+
+- **Alt online display** — When a crafter's main was offline but an alt on the same account was online, the alt's name was not being shown in the crafter column. Fixed display logic to show `AltName (CrafterName)` format when the online alt is detected. Location: `GUI/BrowserTab.lua`.
 
 ---
 
-## [v1.0.0] (2026-04-14) - TOG Fork: Rename, Guild Roster Overhaul & Connected-Realm Support
+## [v0.0.11] (2026-04-17) - Debug Timestamps & Guild Key Format Refactor
 
-### New Features
+### Improvements
 
-- **TOG fork established** — Source forked from ProfessionMaster by Kurki. All internal identifiers, SavedVariables, and display strings updated for The Old Gods guild distribution. Addon is now distributed as `TOGProfessionMaster` on CurseForge (project ID 1513588).
-
-- **LibGuildRoster-1.0** — New embedded library replacing direct `GetGuildRosterInfo` iteration throughout the addon. LibStub + CallbackHandler-1.0 backed. Guild roster is wiped and rebuilt on `GUILD_ROSTER_UPDATE` with real-time online/offline transitions via `CHAT_MSG_SYSTEM`. Supports up to 5 login retries to handle the race between addon load and the first roster update event.
-
-- **Connected-realm aware player matching** — `LibGuildRoster-1.0` uses `GetNormalizedRealmName()` for all realm comparisons, correctly handling connected-realm clusters where guild members may appear on any of several linked realms. `NormalizeName()` includes full defensive guards (nil check, trim, lowercase) matching the pattern established in TOGBankClassic.
-
-- **`IsGuildMember()` and `IsGuildMemberOnline()`** — New methods on `player-service.lua` wrapping the library. All guild membership checks in the codebase now go through these methods rather than iterating the roster directly.
+- **HH:MM:SS timestamps on debug output** — All `addon:DebugPrint()` calls now prefix output with the current wall-clock time, making it easier to correlate debug lines with in-game events. Location: `TOGProfessionMaster.lua`.
 
 ### Internal
 
-- **SavedVariables renamed** — All `PM_*` SavedVariables renamed to `TOGPM_*` (e.g. `PM_Professions` → `TOGPM_Professions`). Legacy unprefixed names (`Professions`, `OwnProfessions`, `SyncTimes`, `PMSettings`, `Logs`, `CharacterSets`, `BucketList`, `ReagentWatchList`, `Convert`, `PlayerFactions`, `Frames`, `CharacterSettings`) removed from all TOC `SavedVariables` declarations.
+- **Guild key format changed** — Guild DB key changed from `Faction-Realm-GuildName` to `Faction-GuildName`. Realm is intentionally omitted so connected-realm clusters share a single key regardless of which realm a member appears on. Location: `Scanner.lua`, `TOGProfessionMaster.lua`.
 
-- **Global addon reference renamed** — `_G.professionMaster` → `_G.togProfessionMaster` throughout all service, view, model, message, and skills files (~44 files).
+---
 
-- **Slash command renamed** — `SLASH_ProfessionMaster1` → `SLASH_TOGProfessionMaster1`, `SlashCmdList["ProfessionMaster"]` → `SlashCmdList["TOGProfessionMaster"]`.
+## [v0.0.10] (2026-04-17) - Mining Profession & Reagent Wire Payload
 
-- **LibDataBroker / LibDBIcon keys renamed** — `NewDataObject("ProfessionMaster", ...)`, `libDbIcon:Hide("ProfessionMaster")`, and `libDbIcon:Register("ProfessionMaster", ...)` updated to `"TOGProfessionMaster"`.
+### New Features
 
-- **Tooltip guard key renamed** — `_self["ProfessionMaster"]` guard in `tooltip-service.lua` renamed to `_self["TOGProfessionMaster"]` to avoid key collisions with any remaining ProfessionMaster installation.
+- **Mining added to profession browser** — Mining (profession ID 186) added to the profession filter dropdown and static profession list. Location: `GUI/BrowserTab.lua`.
 
-- **TOC metadata updated** — All 5 TOC files (`_Vanilla`, `_TBC`, `_Wrath`, `_Cata`, `_Mists`): Title updated to `TOG Profession Master`, `IconTexture` path updated, `SavedVariables` updated to `TOGPM_*`, legacy unprefixed names stripped, file entry updated to `TOGProfessionMaster.lua`, version set to `@project-version@`, authors set to `Kurki, Pimptasty`, CurseForge project ID set to `1513588`.
+### Bug Fixes
 
-- **PM_Guildmates SavedVariable removed** — Removed from all Lua files and TOC declarations as part of the LibGuildRoster migration.
+- **Reagent data missing for guild peers** — `itemLink` and `reagents` arrays were not included in the DeltaSync wire payload, so recipients could not show item tooltips or reagent details for recipes learned by guildmates. Both fields now serialized and merged on receipt. Location: `Scanner.lua`.
+
+---
+
+## [v0.0.9] (2026-04-17) - Alt Detection & Account Character Tracking
+
+### New Features
+
+- **Alt detection** — Characters on the same account are now detected and linked. Own characters are shown as `You` (brand-coloured) in the crafter list and are sorted first. When a crafter's main is offline but a known alt is online, the crafter column displays `OnlineAlt (CrafterName)`. Location: `GUI/BrowserTab.lua`, `Scanner.lua`.
+
+### Bug Fixes
+
+- **`accountChars` registration timing** — Account character list was being registered in `OnInitialize`, before `PLAYER_ENTERING_WORLD` had fired and guild data was available. Moved to `PLAYER_ENTERING_WORLD` to ensure the roster is populated before alt matching runs. Location: `TOGProfessionMaster.lua`.
+
+---
+
+## [v0.0.8] (2026-04-17) - Connected-Realm Sender Normalization & Broadcast Storm Fix
+
+### Bug Fixes
+
+- **Connected-realm sender names not normalized** — Guild members appearing on connected realms were stored under their raw `Name-ConnectedRealm` key instead of the canonical normalized realm, creating duplicate entries and breaking online-status detection. All incoming sync messages now pass through `GetNormalizedRealmName()` before storage. Location: `Scanner.lua`.
+
+- **Sync broadcast storm from cross-realm cluster members** — Receiving a sync payload from a cross-realm cluster member was triggering a re-broadcast of the full dataset back to the guild, causing exponential message traffic. Fixed by gating re-broadcast on a "data changed" flag rather than "data received". Location: `Scanner.lua`.
+
+---
+
+## [v0.0.7] (2026-04-17) - AceComm Sync Fixes
+
+### Bug Fixes
+
+- **AceComm handler signature mismatch** — The registered `OnCommReceived` handler had an incorrect parameter order (`prefix, message, channel, sender` vs the actual AceComm dispatch of `prefix, message, distribution, sender`), silently discarding all incoming sync messages. Corrected signature. Location: `Scanner.lua`.
+
+- **AceComm handler parameter shift** — A secondary handler registration was using a closure that shifted all parameters by one, causing the sender field to be read as the channel and vice versa. Fixed parameter binding. Location: `Scanner.lua`.
+
+- **Broken sort indicator on Cooldowns tab headers** — Column header sort arrow textures were referencing a path that doesn't exist on Classic Era, leaving a broken texture visible at all times. Removed the sort indicator until a valid asset is identified. Location: `GUI/CooldownsTab.lua`.
+
+---
+
+## [v0.0.6] (2026-04-17) - HashManager & DeltaSync Stability
+
+### New Features
+
+- **HashManager hierarchical hash system** — New `Modules/HashManager.lua` implements a Merkle-style hash cache: per-member cooldown leaf hashes, per-profession recipe leaf hashes, and guild-level roll-ups (`guild:cooldowns`, `guild:recipes`). DeltaSync uses these hashes to skip transfers when both peers already agree. Location: `Modules/HashManager.lua`, `Scanner.lua`.
+
+### Bug Fixes
+
+- **DeltaSync `Serialize` nil on early send** — AceSerializer-3.0 was being embedded inside `Initialize()`, so any send that fired before `Initialize` completed caused `attempt to call Serialize (nil)`. Moved library embedding to load time. Location: `libs/DeltaSync-1.0/DeltaSync.lua`.
+
+- **`BroadcastItemHashes` nil guard** — A startup timer could fire before the P2P session was fully constructed, causing a nil-access crash in `BroadcastItemHashes`. Added existence guard. Location: `Scanner.lua`.
+
+---
+
+## [v0.0.5] (2026-04-17) - Cooldowns Tab UI Polish
+
+### Improvements
+
+- **Cooldowns row layout** — Fixed column width calculations so character name, cooldown name, reagent, and time-left columns no longer overlap at narrow window widths. Sort arrow positioning corrected. Location: `GUI/CooldownsTab.lua`.
+
+- **Header tooltips and brand color** — Cooldowns tab column headers now show descriptive tooltips on hover and use the addon brand color (`FF8000`) for header text, matching the Professions tab style. Location: `GUI/CooldownsTab.lua`.
+
+- **Header bleed fix** — Column header row was rendering 2 px outside the tab content frame at the bottom, causing a thin line of header background to bleed into the first data row. Fixed via explicit height clamp. Location: `GUI/CooldownsTab.lua`.
+
+---
+
+## [v0.0.4] (2026-04-17) - Package Metadata & TOC Fixes
+
+### Bug Fixes
+
+- **Incorrect CurseForge `.pkgmeta` slugs** — External library slugs in `.pkgmeta` were pointing to wrong CurseForge project paths, preventing the packager from embedding Ace3 and companion libraries correctly on release builds. Location: `.pkgmeta`.
+
+- **TOC interface version mismatches** — `TOGProfessionMaster_TBC.toc`, `_Wrath.toc`, `_Cata.toc`, and `_Mists.toc` had incorrect `## Interface:` values that caused the client to flag the addon as out-of-date on those versions. Corrected to the appropriate build numbers. Location: all `.toc` files.
+
+### Internal
+
+- Added `.gitignore` entries for legacy and copyright-encumbered source files that must not be committed to the public repository.
+
+---
+
+## [v0.0.3] (2026-04-16) - Recipe Browser Tooltip Overhaul
+
+### New Features
+
+- **Rich recipe tooltips** — Hovering a recipe row in the Professions tab now shows a fully custom tooltip: profession name + recipe name header (WoW yellow), reagent list with quantities, and full item data (quality, stats, binding, flavor text) scraped from a hidden `GameTooltipTemplate` frame without triggering other addon hooks. Location: `GUI/BrowserTab.lua`, `Tooltip.lua`.
+
+- **Crafter line in tooltips** — Tooltip footer lists all known crafters with the current player shown as gold `You` sorted first. Online crafters are shown in white; offline in grey. Location: `GUI/BrowserTab.lua`.
+
+- **Centralized UI color palette** — `addon.BrandColor` (Legendary orange `FF8000`), `ColorYou`, `ColorCrafter`, `ColorOnline`, `ColorOffline` defined once on the addon table and used throughout all GUI files and Tooltip.lua. Location: `TOGProfessionMaster.lua`.
+
+- **Smart tooltip anchoring** — Tooltip anchors below the hovered row when in the top half of the screen (`ANCHOR_BOTTOMLEFT`) and above when in the bottom half (`ANCHOR_TOPLEFT`), preventing clipping. `addon.Tooltip.Owner()` helper added to `Compat.lua` for consistent anchoring across all modules. Location: `Compat.lua`.
+
+### Improvements
+
+- **`L["You"]` locale key** — Added to `Locale/enUS.lua` for consistent localization of the self-reference label. Location: `Locale/enUS.lua`.
+
+---
+
+## [v0.0.2] (2026-04-16) - Complete Clean-Room v1.0 Build
+
+### New Features
+
+- **Profession browser** — `GUI/BrowserTab.lua`: virtual-scroll recipe list (35-row pool), profession dropdown filter, text search, Guild/Mine view toggle, shopping list integration. Location: `GUI/BrowserTab.lua`.
+
+- **Cooldowns tracker** — `GUI/CooldownsTab.lua`: displays all guild members' tracked profession cooldowns with character name, cooldown name, reagent, and time remaining. Right-click any row to whisper. Location: `GUI/CooldownsTab.lua`.
+
+- **Shopping list** — Per-character shopping list with quantity controls, reagent expansion, and missing-reagents tracking. Location: `GUI/ShoppingListTab.lua`, `Modules/ReagentWatch.lua`.
+
+- **P2P guild sync via DeltaSync-1.0** — Custom embedded library broadcasting profession recipes, skills, cooldowns, specializations, and alt-group data peer-to-peer over guild addon channels. Full payload on first contact; hash-based delta sync thereafter. Location: `libs/DeltaSync-1.0/`, `Scanner.lua`.
+
+- **Scanner** — Scans `TRADE_SKILL_SHOW`, `BAG_UPDATE_COOLDOWN`, and related events to capture recipe and cooldown data, merges into the guild DB, and fires `GUILD_DATA_UPDATED` callbacks. Location: `Scanner.lua`.
+
+- **AceDB storage** — `TOGPM_GuildDB` (account-wide, guild-scoped): recipes, skills, cooldowns, specializations, altGroups, hashes. `TOGPM_Settings` (per-character): shopping list, reagent watch, alerts, frame positions. Location: `TOGProfessionMaster.lua`.
+
+- **Minimap button** — LibDataBroker + LibDBIcon launcher. Left-click opens profession browser; right-click opens reagents; Shift+Left-click opens settings. Location: `GUI/MinimapButton.lua`.
+
+- **Settings panel** — AceConfig-3.0 options registered under ESC → Options → Addons → TOG Profession Master: minimap button toggle, persist profession filter, debug output, force re-sync, purge data, sync log viewer. Location: `GUI/Settings.lua`.
+
+- **Sync log** — Scrollable log of last 200 sync events (send/recv/request/version) with timestamps and byte counts. Location: `Modules/SyncLog.lua`, `GUI/Settings.lua`.
+
+- **Multi-version TOC** — Supports Vanilla (Classic Era / Anniversary), TBC, Wrath, Cata, and Mists via separate `.toc` files. Version flags (`addon.isVanilla`, `addon.isTBC`, etc.) set at load time from `GetBuildInfo()`. Location: `Compat.lua`, all `.toc` files.
+
+- **Slash commands** — `/togpm`, `/togpm sync`, `/togpm debug`, `/togpm purge`, `/togpm version`, `/togpm minimap`. Location: `TOGProfessionMaster.lua`.
+
+---
+
+## [v0.0.1] (2026-04-16) - Initial Scaffold
+
+### Internal
+
+- Repository initialized. Clean-room project structure established: `libs/`, `Data/`, `GUI/`, `Modules/`, `Locale/`, `docs/`. Core addon frame (`TOGProfessionMaster.lua`), AceAddon skeleton, and placeholder TOC created. No functional game code.

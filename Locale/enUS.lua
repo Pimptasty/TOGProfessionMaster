@@ -128,3 +128,18 @@ L["CraftedBy"]              = "Crafted by:"
 -- Alerts
 -- ---------------------------------------------------------------------------
 L["AlertReadyFormat"]       = "|cff00ff00Ready to craft:|r %s \195\151 %d  (%s \195\151 %d in bags)"
+
+-- Shopping list crafter alert
+L["ShoppingAlertEnable"]               = "Enable crafter alert for this recipe"
+L["ShoppingAlertDisable"]              = "Disable crafter alert for this recipe"
+L["AlertCrafterOnline"]                = "|cffFFD700[TOGPM]|r %s is online — can craft: %s"
+L["AlertCrafterOnlineAlt"]             = "|cffFFD700[TOGPM]|r %s is online (alt of %s) — can craft: %s"
+
+-- Settings
+L["SettingsAlertsHeader"]              = "Crafter Alerts"
+L["SettingsCrafterAlert"]              = "Enable crafter alerts"
+L["SettingsCrafterAlertDesc"]          = "Play a sound and flash the screen when a guild member who can craft an alerted shopping list item comes online."
+L["SettingsCrafterAlertSuppressAV"]    = "Suppress sound & flash"
+L["SettingsCrafterAlertSuppressAVDesc"]    = "Disable the audio and screen-flash effects (chat message still appears)."
+L["SettingsCrafterAlertSuppressLogin"]     = "Suppress alerts on login"
+L["SettingsCrafterAlertSuppressLoginDesc"] = "Don't fire alerts during the initial burst of online notifications at login or UI reload."

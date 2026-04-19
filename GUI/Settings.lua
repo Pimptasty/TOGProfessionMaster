@@ -79,6 +79,40 @@ local OPTIONS = {
             set   = function(_, val) Ace.db.profile.mailReadyOnly = val end,
         },
 
+        -- ---- Crafter Alerts ------------------------------------------------
+        alertsHeader = {
+            name  = L["SettingsAlertsHeader"],
+            type  = "header",
+            order = 15,
+        },
+
+        crafterAlert = {
+            name  = L["SettingsCrafterAlert"],
+            desc  = L["SettingsCrafterAlertDesc"],
+            type  = "toggle",
+            order = 16,
+            get   = function() return Ace.db.profile.crafterAlert end,
+            set   = function(_, val) Ace.db.profile.crafterAlert = val end,
+        },
+
+        crafterAlertSuppressAV = {
+            name  = L["SettingsCrafterAlertSuppressAV"],
+            desc  = L["SettingsCrafterAlertSuppressAVDesc"],
+            type  = "toggle",
+            order = 17,
+            get   = function() return Ace.db.profile.crafterAlertSuppressAV end,
+            set   = function(_, val) Ace.db.profile.crafterAlertSuppressAV = val end,
+        },
+
+        crafterAlertSuppressLogin = {
+            name  = L["SettingsCrafterAlertSuppressLogin"],
+            desc  = L["SettingsCrafterAlertSuppressLoginDesc"],
+            type  = "toggle",
+            order = 18,
+            get   = function() return Ace.db.profile.crafterAlertSuppressLogin end,
+            set   = function(_, val) Ace.db.profile.crafterAlertSuppressLogin = val end,
+        },
+
         -- ---- Debug ---------------------------------------------------------
         debugHeader = {
             name  = L["SettingsDevHeader"],

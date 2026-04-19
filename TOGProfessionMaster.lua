@@ -97,6 +97,10 @@ local SETTINGS_DEFAULTS = {
         debug             = false,
         persistProfFilter = false,
         savedProfFilter   = 0,
+        -- Crafter alerts
+        crafterAlert              = true,
+        crafterAlertSuppressAV    = false,
+        crafterAlertSuppressLogin = true,
     },
     char = {
         -- Shopping list: [spellId] = { quantity = N }
@@ -161,6 +165,14 @@ function Ace:OnEnable()
     -- Core events.
     self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
     self:RegisterEvent("PLAYER_LOGOUT",         "OnPlayerLogout")
+
+    -- Crafter online alert: fire when a guild member comes online.
+    local LGR = LibStub("LibGuildRoster-1.0", true)
+    if LGR then
+        LGR:RegisterCallback("OnMemberOnline", function(_, name)
+            addon:OnCrafterCameOnline(name)
+        end)
+    end
 
     addon:DebugPrint("OnEnable complete.")
 end
@@ -233,7 +245,85 @@ function Ace:OnPlayerEnteringWorld(event, isInitialLogin, isReloadingUi)
         end
     end
 
+    -- Suppress crafter alerts during the login burst; clear the flag after 10 s.
+    addon.loginInitialized = false
+    C_Timer.After(10, function() addon.loginInitialized = true end)
+
     -- Modules hook into this via AceEvent on their own tables.
+end
+
+-- ---------------------------------------------------------------------------
+-- Crafter alert
+-- ---------------------------------------------------------------------------
+
+local _PROF_NAMES = {
+    [171] = "Alchemy",       [164] = "Blacksmithing", [185] = "Cooking",
+    [333] = "Enchanting",    [202] = "Engineering",   [129] = "First Aid",
+    [165] = "Leatherworking",[186] = "Mining",        [197] = "Tailoring",
+    [182] = "Herbalism",     [393] = "Skinning",      [755] = "Jewelcrafting",
+    [773] = "Inscription",   [356] = "Fishing",       [374] = "Smelting",
+}
+
+function addon:OnCrafterCameOnline(charKey)
+    if not Ace.db.profile.crafterAlert then return end
+    local alerts = Ace.db.char.shoppingAlerts
+    if not next(alerts) then return end
+
+    local gdb = addon:GetGuildDb()
+    if not gdb or not gdb.recipes then return end
+
+    local alerted  = false
+    local L        = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
+    local shortKey = charKey:match("^(.-)%-") or charKey
+
+    for recipeId in pairs(alerts) do
+        for profId, profRecipes in pairs(gdb.recipes) do
+            local rd = profRecipes[recipeId]
+            if rd and rd.crafters then
+                for crafterKey in pairs(rd.crafters) do
+                    local match = (crafterKey == charKey)
+                    if not match and gdb.altGroups and gdb.altGroups[crafterKey] then
+                        for _, altCk in ipairs(gdb.altGroups[crafterKey]) do
+                            if altCk == charKey then match = true; break end
+                        end
+                    end
+                    if match then
+                        local profName    = _PROF_NAMES[profId] or ""
+                        local label       = profName ~= "" and (profName .. ": " .. (rd.name or "")) or (rd.name or "")
+                        local crafterShort = crafterKey:match("^(.-)%-") or crafterKey
+                        if crafterKey == charKey then
+                            addon:Print(string.format(L["AlertCrafterOnline"], shortKey, label))
+                        else
+                            addon:Print(string.format(L["AlertCrafterOnlineAlt"], crafterShort, shortKey, label))
+                        end
+                        alerted = true
+                        break
+                    end
+                end
+            end
+            if alerted then break end
+        end
+    end
+
+    if alerted then
+        local suppress = Ace.db.profile.crafterAlertSuppressAV
+                      or (Ace.db.profile.crafterAlertSuppressLogin and not addon.loginInitialized)
+        if not suppress then
+            PlaySound(878)
+            if not addon._crafterAlertFlash then
+                local flash = CreateFrame("Frame", "TOGPMCrafterAlertFlash", UIParent)
+                flash:SetAllPoints(UIParent)
+                flash:SetFrameStrata("FULLSCREEN_DIALOG")
+                local tex = flash:CreateTexture(nil, "BACKGROUND")
+                tex:SetAllPoints(flash)
+                tex:SetTexture("Interface\\FullScreenTextures\\LowHealth")
+                tex:SetVertexColor(1, 0.82, 0)
+                flash:Hide()
+                addon._crafterAlertFlash = flash
+            end
+            UIFrameFlash(addon._crafterAlertFlash, 0.5, 0.5, 3, false, 0, 0)
+        end
+    end
 end
 
 function Ace:OnPlayerLogout()

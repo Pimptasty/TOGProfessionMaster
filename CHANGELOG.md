@@ -1,12 +1,18 @@
 # TOG Profession Master Changelog
 
-## [v0.0.16] (2026-04-19) - Enchanting Tooltip Fixes
+## [v0.0.16] (2026-04-19) - Enchanting Tooltip Fixes & Crafter Alerts
+
+### New Features
+
+- **Crafter online alerts** — When a guild member who can craft an item on your shopping list comes online, a chat message is printed and (unless suppressed) a sound plays and the screen flashes gold. Each shopping list row has a `!` toggle button (gray = off, gold = on) to arm alerts per recipe. Alt-group awareness: if the online player is an alt of a crafter, the alert still fires with an "(alt of X)" note. Three settings in ESC → Options → TOG Profession Master → Crafter Alerts: master on/off toggle, suppress sound & flash, suppress on login (default on to avoid the login burst). Location: `TOGProfessionMaster.lua`, `GUI/BrowserTab.lua`, `GUI/Settings.lua`.
 
 ### Bug Fixes
 
 - **Enchanting tooltip showing wrong item** — On Vanilla Classic Era, enchanting recipes scanned via the Craft frame stored only name and icon (no `isSpell`, no reagents). The tooltip fallback chain would reach the last `else` branch and call `SetHyperlink("item:" .. spellId)`, resolving the enchant spell ID to a random item like "Sentinel's Leather Pants". Fixed by capturing reagents from the Craft frame (`GetCraftNumReagents`/`GetCraftReagentInfo`/`GetCraftReagentItemLink`) and setting `isSpell = true` so the data format matches the TradeSkill path. Location: `Scanner.lua`.
 
 - **Enchanting tooltip not showing reagent list** — The Professions tab tooltip priority checked `recipeLink` before reagents, but enchanting stores an `enchant:SPELLID` link there (not a displayable item link). Added `|Hitem:` guards on `recipeLink` and `itemLink` usage, and moved the `spellId` fallback to after the reagent branch so enchanting now shows the same reagent-list tooltip as leatherworking. Location: `GUI/BrowserTab.lua`.
+
+- **Shopping list alert toggle always staying enabled** — The `!` button on shopping list rows used `cur and nil or true` to toggle, which always evaluates to `true` in Lua because `nil` is falsy. Replaced with an explicit if/else. Location: `GUI/BrowserTab.lua`.
 
 ---
 

@@ -489,6 +489,23 @@ function BrowserTab:FillShoppingListSection(container)
         minusLbl:SetText("|cFFFFD100-|r")
         f.minusBtn = minusBtn
 
+        local alertBtn = CreateFrame("Button", nil, f)
+        alertBtn:SetSize(12, 18)
+        alertBtn:SetPoint("RIGHT", minusBtn, "LEFT", -4, 0)
+        local alertLbl = alertBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        alertLbl:SetAllPoints()
+        alertLbl:SetJustifyH("CENTER")
+        alertLbl:SetText("|cff666666!|r")
+        alertBtn:SetScript("OnEnter", function()
+            addon.Tooltip.Owner(alertBtn)
+            local enabled = alertBtn._sid and Ace.db.char.shoppingAlerts[alertBtn._sid]
+            GameTooltip:SetText(enabled and L["ShoppingAlertDisable"] or L["ShoppingAlertEnable"], 1, 1, 1)
+            GameTooltip:Show()
+        end)
+        alertBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        f.alertBtn  = alertBtn
+        f.alertLbl  = alertLbl
+
         self._slPool[idx] = f
         return f
     end
@@ -578,8 +595,22 @@ function BrowserTab:FillShoppingListSection(container)
         f.nameLbl:SetText(colorHex and ("|c" .. colorHex .. name .. "|r") or name)
         f.qtyLbl:SetText(tostring(qty))
 
+        -- Alert toggle button state
+        f.alertBtn._sid = sid
+        local alertOn = Ace.db.char.shoppingAlerts[sid]
+        f.alertLbl:SetText(alertOn and "|cffFFD700!|r" or "|cff666666!|r")
+        f.alertBtn:SetScript("OnClick", function()
+            if Ace.db.char.shoppingAlerts[sid] then
+                Ace.db.char.shoppingAlerts[sid] = nil
+            else
+                Ace.db.char.shoppingAlerts[sid] = true
+            end
+            f.alertLbl:SetText(Ace.db.char.shoppingAlerts[sid] and "|cffFFD700!|r" or "|cff666666!|r")
+        end)
+
         f:SetScript("OnClick", function(btn)
-            if f.minusBtn:IsMouseOver() or f.plusBtn:IsMouseOver() or f.removeBtn:IsMouseOver() then
+            if f.minusBtn:IsMouseOver() or f.plusBtn:IsMouseOver() or f.removeBtn:IsMouseOver()
+            or f.alertBtn:IsMouseOver() then
                 return
             end
             if hasReagents then
@@ -624,6 +655,7 @@ function BrowserTab:FillShoppingListSection(container)
         f.removeBtn:SetScript("OnClick", function()
             bl[sid] = nil
             self._slExpanded[sid] = nil
+            Ace.db.char.shoppingAlerts[sid] = nil
             if self._selectedEntry and self._selectedEntry.id == sid then
                 self:DrawDetail(self._selectedEntry)
             end

@@ -443,7 +443,7 @@ function CooldownsTab:DrawHeaders(parent, container)
         local tipTitle = col.tip
         local tipBody  = col.tipDesc
         btn:SetCallback("OnEnter", function(_w)
-            GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+            addon.Tooltip.Owner(_w.frame)
             GameTooltip:SetText(tipTitle, 1, 1, 1)
             GameTooltip:AddLine(tipBody, nil, nil, nil, true)
             GameTooltip:Show()
@@ -500,6 +500,9 @@ function CooldownsTab:DrawRow(parent, row, now)
     else
         timeColor = "|cffff2200"   -- red: >= 24h
     end
+
+    local _fp, _fs, _ff = GameFontNormalSmall:GetFont()
+    local function sf(w) w:SetFont(_fp, _fs, _ff or "") end
 
     local rowGroup = AceGUI:Create("SimpleGroup")
     rowGroup:SetLayout("Flow")
@@ -564,11 +567,12 @@ function CooldownsTab:DrawRow(parent, row, now)
     local nameColor = isYou and colorYou or (online and colorOnline or colorOffline)
     charLbl:SetText(nameColor .. displayName .. "|r")
     charLbl:SetWidth(190)
+    sf(charLbl)
     charLbl:SetCallback("OnClick", function(_widget, _event, button)
         if button == "RightButton" then doWhisper(_widget.frame) end
     end)
     charLbl:SetCallback("OnEnter", function(_widget)
-        GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+        addon.Tooltip.Owner(_widget.frame)
         GameTooltip:SetText(row.shortName, 1, 1, 1)
         GameTooltip:AddLine("Right-click to whisper", 0.7, 0.7, 0.7)
         GameTooltip:Show()
@@ -620,7 +624,7 @@ function CooldownsTab:DrawRow(parent, row, now)
     -- when (width - imageWidth) < 200 it stacks text below the icon vertically.
     local iconW = AceGUI:Create("Label")
     iconW:SetWidth(iconColW)
-    iconW:SetImageSize(14, 14)
+    iconW:SetImageSize(12, 12)
 
     -- Resolve icon texture
     local iconTexture
@@ -634,10 +638,8 @@ function CooldownsTab:DrawRow(parent, row, now)
             local iconItem = Item:CreateFromItemID(row.iconItemId)
             iconItem:ContinueOnItemLoad(function()
                 local t = select(10, GetItemInfo(row.iconItemId))
-                if t and iconW.image then
-                    iconW.image:SetTexture(t)
-                    iconW.image:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-                    iconW.imageshown = true
+                if t then
+                    iconW:SetImage(t, 0.08, 0.92, 0.08, 0.92)
                 end
             end)
             iconTexture = row.spellId and GetSpellTexture(row.spellId)
@@ -646,8 +648,7 @@ function CooldownsTab:DrawRow(parent, row, now)
         iconTexture = row.spellId and GetSpellTexture(row.spellId)
     end
     if iconTexture then
-        iconW:SetImage(iconTexture)
-        iconW.image:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        iconW:SetImage(iconTexture, 0.08, 0.92, 0.08, 0.92)
     end
     col2:AddChild(iconW)
 
@@ -656,9 +657,10 @@ function CooldownsTab:DrawRow(parent, row, now)
     cdNameLbl:SetWidth(cdNameW)
     local cdText = row.isGroup and ("[+] " .. row.cdName) or row.cdName
     cdNameLbl:SetText(cdText)
+    sf(cdNameLbl)
     if row.isGroup then
         cdNameLbl:SetCallback("OnEnter", function(_widget)
-            GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+            addon.Tooltip.Owner(_widget.frame)
             if row.isTransmuteGroup then
                 GameTooltip:AddLine("Click to see transmutes", 1, 1, 1)
             else
@@ -673,18 +675,14 @@ function CooldownsTab:DrawRow(parent, row, now)
     else
         cdNameLbl:SetCallback("OnEnter", function(_widget)
             if row.spellId then
+                addon.Tooltip.Owner(_widget.frame)
                 if GetSpellInfo(row.spellId) then
-                    -- Spell tooltip: ANCHOR_CURSOR works fine for spells
-                    GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
                     GameTooltip:SetHyperlink("spell:" .. row.spellId)
                 else
-                    local _, rowTop = _widget.frame:GetCenter()
-                    local anchor = (rowTop and rowTop > GetScreenHeight() / 2) and "ANCHOR_BOTTOMLEFT" or "ANCHOR_TOPLEFT"
-                    GameTooltip:SetOwner(_widget.frame, anchor)
                     GameTooltip:SetHyperlink("item:" .. row.spellId)
                 end
+                GameTooltip:Show()
             end
-            GameTooltip:Show()
         end)
         cdNameLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
     end
@@ -695,6 +693,7 @@ function CooldownsTab:DrawRow(parent, row, now)
         -- Reagent name
         local reagentLbl = AceGUI:Create("InteractiveLabel")
         reagentLbl:SetWidth(reagentW)
+        sf(reagentLbl)
         local reagentName = GetItemInfo(itemId)
         if reagentName then
             reagentLbl:SetText("|cffaaaaaa" .. reagentName .. "|r")
@@ -707,9 +706,7 @@ function CooldownsTab:DrawRow(parent, row, now)
             end)
         end
         reagentLbl:SetCallback("OnEnter", function(_widget)
-            local _, rowTop = _widget.frame:GetCenter()
-            local anchor = (rowTop and rowTop > GetScreenHeight() / 2) and "ANCHOR_BOTTOMLEFT" or "ANCHOR_TOPLEFT"
-            GameTooltip:SetOwner(_widget.frame, anchor)
+            addon.Tooltip.Owner(_widget.frame)
             GameTooltip:SetHyperlink("item:" .. itemId)
             GameTooltip:Show()
         end)
@@ -727,13 +724,14 @@ function CooldownsTab:DrawRow(parent, row, now)
             local bankBtn = AceGUI:Create("InteractiveLabel")
             bankBtn:SetText("|cFF88FF88[Bank]|r")
             bankBtn:SetWidth(bankW)
+            sf(bankBtn)
             bankBtn:SetCallback("OnClick", function()
                 local name = GetItemInfo(itemId)
                 local link = select(2, GetItemInfo(itemId))
                 addon.Bank.ShowRequestDialog(itemId, name, link)
             end)
             bankBtn:SetCallback("OnEnter", function(_widget)
-                GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+                addon.Tooltip.Owner(_widget.frame)
                 GameTooltip:SetText("Request from Bank", 1, 1, 1)
                 GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker.", nil, nil, nil, true)
                 GameTooltip:Show()
@@ -742,19 +740,19 @@ function CooldownsTab:DrawRow(parent, row, now)
             col2:AddChild(bankBtn)
         end
 
-        -- Mail icon
+        -- Mail icon — use embedded texture tag (no SetImage) so this widget has
+        -- the same line height as all other text widgets and doesn't inflate the row.
         local mailBtn = AceGUI:Create("InteractiveLabel")
-        mailBtn:SetImage("Interface\\Icons\\INV_Letter_15")
-        mailBtn:SetImageSize(16, 16)
-        mailBtn:SetText("")
+        mailBtn:SetText("|TInterface\\Icons\\INV_Letter_15:0:0|t")
         mailBtn:SetWidth(mailW)
+        sf(mailBtn)
         mailBtn:SetCallback("OnClick", function()
             local cdName    = row.isTransmuteGroup and L["Transmute"] or row.cdName
             local outputName = row.outputName or cdName
             CdMail_PrepareSupplyMail(row.charKey, cdName, outputName, itemId, row.reagentQty or 1)
         end)
         mailBtn:SetCallback("OnEnter", function(_widget)
-            GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+            addon.Tooltip.Owner(_widget.frame)
             GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1)
             GameTooltip:AddLine(L["MailBtnTooltipDesc"] or "Open a mailbox, then click to attach reagents.", nil, nil, nil, true)
             GameTooltip:Show()
@@ -767,6 +765,7 @@ function CooldownsTab:DrawRow(parent, row, now)
     local timeLbl = AceGUI:Create("Label")
     timeLbl:SetText(timeColor .. timeStr .. "|r")
     timeLbl:SetWidth(80)
+    sf(timeLbl)
     rowGroup:AddChild(timeLbl)
 end
 
@@ -799,7 +798,7 @@ function CooldownsTab:ShowGroupPopup(row, now)
     local gdb         = addon:GetGuildDb()
     local charCds     = gdb and gdb.cooldowns[charKey] or {}
 
-    local rowH   = 20
+    local rowH   = 14
     local pad    = 6
     local popupW = 340
     local totalH = pad + #spells * rowH + pad
@@ -865,7 +864,7 @@ function CooldownsTab:ShowGroupPopup(row, now)
         nameZone:EnableMouse(true)
         nameZone:SetScript("OnEnter", function()
             nameLbl:SetTextColor(1, 1, 0, 1)
-            GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+            addon.Tooltip.Owner(nameZone)
             GameTooltip:SetHyperlink("spell:" .. spellId)
             GameTooltip:Show()
         end)
@@ -905,9 +904,7 @@ function CooldownsTab:ShowGroupPopup(row, now)
             reagentZone:EnableMouse(true)
             reagentZone:SetScript("OnEnter", function()
                 reagentLbl:SetTextColor(1, 1, 0, 1)
-                local _, rowTop = reagentZone:GetCenter()
-                local anchor = (rowTop and rowTop > GetScreenHeight() / 2) and "ANCHOR_BOTTOMLEFT" or "ANCHOR_TOPLEFT"
-                GameTooltip:SetOwner(reagentZone, anchor)
+                addon.Tooltip.Owner(reagentZone)
                 GameTooltip:SetHyperlink("item:" .. reagentId)
                 GameTooltip:Show()
             end)
@@ -933,7 +930,7 @@ function CooldownsTab:ShowGroupPopup(row, now)
                 CdMail_PrepareSupplyMail(charKey, spellName, reagentId, reagentQty)
             end)
             mailBtn:SetScript("OnEnter", function()
-                GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+                addon.Tooltip.Owner(mailBtn)
                 GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1)
                 GameTooltip:AddLine(L["MailBtnTooltipDesc"] or "Open a mailbox, then click to mail reagents to this player.", nil, nil, nil, true)
                 GameTooltip:Show()

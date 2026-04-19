@@ -107,6 +107,20 @@ function addon:GetItemInfo(itemId)
 end
 
 -- ---------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
+-- Tooltip anchor helper
+-- Always use this instead of a raw GameTooltip:SetOwner call.
+-- Anchors below the frame when in the top half of the screen (BOTTOMLEFT),
+-- above when in the bottom half (TOPLEFT), so it never clips off screen.
+-- ---------------------------------------------------------------------------
+addon.Tooltip = {}
+
+function addon.Tooltip.Owner(frame)
+    local _, y = frame:GetCenter()
+    local anchor = (y and y > GetScreenHeight() / 2) and "ANCHOR_BOTTOMLEFT" or "ANCHOR_TOPLEFT"
+    GameTooltip:SetOwner(frame, anchor)
+end
+
 -- TOGBankClassic integration helpers
 -- Shared by BrowserTab and CooldownsTab (and any future caller).
 -- All three functions are no-ops when TOGBankClassic is not loaded.
@@ -158,7 +172,7 @@ local _bankDialog
 -- itemId   numeric item ID
 -- itemName display name (used in the request payload)
 -- itemLink full hyperlink (shown in the dialog; may be nil)
-function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink)
+function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
     local TOG = _G["TOGBankClassic_Guild"]
     if not TOG then return end
 
@@ -180,7 +194,6 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink)
         local d = CreateFrame("Frame", "TOGPMBankRequestDialog", UIParent,
             BackdropTemplateMixin and "BackdropTemplate" or nil)
         d:SetSize(280, 165)
-        d:SetPoint("CENTER")
         d:SetFrameStrata("DIALOG")
         d:SetMovable(true)
         d:EnableMouse(true)
@@ -205,10 +218,26 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink)
         closeBtn:SetPoint("TOPRIGHT", -5, -5)
         closeBtn:SetScript("OnClick", function() d:Hide() end)
 
-        local itemLbl = d:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        itemLbl:SetPoint("TOPLEFT",  18, -36)
-        itemLbl:SetPoint("TOPRIGHT", -18, -36)
+        local itemBtn = CreateFrame("Button", nil, d)
+        itemBtn:SetPoint("TOPLEFT",  18, -36)
+        itemBtn:SetPoint("TOPRIGHT", -18, -36)
+        itemBtn:SetHeight(16)
+        local itemLbl = itemBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        itemLbl:SetAllPoints()
         itemLbl:SetJustifyH("LEFT")
+        itemBtn:SetScript("OnEnter", function()
+            if d.currentItemLink then
+                addon.Tooltip.Owner(itemBtn)
+                GameTooltip:SetHyperlink(d.currentItemLink)
+                GameTooltip:Show()
+            end
+        end)
+        itemBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        itemBtn:SetScript("OnClick", function()
+            if d.currentItemLink and IsShiftKeyDown() then
+                ChatEdit_InsertLink(d.currentItemLink)
+            end
+        end)
         d.itemLbl = itemLbl
 
         local stockLbl = d:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -272,6 +301,7 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink)
     d.selectedBank    = banksWithItem[1].name
     d.maxRequestable  = maxRequestable
 
+    d.currentItemLink = itemLink
     d.itemLbl:SetText(itemLink or itemName or ("Item #" .. tostring(itemId)))
     d.qtyBox:SetText(tostring(defaultQty))
     if pct < 100 then
@@ -343,6 +373,19 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink)
             DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444[TOGPM] Request failed. Check that TOGBankClassic is synced.|r")
         end
     end)
+
+    -- Snap to top-right of the main addon window each time we open.
+    local mainWowFrame = addon.MainWindow
+                      and addon.MainWindow.frame
+                      and addon.MainWindow.frame.frame
+    d:ClearAllPoints()
+    if anchorBelow and anchorBelow:IsShown() then
+        d:SetPoint("TOPLEFT", anchorBelow, "BOTTOMLEFT", 0, -4)
+    elseif mainWowFrame and mainWowFrame:IsShown() then
+        d:SetPoint("TOPLEFT", mainWowFrame, "TOPRIGHT", 4, 0)
+    else
+        d:SetPoint("CENTER")
+    end
 
     d:Show()
 end

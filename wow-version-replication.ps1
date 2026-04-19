@@ -7,10 +7,11 @@ $WowBase     = "${env:ProgramFiles(x86)}\World of Warcraft"
 $WowVersions = @("_classic_era_", "_classic_", "_anniversary_")
 
 # Build list of addon install directories that actually exist on disk
+# Exclude the version that contains the source folder to avoid copying to itself
 $Destinations = foreach ($ver in $WowVersions) {
     $addonsDir = Join-Path $WowBase "$ver\Interface\AddOns"
-    if (Test-Path $addonsDir) {
-        $dest = Join-Path $addonsDir $AddonName
+    $dest = Join-Path $addonsDir $AddonName
+    if ((Test-Path $addonsDir) -and ($Source -notlike "$dest*")) {
         if (-not (Test-Path $dest)) {
             New-Item -ItemType Directory -Path $dest -Force | Out-Null
         }

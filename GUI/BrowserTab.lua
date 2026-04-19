@@ -27,7 +27,7 @@ local BrowserTab = {}
 addon.BrowserTab = BrowserTab
 
 -- Virtual scroll constants
-local ROW_HEIGHT  = 22
+local ROW_HEIGHT  = 14
 local POOL_SIZE   = 35  -- enough rows to fill any window height
 
 -- ---------------------------------------------------------------------------
@@ -54,6 +54,7 @@ BrowserTab._container      = nil      -- the tab container
 BrowserTab._pool           = nil      -- raw-frame row pool
 BrowserTab._recipes        = nil      -- current filtered recipe list
 BrowserTab._popup          = nil      -- recipe detail AceGUI Frame (if open)
+BrowserTab._slSection      = nil      -- shopping list InlineGroup (if visible)
 
 -- ---------------------------------------------------------------------------
 -- Data helpers
@@ -210,6 +211,16 @@ function BrowserTab:Draw(container)
         self._headerBar = nil
     end
 
+    -- ---- Shopping list and toolbar placed below (see after header bar) ----
+    self._slSection = nil
+    local slData = Ace.db.char.shoppingList
+    local hasSL = false
+    for _ in pairs(slData) do hasSL = true; break end
+    local slCount = 0
+    if hasSL then
+        for _ in pairs(slData) do slCount = slCount + 1 end
+    end
+
     -- ---- Toolbar -----------------------------------------------------------
     local toolbar = AceGUI:Create("SimpleGroup")
     toolbar:SetLayout("Flow")
@@ -225,6 +236,15 @@ function BrowserTab:Draw(container)
         table.insert(profOrder, p.profId)
     end
 
+    -- Restore persisted filter on first draw (only while setting is on)
+    if Ace.db.profile.persistProfFilter and self._selectedProfId == 0 then
+        local saved = Ace.db.profile.savedProfFilter or 0
+        -- Only restore if a valid entry exists in the list
+        if saved ~= 0 and profList[saved] then
+            self._selectedProfId = saved
+        end
+    end
+
     local profDD = AceGUI:Create("Dropdown")
     profDD:SetLabel("|c" .. (addon.BrandColor or "ffFF8000") .. L["PanelProfessions"] .. "|r")
     profDD:SetWidth(180)
@@ -232,10 +252,13 @@ function BrowserTab:Draw(container)
     profDD:SetValue(self._selectedProfId or 0)
     profDD:SetCallback("OnValueChanged", function(_w, _e, value)
         self._selectedProfId = value
+        if Ace.db.profile.persistProfFilter then
+            Ace.db.profile.savedProfFilter = value
+        end
         self:RefreshList()
     end)
     profDD.frame:SetScript("OnEnter", function(f)
-        GameTooltip:SetOwner(f, "ANCHOR_BOTTOMLEFT")
+        addon.Tooltip.Owner(f)
         GameTooltip:SetText("Profession Filter", 1, 1, 1)
         GameTooltip:AddLine("Filter the recipe list to a single profession, or show all.", nil, nil, nil, true)
         GameTooltip:Show()
@@ -258,7 +281,7 @@ function BrowserTab:Draw(container)
         self:RefreshList()
     end)
     search.frame:SetScript("OnEnter", function(f)
-        GameTooltip:SetOwner(f, "ANCHOR_BOTTOMLEFT")
+        addon.Tooltip.Owner(f)
         GameTooltip:SetText("Search Recipes", 1, 1, 1)
         GameTooltip:AddLine("Type to filter recipes by name.", nil, nil, nil, true)
         GameTooltip:Show()
@@ -291,13 +314,26 @@ function BrowserTab:Draw(container)
     end)
     toolbar:AddChild(viewDD)
 
+    -- ---- Shopping list (below dropdowns, above column headers) -------------
+    if hasSL then
+        local slSection = AceGUI:Create("InlineGroup")
+        slSection:SetTitle("")
+        slSection:SetLayout("List")
+        slSection:SetFullWidth(true)
+        slSection.noAutoHeight = true
+        slSection:SetHeight(slCount * ROW_HEIGHT + 40)
+        container:AddChild(slSection)
+        self._slSection = slSection
+        self:FillShoppingListSection(slSection)
+    end
+
     -- ---- Column headers (raw frame – not managed by AceGUI layout) ---------
-    -- Anchoring to toolbar.frame directly means AceGUI layout passes cannot
-    -- override the font-string positions.
+    -- Anchor to the shopping list section when present, otherwise to toolbar.
+    local anchorFrame = (self._slSection and self._slSection.frame) or toolbar.frame
     local headerBar = CreateFrame("Frame", nil, container.content)
     headerBar:SetHeight(18)
-    headerBar:SetPoint("TOPLEFT",  toolbar.frame, "BOTTOMLEFT",  0, 0)
-    headerBar:SetPoint("TOPRIGHT", toolbar.frame, "BOTTOMRIGHT", 0, 0)
+    headerBar:SetPoint("TOPLEFT",  anchorFrame, "BOTTOMLEFT",  0, 0)
+    headerBar:SetPoint("TOPRIGHT", anchorFrame, "BOTTOMRIGHT", 0, 0)
     self._headerBar = headerBar
 
     -- Positions match the pool row layout: icon(4+14+4=22), crafterLbl at 290.
@@ -311,7 +347,7 @@ function BrowserTab:Draw(container)
     recipeHdrHit:SetPoint("RIGHT", recipeHdr, "RIGHT",  2, 0)
     recipeHdrHit:SetHeight(18)
     recipeHdrHit:SetScript("OnEnter", function(f)
-        GameTooltip:SetOwner(f, "ANCHOR_BOTTOMLEFT")
+        addon.Tooltip.Owner(f)
         GameTooltip:SetText("Recipe", 1, 1, 1)
         GameTooltip:AddLine("The name of the craftable item or spell.", nil, nil, nil, true)
         GameTooltip:Show()
@@ -328,7 +364,7 @@ function BrowserTab:Draw(container)
     craftersHdrHit:SetPoint("RIGHT", craftersHdr, "RIGHT",  2, 0)
     craftersHdrHit:SetHeight(18)
     craftersHdrHit:SetScript("OnEnter", function(f)
-        GameTooltip:SetOwner(f, "ANCHOR_BOTTOMLEFT")
+        addon.Tooltip.Owner(f)
         GameTooltip:SetText("Crafters", 1, 1, 1)
         GameTooltip:AddLine("Guild members who know this recipe.", nil, nil, nil, true)
         GameTooltip:Show()
@@ -376,7 +412,357 @@ function BrowserTab:Draw(container)
 end
 
 -- ---------------------------------------------------------------------------
--- List helpers
+-- Shopping list helpers
+-- ---------------------------------------------------------------------------
+
+--- Fill the shopping list InlineGroup with expandable recipe rows.
+-- Clicking a recipe row toggles its reagent sub-rows open/closed.
+function BrowserTab:FillShoppingListSection(container)
+    local bl = Ace.db.char.shoppingList
+
+    local parent = container.content or container.frame
+
+    if not self._slPool        then self._slPool        = {} end
+    if not self._slReagentPool then self._slReagentPool = {} end
+    if not self._slExpanded    then self._slExpanded    = {} end
+
+    -- Build sorted list of recipe rows.
+    local rows = {}
+    for sid, entry in pairs(bl) do
+        table.insert(rows, { sid = sid, entry = entry })
+    end
+    table.sort(rows, function(a, b)
+        local na = (a.entry and a.entry.name) or tostring(a.sid)
+        local nb = (b.entry and b.entry.name) or tostring(b.sid)
+        return na < nb
+    end)
+
+    -- Re-parent existing pool frames to current container (handles full redraws).
+    for _, f in ipairs(self._slPool)        do f:SetParent(parent) end
+    for _, f in ipairs(self._slReagentPool) do f:SetParent(parent) end
+
+    -- ── Recipe row pool ──────────────────────────────────────────────────────
+    local function GetRecipeFrame(idx)
+        if self._slPool[idx] then return self._slPool[idx] end
+
+        local f = CreateFrame("Button", nil, parent)
+        f:SetHeight(ROW_HEIGHT)
+        f:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight", "ADD")
+
+        -- Arrow glyph (+ collapsed / - expanded)
+        local arrow = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        arrow:SetPoint("LEFT", f, "LEFT", 2, 0)
+        arrow:SetWidth(12)
+        arrow:SetJustifyH("CENTER")
+        f.arrow = arrow
+
+        -- Icon: 14×14 after the arrow
+        local icon = f:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(14, 14)
+        icon:SetPoint("LEFT", f, "LEFT", 16, 0)
+        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        f.icon = icon
+
+        -- Name label
+        local nameLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        nameLbl:SetPoint("LEFT", icon, "RIGHT", 4, 0)
+        nameLbl:SetWidth(210)
+        nameLbl:SetJustifyH("LEFT")
+        nameLbl:SetWordWrap(false)
+        f.nameLbl = nameLbl
+
+        -- Qty controls anchored to the right edge
+        local removeBtn = CreateFrame("Button", nil, f)
+        removeBtn:SetSize(12, 18)
+        removeBtn:SetPoint("RIGHT", f, "RIGHT", -4, 0)
+        local removeLbl = removeBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        removeLbl:SetAllPoints()
+        removeLbl:SetJustifyH("CENTER")
+        removeLbl:SetText("|cFFFF4444x|r")
+        f.removeBtn = removeBtn
+
+        local plusBtn = CreateFrame("Button", nil, f)
+        plusBtn:SetSize(12, 18)
+        plusBtn:SetPoint("RIGHT", removeBtn, "LEFT", -6, 0)
+        local plusLbl = plusBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        plusLbl:SetAllPoints()
+        plusLbl:SetJustifyH("CENTER")
+        plusLbl:SetText("|cFFFFD100+|r")
+        f.plusBtn = plusBtn
+
+        local qtyLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        qtyLbl:SetPoint("RIGHT", plusBtn, "LEFT", -4, 0)
+        qtyLbl:SetWidth(22)
+        qtyLbl:SetJustifyH("CENTER")
+        f.qtyLbl = qtyLbl
+
+        local minusBtn = CreateFrame("Button", nil, f)
+        minusBtn:SetSize(12, 18)
+        minusBtn:SetPoint("RIGHT", qtyLbl, "LEFT", -4, 0)
+        local minusLbl = minusBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        minusLbl:SetAllPoints()
+        minusLbl:SetJustifyH("CENTER")
+        minusLbl:SetText("|cFFFFD100-|r")
+        f.minusBtn = minusBtn
+
+        self._slPool[idx] = f
+        return f
+    end
+
+    -- ── Reagent row pool ─────────────────────────────────────────────────────
+    local INDENT = 18   -- pixels to indent reagent rows
+    local function GetReagentFrame(idx)
+        if self._slReagentPool[idx] then return self._slReagentPool[idx] end
+
+        local f = CreateFrame("Frame", nil, parent)
+        f:SetHeight(ROW_HEIGHT)
+        f:EnableMouse(true)
+
+        local icon = f:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(12, 12)
+        icon:SetPoint("LEFT", f, "LEFT", INDENT + 4, 0)
+        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        f.icon = icon
+
+        local nameLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        nameLbl:SetPoint("LEFT", icon, "RIGHT", 4, 0)
+        nameLbl:SetWidth(200)
+        nameLbl:SetJustifyH("LEFT")
+        nameLbl:SetWordWrap(false)
+        nameLbl:SetTextColor(1, 1, 1)
+        f.nameLbl = nameLbl
+
+        local countLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        countLbl:SetPoint("LEFT", nameLbl, "RIGHT", 4, 0)
+        countLbl:SetWidth(44)
+        countLbl:SetJustifyH("RIGHT")
+        countLbl:SetTextColor(1, 1, 1)
+        f.countLbl = countLbl
+
+        -- [Bank] button: shown only when TOGBankClassic has this reagent in stock.
+        local bankBtn = CreateFrame("Button", nil, f)
+        bankBtn:SetSize(52, 14)
+        bankBtn:SetPoint("LEFT", countLbl, "RIGHT", 4, 0)
+        bankBtn:SetNormalFontObject(GameFontNormalSmall)
+        bankBtn:SetText("|cFF88FF88[Bank]|r")
+        bankBtn:Hide()
+        bankBtn:SetScript("OnEnter", function()
+            addon.Tooltip.Owner(bankBtn)
+            GameTooltip:SetText("Request from Bank", 1, 1, 1)
+            GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker.", nil, nil, nil, true)
+            GameTooltip:Show()
+        end)
+        bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        f.bankBtn = bankBtn
+
+        self._slReagentPool[idx] = f
+        return f
+    end
+
+    -- ── Hide everything first ────────────────────────────────────────────────
+    for _, f in ipairs(self._slPool)        do f:Hide() end
+    for _, f in ipairs(self._slReagentPool) do f:Hide() end
+
+    -- ── Layout pass ─────────────────────────────────────────────────────────
+    local yOffset     = 0
+    local reagentIdx  = 0
+
+    for recipeIdx, rowData in ipairs(rows) do
+        local sid      = rowData.sid
+        local ent      = rowData.entry
+        local qty      = (ent and ent.quantity) or 1
+        local name     = (ent and ent.name) or tostring(sid)
+        local reagents = (ent and ent.reagents) or {}
+        local hasReagents = #reagents > 0
+        local expanded = self._slExpanded[sid]
+
+        local f = GetRecipeFrame(recipeIdx)
+        f:ClearAllPoints()
+        f:SetPoint("TOPLEFT",  parent, "TOPLEFT",  0, -yOffset)
+        f:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -yOffset)
+        yOffset = yOffset + ROW_HEIGHT
+
+        -- Arrow: ▶ if has reagents and collapsed, ▼ if expanded, blank if no reagents.
+        if hasReagents then
+            f.arrow:SetText(expanded and "|cFFFFD100-|r" or "|cFFFFD100+|r")
+        else
+            f.arrow:SetText("")
+        end
+
+        -- Icon
+        if ent and ent.icon then
+            f.icon:SetTexture(ent.icon)
+        else
+            f.icon:SetTexture(nil)
+        end
+
+        -- Name with quality color
+        local colorHex = ent and ent.itemLink and ent.itemLink:match("|c(ff%x%x%x%x%x%x)|H")
+        f.nameLbl:SetText(colorHex and ("|c" .. colorHex .. name .. "|r") or name)
+
+        f.qtyLbl:SetText(tostring(qty))
+
+        -- Toggle expand on row click (but not on the control buttons).
+        f:SetScript("OnClick", function(btn)
+            -- Ignore if a child button captured the click.
+            if f.minusBtn:IsMouseOver() or f.plusBtn:IsMouseOver() or f.removeBtn:IsMouseOver() then
+                return
+            end
+            if hasReagents then
+                self._slExpanded[sid] = not self._slExpanded[sid]
+                self:RefreshShoppingList()
+            end
+        end)
+
+        f.minusBtn:SetScript("OnClick", function()
+            local cur = (bl[sid] and bl[sid].quantity) or 1
+            if cur <= 1 then
+                bl[sid] = nil
+                self._slExpanded[sid] = nil
+            else
+                bl[sid].quantity = cur - 1
+            end
+            if self._popup and self._popup._entryId == sid and self._popup._refreshQty then
+                self._popup._refreshQty()
+            end
+            self:RefreshShoppingList()
+        end)
+        f.plusBtn:SetScript("OnClick", function()
+            if bl[sid] then
+                bl[sid].quantity = (bl[sid].quantity or 1) + 1
+                if ent then
+                    bl[sid].name     = ent.name     or bl[sid].name
+                    bl[sid].icon     = ent.icon     or bl[sid].icon
+                    bl[sid].itemLink = ent.itemLink or bl[sid].itemLink
+                    bl[sid].reagents = ent.reagents or bl[sid].reagents
+                end
+            else
+                bl[sid] = { name = name, quantity = 1,
+                            icon = ent and ent.icon, itemLink = ent and ent.itemLink,
+                            reagents = ent and ent.reagents }
+            end
+            if self._popup and self._popup._entryId == sid and self._popup._refreshQty then
+                self._popup._refreshQty()
+            end
+            self:RefreshShoppingList()
+        end)
+        f.removeBtn:SetScript("OnClick", function()
+            bl[sid] = nil
+            self._slExpanded[sid] = nil
+            if self._popup and self._popup._entryId == sid and self._popup._refreshQty then
+                self._popup._refreshQty()
+            end
+            self:RefreshShoppingList()
+        end)
+
+        f:SetScript("OnEnter", function()
+            local link = ent and (ent.itemLink or ent.recipeLink)
+            if link then
+                addon.Tooltip.Owner(f)
+                GameTooltip:SetHyperlink(link)
+                GameTooltip:Show()
+            end
+        end)
+        f:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+
+        f:Show()
+
+        -- Reagent sub-rows (only when expanded)
+        if expanded and hasReagents then
+            for _, r in ipairs(reagents) do
+                reagentIdx = reagentIdx + 1
+                local rf = GetReagentFrame(reagentIdx)
+                rf:ClearAllPoints()
+                rf:SetPoint("TOPLEFT",  parent, "TOPLEFT",  0, -yOffset)
+                rf:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -yOffset)
+                yOffset = yOffset + ROW_HEIGHT
+
+                -- Reagent icon via item ID if available, else blank
+                if r.itemId and r.itemId > 0 then
+                    local _, _, _, _, _, _, _, _, _, itemTexture = GetItemInfo(r.itemId)
+                    rf.icon:SetTexture(itemTexture or nil)
+                else
+                    rf.icon:SetTexture(nil)
+                end
+
+                rf.nameLbl:SetText(r.name or "")
+
+                local rItemLink = r.itemLink
+                rf:SetScript("OnEnter", function()
+                    if rItemLink then
+                        addon.Tooltip.Owner(rf)
+                        GameTooltip:SetHyperlink(rItemLink)
+                        GameTooltip:Show()
+                    end
+                end)
+                rf:SetScript("OnLeave", function() GameTooltip:Hide() end)
+                -- Total needed = reagent count × recipe quantity
+                local needed = (r.count or 1) * qty
+                rf.countLbl:SetText("|cffffffff x" .. needed .. "|r")
+
+                -- [Bank] button: show when TOGBankClassic has this reagent in stock.
+                local rItemId = rItemLink and tonumber(rItemLink:match("|Hitem:(%d+)"))
+                if rItemId and addon.Bank and addon.Bank.GetStock(rItemId) > 0 then
+                    rf.bankBtn:SetScript("OnClick", function()
+                        addon.Bank.ShowRequestDialog(rItemId, r.name or "", rItemLink)
+                    end)
+                    rf.bankBtn:Show()
+                else
+                    rf.bankBtn:Hide()
+                end
+
+                rf:Show()
+            end
+        end
+    end
+
+    -- Resize the InlineGroup to fit all visible rows.
+    local totalH = math.max(yOffset, ROW_HEIGHT)
+    container:SetHeight(totalH + 40)
+end
+
+--- Refresh the shopping list section without touching the recipe scroll list.
+-- If _slSection already exists, just refill it in place.
+-- If it didn't exist (list was empty, now has an item), do a full redraw.
+function BrowserTab:RefreshShoppingList()
+    if not self._container then return end
+
+    if self._slSection then
+        -- Section already visible — refill it in place.
+        local bl = Ace.db.char.shoppingList
+        local hasSL = false
+        for _ in pairs(bl) do hasSL = true; break end
+
+        if hasSL then
+            self:FillShoppingListSection(self._slSection)
+            -- Re-layout the parent so the resized InlineGroup is positioned correctly.
+            if self._container then self._container:DoLayout() end
+        else
+            -- List is now empty; hide and queue a clean full redraw next frame.
+            self._slSection.frame:Hide()
+            self._slSection = nil
+            C_Timer.After(0, function()
+                if self._container then
+                    self._container:ReleaseChildren()
+                    self:Draw(self._container)
+                end
+            end)
+        end
+    else
+        -- Section wasn't shown (list was empty). Needs a full redraw.
+        C_Timer.After(0, function()
+            if self._container then
+                self._container:ReleaseChildren()
+                self:Draw(self._container)
+            end
+        end)
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Recipe list helpers
 -- ---------------------------------------------------------------------------
 
 function BrowserTab:RefreshList()
@@ -477,7 +863,7 @@ function BrowserTab:BuildPool(parent)
             addon.Bank.ShowRequestDialog(entry._bankItemId, name, entry.itemLink)
         end)
         bankBtn:SetScript("OnEnter", function()
-            GameTooltip:SetOwner(bankBtn, "ANCHOR_TOPRIGHT")
+            addon.Tooltip.Owner(bankBtn)
             GameTooltip:SetText("Request from Bank", 1, 1, 1)
             GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker.", nil, nil, nil, true)
             GameTooltip:Show()
@@ -502,14 +888,7 @@ function BrowserTab:BuildPool(parent)
         f:SetScript("OnEnter", function()
             local entry = f._entry
             if not entry then return end
-            -- Anchor to the left edge of the row; flip above/below based on screen space.
-            local _, rowTop    = f:GetCenter()
-            local screenHeight = GetScreenHeight()
-            if rowTop and rowTop > screenHeight / 2 then
-                GameTooltip:SetOwner(f, "ANCHOR_BOTTOMLEFT")
-            else
-                GameTooltip:SetOwner(f, "ANCHOR_TOPLEFT")
-            end
+            addon.Tooltip.Owner(f)
             if entry.recipeLink then
                 -- Recipe scroll item link (scroll-taught recipes have a real item).
                 GameTooltip:SetHyperlink(entry.recipeLink)
@@ -611,133 +990,311 @@ end
 -- ---------------------------------------------------------------------------
 
 --- Open (or replace) the recipe detail popup.
--- Shows the recipe name/icon, the list of crafters who know it, and
--- [–] qty [+] controls for managing the shopping-list quantity.
--- @param entry  table: { id, name, icon, isSpell, crafters = {...} }
+-- Shows the recipe name/icon, the list of crafters who know it (with
+-- online/offline/you coloring), reagents, and [–] qty [+/x] controls
+-- for managing the shopping-list quantity.
+-- @param entry  table: { id, name, icon, isSpell, crafters={...}, reagents={...} }
 function BrowserTab:OpenRecipePopup(entry)
-    -- Release any previously open popup first.
-    if self._popup then
-        self._popup:Release()
-        self._popup = nil
+    -- Lazy-create the popup frame once and keep it alive forever (never Released).
+    -- This is the same pattern PersonalShopper uses for its main window:
+    -- a stable raw WoW frame means _G["TOGPMRecipePopup"] never goes stale, so
+    -- UISpecialFrames + ESC works reliably.
+    if not self._popup then
+        local popup = AceGUI:Create("Frame")
+        popup:SetWidth(480)
+        popup:SetHeight(340)
+        popup:SetLayout("List")
+        -- OnClose fires from frame:SetScript("OnHide") — frame is already hidden.
+        -- We just clear the entry id; do NOT call Release().
+        popup:SetCallback("OnClose", function(_w)
+            self._popup._entryId    = nil
+            self._popup._refreshQty = nil
+        end)
+        -- Register ESC support once — the global always points to the same stable frame.
+        _G["TOGPMRecipePopup"] = popup.frame
+        tinsert(UISpecialFrames, "TOGPMRecipePopup")
+        self._popup = popup
     end
 
-    local popup = AceGUI:Create("Frame")
+    local popup = self._popup
+
+    -- Toggle: clicking the same row while the popup is visible hides it.
+    if popup._entryId == entry.id and popup.frame:IsShown() then
+        popup:Hide()
+        return
+    end
+
+    -- Clear previous AceGUI children; rebuild for this entry.
+    popup:ReleaseChildren()
     popup:SetTitle(entry.name)
     popup:SetStatusText("")
-    popup:SetWidth(400)
-    popup:SetHeight(280)
-    popup:SetLayout("List")
-    popup:SetCallback("OnClose", function(w)
-        w:Release()
-        self._popup = nil
-    end)
+    popup._entryId = entry.id
 
-    -- Center on the main window frame if available, otherwise screen centre.
-    local anchor = (addon.MainWindow
-                    and addon.MainWindow.frame
-                    and addon.MainWindow.frame.frame)
-                   or UIParent
+    -- Snap to top-right of the main window if available, otherwise screen centre.
+    local mainWowFrame = addon.MainWindow
+                      and addon.MainWindow.frame
+                      and addon.MainWindow.frame.frame
     popup.frame:ClearAllPoints()
-    popup.frame:SetPoint("CENTER", anchor, "CENTER", 0, 0)
-
-    self._popup = popup
+    if mainWowFrame and mainWowFrame:IsShown() then
+        popup.frame:SetPoint("TOPLEFT", mainWowFrame, "TOPRIGHT", 4, 0)
+    else
+        popup.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    end
 
     -- ── Icon + name ──────────────────────────────────────────────────────────
-    local headerGroup = AceGUI:Create("SimpleGroup")
-    headerGroup:SetLayout("Flow")
-    headerGroup:SetFullWidth(true)
-    popup:AddChild(headerGroup)
+    -- Use nameLbl:SetFont() (the AceGUI method), NOT nameLbl.label:SetFont().
+    -- The AceGUI method stores the font on the widget table so OnAcquire can
+    -- properly reset it to GameFontHighlightSmall when the widget is recycled.
+    -- Bypassing it via the raw fontstring leaks the 24px size into every label
+    -- that AceGUI later hands that pooled widget to.
+    local titleColor = entry.itemLink and entry.itemLink:match("|c(ff%x%x%x%x%x%x)|H") or "ffffd100"
+    local nameLbl = AceGUI:Create("InteractiveLabel")
+    nameLbl:SetImage(entry.icon)
+    nameLbl:SetImageSize(24, 24)
+    nameLbl:SetText("|c" .. titleColor .. entry.name .. "|r")
+    -- Fixed width: popup content = 480-34 = 446px. Buttons = 12+22+12+12 = 58px.
+    -- 375px for the name leaves ~13px gap before the buttons.
+    nameLbl:SetWidth(375)
+    do
+        local fontPath, _, fontFlags = GameFontNormal:GetFont()
+        nameLbl:SetFont(fontPath, 24, fontFlags or "")  -- AceGUI method; safe to recycle
+    end
+    local nameLink = entry.itemLink or entry.recipeLink
+    if nameLink then
+        nameLbl:SetCallback("OnEnter", function(_widget)
+            addon.Tooltip.Owner(_widget.frame)
+            GameTooltip:SetHyperlink(nameLink)
+            GameTooltip:Show()
+        end)
+        nameLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+        nameLbl:SetCallback("OnClick", function(_widget, _event, button)
+            if button == "LeftButton" and IsShiftKeyDown() then
+                ChatEdit_InsertLink(nameLink)
+            end
+        end)
+    end
 
-    local iconLbl = AceGUI:Create("Label")
-    iconLbl:SetImage(entry.icon)
-    iconLbl:SetImageSize(24, 24)
-    iconLbl:SetText("  ")      -- padding so the image is visible
-    iconLbl:SetWidth(32)
-    headerGroup:AddChild(iconLbl)
+    -- ── Shopping list controls ────────────────────────────────────────────────
+    -- All plain AceGUI widgets — they get cleaned up by ReleaseChildren() each open.
+    local qtyLbl = AceGUI:Create("Label")
+    qtyLbl:SetWidth(22)
+    qtyLbl:SetJustifyH("CENTER")
 
-    local nameLbl = AceGUI:Create("Label")
-    nameLbl:SetText("|cffffd100" .. entry.name .. "|r")
-    nameLbl:SetWidth(320)
-    headerGroup:AddChild(nameLbl)
+    local countLbls = {}
+    local function RefreshQty()
+        local qty = (Ace.db.char.shoppingList[entry.id] and Ace.db.char.shoppingList[entry.id].quantity) or 0
+        qtyLbl:SetText(tostring(qty))
+        local mult = math.max(1, qty)
+        for _, cl in ipairs(countLbls) do
+            cl.lbl:SetText("|cffffffff\195\151" .. cl.base * mult .. "|r")
+        end
+    end
 
-    -- ── Crafters ─────────────────────────────────────────────────────────────
+    local minusBtn = AceGUI:Create("InteractiveLabel")
+    minusBtn:SetText("|cFFFFD100-|r")
+    minusBtn:SetWidth(12)
+    minusBtn:SetJustifyH("CENTER")
+    minusBtn:SetCallback("OnClick", function()
+        local sl = Ace.db.char.shoppingList
+        if sl[entry.id] then
+            sl[entry.id].quantity = sl[entry.id].quantity - 1
+            if sl[entry.id].quantity <= 0 then sl[entry.id] = nil end
+        end
+        RefreshQty()
+        self:RefreshShoppingList()
+    end)
+
+    local plusBtn = AceGUI:Create("InteractiveLabel")
+    plusBtn:SetText("|cFFFFD100+|r")
+    plusBtn:SetWidth(12)
+    plusBtn:SetJustifyH("CENTER")
+    plusBtn:SetCallback("OnClick", function()
+        local sl = Ace.db.char.shoppingList
+        if sl[entry.id] then
+            sl[entry.id].quantity = sl[entry.id].quantity + 1
+            sl[entry.id].name     = entry.name
+            sl[entry.id].icon     = entry.icon
+            sl[entry.id].itemLink = entry.itemLink
+            sl[entry.id].reagents = entry.reagents
+        else
+            sl[entry.id] = { name = entry.name, quantity = 1, icon = entry.icon, itemLink = entry.itemLink, reagents = entry.reagents }
+        end
+        RefreshQty()
+        self:RefreshShoppingList()
+    end)
+
+    local removeBtn = AceGUI:Create("InteractiveLabel")
+    removeBtn:SetText("|cFFFF4444x|r")
+    removeBtn:SetWidth(12)
+    removeBtn:SetJustifyH("CENTER")
+    removeBtn:SetCallback("OnClick", function()
+        Ace.db.char.shoppingList[entry.id] = nil
+        RefreshQty()
+        self:RefreshShoppingList()
+    end)
+
+    -- Expose RefreshQty on the popup so FillShoppingListSection can call it
+    -- when its own +/-/remove buttons change qty for this same entry.
+    popup._refreshQty = RefreshQty
+
+    RefreshQty()
+
+    -- Lay out: [icon+name ..................... - qty + x]
+    -- nameLbl is full-width so the buttons float right via a right-aligned row group.
+    local ctrlRow = AceGUI:Create("SimpleGroup")
+    ctrlRow:SetLayout("Flow")
+    ctrlRow:SetFullWidth(true)
+    ctrlRow:AddChild(nameLbl)
+    ctrlRow:AddChild(minusBtn)
+    ctrlRow:AddChild(qtyLbl)
+    ctrlRow:AddChild(plusBtn)
+    ctrlRow:AddChild(removeBtn)
+    popup:AddChild(ctrlRow)
+
+    -- ── Reagents ─────────────────────────────────────────────────────────────
+    local reagents = entry.reagents or {}
+    if #reagents > 0 then
+        local reagentHeading = AceGUI:Create("Heading")
+        reagentHeading:SetText("Reagents")
+        reagentHeading:SetFullWidth(true)
+        popup:AddChild(reagentHeading)
+
+        for _, r in ipairs(reagents) do
+            local rowGrp = AceGUI:Create("SimpleGroup")
+            rowGrp:SetLayout("Flow")
+            rowGrp:SetFullWidth(true)
+
+            -- Name column (fixed 200px so counts align across rows)
+            local nameLbl = AceGUI:Create("InteractiveLabel")
+            nameLbl:SetText(r.name)
+            nameLbl:SetWidth(200)
+            if nameLbl.label then nameLbl.label:SetWordWrap(false) end
+            rowGrp:AddChild(nameLbl)
+
+            -- Count column (right-justified inside 44px so the × symbol
+            -- always lands at the same x, giving a clean column of numbers)
+            local countLbl = AceGUI:Create("Label")
+            local baseCount = r.count or 1
+            local initMult = math.max(1, (Ace.db.char.shoppingList[entry.id] and Ace.db.char.shoppingList[entry.id].quantity) or 0)
+            countLbl:SetText("|cffffffff\195\151" .. baseCount * initMult .. "|r")
+            countLbl:SetWidth(44)
+            countLbl:SetJustifyH("RIGHT")
+            countLbls[#countLbls + 1] = { lbl = countLbl, base = baseCount }
+            rowGrp:AddChild(countLbl)
+
+            -- Item link callbacks (on the name widget)
+            local rLink = r.itemLink
+            if rLink then
+                nameLbl:SetCallback("OnEnter", function(_widget)
+                    addon.Tooltip.Owner(_widget.frame)
+                    GameTooltip:SetHyperlink(rLink)
+                    GameTooltip:Show()
+                end)
+                nameLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+                nameLbl:SetCallback("OnClick", function(_widget, _event, button)
+                    if button == "LeftButton" and IsShiftKeyDown() then
+                        ChatEdit_InsertLink(rLink)
+                    end
+                end)
+            end
+
+            -- [Bank] button — shown only when TOGBankClassic has this reagent in stock
+            if addon.Bank and addon.Bank.GetStock and addon.Bank.ShowRequestDialog then
+                local rItemId = rLink and tonumber(rLink:match("item:(%d+)"))
+                if rItemId then
+                    local stock = addon.Bank.GetStock(rItemId)
+                    if stock and stock > 0 then
+                        local bankSp = AceGUI:Create("Label")
+                        bankSp:SetWidth(5)
+                        bankSp:SetText("")
+                        rowGrp:AddChild(bankSp)
+
+                        local bankLbl = AceGUI:Create("InteractiveLabel")
+                        bankLbl:SetText("|cFF88FF88[Bank]|r")
+                        bankLbl:SetWidth(52)
+                        bankLbl:SetCallback("OnEnter", function(_widget)
+                            addon.Tooltip.Owner(_widget.frame)
+                            GameTooltip:SetText("Request from Bank", 1, 1, 1)
+                            GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker.", nil, nil, nil, true)
+                            GameTooltip:Show()
+                        end)
+                        bankLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+                        bankLbl:SetCallback("OnClick", function()
+                            addon.Bank.ShowRequestDialog(rItemId, r.name, rLink, popup.frame)
+                        end)
+                        rowGrp:AddChild(bankLbl)
+                    end
+                end
+            end
+
+            popup:AddChild(rowGrp)
+        end
+    end
+
+    -- ── Known By ─────────────────────────────────────────────────────────────
+    local colorOnline  = "|c" .. (addon.ColorOnline  or "ffffffff")
+    local colorOffline = "|c" .. (addon.ColorOffline or "ffaaaaaa")
+    local colorYou     = "|c" .. (addon.ColorYou     or addon.BrandColor or "ffDA8CFF")
+
     local crafterHeading = AceGUI:Create("Heading")
     crafterHeading:SetText(L["PopupCrafters"])
     crafterHeading:SetFullWidth(true)
     popup:AddChild(crafterHeading)
 
-    local craftersText = #entry.crafters > 0
-        and table.concat(entry.crafters, ", ")
-        or  "|cffaaaaaa" .. L["NoDataYet"] .. "|r"
-    local crafterLbl = AceGUI:Create("Label")
-    crafterLbl:SetText(craftersText)
-    crafterLbl:SetFullWidth(true)
-    popup:AddChild(crafterLbl)
-
-    -- ── Shopping list quantity ────────────────────────────────────────────────
-    local slHeading = AceGUI:Create("Heading")
-    slHeading:SetText(L["SectionShoppingList"])
-    slHeading:SetFullWidth(true)
-    popup:AddChild(slHeading)
-
-    local qtyRow = AceGUI:Create("SimpleGroup")
-    qtyRow:SetLayout("Flow")
-    qtyRow:SetFullWidth(true)
-    popup:AddChild(qtyRow)
-
-    local statusLbl = AceGUI:Create("Label")
-    statusLbl:SetWidth(190)
-    qtyRow:AddChild(statusLbl)
-
-    local minusBtn = AceGUI:Create("Button")
-    minusBtn:SetText("-")
-    minusBtn:SetWidth(44)
-    qtyRow:AddChild(minusBtn)
-
-    local qtyLbl = AceGUI:Create("Label")
-    qtyLbl:SetWidth(36)
-    qtyRow:AddChild(qtyLbl)
-
-    local plusBtn = AceGUI:Create("Button")
-    plusBtn:SetText("+")
-    plusBtn:SetWidth(44)
-    qtyRow:AddChild(plusBtn)
-
-    local function RefreshQty()
-        local sl  = Ace.db.char.shoppingList
-        local qty = sl[entry.id] and sl[entry.id].quantity or 0
-        qtyLbl:SetText(tostring(qty))
-        if qty == 0 then
-            statusLbl:SetText("|cffaaaaaa" .. L["PopupNotOnList"] .. "|r")
-            minusBtn:SetDisabled(true)
-        else
-            statusLbl:SetText("|cff00ff00" .. L["PopupOnList"] .. "|r")
-            minusBtn:SetDisabled(false)
+    local crafters = entry.crafters or {}
+    if #crafters > 0 then
+        local function openWhisper(target)
+            if ChatEdit_GetActiveWindow then
+                local box = ChatEdit_GetActiveWindow()
+                if box then
+                    box:SetText("/w " .. target .. " ")
+                    box:SetFocus()
+                    box:SetCursorPosition(#box:GetText())
+                    return
+                end
+            end
+            ChatFrame_OpenChat("/w " .. target .. " ", DEFAULT_CHAT_FRAME)
         end
+
+        for _, c in ipairs(crafters) do
+            local col = c.isYou and colorYou or (c.online and colorOnline or colorOffline)
+            local cLbl = AceGUI:Create("InteractiveLabel")
+            cLbl:SetText(col .. c.name .. "|r")
+            cLbl:SetFullWidth(true)
+            if not c.isYou then
+                local charKey = c.charKey or c.name
+                local shortName = c.name
+                local function doWhisper(anchorFrame)
+                    if Menu and Menu.CreateContextMenu then
+                        Menu.CreateContextMenu(anchorFrame, function(_, root)
+                            root:CreateTitle(shortName)
+                            root:CreateButton(shortName, function() openWhisper(charKey) end)
+                        end)
+                    else
+                        openWhisper(charKey)
+                    end
+                end
+                cLbl:SetCallback("OnEnter", function(_widget)
+                    addon.Tooltip.Owner(_widget.frame)
+                    GameTooltip:SetText(c.name, 1, 1, 1)
+                    GameTooltip:AddLine("Right-click to whisper", 0.7, 0.7, 0.7)
+                    GameTooltip:Show()
+                end)
+                cLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+                cLbl:SetCallback("OnClick", function(_widget, _event, button)
+                    if button == "RightButton" then doWhisper(_widget.frame) end
+                end)
+            end
+            popup:AddChild(cLbl)
+        end
+    else
+        local noDataLbl = AceGUI:Create("Label")
+        noDataLbl:SetText("|cffaaaaaa" .. L["NoDataYet"] .. "|r")
+        noDataLbl:SetFullWidth(true)
+        popup:AddChild(noDataLbl)
     end
 
-    plusBtn:SetCallback("OnClick", function()
-        local sl = Ace.db.char.shoppingList
-        if sl[entry.id] then
-            sl[entry.id].quantity = sl[entry.id].quantity + 1
-        else
-            sl[entry.id] = { name = entry.name, quantity = 1 }
-        end
-        RefreshQty()
-    end)
-
-    minusBtn:SetCallback("OnClick", function()
-        local sl = Ace.db.char.shoppingList
-        if sl[entry.id] then
-            sl[entry.id].quantity = sl[entry.id].quantity - 1
-            if sl[entry.id].quantity <= 0 then
-                sl[entry.id] = nil
-            end
-        end
-        RefreshQty()
-    end)
-
-    RefreshQty()
+    popup:Show()
 end
 
 -- Recalculate which recipe indices are visible and update pool frames.

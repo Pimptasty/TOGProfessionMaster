@@ -1,12 +1,11 @@
 -- TOG Profession Master — Main Window
--- Root AceGUI frame with a TabGroup containing three tabs:
---   1. Professions browser
---   2. Cooldowns tracker
---   3. Shopping list / reagents
+-- Root AceGUI frame with a TabGroup containing two tabs:
+--   1. Profession browser (includes shopping list at top)
+--   2. Cooldown tracker
 --
--- Tab content is delegated to BrowserTab.lua, CooldownsTab.lua,
--- and ShoppingListTab.lua respectively.  This file owns only the frame
--- lifecycle, tab routing, and window position persistence.
+-- Tab content is delegated to BrowserTab.lua and CooldownsTab.lua.
+-- This file owns only the frame lifecycle, tab routing, and window
+-- position persistence.
 
 local _, addon = ...
 local Ace    = addon.lib
@@ -27,8 +26,54 @@ MainWindow.activeTab = "browser"
 local TAB_DEFS = {
     { value = "browser",   text = L["TabProfessions"] },
     { value = "cooldowns", text = L["TabCooldowns"]   },
-    { value = "bucket",   text = L["TabReagents"]    },
 }
+
+-- ---------------------------------------------------------------------------
+-- ESC proxy
+-- ---------------------------------------------------------------------------
+-- One invisible frame registered in UISpecialFrames handles all ESC presses
+-- while the main window is open:
+--   • First press  → closes all open popups (recipe popup, group popup)
+--   • Second press → closes the main window
+-- BrowserTab no longer registers TOGPMRecipePopup in UISpecialFrames; this
+-- proxy owns ESC for the entire addon.
+
+local _escProxy = CreateFrame("Frame", "TOGPMEscProxy", UIParent)
+_escProxy:SetSize(1, 1)
+_escProxy:SetAlpha(0)
+_escProxy:SetPoint("CENTER")
+tinsert(UISpecialFrames, "TOGPMEscProxy")
+
+_escProxy:SetScript("OnHide", function()
+    if not MainWindow.frame then return end  -- window not open; guard re-entry
+
+    local closedAny = false
+
+    -- Recipe popup (BrowserTab)
+    local bt = addon.BrowserTab
+    if bt and bt._popup and bt._popup.frame and bt._popup.frame:IsShown() then
+        bt._popup:Hide()
+        closedAny = true
+    end
+
+    -- Group / transmute popup (CooldownsTab)
+    local ct = addon.CooldownsTab
+    if ct and ct._groupPopup and ct._groupPopup:IsShown() then
+        ct._groupPopup:Hide()
+        ct._groupPopup = nil
+        closedAny = true
+    end
+
+    if closedAny then
+        -- Re-show after this frame so the next ESC can close the main window.
+        C_Timer.After(0, function()
+            if MainWindow.frame then _escProxy:Show() end
+        end)
+    else
+        -- No popups open — close the main window.
+        MainWindow:Close()
+    end
+end)
 
 -- ---------------------------------------------------------------------------
 -- Open / Close
@@ -55,9 +100,10 @@ function MainWindow:Open(tabKey)
     f:SetStatusTable(frames.mainWindow)
 
     f:SetCallback("OnClose", function(_widget)
-        AceGUI:Release(_widget)
         self.frame = nil
         self.tabs  = nil
+        AceGUI:Release(_widget)
+        _escProxy:Hide()
     end)
 
     -- Shrink the default status bar right edge to create room for the help icon.
@@ -111,12 +157,7 @@ function MainWindow:Open(tabKey)
                 brand .. "Ready Only toggle:|r Hide cooldowns that are not yet ready.",
             },
         },
-        bucket = {
-            title = "Shopping List & Reagents",
-            lines = {
-                "Tracks reagents needed for queued crafts.",
-            },
-        },
+
     }
 
     helpIcon:SetScript("OnEnter", function(self)
@@ -151,6 +192,8 @@ function MainWindow:Open(tabKey)
 
     self.frame = f
     self.tabs  = tg
+
+    _escProxy:Show()  -- arm ESC handling for this window session
 
     tg:SelectTab(tabKey or self.activeTab or "browser")
 end
@@ -190,10 +233,6 @@ function MainWindow:DrawTab(group, container)
         if addon.CooldownsTab then
             addon.CooldownsTab:Draw(container)
         end
-    elseif group == "bucket" then
-        if addon.ShoppingListTab then
-            addon.ShoppingListTab:Draw(container)
-        end
     end
 end
 
@@ -207,6 +246,19 @@ function MainWindow:Refresh()
     self:DrawTab(self.activeTab, self.tabs)
 end
 
+-- Debounced refresh — defers the redraw out of the message-handler context
+-- so AceGUI layout isn't called mid-callback.  Rapid back-to-back data
+-- updates (multiple guild members syncing at once) collapse into one redraw.
+function MainWindow:QueueRefresh()
+    if self._refreshTimer then
+        self._refreshTimer:Cancel()
+    end
+    self._refreshTimer = C_Timer.NewTimer(0.05, function()
+        self._refreshTimer = nil
+        self:Refresh()
+    end)
+end
+
 -- ---------------------------------------------------------------------------
 -- Slash command stubs (override the ones created in TOGProfessionMaster.lua)
 -- ---------------------------------------------------------------------------
@@ -216,7 +268,7 @@ function addon:OpenBrowser()
 end
 
 function addon:OpenReagents()
-    MainWindow:Toggle("bucket")
+    MainWindow:Toggle("browser")
 end
 
 -- ---------------------------------------------------------------------------
@@ -225,6 +277,6 @@ end
 
 hooksecurefunc(Ace, "OnEnable", function(_self)
     addon:RegisterCallback("GUILD_DATA_UPDATED", function(_event, _charKey)
-        MainWindow:Refresh()
+        MainWindow:QueueRefresh()
     end)
 end)

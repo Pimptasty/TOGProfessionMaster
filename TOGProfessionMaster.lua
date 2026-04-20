@@ -35,7 +35,8 @@ local Ace = LibStub("AceAddon-3.0"):NewAddon(
     "AceEvent-3.0",
     "AceTimer-3.0",
     "AceComm-3.0",
-    "AceSerializer-3.0"
+    "AceSerializer-3.0",
+    "AceHook-3.0"
 )
 addon.lib = Ace
 
@@ -260,7 +261,7 @@ end
 -- Crafter alert
 -- ---------------------------------------------------------------------------
 
-local _PROF_NAMES = {
+addon.PROF_NAMES = {
     [171] = "Alchemy",       [164] = "Blacksmithing", [185] = "Cooking",
     [333] = "Enchanting",    [202] = "Engineering",   [129] = "First Aid",
     [165] = "Leatherworking",[186] = "Mining",        [197] = "Tailoring",
@@ -292,7 +293,7 @@ function addon:OnCrafterCameOnline(charKey)
                         end
                     end
                     if match then
-                        local profName    = _PROF_NAMES[profId] or ""
+                        local profName    = addon.PROF_NAMES[profId] or ""
                         local label       = profName ~= "" and (profName .. ": " .. (rd.name or "")) or (rd.name or "")
                         local crafterShort = crafterKey:match("^(.-)%-") or crafterKey
                         if crafterKey == charKey then

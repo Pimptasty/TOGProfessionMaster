@@ -1,5 +1,33 @@
 # TOG Profession Master Changelog
 
+## [v0.0.17] (2026-04-19) - Global `[TOGPM]` Tooltip & Bank Button Fix
+
+### New Features
+
+- **`[TOGPM]` line on every item tooltip** — Hovering any crafted item anywhere in the game (bags, AH, loot, merchant, chat links, comparison tooltips) now appends a single line at the bottom of the tooltip: `[TOGPM] name1, name2, ...` showing every guildmate (and your own alts) who can craft it. Online names are white, offline are grey. A blank row separates it from the item's own info. Works across all supported clients via `TooltipDataProcessor` (MoP Classic+) or `OnTooltipSetItem`/`OnTooltipCleared` (Vanilla → Cata Classic) on GameTooltip, ItemRefTooltip, and the three ShoppingTooltips. Location: `Tooltip.lua`.
+
+### Bug Fixes
+
+- **Tooltip crafter feature silently disabled since day one** — `AceHook-3.0` was never listed in the `NewAddon` mixins, so `Ace.HookScript` was nil and `Tooltip.lua` early-returned on load. The global tooltip hook never ran in the addon's lifetime. Fixed by adding `AceHook-3.0` to the mixin list. Location: `TOGProfessionMaster.lua`.
+
+- **`FindCrafters` traversing the wrong schema** — Walked `gdb.guildData[charKey].professions[].recipes[].craftedItemId`, which only exists in pre-migration SavedVariables. Rewritten to walk `gdb.recipes[profId][recipeId]` where `recipeId` IS the crafted item ID when `not rd.isSpell`, collecting charKeys from `rd.crafters`. Location: `Tooltip.lua`.
+
+- **`[Bank]` button showing on every recipe row** — The recipe-row bank button was iterating `entry.reagents` and lighting up whenever *any* reagent had bank stock, so ~every row got a button that requested the wrong thing (e.g. Barbaric Belt asked for Leather). Replaced with a single check on `entry.id` so the button only appears when the crafted item itself is in bank stock, and the request dialog receives the crafted item's name/link. Suppressed entirely for enchants (no craftable item). Location: `GUI/BrowserTab.lua`.
+
+- **Custom recipe tooltip missing the `[TOGPM]` line** — The BrowserTab reagent-list tooltip path builds its content manually with `ClearLines()` + `AddLine()`, bypassing all tooltip hooks. Added an explicit `addon.Tooltip.AppendCrafters(GameTooltip, entry.id)` call before `Show()` in that path. Location: `GUI/BrowserTab.lua`.
+
+### Improvements
+
+- **`PROF_NAMES` lookup promoted to addon namespace** — `_PROF_NAMES` was file-local in `TOGProfessionMaster.lua`, which prevented `Tooltip.lua` from showing profession names. Exposed as `addon.PROF_NAMES`. Location: `TOGProfessionMaster.lua`.
+
+- **`AppendCrafters` exposed for explicit callers** — BrowserTab's custom tooltip path bypasses hooks, so `AppendCrafters` is now assigned to `addon.Tooltip.AppendCrafters` and callable directly. A per-tooltip `_togpmAppended` flag prevents the post-hook from double-adding when the custom path also fires a subsequent `Show()`. Location: `Tooltip.lua`.
+
+- **Blank-line separator embedded via `|n`** — Two-line approach (`AddLine(" ")` + `AddLine("[TOGPM]...")`) was being reordered by the tooltip's internal build, landing at the top instead of the bottom. Switched to a single `AddLine("|n[TOGPM]...")` so the blank row can't be repositioned. Location: `Tooltip.lua`.
+
+- **`.luarc.json` globals** — Added `TooltipDataProcessor` and `Enum` so the LSP stops warning on the MoP Classic+ branch. Location: `.luarc.json`.
+
+---
+
 ## [v0.0.16] (2026-04-19) - Enchanting Tooltip Fixes & Crafter Alerts
 
 ### New Features

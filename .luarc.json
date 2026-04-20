@@ -183,6 +183,9 @@
         "FCF_DockFrame",
         "FCF_Close",
 
+        "TooltipDataProcessor",
+        "Enum",
+
         "ClickSendMailItemButton",
         "GetSendMailItem",
         "ATTACHMENTS_MAX_SEND",

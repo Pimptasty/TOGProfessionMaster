@@ -5,7 +5,6 @@
 
 local _, addon = ...
 local Ace = addon.lib
-local L   = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 
 -- Attempt to locate AceHook-3.0 on the addon object.
 -- AceAddon-3.0 mixes it in if listed in the :NewAddon() call; we rely on
@@ -41,33 +40,39 @@ end
 -- Core lookup
 -- ---------------------------------------------------------------------------
 
--- Returns ordered list {charKey, charName, profession, skillLevel, online}
+-- Returns ordered list {name, profession, skillLevel, maxLevel, online}
 -- for every guild member who can craft itemID.
 local function FindCrafters(itemID)
     local gdb = addon:GetGuildDb()
-    if not gdb or not gdb.guildData then return nil end
+    if not gdb or not gdb.recipes then return nil end
 
+    local DS     = addon.Scanner and addon.Scanner.DS
     local roster = {}
-    for charKey, charData in pairs(gdb.guildData) do
-        if charData.professions then
-            for _, prof in ipairs(charData.professions) do
-                if prof.recipes then
-                    for _, recipe in ipairs(prof.recipes) do
-                        if recipe.craftedItemId == itemID then
-                            local name, realm = charKey:match("^(.+)-(.+)$")
-                            roster[#roster + 1] = {
-                                charKey    = charKey,
-                                name       = name or charKey,
-                                profession = prof.name,
-                                skillLevel = prof.skillLevel or 0,
-                                maxLevel   = prof.maxLevel   or 0,
-                                online     = (gdb.factions and gdb.factions[charKey] ~= nil)
-                                              and (GetGuildRosterMOTD and true or false),
-                            }
-                            break  -- each profession can only output an item once
+
+    for profId, profRecipes in pairs(gdb.recipes) do
+        for recipeId, rd in pairs(profRecipes) do
+            if not rd.isSpell and recipeId == itemID then
+                for charKey in pairs(rd.crafters or {}) do
+                    local name      = charKey:match("^(.-)%-") or charKey
+                    local skillData = gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
+                    local online    = DS and DS:IsPlayerOnline(charKey) or false
+                    if not online and gdb.altGroups and gdb.altGroups[charKey] then
+                        for _, altCk in ipairs(gdb.altGroups[charKey]) do
+                            if altCk ~= charKey and DS and DS:IsPlayerOnline(altCk) then
+                                online = true
+                                break
+                            end
                         end
                     end
+                    roster[#roster + 1] = {
+                        name       = name,
+                        profession = addon.PROF_NAMES[profId] or tostring(profId),
+                        skillLevel = skillData and skillData.skillRank or 0,
+                        maxLevel   = skillData and skillData.skillMax  or 0,
+                        online     = online,
+                    }
                 end
+                break
             end
         end
     end
@@ -92,47 +97,58 @@ local OFFLINE_COLOR = "|c" .. (addon.ColorOffline or "ff888888")
 local RESET_COLOR   = "|r"
 
 local function AppendCrafters(tooltip, itemID)
+    tooltip._togpmAppended = itemID  -- mark processed so post-hooks skip
     if IsBOP(itemID) then return end
 
     local crafters = FindCrafters(itemID)
     if not crafters then return end
 
-    tooltip:AddLine(HEADER_COLOR .. L["CraftedBy"] .. RESET_COLOR)
+    local parts = {}
     for _, c in ipairs(crafters) do
-        local col  = c.online and ONLINE_COLOR or OFFLINE_COLOR
-        local line = string.format("%s%s|r  %s(%d/%d)",
-            col, c.name, c.profession, c.skillLevel, c.maxLevel)
-        tooltip:AddLine("  " .. line)
+        local col = c.online and ONLINE_COLOR or OFFLINE_COLOR
+        parts[#parts + 1] = col .. c.name .. RESET_COLOR
     end
-    tooltip:Show()  -- resize to fit new lines
+    -- |n embeds the blank line inside a single AddLine so it can't be
+    -- reordered by the tooltip's internal build order.
+    tooltip:AddLine("|n" .. HEADER_COLOR .. "[TOGPM]" .. RESET_COLOR .. " " .. table.concat(parts, ", "),
+        1, 1, 1, true)
 end
+
+-- Exposed so BrowserTab can call it directly on its custom-built tooltips
+-- (those paths bypass SetHyperlink so the hook never fires).
+addon.Tooltip.AppendCrafters = AppendCrafters
 
 -- ---------------------------------------------------------------------------
 -- Hooks
 -- ---------------------------------------------------------------------------
 
 local function OnTooltipSetItem(tooltip)
+    if tooltip._togpmAppended then return end
     local itemID = ItemIdFromTooltip(tooltip)
     if itemID then AppendCrafters(tooltip, itemID) end
 end
 
-local function OnTooltipSetHyperlink(tooltip, link)
-    local itemID = ItemIdFromLink(link)
-    if itemID then AppendCrafters(tooltip, itemID) end
+local function OnTooltipCleared(tooltip)
+    tooltip._togpmAppended = nil
 end
 
 -- Register after PLAYER_LOGIN so SavedVariables are loaded
 Ace:RegisterEvent("PLAYER_LOGIN", function()
-    -- Use raw hooks so we don't need the secure-hook wrapper variants
-    if GameTooltip.SetItem then
-        Ace:HookScript(GameTooltip, "OnTooltipSetItem", OnTooltipSetItem)
-    end
-    if GameTooltip.SetHyperlink then
-        Ace:Hook(GameTooltip, "SetHyperlink", OnTooltipSetHyperlink, true)
-    end
-
-    -- Also hook ItemRefTooltip used when clicking links in chat
-    if ItemRefTooltip and ItemRefTooltip.SetHyperlink then
-        Ace:Hook(ItemRefTooltip, "SetHyperlink", OnTooltipSetHyperlink, true)
+    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall
+       and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item then
+        -- MoP Classic+ / Retail: single post-call fires for every item tooltip
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
+            if data and data.id then AppendCrafters(tooltip, data.id) end
+        end)
+    else
+        -- Vanilla / TBC / Wrath / Cata Classic: hook OnTooltipSetItem on every
+        -- item-displaying tooltip. OnTooltipCleared resets the de-dup flag.
+        local frames = { GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3 }
+        for _, tt in ipairs(frames) do
+            if tt then
+                tt:HookScript("OnTooltipSetItem", OnTooltipSetItem)
+                tt:HookScript("OnTooltipCleared", OnTooltipCleared)
+            end
+        end
     end
 end)

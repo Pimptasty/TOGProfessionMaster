@@ -932,6 +932,9 @@ function BrowserTab:BuildPool(parent)
                         end
                     end
                 end
+                if not entry.isSpell then
+                    addon.Tooltip.AppendCrafters(GameTooltip, entry.id)
+                end
                 GameTooltip:Show()
                 return
             elseif entry.itemLink and entry.itemLink:find("|Hitem:") then
@@ -1477,21 +1480,11 @@ function BrowserTab:UpdateVirtualRows()
                 and (" |cffaaaaaa+" .. (total - MAX_SHOW) .. "|r") or ""
             f.crafterLbl:SetText(table.concat(parts, ", ") .. suffix)
 
-            -- Bank button: show if any reagent has bank stock
-            local bankItemId, bankReagent
-            if addon.Bank then
-                for _, r in ipairs(entry.reagents or {}) do
-                    local rId = r.itemLink and tonumber(r.itemLink:match("item:(%d+)"))
-                             or (r.itemId and r.itemId > 0 and r.itemId or nil)
-                    if rId and addon.Bank.GetStock(rId) > 0 then
-                        bankItemId, bankReagent = rId, r
-                        break
-                    end
-                end
-            end
-            if bankItemId then
+            -- Bank button: show if the crafted item itself has bank stock
+            local craftedId = not entry.isSpell and entry.id or nil
+            if addon.Bank and craftedId and addon.Bank.GetStock(craftedId) > 0 then
                 f.bankBtn:SetScript("OnClick", function()
-                    addon.Bank.ShowRequestDialog(bankItemId, bankReagent.name or "", bankReagent.itemLink)
+                    addon.Bank.ShowRequestDialog(craftedId, entry.name or "", entry.itemLink)
                 end)
                 f.bankBtn:Show()
             else

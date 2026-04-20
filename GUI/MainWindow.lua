@@ -130,33 +130,29 @@ function MainWindow:Open(tabKey)
         browser = {
             title = "Profession Browser",
             lines = {
-                "Shows all recipes known by guild members.",
+                "Recipes known by guild members. Click any recipe to open its details on the right.",
                 " ",
-                brand .. "Recipes:|r The craftable recipe or spell name.",
-                brand .. "Crafters:|r Guild members who know it. " .. brand .. "You|r is listed first.",
+                brand .. "Filters:|r Profession dropdown, name search, and " .. brand .. "Guild|r vs " .. brand .. "Mine|r view toggle.",
                 " ",
-                brand .. "Profession dropdown:|r Filter to a single profession.",
-                brand .. "Search box:|r Filter recipes by name.",
-                brand .. "View toggle:|r Guild (all members) vs Mine (your characters).",
+                brand .. "Shopping list (top):|r Click a row to expand its reagents. " .. brand .. "−|r / qty / " .. brand .. "+|r adjust, " .. brand .. "×|r removes, " .. brand .. "!|r (gold = armed) pings you when a crafter for that recipe logs in. Reagent rows show the scaled count with [Bank] when TOGBankClassic has stock.",
                 " ",
-                brand .. "[Bank] button:|r Appears when TOGBankClassic has the reagent in stock. Click to request it.",
+                brand .. "Recipe area:|r Recipes column shows icon + name. Crafters column is a truncated list (" .. brand .. "You|r first). [Bank] appears when the crafted item itself is in TOGBankClassic stock.",
+                " ",
+                brand .. "Detail area (right):|r Name hover = item tooltip, shift-click = link in chat. Shopping-list controls mirror the top. Reagents support the same hover/shift-click + per-reagent [Bank]. Full crafters list at the bottom — right-click a name to whisper.",
+                " ",
+                brand .. "Everywhere else:|r A [TOGPM] line is appended to every item tooltip in the game (bags, AH, chat links, comparison tooltips) listing guild crafters.",
             },
         },
         cooldowns = {
             title = "Cooldowns Tracker",
             lines = {
-                "Tracks profession cooldowns for all guild members who have the addon.",
+                "Profession cooldowns for every guild member running the addon.",
                 " ",
-                brand .. "Character:|r Guild member. Right-click any row to whisper them.",
-                brand .. "Cooldown:|r Profession spell name and icon.",
-                brand .. "Reagent:|r Primary reagent required.",
-                brand .. "Time Left:|r |cff00ff00Green|r = ready. |cffffff00Yellow|r = <2h. |cffaaaaaaGrey|r = on cooldown.",
+                brand .. "Columns:|r " .. brand .. "Character|r (right-click to whisper), " .. brand .. "Cooldown|r (hover for spell tooltip, click group rows like transmutes to expand), " .. brand .. "Reagent|r (hover for item tooltip), " .. brand .. "Time Left|r (|cff00ff00green|r = ready, |cffffff00yellow|r = <2h, |cffaaaaaagrey|r = on cooldown).",
                 " ",
-                brand .. "[Bank]:|r Request the reagent from TOGBankClassic.",
-                brand .. "Mail icon:|r Open a mailbox first, then click to attach reagents and pre-fill the mail.",
+                brand .. "Row actions:|r [Bank] requests the reagent from TOGBankClassic. Mail icon (visible when a mailbox is open) attaches the reagents and pre-fills the recipient.",
                 " ",
-                brand .. "Column headers:|r Click to sort. Click again to reverse.",
-                brand .. "Ready Only toggle:|r Hide cooldowns that are not yet ready.",
+                brand .. "Controls:|r Click any column header to sort (click again to reverse). " .. brand .. "Ready Only|r toggle hides cooldowns that aren't ready yet.",
             },
         },
 
@@ -166,6 +162,7 @@ function MainWindow:Open(tabKey)
         local tab  = MainWindow.activeTab or "browser"
         local help = TAB_HELP[tab] or TAB_HELP.browser
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetMinimumWidth(480)
         GameTooltip:ClearLines()
         GameTooltip:AddLine(help.title, 1, 0.82, 0, true)
         for _, line in ipairs(help.lines) do

@@ -26,6 +26,10 @@
 
 - **`.luarc.json` globals** — Added `TooltipDataProcessor` and `Enum` so the LSP stops warning on the MoP Classic+ branch. Location: `.luarc.json`.
 
+- **Shopping list tooltips use the smart anchor helper** — Three `OnEnter` callbacks in `GUI/ShoppingListTab.lua` were hardcoding `GameTooltip:SetOwner(frame, "ANCHOR_TOPRIGHT")`, which clipped off-screen when the window was near the top or right edge. Swapped for `addon.Tooltip.Owner(frame)` so the tooltip anchors above or below based on which half of the screen the widget is in. Location: `GUI/ShoppingListTab.lua`.
+
+- **Help tooltip rewritten for the current UI** — Browser and Cooldowns help blocks were written before the master-detail layout, the `!` alert toggle, and the global `[TOGPM]` tooltip line existed, and the `[Bank]` description was stale after the v0.0.17 scoping fix. Rewrote both blocks with current section layout (Filters / Shopping list / Recipe area / Detail area / Everywhere else on Browser; Columns / Row actions / Controls on Cooldowns), consolidated sub-bullets into wrap-friendly paragraphs, and added `GameTooltip:SetMinimumWidth(480)` so the tooltip lays out wide and short instead of tall and narrow. Location: `GUI/MainWindow.lua`.
+
 ---
 
 ## [v0.0.16] (2026-04-19) - Enchanting Tooltip Fixes & Crafter Alerts

@@ -696,34 +696,19 @@ function Scanner:ScanCooldowns()
     local stored = gdb.cooldowns[charKey]
 
     -- ---- Transmutes --------------------------------------------------------
-    -- All transmutes share one cooldown category.  GetCooldownTimestamp queries
-    -- the category directly — it works even for spells the player does NOT know
-    -- and returns the absolute server-time UNIX expiry (nil = no cooldown).
-    -- GetSpellCooldown fallback is kept for any client that lacks the API.
+    -- All transmutes share one cooldown bucket. Iterate every known transmute
+    -- spell ID to find the one currently active, then store the shared expiry
+    -- under every transmute the player knows so the cooldowns tab can show
+    -- exactly which transmutes they have.
 
     local transmuteExpiry = nil
-    if GetCooldownTimestamp then
-        -- Take the highest (most-future) expiry across all known transmute IDs.
-        -- In Vanilla all transmutes share one 24h bucket, so they should all
-        -- agree; taking the max handles expansions where durations differ.
-        for spellId in pairs(data.transmutes) do
-            local ts = GetCooldownTimestamp(spellId)
-            if ts and ts > now and ts < (now + 691200) then
-                if not transmuteExpiry or ts > transmuteExpiry then
-                    transmuteExpiry = ts
-                end
-            end
-        end
-    else
-        -- Fallback: GetSpellCooldown only works for spells in the spellbook.
-        for spellId in pairs(data.transmutes) do
-            local start, duration = GetSpellCooldown(spellId)
-            if start and start > 0 and duration and duration > 1.5 then
-                local remaining = GetCooldownLeft(start, duration)
-                if remaining > 0 and remaining < 691200 then
-                    transmuteExpiry = math.floor(now + remaining)
-                    break
-                end
+    for spellId in pairs(data.transmutes) do
+        local start, duration = GetSpellCooldown(spellId)
+        if start and start > 0 and duration and duration > 1.5 then
+            local remaining = (start + duration) - GetTime()
+            if remaining > 0 and remaining < 691200 then
+                transmuteExpiry = math.floor(now + remaining)
+                break
             end
         end
     end
@@ -733,7 +718,7 @@ function Scanner:ScanCooldowns()
             if transmuteExpiry then
                 stored[spellId] = transmuteExpiry
             elseif not stored[spellId] or (stored[spellId] - now) > 691200 then
-                stored[spellId] = now - 1  -- Ready
+                stored[spellId] = now - 1  -- seed as Ready
             end
         end
     end

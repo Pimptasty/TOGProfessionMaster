@@ -32,6 +32,10 @@
 
 - **Help-icon tooltip anchor kept as `ANCHOR_TOP`** — The help icon lives in a fixed position at the bottom-right of the main window, so centered-above reads better than the helper's TOPLEFT/BOTTOMLEFT picks. Left the raw `SetOwner` in place and added a comment so it isn't "fixed" back to the helper later. Location: `GUI/MainWindow.lua`.
 
+- **Transmute cooldown scan simplified** — The transmute branch of `ScanCooldowns` had a fragile cross-addon dependency on the global `GetCooldownTimestamp`, which is defined by the separate **ProfessionCooldown** addon (not by WoW). When ProfessionCooldown wasn't loaded, we fell back to `GetSpellCooldown`; when it was loaded, we took a different code path that could behave differently. Removed the `GetCooldownTimestamp` branch entirely so the scan uses `GetSpellCooldown` on every client, matching the simpler pattern known to work in production. Location: `Scanner.lua`.
+
+- **`[Bank]` button added to the transmute popup** — When you click a transmute group row in the Cooldowns tab, the popup lists each individual transmute with its reagent and a Mail icon. It was missing the `[Bank]` button that the main cooldown rows have. Added it (visible only when TOGBankClassic has stock of that specific reagent), wired to the same `addon.Bank.ShowRequestDialog` as the main rows. Widened the popup from 340 → 400 px to fit. Location: `GUI/CooldownsTab.lua`.
+
 ---
 
 ## [v0.0.16] (2026-04-19) - Enchanting Tooltip Fixes & Crafter Alerts

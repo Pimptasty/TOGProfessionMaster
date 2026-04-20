@@ -800,7 +800,7 @@ function CooldownsTab:ShowGroupPopup(row, now)
 
     local rowH   = 14
     local pad    = 6
-    local popupW = 340
+    local popupW = 400
     local totalH = pad + #spells * rowH + pad
 
     local popup = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
@@ -832,9 +832,10 @@ function CooldownsTab:ShowGroupPopup(row, now)
     popup:SetScript("OnHide", function() closeOnClick:Hide() end)
 
     local mailW    = reagentsMap and 20 or 0
+    local bankW    = reagentsMap and 48 or 0
     local reagentW = reagentsMap and 110 or 0
     local timeW    = 70
-    local nameW    = popupW - pad * 2 - reagentW - mailW - timeW - 4
+    local nameW    = popupW - pad * 2 - reagentW - bankW - mailW - timeW - 6
 
     for i, spellId in ipairs(spells) do
         local expiresAt = charCds[spellId]
@@ -899,8 +900,8 @@ function CooldownsTab:ShowGroupPopup(row, now)
             end
 
             local reagentZone = CreateFrame("Frame", nil, entry)
-            reagentZone:SetPoint("TOPLEFT",     entry, "TOPRIGHT",    -(reagentW + mailW + 2), 0)
-            reagentZone:SetPoint("BOTTOMRIGHT", entry, "BOTTOMRIGHT", -(mailW + 2), 0)
+            reagentZone:SetPoint("TOPLEFT",     entry, "TOPRIGHT",    -(reagentW + bankW + mailW + 4), 0)
+            reagentZone:SetPoint("BOTTOMRIGHT", entry, "BOTTOMRIGHT", -(bankW + mailW + 4), 0)
             reagentZone:EnableMouse(true)
             reagentZone:SetScript("OnEnter", function()
                 reagentLbl:SetTextColor(1, 1, 0, 1)
@@ -918,6 +919,27 @@ function CooldownsTab:ShowGroupPopup(row, now)
                     if link then HandleModifiedItemClick(link) end
                 end
             end)
+
+            -- [Bank] button (visible only when TOGBankClassic has stock)
+            if addon.Bank and addon.Bank.GetStock(reagentId) > 0 then
+                local bankBtn = CreateFrame("Button", nil, entry)
+                bankBtn:SetSize(bankW, rowH)
+                bankBtn:SetPoint("RIGHT", entry, "RIGHT", -(mailW + 2), 0)
+                bankBtn:SetNormalFontObject(GameFontNormalSmall)
+                bankBtn:SetText("|cFF88FF88[Bank]|r")
+                bankBtn:SetScript("OnClick", function()
+                    local name = GetItemInfo(reagentId)
+                    local link = select(2, GetItemInfo(reagentId))
+                    addon.Bank.ShowRequestDialog(reagentId, name, link)
+                end)
+                bankBtn:SetScript("OnEnter", function()
+                    addon.Tooltip.Owner(bankBtn)
+                    GameTooltip:SetText("Request from Bank", 1, 1, 1)
+                    GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker.", nil, nil, nil, true)
+                    GameTooltip:Show()
+                end)
+                bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            end
 
             -- Mail icon button
             local mailBtn = CreateFrame("Button", nil, entry)

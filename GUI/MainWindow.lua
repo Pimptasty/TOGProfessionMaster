@@ -161,6 +161,8 @@ function MainWindow:Open(tabKey)
     helpIcon:SetScript("OnEnter", function(self)
         local tab  = MainWindow.activeTab or "browser"
         local help = TAB_HELP[tab] or TAB_HELP.browser
+        -- ANCHOR_TOP (centered above) is intentional here; the helper's
+        -- TOPLEFT/BOTTOMLEFT picks look worse for this fixed-position icon.
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetMinimumWidth(480)
         GameTooltip:ClearLines()

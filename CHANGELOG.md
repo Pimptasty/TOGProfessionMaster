@@ -30,6 +30,8 @@
 
 - **Help tooltip rewritten for the current UI** — Browser and Cooldowns help blocks were written before the master-detail layout, the `!` alert toggle, and the global `[TOGPM]` tooltip line existed, and the `[Bank]` description was stale after the v0.0.17 scoping fix. Rewrote both blocks with current section layout (Filters / Shopping list / Recipe area / Detail area / Everywhere else on Browser; Columns / Row actions / Controls on Cooldowns), consolidated sub-bullets into wrap-friendly paragraphs, and added `GameTooltip:SetMinimumWidth(480)` so the tooltip lays out wide and short instead of tall and narrow. Location: `GUI/MainWindow.lua`.
 
+- **Help-icon tooltip anchor kept as `ANCHOR_TOP`** — The help icon lives in a fixed position at the bottom-right of the main window, so centered-above reads better than the helper's TOPLEFT/BOTTOMLEFT picks. Left the raw `SetOwner` in place and added a comment so it isn't "fixed" back to the helper later. Location: `GUI/MainWindow.lua`.
+
 ---
 
 ## [v0.0.16] (2026-04-19) - Enchanting Tooltip Fixes & Crafter Alerts

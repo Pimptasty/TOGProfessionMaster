@@ -591,7 +591,7 @@ function BrowserTab:FillShoppingListSection(container)
             f.icon:SetTexture(nil)
         end
 
-        local colorHex = ent and ent.itemLink and ent.itemLink:match("|c(ff%x%x%x%x%x%x)|H")
+        local colorHex = ent and type(ent.itemLink) == "string" and ent.itemLink:match("|c(ff%x%x%x%x%x%x)|H")
         f.nameLbl:SetText(colorHex and ("|c" .. colorHex .. name .. "|r") or name)
         f.qtyLbl:SetText(tostring(qty))
 
@@ -906,7 +906,7 @@ function BrowserTab:BuildPool(parent)
                 GameTooltip:AddLine("|cffffff00" .. header .. "|r")
                 GameTooltip:AddLine(reagentLine, 1, 1, 1, true)
                 -- Only scrape crafted-item tooltip for real item links (not enchant:).
-                if entry.itemLink and entry.itemLink:find("|Hitem:") then
+                if type(entry.itemLink) == "string" and entry.itemLink:find("|Hitem:") then
                     local scraper = GetItemScraper()
                     scraper:ClearLines()
                     scraper:SetHyperlink(entry.itemLink)
@@ -937,7 +937,7 @@ function BrowserTab:BuildPool(parent)
                 end
                 GameTooltip:Show()
                 return
-            elseif entry.itemLink and entry.itemLink:find("|Hitem:") then
+            elseif type(entry.itemLink) == "string" and entry.itemLink:find("|Hitem:") then
                 GameTooltip:SetHyperlink(entry.itemLink)
             elseif entry.spellId then
                 GameTooltip:SetSpellByID(entry.spellId)
@@ -1196,12 +1196,12 @@ function BrowserTab:DrawDetail(entry)
 
     -- Header: icon + name
     self._dpIcon:SetTexture(entry.icon)
-    local titleColor = entry.itemLink and entry.itemLink:match("|c(ff%x%x%x%x%x%x)|H") or "ffffd100"
+    local titleColor = type(entry.itemLink) == "string" and entry.itemLink:match("|c(ff%x%x%x%x%x%x)|H") or "ffffd100"
     self._dpName:SetText("|c" .. titleColor .. entry.name .. "|r")
 
     -- Tooltip + shift-click to insert link on the header button
-    local nameLink = (entry.itemLink   and entry.itemLink:find("|Hitem:")   and entry.itemLink)
-                 or (entry.recipeLink and entry.recipeLink:find("|Hitem:") and entry.recipeLink)
+    local nameLink = (type(entry.itemLink)   == "string" and entry.itemLink:find("|Hitem:")   and entry.itemLink)
+                 or (type(entry.recipeLink) == "string" and entry.recipeLink:find("|Hitem:") and entry.recipeLink)
     if nameLink then
         self._dpHdrBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(self._dpHdrBtn)
@@ -1463,7 +1463,7 @@ function BrowserTab:UpdateVirtualRows()
             f._entry = entry
             f.icon:SetTexture(entry.icon)
 
-            local colorHex = entry.itemLink and entry.itemLink:match("|c(ff%x%x%x%x%x%x)|H")
+            local colorHex = type(entry.itemLink) == "string" and entry.itemLink:match("|c(ff%x%x%x%x%x%x)|H")
             f.nameLbl:SetText(colorHex and ("|c" .. colorHex .. entry.name .. "|r") or entry.name)
 
             -- Truncated crafter summary: show up to 2 names + "+N more"

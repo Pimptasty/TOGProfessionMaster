@@ -2,6 +2,10 @@
 
 ## [v0.1.1] (2026-04-28) - DeltaSync externalized as a standalone addon
 
+### Bug Fixes
+
+- **Browser tab crashed with `attempt to call method 'match' (a nil value)` on opening** — Six call sites in [GUI/BrowserTab.lua](GUI/BrowserTab.lua) (the recipe-row renderer at line 1466, the shopping-list color line at 594, two tooltip `SetHyperlink` paths at 909/940, and the detail-pane title/header-link block at 1199/1203) called `:match` / `:find` on `entry.itemLink` (and `entry.recipeLink`) after a plain truthy check. If any peer's wire payload landed a non-string at position `[5]` or `[7]` of a recipe array, the merged `gdb.recipes[*][*].itemLink` became non-string, the truthy check passed, and the method call crashed the UI. All six sites now gate on `type(entry.itemLink) == "string"`. Belt-and-suspenders type-guard added at the merge site in [Scanner.lua:530](Scanner.lua#L530) so future malformed wire data is coerced to `nil` instead of being stored as-is — `asString(rd[5])` for `itemLink`, `asTable(rd[6])` for `reagents`, `asString(rd[7])` for `recipeLink`.
+
 ### Improvements
 
 - **DeltaSync-1.0 is now an external dependency, not an embedded copy** — Removed the entire `libs/DeltaSync-1.0/` folder (DeltaSync.lua, GuildCache.lua, DeltaOperations.lua, P2PSession.lua) and switched to loading `DeltaSync-1.0` from the standalone `DeltaSync` addon via `LibStub`. This is the same pattern TOGPM already uses for `AceCommQueue-1.0` and `VersionCheck-1.0`. The benefit: when multiple addons consume DeltaSync, LibStub picks one shared copy at the highest MINOR instead of each addon shipping its own fork — exactly the conflict that the v0.1.0 mod 7 convergence was working around. The standalone DeltaSync also includes a newer `GuildCache-1.0` library and an optional `DeltaSyncChannel.lua` transport (TOGPM doesn't use either directly). Locations: all five `*.toc` files, `.pkgmeta`.

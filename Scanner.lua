@@ -527,6 +527,11 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
     end
 
     -- Add/update recipe entries.
+    -- Type-guard string fields so wire data from peers running an older or
+    -- divergent format can't poison gdb.recipes with non-string itemLink /
+    -- recipeLink values (the UI calls :match / :find on these and would crash).
+    local function asString(v) return type(v) == "string" and v or nil end
+    local function asTable(v)  return type(v) == "table"  and v or nil end
     for recipeId, rd in pairs(recipes) do
         local existing = gdb.recipes[profId][recipeId]
         if existing then
@@ -535,10 +540,10 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
             existing.isSpell = rd[3]
             -- [4]=spellId [5]=itemLink [6]=reagents [7]=recipeLink — only overwrite when non-nil.
             -- recipeLink ([7]) only comes from local scans (GetTradeSkillRecipeLink).
-            if rd[4] ~= nil then existing.spellId    = rd[4] end
-            if rd[5] ~= nil then existing.itemLink   = rd[5] end
-            if rd[6] ~= nil then existing.reagents   = rd[6] end
-            if rd[7] ~= nil then existing.recipeLink = rd[7] end
+            if rd[4] ~= nil then existing.spellId    = rd[4]            end
+            if rd[5] ~= nil then existing.itemLink   = asString(rd[5])  end
+            if rd[6] ~= nil then existing.reagents   = asTable(rd[6])   end
+            if rd[7] ~= nil then existing.recipeLink = asString(rd[7])  end
             existing.crafters[charKey] = true
         else
             gdb.recipes[profId][recipeId] = {
@@ -546,9 +551,9 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
                 icon       = rd[2],
                 isSpell    = rd[3],
                 spellId    = rd[4],
-                itemLink   = rd[5],
-                reagents   = rd[6],
-                recipeLink = rd[7],
+                itemLink   = asString(rd[5]),
+                reagents   = asTable(rd[6]),
+                recipeLink = asString(rd[7]),
                 crafters   = { [charKey] = true },
             }
         end

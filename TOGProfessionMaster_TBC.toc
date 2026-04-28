@@ -8,13 +8,9 @@
 ## SavedVariables: TOGPM_Settings TOGPM_GuildDB
 ## SavedVariablesPerCharacter:
 ## X-Curse-Project-ID: 1513588
-## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0
+## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0, DeltaSync
 ## OptionalDeps: TOGBankClassic, GreenWall
 
-libs\DeltaSync-1.0\DeltaSync.lua
-libs\DeltaSync-1.0\GuildCache.lua
-libs\DeltaSync-1.0\DeltaOperations.lua
-libs\DeltaSync-1.0\P2PSession.lua
 libs\LibDataBroker-1.1.lua
 libs\LibDBIcon-1.0.lua
 libs\LibGuildRoster-1.0\LibGuildRoster-1.0.lua

@@ -40,6 +40,11 @@ local Ace = LibStub("AceAddon-3.0"):NewAddon(
 )
 addon.lib = Ace
 
+-- Wrap Ace.SendCommMessage with the throttling/chunking queue so DeltaSync's
+-- `self.aceAddon:SendCommMessage(...)` calls avoid CRC corruption from chunk
+-- interleaving under load. Must run after AceComm-3.0 has embedded.
+LibStub("AceCommQueue-1.0"):Embed(Ace)
+
 -- Custom callback bus used by Scanner.lua and Modules/SyncLog.lua.
 -- CallbackHandler-1.0 ships with Ace3 so it is always available.
 addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)

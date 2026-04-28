@@ -40,7 +40,7 @@ There is no build system, test runner, or package manager. The `.toc` version pl
 
 Understanding this matters because Lua has no `require`; each file must only reference symbols defined in earlier files.
 
-1. `libs/DeltaSync-1.0/` (4 files) → vendor libs (LibDataBroker, LibDBIcon, LibGuildRoster) → `Locale/enUS.lua`
+1. `libs/` vendor libs (LibDataBroker, LibDBIcon, LibGuildRoster) → `Locale/enUS.lua`. DeltaSync-1.0 is **not** embedded — it loads from the standalone `DeltaSync` addon listed in `## Dependencies`.
 2. `TOGProfessionMaster.lua` — AceAddon instance, AceDB schemas, slash commands, utility functions
 3. `Compat.lua` — version detection flags (`addon.isVanilla`, `addon.isTBC`, etc.) and API shims
 4. `Data/` — static lookup tables (cooldown spell IDs, profession icons)
@@ -105,7 +105,9 @@ Modules do **not** call each other directly across layers. Communication uses:
 
 `addon.isVanilla` / `addon.isTBC` / `addon.isWrath` / `addon.isCata` / `addon.isMists` are set at load time from `GetBuildInfo()` build number ranges. All version-branching uses these flags directly — no polymorphism pattern.
 
-### DeltaSync-1.0 (embedded P2P library)
+### DeltaSync-1.0 (external P2P library)
+
+Loaded from the standalone `DeltaSync` addon (declared in `## Dependencies` and `.pkgmeta required-dependencies`). Resolved at runtime via `LibStub("DeltaSync-1.0", true)` in [Scanner.lua](Scanner.lua) — guild sync silently disables if the dependency is missing.
 
 Custom P2P sync protocol built on AceComm. Key concepts:
 
@@ -113,6 +115,7 @@ Custom P2P sync protocol built on AceComm. Key concepts:
 - Full payload on first contact → delta sync → hash-based leaf negotiation for ongoing sync
 - `HashManager` provides the leaf keys (`cooldown:Name-Realm`, `recipes:profId`) and roll-ups (`guild:cooldowns`, `guild:recipes`)
 - AceCommQueue-1.0 wraps `SendCommMessage` to prevent CRC errors under high traffic
+- The companion `GuildCache-1.0` LibStub library ships inside the DeltaSync addon. TOGPM does not consume it directly — guild-roster work goes through `LibGuildRoster-1.0` (separate addon) and through DeltaSync's public API (`GetOnlineGuildMembers`, `NormalizeName`, `IsInGuild`, `GetNormalizedPlayer`).
 
 ### GUI Pattern
 

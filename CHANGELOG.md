@@ -1,5 +1,39 @@
 # TOG Profession Master Changelog
 
+## [v0.1.1] (2026-04-28) - DeltaSync externalized as a standalone addon
+
+### Improvements
+
+- **DeltaSync-1.0 is now an external dependency, not an embedded copy** — Removed the entire `libs/DeltaSync-1.0/` folder (DeltaSync.lua, GuildCache.lua, DeltaOperations.lua, P2PSession.lua) and switched to loading `DeltaSync-1.0` from the standalone `DeltaSync` addon via `LibStub`. This is the same pattern TOGPM already uses for `AceCommQueue-1.0` and `VersionCheck-1.0`. The benefit: when multiple addons consume DeltaSync, LibStub picks one shared copy at the highest MINOR instead of each addon shipping its own fork — exactly the conflict that the v0.1.0 mod 7 convergence was working around. The standalone DeltaSync also includes a newer `GuildCache-1.0` library and an optional `DeltaSyncChannel.lua` transport (TOGPM doesn't use either directly). Locations: all five `*.toc` files, `.pkgmeta`.
+
+- **Dependency declaration updated everywhere it lives** — `## Dependencies` in `TOGProfessionMaster.toc`, `_TBC.toc`, `_Wrath.toc`, `_Cata.toc`, and `_Mists.toc` now lists `DeltaSync` alongside `Ace3`, `AceCommQueue-1.0`, and `VersionCheck-1.0`. `.pkgmeta` `required-dependencies` adds `deltasync` so CurseForge enforces installation. The 4 `libs\DeltaSync-1.0\*.lua` lines are gone from every TOC.
+
+- **No consumer code changes required** — Every existing call site in [Scanner.lua](Scanner.lua) and [Modules/HashManager.lua](Modules/HashManager.lua) goes through the public LibStub API (`LibStub("DeltaSync-1.0", true)`, `DS:Initialize`, `DS:InitP2P`, `DS:GetOnlineGuildMembers`, `DS:NormalizeName`, etc.). The external library at MINOR=8 is a strict superset of the embedded MINOR=7 copy, so the wire format and public surface are unchanged.
+
+### Breaking Changes
+
+- **Users must install the standalone `DeltaSync` addon** — Without it, TOGPM still loads (the `LibStub("DeltaSync-1.0", true)` call uses the silent variant), but guild sync silently disables and you'll see "DeltaSync-1.0 not found — guild sync disabled" in the debug log. CurseForge will prompt for the dependency automatically once the v0.1.1 release ships with the updated `.pkgmeta`. Manual installs need to grab `DeltaSync` separately.
+
+---
+
+## [v0.1.0] (2026-04-19) - DeltaSync-1.0 mod 7 convergence
+
+### New Features
+
+- **DeltaSync-1.0 bumped to MINOR=7, merging the TOGPM (mod 2) and PersonalShopper (mod 6) forks into a single shared library** — Previously each addon shipped an incompatible fork at the same `DeltaSync-1.0` MAJOR. LibStub always loaded whichever had the higher MINOR (PS mod 6), so TOGPM's P2P calls into a lib that didn't have them — forcing users to disable one addon. Mod 7 is the superset: kept PS mod 6's `NormalizeSender`, host-supplied `self.aceAddon` model, CHANNEL-distribution hooks, snifferFrame, and `DebugStatus`; ported in TOGPM mod 2's OFFER/HANDSHAKE channel types, `OnComm_OFFER`/`OnComm_HANDSHAKE` handlers, `BroadcastItemHashes`/`SendHashOffer`/`SendHandshake`/`InitP2P` public API, and CRC+stop-marker wire format (`SerializeWithChecksum`/`DeserializeWithChecksum`) with a legacy AceSerializer-only fallback so old mod 2 messages still decode. GuildCache hooks (`GetNormalizedPlayer`, `NormalizeName`, `guildRoster` whisper-offline guard) are soft deps guarded by presence checks so PS can run without `GuildCache.lua`. Location: `libs/DeltaSync-1.0/DeltaSync.lua`.
+
+### Improvements
+
+- **DeltaSync no longer embeds Ace libraries into its own `lib` object** — Mod 2 called `AceSerializer:Embed(lib)` and `AceCommQueue:Embed(lib)` at load time, which coupled DeltaSync to Ace's MINOR upgrades and duplicated methods the host addon already had. Mod 7 references `AceSerializer-3.0` via `LibStub(...)` at call-time inside `SerializeWithChecksum`/`DeserializeWithChecksum` (cached in a file-local upvalue), and delegates throttling to the host addon's own `SendCommMessage`. The library is now a pure consumer of Ace via LibStub, never an embedder. Location: `libs/DeltaSync-1.0/DeltaSync.lua`.
+
+- **AceCommQueue throttling moved from the library to the host addon** — Because DeltaSync mod 7 calls `self.aceAddon:SendCommMessage(...)` instead of its own `lib:SendCommMessage`, the wrap target has to be on the host addon. Added `LibStub("AceCommQueue-1.0"):Embed(Ace)` immediately after `NewAddon(...)` so every DeltaSync send from TOGPM is still queued and throttled — preventing CRC corruption from chunk interleaving under sync load. `## Dependencies: AceCommQueue-1.0` was already listed in every TOC, so no new runtime deps. Location: `TOGProfessionMaster.lua`.
+
+### Breaking Changes
+
+- **Wire format changed for existing TOGPM users on mod 2** — The merged mod 7 format is still AceSerializer + CRC + stop-marker (same as mod 2), but `OnComm_*` receive paths now normalize sender names via `NormalizeSender` and route through the new checksum helpers. Mod 2 ↔ mod 7 messages remain decodable via the legacy fallback in `DeserializeWithChecksum`. No action required for existing users.
+
+---
+
 ## [v0.0.17] (2026-04-19) - Global `[TOGPM]` Tooltip & Bank Button Fix
 
 ### New Features

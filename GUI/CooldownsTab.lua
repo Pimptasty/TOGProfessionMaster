@@ -541,9 +541,9 @@ function CooldownsTab:DrawRow(parent, row, now)
 
     -- ── Column 1: Character (190px) — online=white, offline=grey ─────────────
     local charLbl = AceGUI:Create("InteractiveLabel")
-    local DS  = addon.Scanner and addon.Scanner.DS
-    local gdb = addon:GetGuildDb()
-    local online = DS and DS:IsPlayerOnline(row.charKey) or false
+    local GuildCache = addon.Scanner and addon.Scanner.GuildCache
+    local gdb        = addon:GetGuildDb()
+    local online = GuildCache and GuildCache:IsPlayerOnline(row.charKey) or false
     local displayName = row.shortName
     local isYou = addon:IsMyCharacter(row.charKey)
 
@@ -552,7 +552,7 @@ function CooldownsTab:DrawRow(parent, row, now)
     elseif not online and gdb and gdb.altGroups and gdb.altGroups[row.charKey] then
         -- Crafter offline — check if one of their alts is online.
         for _, altCk in ipairs(gdb.altGroups[row.charKey]) do
-            if altCk ~= row.charKey and DS and DS:IsPlayerOnline(altCk) then
+            if altCk ~= row.charKey and GuildCache and GuildCache:IsPlayerOnline(altCk) then
                 local altShort = altCk:match("^(.-)%-") or altCk
                 displayName = altShort .. " (" .. row.shortName .. ")"
                 online = true

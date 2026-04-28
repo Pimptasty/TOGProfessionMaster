@@ -232,22 +232,22 @@ end
 -- @param itemKey DeltaSync item key string
 -- @return        boolean
 function HashManager:HasContent(gdb, itemKey)
-    local DS = addon.Scanner and addon.Scanner.DS
-    if not DS then return false end
+    local GuildCache = addon.Scanner and addon.Scanner.GuildCache
+    if not GuildCache then return false end
 
     -- Roll-up keys are never directly servable.
     if itemKey:sub(1, 6) == "guild:" then return false end
 
     -- Per-member cooldown key.
     if itemKey:sub(1, 9) == "cooldown:" then
-        return itemKey:sub(10) == DS:GetNormalizedPlayer()
+        return itemKey:sub(10) == GuildCache:GetNormalizedPlayer()
     end
 
     -- Per-profession recipe key.
     if itemKey:sub(1, 8) == "recipes:" then
         local profId  = tonumber(itemKey:sub(9))
         if not profId then return false end
-        local charKey = DS:GetNormalizedPlayer()
+        local charKey = GuildCache:GetNormalizedPlayer()
         if gdb.recipes and gdb.recipes[profId] then
             for _, rd in pairs(gdb.recipes[profId]) do
                 if rd.crafters and rd.crafters[charKey] then return true end

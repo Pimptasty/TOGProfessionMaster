@@ -23,8 +23,9 @@ Scanner._pendingBroadcast = false
 Scanner._lastBroadcastAt  = 0
 Scanner._broadcastSeconds = 30       -- hard minimum between guild broadcasts (seconds)
 
--- DeltaSync instance (assigned in InitDeltaSync)
-Scanner.DS = nil
+-- DeltaSync + GuildCache LibStub handles (assigned in InitDeltaSync)
+Scanner.DS         = nil
+Scanner.GuildCache = nil
 
 -- ---------------------------------------------------------------------------
 -- English profession name → skill line ID
@@ -72,6 +73,17 @@ function Scanner:InitDeltaSync()
         return
     end
 
+    -- GuildCache-1.0 ships inside the DeltaSync addon and provides roster
+    -- helpers (NormalizeName, GetNormalizedPlayer, IsInGuild, IsPlayerOnline,
+    -- GetOnlineGuildMembers).  In the previous embedded copy these methods
+    -- lived on the DeltaSync-1.0 handle itself; in the external lib they were
+    -- split into a separate LibStub library.
+    local GuildCache = LibStub("GuildCache-1.0", true)
+    if not GuildCache then
+        addon:DebugPrint("Scanner: GuildCache-1.0 not found — guild sync disabled")
+        return
+    end
+
     DS:Initialize({
         namespace = "TOGPmv1",
 
@@ -91,7 +103,8 @@ function Scanner:InitDeltaSync()
         -- by VersionCheck-1.0 via a separate comm protocol.
     })
 
-    self.DS = DS
+    self.DS         = DS
+    self.GuildCache = GuildCache
 
     -- ── P2P catch-up sync ────────────────────────────────────────────────────
     -- Single-phase leaf-level sync via HashManager:
@@ -121,7 +134,7 @@ function Scanner:InitDeltaSync()
             -- data we haven't received yet.  Without this, peers don't know to
             -- offer their own data to us (the P2P protocol only offers items
             -- that appear in the broadcaster's hash-list).
-            for _, name in ipairs(DS:GetOnlineGuildMembers()) do
+            for _, name in ipairs(GuildCache:GetOnlineGuildMembers()) do
                 local key = "cooldown:" .. name
                 if not map[key] then
                     map[key] = { hash = 0, updatedAt = 0 }
@@ -141,8 +154,8 @@ function Scanner:InitDeltaSync()
         hasMissingItems = function()
             local gdb = addon:GetGuildDb()
             if not gdb then return false end
-            local me = DS:GetNormalizedPlayer()
-            for _, name in ipairs(DS:GetOnlineGuildMembers()) do
+            local me = GuildCache:GetNormalizedPlayer()
+            for _, name in ipairs(GuildCache:GetOnlineGuildMembers()) do
                 if name ~= me and not (gdb.hashes and gdb.hashes["cooldown:" .. name]) then
                     return true
                 end
@@ -273,8 +286,9 @@ function addon:PrintStatus()
     addon:Print(sep)
 
     -- ── Online roster ────────────────────────────────────────────────────────
-    if DS then
-        local online = DS:GetOnlineGuildMembers()
+    local GuildCache = self.GuildCache
+    if GuildCache then
+        local online = GuildCache:GetOnlineGuildMembers()
         addon:Print("Online guild members: " .. #online)
         for _, name in ipairs(online) do
             local inGdb = gdb and gdb.guildData and gdb.guildData[name]
@@ -341,9 +355,9 @@ function Scanner:OnTradeSkillEvent()
     local isLinked, linkedPlayer = IsTradeSkillLinked()
     if isLinked then
         -- Only store linked data if the player is a guildmate.
-        if linkedPlayer and self.DS then
-            local normKey = self.DS:NormalizeName(linkedPlayer)
-            if normKey and self.DS:IsInGuild(normKey) then
+        if linkedPlayer and self.GuildCache then
+            local normKey = self.GuildCache:NormalizeName(linkedPlayer)
+            if normKey and self.GuildCache:IsInGuild(normKey) then
                 self:ScanTradeSkillInto(normKey, true)
             end
         end
@@ -918,9 +932,10 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     guildKey = addon:NormalizeGuildKey(guildKey)
 
     -- Normalize bare names (same-server senders have no realm suffix).
-    local DS = self.DS
-    if DS then
-        charKey = DS:NormalizeName(charKey) or charKey
+    local DS         = self.DS
+    local GuildCache = self.GuildCache
+    if GuildCache then
+        charKey = GuildCache:NormalizeName(charKey) or charKey
     end
 
     -- Ignore echoes of our own broadcast.

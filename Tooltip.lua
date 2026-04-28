@@ -46,8 +46,8 @@ local function FindCrafters(itemID)
     local gdb = addon:GetGuildDb()
     if not gdb or not gdb.recipes then return nil end
 
-    local DS     = addon.Scanner and addon.Scanner.DS
-    local roster = {}
+    local GuildCache = addon.Scanner and addon.Scanner.GuildCache
+    local roster     = {}
 
     for profId, profRecipes in pairs(gdb.recipes) do
         for recipeId, rd in pairs(profRecipes) do
@@ -55,10 +55,10 @@ local function FindCrafters(itemID)
                 for charKey in pairs(rd.crafters or {}) do
                     local name      = charKey:match("^(.-)%-") or charKey
                     local skillData = gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
-                    local online    = DS and DS:IsPlayerOnline(charKey) or false
+                    local online    = GuildCache and GuildCache:IsPlayerOnline(charKey) or false
                     if not online and gdb.altGroups and gdb.altGroups[charKey] then
                         for _, altCk in ipairs(gdb.altGroups[charKey]) do
-                            if altCk ~= charKey and DS and DS:IsPlayerOnline(altCk) then
+                            if altCk ~= charKey and GuildCache and GuildCache:IsPlayerOnline(altCk) then
                                 online = true
                                 break
                             end

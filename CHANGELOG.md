@@ -1,5 +1,13 @@
 # TOG Profession Master Changelog
 
+## [v0.1.4] (2026-04-28) - Hand DeltaSync our AceAddon so sync goes through AceCommQueue
+
+### Bug Fixes
+
+- **`aceComm=false` in `/togpm status` — sync was bypassing AceCommQueue throttling** — When the v0.1.1 externalization moved DeltaSync out of `libs/`, the new external library expects the host addon to pass its AceAddon instance into `Initialize({ aceAddon = ... })`. Without it, DeltaSync falls back to raw `C_ChatInfo.SendAddonMessage` instead of routing through `self.aceAddon:SendCommMessage` — so chunked payloads aren't throttled by AceCommQueue-1.0 and can interleave + CRC-fail silently under sync load. The Scanner's `Initialize` call was missing this key entirely. Fixed by passing `aceAddon = addon.lib` (the AceAddon-3.0 instance with AceCommQueue already embedded onto it at [TOGProfessionMaster.lua:46](TOGProfessionMaster.lua#L46)). After this fix, `/togpm status` reports `aceComm=true` and chunked sync should be reliable. Location: [Scanner.lua:87-93](Scanner.lua#L87-L93).
+
+---
+
 ## [v0.1.3] (2026-04-28) - GuildCache consolidation, "You (Alt)" disambiguation, sync-log datestamp
 
 ### Improvements

@@ -85,6 +85,12 @@ function Scanner:InitDeltaSync()
     end
 
     DS:Initialize({
+        -- Hand DeltaSync our AceAddon instance so its sends route through
+        -- AceComm-3.0 + AceCommQueue-1.0 (embedded onto Ace at the addon
+        -- bootstrap in TOGProfessionMaster.lua) instead of falling back to
+        -- raw C_ChatInfo.SendAddonMessage. Without this, large chunked
+        -- payloads can interleave under sync load and CRC-fail silently.
+        aceAddon  = addon.lib,
         namespace = "TOGPmv1",
 
         -- A guild member is asking for our full data set.

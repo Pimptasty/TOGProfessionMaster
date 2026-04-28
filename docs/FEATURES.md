@@ -1,7 +1,7 @@
 # TOG Profession Master — Feature Specification
 
 **Status:** Clean-room build from scratch  
-**Tech stack:** Ace3 · AceCommQueue-1.0 · DeltaSync-1.0 · VersionCheck-1.0 · LibGuildRoster-1.0 · LibDataBroker-1.1 · LibDBIcon-1.0  
+**Tech stack:** Ace3 · AceCommQueue-1.0 · DeltaSync-1.0 · GuildCache-1.0 · VersionCheck-1.0 · LibDataBroker-1.1 · LibDBIcon-1.0  
 **UI:** AceGUI-3.0 + AceConfig-3.0 throughout (no manual frame XML)
 
 ---
@@ -25,12 +25,13 @@
 
 ---
 
-## 3. Guild Roster (LibGuildRoster-1.0)
+## 3. Guild Roster (GuildCache-1.0)
 
-- Use existing `LibGuildRoster-1.0` (already in repo) as the sole source of truth for guild membership
-- `IsGuildMember(name)` and `IsGuildMemberOnline(name)` used by all other modules — no raw `GetGuildRosterInfo` calls anywhere else
+- Use `GuildCache-1.0` (bundled inside the standalone DeltaSync addon, MINOR ≥ 2) as the sole source of truth for guild membership
+- `IsInGuild(name)` and `IsPlayerOnline(name)` used by all other modules — no raw `GetGuildRosterInfo` calls anywhere else
 - `GetNormalizedRealmName()` used for all realm comparisons (connected-realm safe)
 - Roster rebuilt on `GUILD_ROSTER_UPDATE`; online/offline transitions tracked via `CHAT_MSG_SYSTEM`
+- CallbackHandler-1.0 transition events: `OnMemberOnline`, `OnMemberOffline`, `OnMemberJoined`, `OnMemberLeft`, `OnRosterReady`, `OnRosterUpdated`
 
 ---
 
@@ -243,7 +244,7 @@ All Classic versions share one codebase; version-specific branches are isolated 
 | Area | Handling |
 | --- | --- |
 | API compat | Version flag checked once at startup; compat shims defined in `compat.lua` |
-| `GuildRoster()` vs `C_GuildInfo.GuildRoster()` | LibGuildRoster-1.0 already handles this |
+| `GuildRoster()` vs `C_GuildInfo.GuildRoster()` | GuildCache-1.0 (in DeltaSync) already handles this |
 | `C_Container` vs legacy bag APIs | Shim in inventory module |
 | `Settings.*` vs `InterfaceOptions_AddCategory` | AceConfigDialog handles this automatically |
 | `C_AddOns.IsAddOnLoaded` vs `IsAddOnLoaded` | Shim in compat.lua |

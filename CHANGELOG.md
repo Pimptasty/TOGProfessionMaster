@@ -1,5 +1,23 @@
 # TOG Profession Master Changelog
 
+## [v0.1.3] (2026-04-28) - GuildCache consolidation, "You (Alt)" disambiguation, sync-log datestamp
+
+### Improvements
+
+- **`LibGuildRoster-1.0` removed; all guild-roster work now goes through `GuildCache-1.0`** — Deleted the embedded `libs/LibGuildRoster-1.0/` folder (~300 lines) and rewired the `OnMemberOnline` crafter-alert callback at [TOGProfessionMaster.lua:179](TOGProfessionMaster.lua#L179) to register on `LibStub("GuildCache-1.0")` instead. GuildCache-1.0 (bundled inside the standalone DeltaSync addon, MINOR ≥ 2) is now a true superset: query API (`IsPlayerOnline`, `IsInGuild`, `GetOnlineGuildMembers`, `NormalizeName`, `GetNormalizedPlayer`) plus CallbackHandler-1.0 transition events (`OnMemberOnline`, `OnMemberOffline`, `OnMemberJoined`, `OnMemberLeft`, `OnRosterReady`, `OnRosterUpdated`) plus real-time `CHAT_MSG_SYSTEM` parsing plus login-race retry. One library, one source of truth. Requires the `DeltaSync` addon at a build that ships GuildCache-1.0 MINOR=2 (already a hard `## Dependencies` since v0.1.1). Locations: all five `*.toc` files, [TOGProfessionMaster.lua](TOGProfessionMaster.lua), [CLAUDE.md](CLAUDE.md), [docs/FEATURES.md](docs/FEATURES.md), [.luarc.json](.luarc.json).
+
+- **Sync log entries now show full date+time, not just time** — `[14:23:11]` was useful for "what just happened" but not for "did this sync happen today or yesterday?" Switched the format string in [GUI/Settings.lua:317](GUI/Settings.lua#L317) from `"%H:%M:%S"` to `"%Y-%m-%d %H:%M:%S"`. The underlying `e.ts` (UNIX epoch seconds set at `time()`) didn't need any data change.
+
+- **"You" disambiguation when several own alts appear in the same list** — In the Cooldowns tab and the Browser tab's recipe-row crafter list, every one of your characters used to render as a single "You" label. With ten alts that meant ten rows all called "You" — useful for color-coding, useless for telling the alts apart. Now the currently-logged-in character still shows `You`, and every other own alt shows `You (AltName)` (short name without realm). The Browser tab also expands the previously-consolidated single "You" entry into one entry per own crafter so each alt that can craft a given recipe is listed individually. Locations: [GUI/CooldownsTab.lua:550-557](GUI/CooldownsTab.lua#L550-L557), [GUI/BrowserTab.lua:127-172](GUI/BrowserTab.lua#L127-L172).
+
+### Bug Fixes
+
+- **`/togpm status` was silently hiding the online-roster section** — `PrintStatus` runs as `function addon:PrintStatus()` (so `self` is `addon`), but the GuildCache handle is stashed on `Scanner.GuildCache`. The diagnostic read `self.GuildCache` (always nil), the `if GuildCache then` block silently skipped, and the user saw two `----` separators with nothing between them — easy to misread as "0 people online." Fixed by reaching across to `Scanner.GuildCache` explicitly. Location: [Scanner.lua:289](Scanner.lua#L289).
+
+- **`/togpm status` showed `AceComm=nil  AceCommQueue=nil` after the v0.1.1 DeltaSync externalization** — The external DeltaSync no longer exposes `useAceComm` / `useAceCommQueue` as direct fields on the lib handle; that data moved into `DS:GetCommStats()`. Replaced the stale field reads with `aceComm/registered/p2p/guildCache` line built from `GetCommStats()` plus an explicit `Scanner.GuildCache ~= nil` check so it's obvious at a glance whether the GuildCache library actually loaded. Location: [Scanner.lua:246-253](Scanner.lua#L246-L253).
+
+---
+
 ## [v0.1.2] (2026-04-28) - Type-guard for malformed recipe wire data
 
 ### Bug Fixes

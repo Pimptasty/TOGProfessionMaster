@@ -548,7 +548,13 @@ function CooldownsTab:DrawRow(parent, row, now)
     local isYou = addon:IsMyCharacter(row.charKey)
 
     if isYou then
-        displayName = L["You"]
+        -- "You" alone is ambiguous when several alts are listed. Disambiguate
+        -- alts as "You (AltName)" so the user can tell them apart at a glance.
+        if row.charKey == addon:GetCharacterKey() then
+            displayName = L["You"]
+        else
+            displayName = L["You"] .. " (" .. row.shortName .. ")"
+        end
     elseif not online and gdb and gdb.altGroups and gdb.altGroups[row.charKey] then
         -- Crafter offline — check if one of their alts is online.
         for _, altCk in ipairs(gdb.altGroups[row.charKey]) do

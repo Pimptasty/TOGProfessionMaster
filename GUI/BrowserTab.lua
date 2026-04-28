@@ -124,14 +124,25 @@ local function BuildRecipeList(profId, viewMode, searchText)
                 if visible then
                     local name = rd.name or tostring(recipeId)
                     if filter == "" or name:lower():find(filter, 1, true) then
-                        local isYou = false
-                        for ck in pairs(rd.crafters) do
-                            if addon:IsMyCharacter(ck) then isYou = true; break end
-                        end
                         local GuildCache  = addon.Scanner and addon.Scanner.GuildCache
                         local crafterObjs = {}
+                        local youSelf, youAlts = nil, {}
                         for ck in pairs(rd.crafters) do
-                            if not addon:IsMyCharacter(ck) then
+                            if addon:IsMyCharacter(ck) then
+                                -- Each of your characters that crafts this recipe gets its own
+                                -- entry: "You" for the currently-logged-in character, "You (Alt)"
+                                -- for every other own alt, so the user can tell them apart.
+                                if ck == myKey then
+                                    youSelf = { name = L["You"], online = true, isYou = true }
+                                else
+                                    local altShort = ck:match("^(.-)%-") or ck
+                                    table.insert(youAlts, {
+                                        name   = L["You"] .. " (" .. altShort .. ")",
+                                        online = true,
+                                        isYou  = true,
+                                    })
+                                end
+                            else
                                 local shortName   = ck:match("^(.-)%-") or ck
                                 local online      = GuildCache and GuildCache:IsPlayerOnline(ck) or false
                                 local displayName = shortName
@@ -152,8 +163,14 @@ local function BuildRecipeList(profId, viewMode, searchText)
                             if a.online ~= b.online then return a.online end
                             return a.name < b.name
                         end)
-                        if isYou then
-                            table.insert(crafterObjs, 1, { name = L["You"], online = true, isYou = true })
+                        -- Insert You entries at the front: own alts (sorted by alt name)
+                        -- first, then logged-in self at position 1 so it stays on top.
+                        table.sort(youAlts, function(a, b) return a.name < b.name end)
+                        for i = #youAlts, 1, -1 do
+                            table.insert(crafterObjs, 1, youAlts[i])
+                        end
+                        if youSelf then
+                            table.insert(crafterObjs, 1, youSelf)
                         end
                         table.insert(list, {
                             id         = recipeId,

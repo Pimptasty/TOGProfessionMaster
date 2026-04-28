@@ -176,10 +176,13 @@ function Ace:OnEnable()
     self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
     self:RegisterEvent("PLAYER_LOGOUT",         "OnPlayerLogout")
 
-    -- Crafter online alert: fire when a guild member comes online.
-    local LGR = LibStub("LibGuildRoster-1.0", true)
-    if LGR then
-        LGR:RegisterCallback("OnMemberOnline", function(_, name)
+    -- Crafter online alert: fire when a guild member comes online. Roster
+    -- transitions are sourced from GuildCache-1.0 (bundled inside the standalone
+    -- DeltaSync addon, MINOR>=2) which exposes CallbackHandler-1.0 callbacks
+    -- driven by both GUILD_ROSTER_UPDATE diffs and CHAT_MSG_SYSTEM parsing.
+    local GuildCache = LibStub("GuildCache-1.0", true)
+    if GuildCache and GuildCache.RegisterCallback then
+        GuildCache:RegisterCallback("OnMemberOnline", function(_, name)
             addon:OnCrafterCameOnline(name)
         end)
     end

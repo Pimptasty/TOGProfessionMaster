@@ -244,8 +244,14 @@ function addon:PrintStatus()
         addon:Print("  └ Scanner.DS is nil — was PLAYER_ENTERING_WORLD missed?")
     else
         addon:Print("|cff00ff00DeltaSync: initialized|r  namespace=" .. tostring(DS.namespace))
-        addon:Print("  AceComm=" .. tostring(DS.useAceComm)
-            .. "  AceCommQueue=" .. tostring(DS.useAceCommQueue))
+        -- External DeltaSync no longer exposes useAceComm/useAceCommQueue as
+        -- direct fields; pull them from GetCommStats() and add the LibStub
+        -- MINOR + a P2P-enabled flag while we're at it.
+        local stats = (DS.GetCommStats and DS:GetCommStats()) or {}
+        addon:Print("  aceComm="     .. tostring(stats.useAceComm or false)
+            .. "  registered=" .. tostring(stats.registered or false)
+            .. "  p2p="        .. tostring(stats.p2pEnabled or false)
+            .. "  guildCache=" .. tostring(Scanner.GuildCache ~= nil))
 
         -- Communication prefixes (7 channels)
         if DS.prefixes then
@@ -286,7 +292,9 @@ function addon:PrintStatus()
     addon:Print(sep)
 
     -- ── Online roster ────────────────────────────────────────────────────────
-    local GuildCache = self.GuildCache
+    -- PrintStatus runs on `addon` (function addon:PrintStatus), but the
+    -- GuildCache handle is stashed on Scanner — reach across explicitly.
+    local GuildCache = Scanner.GuildCache
     if GuildCache then
         local online = GuildCache:GetOnlineGuildMembers()
         addon:Print("Online guild members: " .. #online)

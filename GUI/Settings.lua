@@ -314,7 +314,7 @@ function addon:RefreshSyncLog()
 
     for _, e in ipairs(entries) do
         local col  = EVENT_COLOUR[e.event] or "|cffffffff"
-        local ts   = date("%H:%M:%S", e.ts)
+        local ts   = date("%Y-%m-%d %H:%M:%S", e.ts)
         local line = string.format("%s  %s%-8s|r  %s  %d B",
             ts, col, e.event, e.peer, e.bytes)
         local lbl = AceGUI:Create("Label")

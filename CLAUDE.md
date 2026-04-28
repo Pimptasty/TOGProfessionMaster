@@ -17,7 +17,7 @@ Only use Bash/PowerShell for operations with no dedicated tool equivalent: runni
 
 WoW Classic Era addon (Lua 5.1) that tracks guild profession recipes, cooldowns, and reagents across all characters and alts using a peer-to-peer sync system. Supports Vanilla/TBC/Wrath/Cata/MoP via a single codebase with version flags.
 
-**Tech stack:** AceAddon-3.0, AceGUI-3.0, AceDB-3.0, AceComm-3.0, AceCommQueue-1.0, DeltaSync-1.0, VersionCheck-1.0, LibGuildRoster-1.0, LibDataBroker/LibDBIcon, CallbackHandler-1.0
+**Tech stack:** AceAddon-3.0, AceGUI-3.0, AceDB-3.0, AceComm-3.0, AceCommQueue-1.0, DeltaSync-1.0, GuildCache-1.0, VersionCheck-1.0, LibDataBroker/LibDBIcon, CallbackHandler-1.0
 
 ## Development Rules (Always Follow)
 
@@ -40,7 +40,7 @@ There is no build system, test runner, or package manager. The `.toc` version pl
 
 Understanding this matters because Lua has no `require`; each file must only reference symbols defined in earlier files.
 
-1. `libs/` vendor libs (LibDataBroker, LibDBIcon, LibGuildRoster) → `Locale/enUS.lua`. DeltaSync-1.0 is **not** embedded — it loads from the standalone `DeltaSync` addon listed in `## Dependencies`.
+1. `libs/` vendor libs (LibDataBroker, LibDBIcon) → `Locale/enUS.lua`. DeltaSync-1.0 and GuildCache-1.0 are **not** embedded — both load from the standalone `DeltaSync` addon listed in `## Dependencies`.
 2. `TOGProfessionMaster.lua` — AceAddon instance, AceDB schemas, slash commands, utility functions
 3. `Compat.lua` — version detection flags (`addon.isVanilla`, `addon.isTBC`, etc.) and API shims
 4. `Data/` — static lookup tables (cooldown spell IDs, profession icons)
@@ -115,7 +115,7 @@ Custom P2P sync protocol built on AceComm. Key concepts:
 - Full payload on first contact → delta sync → hash-based leaf negotiation for ongoing sync
 - `HashManager` provides the leaf keys (`cooldown:Name-Realm`, `recipes:profId`) and roll-ups (`guild:cooldowns`, `guild:recipes`)
 - AceCommQueue-1.0 wraps `SendCommMessage` to prevent CRC errors under high traffic
-- The companion `GuildCache-1.0` LibStub library ships inside the DeltaSync addon. TOGPM does not consume it directly — guild-roster work goes through `LibGuildRoster-1.0` (separate addon) and through DeltaSync's public API (`GetOnlineGuildMembers`, `NormalizeName`, `IsInGuild`, `GetNormalizedPlayer`).
+- The companion `GuildCache-1.0` LibStub library (MINOR ≥ 2) ships inside the DeltaSync addon and is the **sole source of guild-roster truth** for TOGPM. Resolved as `Scanner.GuildCache = LibStub("GuildCache-1.0", true)` and exposes both query methods (`GetOnlineGuildMembers`, `IsPlayerOnline`, `IsInGuild`, `NormalizeName`, `GetNormalizedPlayer`) and CallbackHandler-1.0 transition events (`OnMemberOnline`, `OnMemberOffline`, `OnMemberJoined`, `OnMemberLeft`, `OnRosterReady`, `OnRosterUpdated`). The crafter-online alert in [TOGProfessionMaster.lua](TOGProfessionMaster.lua) registers `OnMemberOnline` on it. The previously-embedded `LibGuildRoster-1.0` was removed once GuildCache-1.0 became a true superset.
 
 ### GUI Pattern
 

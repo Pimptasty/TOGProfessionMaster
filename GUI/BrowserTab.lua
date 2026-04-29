@@ -42,6 +42,40 @@ local DP_ICON = 18    -- recipe icon size in detail header
 -- TOGBankClassic integration helpers
 -- ---------------------------------------------------------------------------
 
+-- Resolve a reagent's item ID, falling back through itemLink → name lookup.
+-- On Classic Era, GetTradeSkillReagentItemLink returns nil for many reagents
+-- so the scan path can't always populate itemLink — without this helper the
+-- bank-stock lookup at render time silently fails for older scanned recipes
+-- and for peer broadcasts predating v0.1.5. Cached back onto the reagent
+-- table so subsequent renders are O(1).
+local function ResolveReagentItemId(r)
+    if not r then return nil end
+    if r.itemId and r.itemId > 0 then return r.itemId end
+    if type(r.itemLink) == "string" then
+        local id = tonumber(r.itemLink:match("item:(%d+)"))
+        if id then r.itemId = id; return id end
+    end
+    if r.name and GetItemInfoInstant then
+        local id = GetItemInfoInstant(r.name)
+        if id then r.itemId = id; return id end
+    end
+    return nil
+end
+
+-- Resolve a reagent's item link, reconstructing it from itemId via GetItemInfo
+-- when the original link is missing.  GetItemInfo returns nil for items not
+-- yet in the local cache; callers should treat a nil result as "unavailable
+-- this frame, try again next render."
+local function ResolveReagentItemLink(r)
+    if type(r.itemLink) == "string" and r.itemLink ~= "" then return r.itemLink end
+    local id = ResolveReagentItemId(r)
+    if id then
+        local _, link = GetItemInfo(id)
+        if link then r.itemLink = link; return link end
+    end
+    return nil
+end
+
 -- Hidden tooltip used to scrape raw item data without triggering other addon hooks.
 local _itemScraper
 local function GetItemScraper()
@@ -708,11 +742,15 @@ function BrowserTab:FillShoppingListSection(container)
 
                 rf.nameLbl:SetText(r.name or "")
 
-                local rItemLink = r.itemLink
+                local rItemId   = ResolveReagentItemId(r)
+                local rItemLink = ResolveReagentItemLink(r)
                 rf:SetScript("OnEnter", function()
+                    addon.Tooltip.Owner(rf)
                     if rItemLink then
-                        addon.Tooltip.Owner(rf)
                         GameTooltip:SetHyperlink(rItemLink)
+                        GameTooltip:Show()
+                    elseif rItemId and GameTooltip.SetItemByID then
+                        GameTooltip:SetItemByID(rItemId)
                         GameTooltip:Show()
                     end
                 end)
@@ -721,7 +759,6 @@ function BrowserTab:FillShoppingListSection(container)
                 local needed = (r.count or 1) * qty
                 rf.countLbl:SetText("|cffffffff x" .. needed .. "|r")
 
-                local rItemId = rItemLink and tonumber(rItemLink:match("|Hitem:(%d+)"))
                 if rItemId and addon.Bank and addon.Bank.GetStock(rItemId) > 0 then
                     rf.bankBtn:SetScript("OnClick", function()
                         addon.Bank.ShowRequestDialog(rItemId, r.name or "", rItemLink)
@@ -1310,8 +1347,10 @@ function BrowserTab:DrawDetail(entry)
             rf:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, yOff)
             yOff = yOff - DP_ROW
 
-            if r.itemId and r.itemId > 0 then
-                local _, _, _, _, _, _, _, _, _, tex = GetItemInfo(r.itemId)
+            local rItemId = ResolveReagentItemId(r)
+            local rLink   = ResolveReagentItemLink(r)
+            if rItemId and rItemId > 0 then
+                local _, _, _, _, _, _, _, _, _, tex = GetItemInfo(rItemId)
                 rf.icon:SetTexture(tex or nil)
             else
                 rf.icon:SetTexture(nil)
@@ -1319,16 +1358,21 @@ function BrowserTab:DrawDetail(entry)
             rf.nameLbl:SetText(r.name or "")
             rf.countLbl:SetText("|cffffffff\195\151" .. (r.count or 1) * mult .. "|r")
 
-            local rLink = r.itemLink
-            if rLink then
+            if rLink or rItemId then
                 rf:SetScript("OnEnter", function()
                     addon.Tooltip.Owner(rf)
-                    GameTooltip:SetHyperlink(rLink)
+                    if rLink then
+                        GameTooltip:SetHyperlink(rLink)
+                    elseif GameTooltip.SetItemByID then
+                        GameTooltip:SetItemByID(rItemId)
+                    else
+                        return
+                    end
                     GameTooltip:Show()
                 end)
                 rf:SetScript("OnLeave", function() GameTooltip:Hide() end)
                 rf:SetScript("OnClick", function(_, btn)
-                    if btn == "LeftButton" and IsShiftKeyDown() then
+                    if btn == "LeftButton" and IsShiftKeyDown() and rLink then
                         ChatEdit_InsertLink(rLink)
                     end
                 end)
@@ -1338,7 +1382,6 @@ function BrowserTab:DrawDetail(entry)
                 rf:SetScript("OnClick", nil)
             end
 
-            local rItemId = rLink and tonumber(rLink:match("item:(%d+)"))
             if rItemId and addon.Bank and addon.Bank.GetStock(rItemId) > 0 then
                 rf.bankBtn:SetScript("OnClick", function()
                     addon.Bank.ShowRequestDialog(rItemId, r.name or "", rLink)

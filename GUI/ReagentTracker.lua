@@ -143,9 +143,8 @@ function RT:Refresh()
     for i, item in ipairs(list) do
         local row = self:GetRow(i)
 
-        local bagCount  = GetPlayerBagCount(item.id)
         local bankCount = addon.Bank and addon.Bank.GetStock(item.id) or 0
-        local have      = bagCount + bankCount
+        local have      = GetPlayerBagCount(item.id)
         local need      = item.need
 
         -- Icon (may be nil if not cached yet — silently blank)

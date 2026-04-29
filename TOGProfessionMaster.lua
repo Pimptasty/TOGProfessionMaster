@@ -136,6 +136,8 @@ local SLASH_COMMANDS = {
     ["versioncheck"] = "PrintVersionCheck",
     ["debug"]        = "ToggleDebug",
     ["spellcache"]   = "DumpSpellCache",
+    ["dumprecipe"]   = "DumpRecipe",
+    ["backfill"]     = "RunBackfill",
     ["help"]         = "PrintHelp",
 }
 
@@ -372,11 +374,65 @@ function addon:ShowMinimapButton() addon:DebugPrint("ShowMinimapButton — UI no
 function addon:OpenPurge()      addon:DebugPrint("OpenPurge — UI not yet loaded") end
 function addon:ForceSync()      addon:DebugPrint("ForceSync — sync not yet loaded") end
 
+--- /togpm dumprecipe <name> — find a recipe by exact name and print its
+-- stored fields + reagent table to chat. Used to diagnose missing itemLink
+-- / itemId data on reagents (the bank-button + reagent-tracker rely on these).
+function addon:DumpRecipe(args)
+    local name = strtrim(args or "")
+    if name == "" then
+        Ace:Print("Usage: /togpm dumprecipe <recipe name>")
+        return
+    end
+    local g = addon.guildDb and addon.guildDb.global and addon.guildDb.global.guilds
+    if not g then Ace:Print("|cffff4444No guild DB|r"); return end
+
+    local found = 0
+    for guildKey, gdb in pairs(g) do
+        for profId, profRecipes in pairs(gdb.recipes or {}) do
+            for recipeId, rd in pairs(profRecipes) do
+                if rd.name == name then
+                    found = found + 1
+                    Ace:Print(("|cffda8cff[%s]|r profId=%d recipeId=%s spellId=%s isSpell=%s"):format(
+                        guildKey, profId, tostring(recipeId), tostring(rd.spellId), tostring(rd.isSpell)))
+                    Ace:Print(("  itemLink=%s"):format(tostring(rd.itemLink)))
+                    Ace:Print(("  recipeLink=%s"):format(tostring(rd.recipeLink)))
+                    local reag = rd.reagents
+                    if type(reag) ~= "table" then
+                        Ace:Print(("  reagents = %s (not a table)"):format(tostring(reag)))
+                    else
+                        Ace:Print(("  reagents (%d):"):format(#reag))
+                        for i, x in ipairs(reag) do
+                            Ace:Print(("    [%d] name=%s count=%s itemId=%s itemLink=%s"):format(
+                                i, tostring(x.name), tostring(x.count),
+                                tostring(x.itemId), tostring(x.itemLink)))
+                        end
+                    end
+                    local crafters = {}
+                    for ck in pairs(rd.crafters or {}) do crafters[#crafters + 1] = ck end
+                    Ace:Print(("  crafters: %s"):format(table.concat(crafters, ", ")))
+                end
+            end
+        end
+    end
+    if found == 0 then
+        Ace:Print(("|cffff4444No recipe named '%s' found in any guild bucket|r"):format(name))
+    end
+end
+
+--- /togpm backfill — manually run the reagent itemId backfill pass.
+function addon:RunBackfill()
+    if addon.Scanner and addon.Scanner.BackfillReagentItemIds then
+        addon.Scanner:BackfillReagentItemIds()
+    else
+        Ace:Print("|cffff4444Scanner not available yet|r")
+    end
+end
+
 --- /togpm spellcache — dump the spellbook name→id cache to chat for debugging.
 function addon:DumpSpellCache()
     local cache = addon.Scanner:BuildSpellNameCache()
     local count = 0
-    for name, id in pairs(cache) do
+    for _ in pairs(cache) do
         count = count + 1
     end
     Ace:Print("Spellbook cache: " .. count .. " entries")

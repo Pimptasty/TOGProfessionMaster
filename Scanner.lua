@@ -18,6 +18,19 @@ local Ace = addon.lib   -- the AceAddon object created in TOGProfessionMaster.lu
 local Scanner = {}
 addon.Scanner = Scanner
 
+-- Hidden tooltip used to scrape reagent item links when the engine's
+-- GetTradeSkillReagentItemLink / GetCraftReagentItemLink return nil — a known
+-- Classic Era quirk where the link APIs silently fail even though the
+-- equivalent SetTradeSkillItem / SetCraftItem tooltip APIs work fine.
+local _reagentScraper
+local function GetReagentScraper()
+    if not _reagentScraper then
+        _reagentScraper = CreateFrame("GameTooltip", "TOGPMReagentScraper", nil, "GameTooltipTemplate")
+        _reagentScraper:SetOwner(WorldFrame, "ANCHOR_NONE")
+    end
+    return _reagentScraper
+end
+
 -- Broadcast state
 Scanner._pendingBroadcast = false
 Scanner._lastBroadcastAt  = 0
@@ -222,10 +235,14 @@ hooksecurefunc(Ace, "OnEnable", function(_self)
     Scanner:Init()
 end)
 
--- Hook into OnPlayerEnteringWorld to initialise DeltaSync once per session.
+-- Hook into OnPlayerEnteringWorld to initialise DeltaSync once per session
+-- and backfill any reagent rows missing itemId.  PEW guarantees guild + realm
+-- info are populated, which the 2s post-OnEnable timer cannot — there we'd
+-- silently bail when GetGuildDb() returned nil.
 hooksecurefunc(Ace, "OnPlayerEnteringWorld", function(_self, _event, isInitialLogin, isReloadingUi)
     if isInitialLogin or isReloadingUi then
         Scanner:InitDeltaSync()
+        Ace:ScheduleTimer(function() Scanner:BackfillReagentItemIds() end, 3)
     end
 end)
 
@@ -481,13 +498,32 @@ function Scanner:ScanTradeSkillInto(charKey, isLinked)  --luacheck: ignore isLin
                 local recipeLink = GetTradeSkillRecipeLink and GetTradeSkillRecipeLink(i)
                 local itemLink   = GetTradeSkillItemLink(i)
                 -- Capture reagents while the trade skill window is open.
+                -- On Classic Era, GetTradeSkillReagentItemLink can return nil for
+                -- reagents even when the API exists, so we also resolve itemId
+                -- via GetItemInfoInstant(name) as a stable identifier for the
+                -- bank-stock lookup and reagent-watch features. Both fields are
+                -- broadcast so peers receive whichever one we managed to capture.
                 local reagents = {}
                 local numReagents = GetTradeSkillNumReagents(i) or 0
                 for r = 1, numReagents do
                     local rName, _, rCount = GetTradeSkillReagentInfo(i, r)
                     if rName then
                         local rLink = GetTradeSkillReagentItemLink and GetTradeSkillReagentItemLink(i, r)
-                        table.insert(reagents, { name = rName, count = rCount or 1, itemLink = rLink })
+                        if not rLink then
+                            local sc = GetReagentScraper()
+                            sc:ClearLines()
+                            sc:SetTradeSkillItem(i, r)
+                            local _, scrapedLink = sc:GetItem()
+                            if scrapedLink and scrapedLink ~= "" then rLink = scrapedLink end
+                        end
+                        local rItemId = rLink and tonumber(rLink:match("item:(%d+)"))
+                        if not rItemId and GetItemInfoInstant then
+                            rItemId = (GetItemInfoInstant(rName))
+                        end
+                        table.insert(reagents, {
+                            name = rName, count = rCount or 1,
+                            itemId = rItemId, itemLink = rLink,
+                        })
                     end
                 end
                 recipes[recipeId] = { recipeName, GetTradeSkillIcon(i), isSpell, spellId, itemLink, reagents, recipeLink }
@@ -545,7 +581,47 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
     -- divergent format can't poison gdb.recipes with non-string itemLink /
     -- recipeLink values (the UI calls :match / :find on these and would crash).
     local function asString(v) return type(v) == "string" and v or nil end
-    local function asTable(v)  return type(v) == "table"  and v or nil end
+
+    -- Non-destructively merge an incoming reagent array into our existing one.
+    -- Preserves itemId/itemLink per-reagent when the incoming payload lacks
+    -- them. Without this, a single peer whose GetTradeSkillReagentItemLink
+    -- returns nil (a known Classic Era quirk) would broadcast reagents with
+    -- name+count only and wipe the rich data everyone else has, breaking the
+    -- bank-stock lookup, the reagent tracker, and reagent tooltip popups
+    -- guild-wide.  Returns nil when incoming is not a table so callers know
+    -- to preserve the existing field.
+    local function mergeReagents(existing, incoming)
+        if type(incoming) ~= "table" then return nil end
+        local byName = {}
+        if type(existing) == "table" then
+            for _, e in ipairs(existing) do
+                if e.name then byName[e.name] = e end
+            end
+        end
+        local merged = {}
+        for i, inE in ipairs(incoming) do
+            local entry = {
+                name     = inE.name,
+                count    = inE.count,
+                itemId   = inE.itemId,
+                itemLink = asString(inE.itemLink),
+            }
+            local prev = entry.name and byName[entry.name]
+            if prev then
+                if (not entry.itemId or entry.itemId == 0)
+                   and prev.itemId and prev.itemId > 0 then
+                    entry.itemId = prev.itemId
+                end
+                if not entry.itemLink and type(prev.itemLink) == "string"
+                   and prev.itemLink ~= "" then
+                    entry.itemLink = prev.itemLink
+                end
+            end
+            merged[i] = entry
+        end
+        return merged
+    end
+
     for recipeId, rd in pairs(recipes) do
         local existing = gdb.recipes[profId][recipeId]
         if existing then
@@ -556,7 +632,10 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
             -- recipeLink ([7]) only comes from local scans (GetTradeSkillRecipeLink).
             if rd[4] ~= nil then existing.spellId    = rd[4]            end
             if rd[5] ~= nil then existing.itemLink   = asString(rd[5])  end
-            if rd[6] ~= nil then existing.reagents   = asTable(rd[6])   end
+            if rd[6] ~= nil then
+                local merged = mergeReagents(existing.reagents, rd[6])
+                if merged then existing.reagents = merged end
+            end
             if rd[7] ~= nil then existing.recipeLink = asString(rd[7])  end
             existing.crafters[charKey] = true
         else
@@ -566,7 +645,7 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
                 isSpell    = rd[3],
                 spellId    = rd[4],
                 itemLink   = asString(rd[5]),
-                reagents   = asTable(rd[6]),
+                reagents   = mergeReagents(nil, rd[6]),
                 recipeLink = asString(rd[7]),
                 crafters   = { [charKey] = true },
             }
@@ -628,7 +707,21 @@ function Scanner:ScanCraftSkillInto(charKey)
                     local rName, _, rCount = GetCraftReagentInfo(i, r)
                     if rName then
                         local rLink = GetCraftReagentItemLink and GetCraftReagentItemLink(i, r)
-                        table.insert(reagents, { name = rName, count = rCount or 1, itemLink = rLink })
+                        if not rLink then
+                            local sc = GetReagentScraper()
+                            sc:ClearLines()
+                            sc:SetCraftItem(i, r)
+                            local _, scrapedLink = sc:GetItem()
+                            if scrapedLink and scrapedLink ~= "" then rLink = scrapedLink end
+                        end
+                        local rItemId = rLink and tonumber(rLink:match("item:(%d+)"))
+                        if not rItemId and GetItemInfoInstant then
+                            rItemId = (GetItemInfoInstant(rName))
+                        end
+                        table.insert(reagents, {
+                            name = rName, count = rCount or 1,
+                            itemId = rItemId, itemLink = rLink,
+                        })
                     end
                 end
                 -- [1]=name [2]=icon [3]=isSpell [4]=spellId [5]=itemLink [6]=reagents
@@ -733,21 +826,44 @@ function Scanner:ScanCooldowns()
     -- spell ID to find the one currently active, then store the shared expiry
     -- under every transmute the player knows so the cooldowns tab can show
     -- exactly which transmutes they have.
+    --
+    -- Why we don't gate on IsSpellKnown: on Classic Era, IsSpellKnown returns
+    -- false for transmute spell IDs (see docs/bugs.md DATA-004), so the gate
+    -- silently blocks both the active-CD store and the Ready seed. Instead we
+    -- determine "known transmutes" from the alchemy recipe DB (recipe entries
+    -- carry spellId from the spellbook scan) and always include the spell that
+    -- was actually found on cooldown so the active CD shows even on first
+    -- login before any trade-skill scan has populated recipes.
 
-    local transmuteExpiry = nil
+    local transmuteExpiry, activeTransmuteId = nil, nil
     for spellId in pairs(data.transmutes) do
         local start, duration = GetSpellCooldown(spellId)
         if start and start > 0 and duration and duration > 1.5 then
             local remaining = (start + duration) - GetTime()
             if remaining > 0 and remaining < 691200 then
-                transmuteExpiry = math.floor(now + remaining)
+                transmuteExpiry   = math.floor(now + remaining)
+                activeTransmuteId = spellId
                 break
             end
         end
     end
 
+    local knownTransmutes = {}
+    local alchemyRecipes  = gdb.recipes and gdb.recipes[171]
+    if alchemyRecipes then
+        for _, rd in pairs(alchemyRecipes) do
+            if rd.crafters and rd.crafters[charKey]
+            and rd.spellId and data.transmutes[rd.spellId] then
+                knownTransmutes[rd.spellId] = true
+            end
+        end
+    end
+    if activeTransmuteId then
+        knownTransmutes[activeTransmuteId] = true
+    end
+
     for spellId in pairs(data.transmutes) do
-        if IsSpellKnown(spellId, false) then
+        if knownTransmutes[spellId] or IsSpellKnown(spellId, false) then
             if transmuteExpiry then
                 stored[spellId] = transmuteExpiry
             elseif not stored[spellId] or (stored[spellId] - now) > 691200 then
@@ -792,6 +908,48 @@ function Scanner:ScanCooldowns()
     end
 
     addon:DebugPrint("Scanner: cooldown scan complete for", charKey)
+end
+
+-- Walk every recipe's reagent table and resolve missing itemId via
+-- GetItemInfoInstant(name).  Needed because pre-v0.1.5 scans (and scans on
+-- builds where GetTradeSkillReagentItemLink returns nil) stored reagents
+-- with neither itemLink nor itemId, breaking the bank-stock lookup and
+-- reagent-watch features that key off the item ID.  Runs once at login.
+function Scanner:BackfillReagentItemIds()
+    if not GetItemInfoInstant then
+        addon:Print("|cffff4444Backfill: GetItemInfoInstant unavailable|r")
+        return
+    end
+    local gdb = addon:GetGuildDb()
+    if not gdb or not gdb.recipes then
+        addon:Print("|cffff4444Backfill: no guild DB available|r")
+        return
+    end
+
+    local checked, fixed, missed = 0, 0, 0
+    for _, profRecipes in pairs(gdb.recipes) do
+        for _, rd in pairs(profRecipes) do
+            if type(rd.reagents) == "table" then
+                for _, rg in ipairs(rd.reagents) do
+                    if not rg.itemId or rg.itemId == 0 then
+                        checked = checked + 1
+                        if type(rg.itemLink) == "string" then
+                            rg.itemId = tonumber(rg.itemLink:match("item:(%d+)"))
+                        end
+                        if (not rg.itemId or rg.itemId == 0) and rg.name then
+                            rg.itemId = (GetItemInfoInstant(rg.name))
+                        end
+                        if rg.itemId and rg.itemId > 0 then
+                            fixed = fixed + 1
+                        else
+                            missed = missed + 1
+                        end
+                    end
+                end
+            end
+        end
+    end
+    addon:Print(("Backfill: checked=%d fixed=%d missed=%d"):format(checked, fixed, missed))
 end
 
 function Scanner:ScanSaltShaker(stored, now, itemId)

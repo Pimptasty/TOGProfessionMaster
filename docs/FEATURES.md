@@ -37,29 +37,51 @@
 
 ## 4. Communication Layer
 
+The communication layer was redesigned in **v0.2.0** to replace the v0.1.x full-payload broadcast model with a hash-then-fetch architecture inspired by TOGBankClassic. See [v0.2.0-protocol.md](v0.2.0-protocol.md) for the canonical protocol specification — this section is a high-level summary.
+
 ### 4.1 Transport
 
-- **DeltaSync-1.0** is the comm backend — handles version broadcast, full data sync, delta sync, and P2P sessions
-- **AceCommQueue-1.0** wraps all `SendCommMessage` calls to prevent CRC errors from chunk interleaving
-- TOGPM registers a single DeltaSync instance keyed to `"TOGPM"` on `OnInitialize`
+- **DeltaSync-1.0 MINOR ≥ 9** is the comm backend. v0.2.0 requires the hash-mismatch offer condition shipped in DeltaSync v2.0.3 — it falls back to silent no-sync mode against older DeltaSync versions.
+- **AceCommQueue-1.0** wraps all `SendCommMessage` calls to prevent CRC errors from chunk interleaving.
+- TOGPM registers a single DeltaSync instance with namespace `"TOGPmv2"` on `OnInitialize` (was `"TOGPmv1"` in v0.1.x — namespace bump prevents cross-version cross-talk).
 
-### 4.2 Data that syncs
+### 4.2 Channel allocation
 
-- Own profession list (profession ID, skill level, all known recipe IDs, specialization)
-- Own profession cooldown states (spell ID → expiry timestamp)
-- Character identity (name, realm, faction)
+| Channel | Distribution | Purpose |
+| ------- | ------------ | ------- |
+| `OFFER` | GUILD/BULK | L0 hash list broadcast (every 10 min) |
+| `OFFER` | WHISPER | Hash offers from peers responding to a broadcast |
+| `QUERY` | WHISPER | Drill-down requests and leaf-data requests (handshake) |
+| `DATA` | GUILD/BULK | Leaf-data broadcasts in response to requests |
 
-### 4.3 Sync triggers
+**All bulk data flows on the guild channel.** Whispers carry only handshake control messages, never bulk payloads — guild channel has higher throughput and isn't subject to whisper throttling.
 
-- `PLAYER_ENTERING_WORLD` — initial broadcast
-- `TRADE_SKILL_SHOW` / `TRADE_SKILL_UPDATE` — rescan and delta-sync professions
-- `BAG_UPDATE_COOLDOWN` — rescan and delta-sync cooldowns
-- On receiving a version broadcast from a peer — initiate sync if their data is newer than our stored copy
-- Manual `/pm sync` command
+### 4.3 Hash leaf taxonomy (what's tracked, hashed, and synced)
 
-### 4.4 GreenWall support (optional dep)
+- `recipemeta:<profId>` — immutable recipe metadata (name, icon, reagents, links). Once synced, never re-transferred.
+- `crafters:<profId>` — who knows what recipes for that profession. Changes on learn/unlearn.
+- `cooldown:<charKey>` — full cooldown bucket for one character. Changes per cast.
+- `accountchars:<charKey>` — alt group claimed by one broadcaster. Rarely changes.
+- `guild:cooldowns` and `guild:accountchars` — XOR roll-ups over per-character leaves (broadcast at L0; per-character leaves drilled-down on roll-up mismatch).
 
-- On guild announce, also relay to GreenWall confederate channel if `GreenWall` is loaded
+Each leaf stores `{ hash, updatedAt }` where both fields are pure functions of the data state — they change atomically together when content changes, and stay frozen otherwise. `updatedAt` is **content-derived** (typically `gdb.lastScan[charKey][scope]`) — never `GetServerTime()`.
+
+### 4.4 Sync triggers
+
+- `PLAYER_ENTERING_WORLD` — first broadcast after login (after a 3 s delay so realm + guild context are stable).
+- `TRADE_SKILL_SHOW` / `TRADE_SKILL_UPDATE` — local profession rescan; targeted hash invalidation for `crafters:<profId>` and possibly `recipemeta:<profId>`.
+- `CRAFT_SHOW` / `CRAFT_UPDATE` — Vanilla enchanting / weapon crafting rescan.
+- `BAG_UPDATE_COOLDOWN` — Vanilla item-cooldown (Salt Shaker) rescan.
+- Periodic 10-minute timer — broadcast hash list (differential — only leaves whose `(hash, updatedAt)` has changed since last broadcast).
+- Manual `/togpm sync` command — force immediate broadcast bypassing the debounce.
+
+### 4.5 Relay / anyone-can-serve
+
+In v0.2.0 any peer with cached data for any leaf can serve it on request, not just the original owner. Cooldowns and recipe membership stay visible to the guild even when the owner is offline, as long as at least one peer has a cached copy. Content-aware merge ensures relayed data converges correctly with newer authoritative scans.
+
+### 4.6 GreenWall support (optional dep)
+
+- On guild announce, also relay to GreenWall confederate channel if `GreenWall` is loaded.
 
 ---
 

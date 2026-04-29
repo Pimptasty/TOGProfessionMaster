@@ -1,5 +1,66 @@
 # TOG Profession Master Changelog
 
+## [v0.2.0] (2026-04-29) - Hash-then-fetch sync protocol, content-aware merge, relay-capable cooldowns + recipes
+
+### Major Protocol Overhaul
+
+- **Replaced full-payload broadcast with hash-then-fetch sync** — v0.1.x broadcast each peer's full ~30 KB profession + cooldown payload to the guild every 30 seconds, multiplied by every active broadcaster. v0.2.0 broadcasts a tiny ~600 B leaf-hash list per peer every 10 minutes (differential — only leaves whose content has changed). Peers compare hashes; on mismatch they whisper a short handshake; the chosen sender broadcasts only the differing leaf's data on the GUILD/BULK channel, where every peer with stale data merges for free. Steady-state guild traffic drops by orders of magnitude. See [docs/v0.2.0-protocol.md](docs/v0.2.0-protocol.md) for the full design. Locations: [Scanner.lua](Scanner.lua), [Modules/HashManager.lua](Modules/HashManager.lua).
+
+- **Content-aware merge replaces destructive overwrite** — `OnGuildDataReceived` now merges per leaf type so anyone with cached data can serve it without risk of clobbering fresher data: cooldowns merge with `max(local.expiresAt, incoming.expiresAt)` per (charKey, spellId); recipe metadata merges richest-non-nil per field via the existing `mergeReagents` helper; crafter sets union-add for relayed payloads and wipe-then-re-add when the broadcaster claims an authoritative own-scan; account-char groups replace authoritatively for the broadcaster's own slot and union for relayed slots. Receiving from any peer always converges to the same state. Locations: [Scanner.lua:OnGuildDataReceived](Scanner.lua), [Scanner.lua:MergeRecipeMetaIntoGdb](Scanner.lua), [Scanner.lua:MergeCraftersIntoGdb](Scanner.lua).
+
+- **Cooldowns and recipes now relay through any peer** — `HashManager:HasContent` returns true for any locally-cached leaf, not just owner-owned. If Alice's alchemist is offline, Bob's cached copy of `cooldown:Alice-Realm` can serve the leaf to Carol when she logs in. Recipe metadata + crafter membership relay similarly. Cooldown coverage no longer requires the data owner to be online. Location: [Modules/HashManager.lua:HasContent](Modules/HashManager.lua).
+
+- **Hash + timestamp invariant: both immutable per data state** — Each leaf entry `{hash, updatedAt}` is a co-determined function of the data: both change atomically when content changes, both stay frozen otherwise. `updatedAt` is content-derived from `gdb.lastScan[charKey][scope]`, never `GetServerTime()` at a no-op site. The v0.1.x `HashManager:RebuildAll` re-stamped every leaf's `updatedAt` on every receive — even no-op merges — which was the root cause of the "stale relayer with high updatedAt suppresses fresh owner's offer" routing bug. Replaced with targeted `Invalidate*` helpers that no-op when the new tuple matches existing. Location: [Modules/HashManager.lua:setEntry](Modules/HashManager.lua).
+
+### New Hash Leaf Taxonomy
+
+Replaces v0.1.x's `cooldown:<charKey>` + `recipes:<profId>` + `guild:cooldowns` + `guild:recipes` with:
+
+- `recipemeta:<profId>` — immutable recipe metadata for one profession (rare-change, bootstrap-only after first sync).
+- `crafters:<profId>` — crafter membership map for one profession (frequent, deltas).
+- `cooldown:<charKey>` — full cooldown bucket for one character.
+- `accountchars:<charKey>` — alt group claimed by one broadcaster.
+- `guild:cooldowns` and `guild:accountchars` — structured roll-ups over per-character leaves; broadcast at L0 with per-character leaves drilled-down on roll-up mismatch.
+
+L0 broadcast carries 9 + 9 + 2 = 20 hashes × ~30 B per peer ≈ 600 B. Per-character leaves stay out of L0 to avoid 300-500-leaf broadcast bloat for large guilds.
+
+### Channel Allocation
+
+GUILD/BULK for hash list broadcasts and per-leaf data responses (high throughput, throttle-tolerant); WHISPER for handshake control messages only (offers, requests). Whisper throttling no longer constrains bulk transfer.
+
+### Storage Changes
+
+Two new top-level fields on each guild bucket; existing data is preserved verbatim:
+
+- `gdb.accountChars[broadcasterKey] = { charKey, ... }` — per-broadcaster authoritative alt group. `gdb.altGroups` becomes a derived view rebuilt from this.
+- `gdb.lastScan[charKey][scope]` — content-derived timestamps (where `scope` is a profId, `"cooldowns"`, or `"accountchars"`). HashManager reads these to compute leaf `updatedAt`.
+
+### Wire Format
+
+Bumped DeltaSync namespace `TOGPmv1` → `TOGPmv2` to prevent v0.1.5 ↔ v0.2.0 cross-talk during rollout. v0.1.5 peers don't see v0.2.0 broadcasts and vice versa; once everyone upgrades, the v0.1.5 namespace dies.
+
+Per-leaf payload format (`payload.leaves[itemKey] = { data, hash, updatedAt }`) carries content + the source's hash tuple. Multiple leaves can ride in one broadcast. Sub-hash drill-down responses (`payload.type = "subhashes"`) carry per-character hashes for one roll-up parent.
+
+### Dependency Bump
+
+Requires DeltaSync-1.0 MINOR>=9 (shipped in DeltaSync v2.0.3, 2026-04-29). The new offer condition (hash-mismatch instead of `updatedAt > peer's`) is required for the relay-capable sync model; older DeltaSync versions still load the addon but `Scanner:InitDeltaSync` refuses to enable sync and prints a clear error. Location: [Scanner.lua:InitDeltaSync](Scanner.lua).
+
+### New Diagnostic Commands
+
+- `/togpm dumphashes` — print the local L0 hash list (itemKey, hash, updatedAt) for cross-peer comparison.
+- `/togpm dumpcooldowns [charKey]` — print stored cooldown bucket for a character (no arg = list every character with cooldowns).
+- `/togpm forcebroadcast` — bypass the 10-min debounce and broadcast a full (non-differential) hash list immediately.
+
+### Bug Fixes
+
+- **Cooldowns tab letter (mail) icon wrapping under the cooldown name** — AceGUI Flow's wrap math `(framewidth + usedwidth > width)` is strict-greater, but in practice the mail icon was wrapping to a new row even when the inner widget widths summed exactly to col2's 456px. Reserved 12 px of slack in the `cdNameW` calculation so even a small rounding/padding discrepancy in any AceGUI Label widget can't push the row total past col2 width. Location: [GUI/CooldownsTab.lua:611-622](GUI/CooldownsTab.lua#L611-L622).
+
+### Migration Notes
+
+No existing data is destroyed. On first v0.2.0 load `gdb.accountChars` and `gdb.lastScan` initialize empty and populate as scans run + broadcasts arrive. `gdb.altGroups` is rebuilt from `gdb.accountChars` whenever it changes. Old `recipes:<profId>` hash entries become unused garbage in `gdb.hashes` and can be cleaned up in a future version. Existing recipes, cooldowns, and skill ranks remain usable through the merge.
+
+---
+
 ## [v0.1.5] (2026-04-29) - Transmute cooldowns, reagent itemId capture, non-destructive merge, Reagent Tracker bag-vs-bank fix
 
 ### Bug Fixes

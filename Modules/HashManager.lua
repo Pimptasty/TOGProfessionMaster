@@ -1,17 +1,29 @@
--- TOG Profession Master — Hierarchical Hash Manager
+-- TOG Profession Master — Hash Manager (v0.2.0 protocol)
 -- Author: Pimptasty
 --
--- Implements a Merkle-tree style cache of content hashes for DeltaSync P2P.
--- All hashes are stored in gdb.hashes (guild-scoped SavedVariables).
+-- Implements the per-leaf hash cache for the v0.2.0 hash-then-fetch sync
+-- protocol.  See docs/v0.2.0-protocol.md for the canonical design.
 --
--- Two levels of hash keys:
---   guild:cooldowns          — roll-up over all per-member cooldown hashes
---   guild:recipes            — roll-up over all per-profession recipe hashes
---   cooldown:<Name-Realm>    — per-member cooldown leaf
---   recipes:<profId>         — per-profession recipe leaf
+-- Leaf keys
+--   recipemeta:<profId>     — immutable recipe metadata for one profession
+--                             (name, icon, isSpell, spellId, itemLink, recipeLink, reagents)
+--   crafters:<profId>       — crafter membership { recipeId → {charKey → true} }
+--   cooldown:<charKey>      — cooldown bucket { spellId → expiresAt } for one character
+--   accountchars:<charKey>  — alt group { charKey, ... } owned by one broadcaster
+--   guild:cooldowns         — structured roll-up over cooldown:<charKey> leaves
+--   guild:accountchars      — structured roll-up over accountchars:<charKey> leaves
 --
--- Invalidation is targeted: changing one member's cooldowns only recomputes
--- that member's leaf hash plus the guild:cooldowns roll-up.
+-- Hash + timestamp invariant
+--   Each leaf entry is { hash, updatedAt }.  Both fields are pure functions
+--   of the data state.  setEntry is a no-op when the new (hash, updatedAt)
+--   matches the existing one.  updatedAt is content-derived (sourced from
+--   gdb.lastScan), never GetServerTime() at a non-content-changing site.
+--
+-- No RebuildAll
+--   The v0.1.x RebuildAll re-stamped every leaf's updatedAt on every receive,
+--   even no-op merges, causing the "stale relayer beats fresh owner" routing
+--   bug.  Replaced with targeted invalidation: each scan / merge calls only
+--   the Invalidate* helpers for what changed.
 
 local _, addon = ...
 
@@ -26,232 +38,332 @@ addon.HashManager = HashManager
 -- Internal helpers
 -- ---------------------------------------------------------------------------
 
---- Ensure gdb.hashes table exists (lazy-init for old saved-variable buckets).
 local function ensureHashes(gdb)
     if not gdb.hashes then gdb.hashes = {} end
     return gdb.hashes
 end
 
---- Write (or overwrite) a hash entry.
-local function setEntry(hashes, key, hash, now)
-    hashes[key] = { hash = hash, updatedAt = now }
+--- Write a hash entry only if the new (hash, updatedAt) tuple differs from
+--- what's already stored.  Idempotent for no-op recomputations.
+--- Returns true if the entry was written, false if it was a no-op.
+local function setEntry(hashes, key, hash, updatedAt)
+    local existing = hashes[key]
+    if existing
+       and existing.hash == hash
+       and existing.updatedAt == updatedAt then
+        return false
+    end
+    hashes[key] = { hash = hash, updatedAt = updatedAt }
+    return true
+end
+
+--- Look up a content-derived timestamp from gdb.lastScan, with 0 fallback.
+local function lastScan(gdb, charKey, scope)
+    local cs = gdb.lastScan and gdb.lastScan[charKey]
+    return (cs and cs[scope]) or 0
 end
 
 -- ---------------------------------------------------------------------------
 -- Leaf hash computations
 -- ---------------------------------------------------------------------------
 
---- Compute the cooldown hash for a single character.
--- Hashes the full cooldown table (spellId → expiresAt) directly.
--- @param DS      DeltaSync-1.0 library reference
--- @param gdb     guild DB bucket
--- @param charKey "Name-Realm" string
--- @return        numeric hash
+--- Hash for cooldown:<charKey> — full cooldown bucket for one character.
 function HashManager:ComputeCharCooldownHash(DS, gdb, charKey)
     return DS:ComputeHash(gdb.cooldowns and gdb.cooldowns[charKey] or {})
 end
 
---- Compute the recipe hash for a single profession.
--- Combines a count-per-recipe map (crafter counts) with per-member skill ranks
--- for that profession so that any change to who-knows-what or rank increments
--- produce a different hash.
--- @param DS     DeltaSync-1.0 library reference
--- @param gdb    guild DB bucket
--- @param profId numeric profession skill-line ID
--- @return       numeric hash
-function HashManager:ComputeProfessionHash(DS, gdb, profId)
-    -- Count crafters per recipe — avoids serialising full crafter-key strings.
-    local recipeCounts = {}
+--- Hash for accountchars:<charKey> — alt group claimed by one broadcaster.
+function HashManager:ComputeAccountCharsHash(DS, gdb, charKey)
+    return DS:ComputeHash(gdb.accountChars and gdb.accountChars[charKey] or {})
+end
+
+--- Hash for crafters:<profId> — crafter membership map for one profession.
+-- Independent of recipe metadata so the metadata leaf can stay stable while
+-- crafter membership changes (the common case).
+function HashManager:ComputeCraftersHash(DS, gdb, profId)
+    local map = {}
     if gdb.recipes and gdb.recipes[profId] then
         for recipeId, rd in pairs(gdb.recipes[profId]) do
-            local n = 0
-            for _ in pairs(rd.crafters or {}) do n = n + 1 end
-            recipeCounts[tostring(recipeId)] = n
-        end
-    end
-
-    -- Collect skill ranks for this profession across all members.
-    local skillRanks = {}
-    if gdb.skills then
-        for charKey, charSkills in pairs(gdb.skills) do
-            local skill = charSkills[profId]
-            if skill then
-                skillRanks[charKey] = skill.skillRank or 0
+            local crafters = {}
+            if rd.crafters then
+                for ck, v in pairs(rd.crafters) do
+                    if v then crafters[ck] = true end
+                end
+            end
+            -- Only include recipes that have at least one crafter — empty
+            -- entries can drift between peers and would falsely change the hash.
+            if next(crafters) then
+                map[tostring(recipeId)] = crafters
             end
         end
     end
+    return DS:ComputeHash(map)
+end
 
-    return DS:ComputeStructuredHash({
-        recipeCounts = DS:ComputeHash(recipeCounts),
-        skillRanks   = DS:ComputeHash(skillRanks),
-    })
+--- Hash for recipemeta:<profId> — immutable recipe metadata for one profession.
+-- Excludes crafters intentionally; crafters live in a separate leaf.
+function HashManager:ComputeRecipeMetaHash(DS, gdb, profId)
+    local map = {}
+    if gdb.recipes and gdb.recipes[profId] then
+        for recipeId, rd in pairs(gdb.recipes[profId]) do
+            -- Only the static fields.  spellId may be nil for non-local scans
+            -- so we use false as the placeholder so the hash is stable.
+            map[tostring(recipeId)] = {
+                name       = rd.name       or "",
+                icon       = rd.icon       or 0,
+                isSpell    = rd.isSpell    and true or false,
+                spellId    = rd.spellId    or 0,
+                itemLink   = rd.itemLink   or "",
+                recipeLink = rd.recipeLink or "",
+                reagents   = rd.reagents,
+            }
+        end
+    end
+    return DS:ComputeHash(map)
 end
 
 -- ---------------------------------------------------------------------------
 -- Roll-up computations (derived from cached leaf entries)
 -- ---------------------------------------------------------------------------
 
---- Recompute guild:cooldowns as a structured hash over all cached cooldown leaves.
--- Reads leaf hashes already stored in gdb.hashes; call after updating leaves.
--- @param DS  DeltaSync-1.0 library reference
--- @param gdb guild DB bucket
--- @return    numeric hash
-function HashManager:ComputeGuildCooldownsHash(DS, gdb)
-    local hashes  = ensureHashes(gdb)
+local function rollupOver(hashes, prefix, DS)
     local leafNums = {}
+    local prefLen  = #prefix
     for key, entry in pairs(hashes) do
-        if key:sub(1, 9) == "cooldown:" then
+        if key:sub(1, prefLen) == prefix then
             leafNums[key] = entry.hash
         end
     end
     return DS:ComputeStructuredHash(leafNums)
 end
 
---- Recompute guild:recipes as a structured hash over all cached recipe leaves.
--- @param DS  DeltaSync-1.0 library reference
--- @param gdb guild DB bucket
--- @return    numeric hash
-function HashManager:ComputeGuildRecipesHash(DS, gdb)
-    local hashes   = ensureHashes(gdb)
-    local leafNums = {}
+--- Roll-up updatedAt: max across child leaves with this prefix.
+local function rollupTime(hashes, prefix)
+    local maxT     = 0
+    local prefLen  = #prefix
     for key, entry in pairs(hashes) do
-        if key:sub(1, 8) == "recipes:" then
-            leafNums[key] = entry.hash
+        if key:sub(1, prefLen) == prefix then
+            if (entry.updatedAt or 0) > maxT then maxT = entry.updatedAt end
         end
     end
-    return DS:ComputeStructuredHash(leafNums)
+    return maxT
+end
+
+function HashManager:ComputeGuildCooldownsHash(DS, gdb)
+    return rollupOver(ensureHashes(gdb), "cooldown:", DS)
+end
+
+function HashManager:ComputeGuildAccountCharsHash(DS, gdb)
+    return rollupOver(ensureHashes(gdb), "accountchars:", DS)
 end
 
 -- ---------------------------------------------------------------------------
 -- Targeted invalidation
+-- Each helper computes the new (hash, updatedAt) tuple from current content
+-- and gdb.lastScan, then calls setEntry which is a no-op if unchanged.
 -- ---------------------------------------------------------------------------
 
---- Invalidate the cooldown hash for one character and recompute the roll-up.
--- Call after ScanCooldowns() updates gdb.cooldowns[charKey].
--- @param DS      DeltaSync-1.0 library reference
--- @param gdb     guild DB bucket
--- @param charKey "Name-Realm" string
+--- After a cooldown scan or merge for one character.
 function HashManager:InvalidateCharCooldowns(DS, gdb, charKey)
     local hashes = ensureHashes(gdb)
-    local now    = GetServerTime()
-    setEntry(hashes, "cooldown:" .. charKey, self:ComputeCharCooldownHash(DS, gdb, charKey), now)
-    setEntry(hashes, "guild:cooldowns",      self:ComputeGuildCooldownsHash(DS, gdb),         now)
+    local hash   = self:ComputeCharCooldownHash(DS, gdb, charKey)
+    local ts     = lastScan(gdb, charKey, "cooldowns")
+    local wrote  = setEntry(hashes, "cooldown:" .. charKey, hash, ts)
+    -- Roll-up only needs to recompute when a child changed.
+    if wrote then
+        setEntry(hashes, "guild:cooldowns",
+            self:ComputeGuildCooldownsHash(DS, gdb),
+            rollupTime(hashes, "cooldown:"))
+    end
 end
 
---- Invalidate the recipe hash for one profession and recompute the roll-up.
--- Call after MergeRecipesIntoGdb() updates gdb.recipes[profId].
--- @param DS     DeltaSync-1.0 library reference
--- @param gdb    guild DB bucket
--- @param profId numeric profession skill-line ID
+--- After an accountchars scan or merge for one broadcaster.
+function HashManager:InvalidateAccountChars(DS, gdb, charKey)
+    local hashes = ensureHashes(gdb)
+    local hash   = self:ComputeAccountCharsHash(DS, gdb, charKey)
+    local ts     = lastScan(gdb, charKey, "accountchars")
+    local wrote  = setEntry(hashes, "accountchars:" .. charKey, hash, ts)
+    if wrote then
+        setEntry(hashes, "guild:accountchars",
+            self:ComputeGuildAccountCharsHash(DS, gdb),
+            rollupTime(hashes, "accountchars:"))
+    end
+end
+
+--- After a profession scan or merge.  Invalidates BOTH recipemeta:<profId>
+--- and crafters:<profId> since either may have changed.
 function HashManager:InvalidateProfession(DS, gdb, profId)
     local hashes = ensureHashes(gdb)
-    local now    = GetServerTime()
-    setEntry(hashes, "recipes:" .. tostring(profId), self:ComputeProfessionHash(DS, gdb, profId), now)
-    setEntry(hashes, "guild:recipes",                self:ComputeGuildRecipesHash(DS, gdb),        now)
+    local key    = tostring(profId)
+
+    -- Content-derived timestamp = freshest contributing scan.
+    local maxTs = 0
+    if gdb.recipes and gdb.recipes[profId] then
+        for _, rd in pairs(gdb.recipes[profId]) do
+            for ck in pairs(rd.crafters or {}) do
+                local ts = lastScan(gdb, ck, profId)
+                if ts > maxTs then maxTs = ts end
+            end
+        end
+    end
+
+    setEntry(hashes, "recipemeta:" .. key, self:ComputeRecipeMetaHash(DS, gdb, profId), maxTs)
+    setEntry(hashes, "crafters:"   .. key, self:ComputeCraftersHash(DS, gdb, profId),   maxTs)
 end
 
---- Full rebuild of all hash levels from scratch.
--- Use on first login, after a bulk import, or after OnGuildDataReceived.
--- @param DS  DeltaSync-1.0 library reference
--- @param gdb guild DB bucket
-function HashManager:RebuildAll(DS, gdb)
+-- ---------------------------------------------------------------------------
+-- First-load rebuild + v0.1.x → v0.2.0 hash migration
+--
+-- Computes any v0.2.0 leaves missing from gdb.hashes and removes legacy
+-- v0.1.x leaf keys (recipes:<profId>, guild:recipes).  Idempotent — safe to
+-- call multiple times; only writes when content actually changes.  NEVER
+-- call this on guild data receive: that path uses targeted invalidation.
+-- ---------------------------------------------------------------------------
+
+function HashManager:RebuildOnFirstLoad(DS, gdb)
     local hashes = ensureHashes(gdb)
-    local now    = GetServerTime()
 
-    -- Per-member cooldown leaves.
-    for charKey in pairs(gdb.cooldowns or {}) do
-        setEntry(hashes, "cooldown:" .. charKey, self:ComputeCharCooldownHash(DS, gdb, charKey), now)
+    -- ── Drop legacy v0.1.x leaf keys ──────────────────────────────────────
+    -- recipes:<profId> was split into recipemeta:<profId> + crafters:<profId>.
+    -- guild:recipes was replaced by guild:accountchars (different roll-up).
+    local toRemove = {}
+    for key in pairs(hashes) do
+        if key:sub(1, 8) == "recipes:" or key == "guild:recipes" then
+            toRemove[#toRemove + 1] = key
+        end
+    end
+    for _, key in ipairs(toRemove) do
+        hashes[key] = nil
     end
 
-    -- Per-profession recipe leaves.
-    for profId in pairs(gdb.recipes or {}) do
-        setEntry(hashes, "recipes:" .. tostring(profId), self:ComputeProfessionHash(DS, gdb, profId), now)
+    -- ── Ensure all expected v0.2.0 leaves exist ──────────────────────────
+    -- These calls no-op when content is unchanged (setEntry has the guard),
+    -- so it's safe to invoke unconditionally.
+
+    if gdb.cooldowns then
+        for charKey in pairs(gdb.cooldowns) do
+            if not hashes["cooldown:" .. charKey] then
+                self:InvalidateCharCooldowns(DS, gdb, charKey)
+            end
+        end
     end
 
-    -- Top-level roll-ups (uses the leaves we just wrote).
-    setEntry(hashes, "guild:cooldowns", self:ComputeGuildCooldownsHash(DS, gdb), now)
-    setEntry(hashes, "guild:recipes",   self:ComputeGuildRecipesHash(DS, gdb),   now)
+    if gdb.accountChars then
+        for charKey in pairs(gdb.accountChars) do
+            if not hashes["accountchars:" .. charKey] then
+                self:InvalidateAccountChars(DS, gdb, charKey)
+            end
+        end
+    end
+
+    if gdb.recipes then
+        for profId in pairs(gdb.recipes) do
+            local k = tostring(profId)
+            if not hashes["recipemeta:" .. k] or not hashes["crafters:" .. k] then
+                self:InvalidateProfession(DS, gdb, profId)
+            end
+        end
+    end
+
+    -- Roll-ups: recompute if missing or stale.  InvalidateChar* / Invalidate*
+    -- helpers only refresh the roll-up when their leaf changed, so a fresh
+    -- recompute here covers the case where leaves existed but the roll-up
+    -- was lost (e.g., v0.1.x guild:cooldowns survived but is now stale).
+    setEntry(hashes, "guild:cooldowns",
+        self:ComputeGuildCooldownsHash(DS, gdb),
+        rollupTime(hashes, "cooldown:"))
+    setEntry(hashes, "guild:accountchars",
+        self:ComputeGuildAccountCharsHash(DS, gdb),
+        rollupTime(hashes, "accountchars:"))
 end
 
 -- ---------------------------------------------------------------------------
--- Map accessors (consumed by Scanner:InitP2P callbacks)
+-- Map accessors (consumed by Scanner P2P callbacks)
 -- ---------------------------------------------------------------------------
 
---- Return the two guild-level hash entries for the initial broadcast.
--- @param gdb guild DB bucket
--- @return    { ["guild:cooldowns"] = {hash, updatedAt}, ["guild:recipes"] = {hash, updatedAt} }
-function HashManager:GetGuildLevelMap(gdb)
+local function copyEntries(hashes, prefix)
+    local map = {}
+    local prefLen = #prefix
+    for key, entry in pairs(hashes) do
+        if key:sub(1, prefLen) == prefix then
+            map[key] = { hash = entry.hash, updatedAt = entry.updatedAt }
+        end
+    end
+    return map
+end
+
+function HashManager:GetCooldownLevelMap(gdb)
+    return copyEntries(ensureHashes(gdb), "cooldown:")
+end
+
+function HashManager:GetAccountCharsLevelMap(gdb)
+    return copyEntries(ensureHashes(gdb), "accountchars:")
+end
+
+function HashManager:GetRecipeMetaLevelMap(gdb)
+    return copyEntries(ensureHashes(gdb), "recipemeta:")
+end
+
+function HashManager:GetCraftersLevelMap(gdb)
+    return copyEntries(ensureHashes(gdb), "crafters:")
+end
+
+--- Return the L0 broadcast map: per-profession (recipemeta + crafters) plus
+--- the two roll-up entries.  Per-character leaves are NOT included at L0 —
+--- they're drilled down on roll-up mismatch via the subhashes request.
+function HashManager:GetL0BroadcastMap(gdb)
     local hashes = ensureHashes(gdb)
     local map    = {}
-    for _, key in ipairs({ "guild:cooldowns", "guild:recipes" }) do
+    -- Per-profession
+    for key, entry in pairs(hashes) do
+        if key:sub(1, 11) == "recipemeta:" or key:sub(1, 9) == "crafters:" then
+            map[key] = { hash = entry.hash, updatedAt = entry.updatedAt }
+        end
+    end
+    -- Roll-ups
+    for _, key in ipairs({ "guild:cooldowns", "guild:accountchars" }) do
         local e = hashes[key]
         if e then map[key] = { hash = e.hash, updatedAt = e.updatedAt } end
     end
     return map
 end
 
---- Return all per-member cooldown hash entries.
--- @param gdb guild DB bucket
--- @return    { ["cooldown:Name-Realm"] = {hash, updatedAt}, ... }
-function HashManager:GetCooldownLevelMap(gdb)
-    local hashes = ensureHashes(gdb)
-    local map    = {}
-    for key, entry in pairs(hashes) do
-        if key:sub(1, 9) == "cooldown:" then
-            map[key] = { hash = entry.hash, updatedAt = entry.updatedAt }
-        end
-    end
-    return map
-end
-
---- Return all per-profession recipe hash entries.
--- @param gdb guild DB bucket
--- @return    { ["recipes:171"] = {hash, updatedAt}, ... }
-function HashManager:GetProfessionLevelMap(gdb)
-    local hashes = ensureHashes(gdb)
-    local map    = {}
-    for key, entry in pairs(hashes) do
-        if key:sub(1, 8) == "recipes:" then
-            map[key] = { hash = entry.hash, updatedAt = entry.updatedAt }
-        end
-    end
-    return map
-end
-
 -- ---------------------------------------------------------------------------
 -- Content ownership check
+-- v0.2.0: anyone with cached data for a leaf can serve it (relay).
 -- ---------------------------------------------------------------------------
 
---- Returns true if this client can authoritatively serve content for itemKey.
---
--- guild:*           → false  (synthetic roll-ups; no raw data to serve)
--- cooldown:Name-Realm → true only when Name-Realm is the local player
--- recipes:N           → true when the local player has any recipes for profession N
---
--- @param gdb     guild DB bucket
--- @param itemKey DeltaSync item key string
--- @return        boolean
 function HashManager:HasContent(gdb, itemKey)
-    local GuildCache = addon.Scanner and addon.Scanner.GuildCache
-    if not GuildCache then return false end
-
-    -- Roll-up keys are never directly servable.
+    -- Roll-ups are computed locally; never directly servable as data.
     if itemKey:sub(1, 6) == "guild:" then return false end
 
-    -- Per-member cooldown key.
     if itemKey:sub(1, 9) == "cooldown:" then
-        return itemKey:sub(10) == GuildCache:GetNormalizedPlayer()
+        local owner = itemKey:sub(10)
+        return gdb.cooldowns
+           and gdb.cooldowns[owner]
+           and next(gdb.cooldowns[owner]) ~= nil
     end
 
-    -- Per-profession recipe key.
-    if itemKey:sub(1, 8) == "recipes:" then
-        local profId  = tonumber(itemKey:sub(9))
-        if not profId then return false end
-        local charKey = GuildCache:GetNormalizedPlayer()
-        if gdb.recipes and gdb.recipes[profId] then
-            for _, rd in pairs(gdb.recipes[profId]) do
-                if rd.crafters and rd.crafters[charKey] then return true end
-            end
+    if itemKey:sub(1, 13) == "accountchars:" then
+        local owner = itemKey:sub(14)
+        return gdb.accountChars
+           and gdb.accountChars[owner]
+           and #gdb.accountChars[owner] > 0
+    end
+
+    if itemKey:sub(1, 11) == "recipemeta:" then
+        local profId = tonumber(itemKey:sub(12))
+        return profId
+           and gdb.recipes
+           and gdb.recipes[profId]
+           and next(gdb.recipes[profId]) ~= nil
+    end
+
+    if itemKey:sub(1, 9) == "crafters:" then
+        local profId = tonumber(itemKey:sub(10))
+        if not profId or not gdb.recipes or not gdb.recipes[profId] then return false end
+        for _, rd in pairs(gdb.recipes[profId]) do
+            if rd.crafters and next(rd.crafters) then return true end
         end
         return false
     end

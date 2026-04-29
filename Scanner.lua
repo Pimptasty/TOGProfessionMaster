@@ -31,6 +31,48 @@ local function GetReagentScraper()
     return _reagentScraper
 end
 
+-- ---------------------------------------------------------------------------
+-- Module-scope merge helpers (reused by ScanTradeSkillInto, ScanCraftSkillInto,
+-- and the v0.2.0 OnGuildDataReceived per-leaf merges).
+-- ---------------------------------------------------------------------------
+
+local function asString(v) return type(v) == "string" and v or nil end
+
+-- Non-destructively merge an incoming reagent array into our existing one.
+-- Preserves itemId/itemLink per-reagent when the incoming payload lacks them.
+-- Returns nil when incoming is not a table so callers can preserve existing.
+local function mergeReagents(existing, incoming)
+    if type(incoming) ~= "table" then return nil end
+    local byName = {}
+    if type(existing) == "table" then
+        for _, e in ipairs(existing) do
+            if e.name then byName[e.name] = e end
+        end
+    end
+    local merged = {}
+    for i, inE in ipairs(incoming) do
+        local entry = {
+            name     = inE.name,
+            count    = inE.count,
+            itemId   = inE.itemId,
+            itemLink = asString(inE.itemLink),
+        }
+        local prev = entry.name and byName[entry.name]
+        if prev then
+            if (not entry.itemId or entry.itemId == 0)
+               and prev.itemId and prev.itemId > 0 then
+                entry.itemId = prev.itemId
+            end
+            if not entry.itemLink and type(prev.itemLink) == "string"
+               and prev.itemLink ~= "" then
+                entry.itemLink = prev.itemLink
+            end
+        end
+        merged[i] = entry
+    end
+    return merged
+end
+
 -- Broadcast state
 Scanner._pendingBroadcast = false
 Scanner._lastBroadcastAt  = 0
@@ -80,9 +122,22 @@ local SPEC_SPELLS = {
 -- ---------------------------------------------------------------------------
 
 function Scanner:InitDeltaSync()
-    local DS = LibStub("DeltaSync-1.0", true)
+    -- v0.2.0 requires DeltaSync MINOR>=9 (hash-mismatch offer condition,
+    -- shipped in DeltaSync v2.0.3).  LibStub:GetLibrary returns the lib and
+    -- its MINOR; we need MINOR to gate the new sync semantics.  Older
+    -- DeltaSync versions still load the addon but guild sync is disabled.
+    local DS, deltaSyncMinor = LibStub("DeltaSync-1.0", true), 0
+    if DS and LibStub.libs and LibStub.libs["DeltaSync-1.0"] then
+        deltaSyncMinor = LibStub.minors["DeltaSync-1.0"] or 0
+    end
     if not DS then
         addon:DebugPrint("Scanner: DeltaSync-1.0 not found — guild sync disabled")
+        return
+    end
+    if deltaSyncMinor < 9 then
+        addon:Print(string.format(
+            "|cffff4444TOGPM v0.2.0 requires DeltaSync MINOR>=9 (v2.0.3+). Found MINOR=%d. Guild sync disabled.|r",
+            deltaSyncMinor))
         return
     end
 
@@ -104,15 +159,31 @@ function Scanner:InitDeltaSync()
         -- raw C_ChatInfo.SendAddonMessage. Without this, large chunked
         -- payloads can interleave under sync load and CRC-fail silently.
         aceAddon  = addon.lib,
-        namespace = "TOGPmv1",
+        namespace = "TOGPmv2",   -- v0.2.0 protocol bump (was TOGPmv1 in v0.1.x)
 
-        -- A guild member is asking for our full data set.
-        onDataRequest = function(sender, _baseline)
-            Scanner:SendDataTo(sender)
+        -- A guild member is asking us for data.  baseline carries the request
+        -- type per the v0.2.0 protocol (see docs/v0.2.0-protocol.md §5):
+        --   { type = "subhashes", parent = "guild:cooldowns" | "guild:accountchars" }
+        --   { type = "leaf-data", keys  = { itemKey, ... } }
+        -- We respond by broadcasting the requested data on GUILD/BULK so any
+        -- peer with a stale hash for the same leaf merges for free.
+        onDataRequest = function(sender, baseline)
+            if type(baseline) ~= "table" then
+                addon:DebugPrint("Scanner: onDataRequest from", sender, "with no baseline (legacy?), ignoring")
+                return
+            end
+            if baseline.type == "subhashes" and baseline.parent then
+                Scanner:BroadcastSubhashesToGuild(baseline.parent)
+            elseif baseline.type == "leaf-data" and type(baseline.keys) == "table" then
+                for _, itemKey in ipairs(baseline.keys) do
+                    Scanner:BroadcastLeafToGuild(itemKey)
+                end
+            end
         end,
 
-        -- Incoming guild-member data (full payload or delta).
-        -- bytes is the raw wire size passed through by DeltaSync.
+        -- Incoming guild-member data — either a leaf-data broadcast (one or
+        -- more leaves with content) or a subhashes response.  Dispatch is
+        -- inside OnGuildDataReceived based on the payload shape.
         onDataReceived = function(sender, data, bytes)
             Scanner:OnGuildDataReceived(sender, data, bytes or 0)
         end,
@@ -125,44 +196,40 @@ function Scanner:InitDeltaSync()
     self.DS         = DS
     self.GuildCache = GuildCache
 
-    -- ── P2P catch-up sync ────────────────────────────────────────────────────
-    -- Single-phase leaf-level sync via HashManager:
-    --   Broadcast all per-member cooldown + per-profession recipe leaf hashes.
-    --   Peers who have fresher data for any specific leaf whisper back a hash-offer.
-    --   onSyncAccepted("cooldown:*"|"recipes:*"): leaf — call DS:RequestData to
-    --            pull the full character payload from the peer.
+    -- v0.2.0 hash migration: drop legacy v0.1.x leaf keys and ensure all
+    -- expected v0.2.0 leaves exist.  Idempotent — safe to run on every PEW.
+    -- Run inside a ScheduleTimer so gdb.lastScan has had a chance to populate
+    -- (PEW currently stamps lastScan[myKey].accountchars synchronously, but
+    -- profession + cooldown timestamps come from later scans; running this
+    -- one tick later keeps the migration consistent with whatever's there).
+    Ace:ScheduleTimer(function()
+        local gdb = addon:GetGuildDb()
+        if gdb then addon.HashManager:RebuildOnFirstLoad(DS, gdb) end
+    end, 1)
+
+    -- ── P2P catch-up sync (v0.2.0) ───────────────────────────────────────────
+    -- L0 broadcast carries per-profession leaves (recipemeta + crafters) plus
+    -- two roll-ups (guild:cooldowns, guild:accountchars).  Per-character leaves
+    -- are drilled down on roll-up mismatch via a "subhashes" request.
     --
-    -- NOTE: guild:cooldowns / guild:recipes roll-ups are NOT broadcast here.
-    -- HasContent() returns false for guild:* items so no peer could ever offer
-    -- them, which made the old two-phase approach a no-op.
+    -- onSyncAccepted: peer has different data for a leaf.  The flow:
+    --   1. crafters:<profId> / recipemeta:<profId> mismatch → request the leaf
+    --      data directly (it's already at L0 granularity).
+    --   2. guild:cooldowns / guild:accountchars roll-up mismatch → request
+    --      the per-character sub-hashes from the peer.  The receiver compares
+    --      sub-hashes locally and requests individual cooldown:<charKey> /
+    --      accountchars:<charKey> leaves.
+    --   3. cooldown:<charKey> / accountchars:<charKey> direct mismatch (when
+    --      a peer broadcasts these explicitly) → request leaf data.
     DS:InitP2P({
-        -- Broadcast all leaf-level hashes so peers can identify stale items.
-        -- Rebuild the hash cache if it is empty (first login after a wipe).
         getMyHashes = function()
             local gdb = addon:GetGuildDb()
             if not gdb then return {} end
             local HM = addon.HashManager
-            if not gdb.hashes then
-                HM:RebuildAll(DS, gdb)
-            end
-            -- Combine cooldown and recipe leaf maps into one broadcast payload.
-            local map = {}
-            for k, v in pairs(HM:GetCooldownLevelMap(gdb))   do map[k] = v end
-            for k, v in pairs(HM:GetProfessionLevelMap(gdb)) do map[k] = v end
-            -- Insert zero-sentinel entries for any online member whose cooldown
-            -- data we haven't received yet.  Without this, peers don't know to
-            -- offer their own data to us (the P2P protocol only offers items
-            -- that appear in the broadcaster's hash-list).
-            for _, name in ipairs(GuildCache:GetOnlineGuildMembers()) do
-                local key = "cooldown:" .. name
-                if not map[key] then
-                    map[key] = { hash = 0, updatedAt = 0 }
-                end
-            end
-            return map
+            HM:RebuildOnFirstLoad(DS, gdb)
+            return HM:GetL0BroadcastMap(gdb)
         end,
 
-        -- We can serve data for itemKeys we own (see HashManager:HasContent).
         hasContent = function(itemKey)
             local gdb = addon:GetGuildDb()
             if not gdb then return false end
@@ -182,10 +249,17 @@ function Scanner:InitDeltaSync()
             return false
         end,
 
-        -- Leaf sync accepted: peer has data we need; request their full payload.
+        -- Leaf sync accepted: peer has data we need.  Request the appropriate
+        -- payload type via baseline.type encoded in the QUERY message.
         onSyncAccepted = function(itemKey, sender)
-            if itemKey:sub(1, 9) == "cooldown:" or itemKey:sub(1, 8) == "recipes:" then
-                DS:RequestData(sender)
+            if itemKey == "guild:cooldowns" or itemKey == "guild:accountchars" then
+                -- Roll-up mismatch — ask for per-character sub-hashes.
+                DS:RequestData(sender, { type = "subhashes", parent = itemKey })
+            elseif itemKey:sub(1, 11) == "recipemeta:"
+                or itemKey:sub(1, 9)  == "crafters:"
+                or itemKey:sub(1, 9)  == "cooldown:"
+                or itemKey:sub(1, 13) == "accountchars:" then
+                DS:RequestData(sender, { type = "leaf-data", keys = { itemKey } })
             end
         end,
     })
@@ -249,8 +323,9 @@ end)
 -- Override the ForceSync stub from the main file.
 function addon:ForceSync()
     Scanner:ScanCooldowns()
-    Scanner._lastBroadcastAt = 0   -- bypass debounce
-    Scanner:BroadcastOwnData()
+    Scanner._lastBroadcastAt = 0          -- bypass debounce
+    Scanner._lastBroadcastHashes = nil    -- force full hash list (no diff)
+    Scanner:BroadcastHashes()
     addon:Print("Force sync sent.")
 end
 
@@ -535,6 +610,12 @@ function Scanner:ScanTradeSkillInto(charKey, isLinked)  --luacheck: ignore isLin
     if not gdb then return end
     self:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, recipes)
 
+    -- Stamp the content-derived scan time used by HashManager to compute the
+    -- crafters:<profId> and recipemeta:<profId> leaves' updatedAt.  This is
+    -- the v0.2.0 sync protocol's "when did this data actually change?" signal.
+    if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
+    gdb.lastScan[charKey][profId] = GetServerTime()
+
     -- Spec detection is own-character only and only available from TBC onwards.
     if not isLinked and not addon.isVanilla then
         self:DetectSpecializations(charKey)
@@ -577,51 +658,8 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
     end
 
     -- Add/update recipe entries.
-    -- Type-guard string fields so wire data from peers running an older or
-    -- divergent format can't poison gdb.recipes with non-string itemLink /
-    -- recipeLink values (the UI calls :match / :find on these and would crash).
-    local function asString(v) return type(v) == "string" and v or nil end
-
-    -- Non-destructively merge an incoming reagent array into our existing one.
-    -- Preserves itemId/itemLink per-reagent when the incoming payload lacks
-    -- them. Without this, a single peer whose GetTradeSkillReagentItemLink
-    -- returns nil (a known Classic Era quirk) would broadcast reagents with
-    -- name+count only and wipe the rich data everyone else has, breaking the
-    -- bank-stock lookup, the reagent tracker, and reagent tooltip popups
-    -- guild-wide.  Returns nil when incoming is not a table so callers know
-    -- to preserve the existing field.
-    local function mergeReagents(existing, incoming)
-        if type(incoming) ~= "table" then return nil end
-        local byName = {}
-        if type(existing) == "table" then
-            for _, e in ipairs(existing) do
-                if e.name then byName[e.name] = e end
-            end
-        end
-        local merged = {}
-        for i, inE in ipairs(incoming) do
-            local entry = {
-                name     = inE.name,
-                count    = inE.count,
-                itemId   = inE.itemId,
-                itemLink = asString(inE.itemLink),
-            }
-            local prev = entry.name and byName[entry.name]
-            if prev then
-                if (not entry.itemId or entry.itemId == 0)
-                   and prev.itemId and prev.itemId > 0 then
-                    entry.itemId = prev.itemId
-                end
-                if not entry.itemLink and type(prev.itemLink) == "string"
-                   and prev.itemLink ~= "" then
-                    entry.itemLink = prev.itemLink
-                end
-            end
-            merged[i] = entry
-        end
-        return merged
-    end
-
+    -- Type-guards (asString) and the non-destructive reagent merge live at
+    -- module scope so OnGuildDataReceived's per-leaf merges can reuse them.
     for recipeId, rd in pairs(recipes) do
         local existing = gdb.recipes[profId][recipeId]
         if existing then
@@ -733,6 +771,10 @@ function Scanner:ScanCraftSkillInto(charKey)
     local gdb = addon:GetGuildDb()
     if not gdb then return end
     self:MergeRecipesIntoGdb(gdb, charKey, profId, 0, 300, recipes)
+
+    -- Stamp content-derived scan time for v0.2.0 hash leaves.
+    if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
+    gdb.lastScan[charKey][profId] = GetServerTime()
 
     -- Invalidate the per-profession recipe hash and the guild:recipes roll-up.
     local DS = self.DS
@@ -901,6 +943,10 @@ function Scanner:ScanCooldowns()
 
     gdb.syncTimes[charKey] = now
 
+    -- Stamp content-derived scan time for v0.2.0 cooldown:<charKey> leaf.
+    if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
+    gdb.lastScan[charKey].cooldowns = now
+
     -- Update the per-member cooldown hash and the guild:cooldowns roll-up.
     local DS = self.DS
     if DS then
@@ -985,13 +1031,16 @@ function Scanner:ScheduleBroadcast()
     self._pendingBroadcast = true
     Ace:ScheduleTimer(function()
         self._pendingBroadcast = false
-        self:BroadcastOwnData()
+        self:BroadcastHashes()
     end, 0.5)
 end
 
---- Build and broadcast the local player's full record to the guild.
--- Suppressed if a broadcast was sent less than _broadcastSeconds ago.
-function Scanner:BroadcastOwnData()
+--- v0.2.0 — Broadcast our L0 leaf-hash list to the guild.
+-- Differential: only sends leaves whose (hash, updatedAt) tuple has changed
+-- since our last broadcast.  Steady-state broadcasts are typically empty (no
+-- entries) when no local content has changed; in that case we skip the send
+-- entirely.  Suppressed by debounce within self._broadcastSeconds.
+function Scanner:BroadcastHashes()
     local DS = self.DS
     if not DS then return end
 
@@ -1001,214 +1050,507 @@ function Scanner:BroadcastOwnData()
         return
     end
 
-    local payload    = self:BuildPayload()
-    local serialized = DS:SerializeData(payload)
-    local bytes      = serialized and #serialized or 0
-    DS:BroadcastData(payload)
-    self._lastBroadcastAt = now
-    addon:DebugPrint("Scanner: broadcast sent for", payload.charKey, "(", bytes, "bytes)")
-    if addon.callbacks then
-        addon.callbacks:Fire("SYNC_SENT", "guild", bytes)
-    end
-end
+    local gdb = addon:GetGuildDb()
+    if not gdb then return end
 
---- Send our full data directly to a single player (response to onDataRequest).
-function Scanner:SendDataTo(target)
-    local DS = self.DS
-    if not DS then return end
-    local payload    = self:BuildPayload()
-    local serialized = DS:SerializeData(payload)
-    local bytes      = serialized and #serialized or 0
-    DS:SendData(target, payload, false)
-    -- Release the P2P outbound send slot so further requests are not blocked.
-    -- HandleSyncRequest acquired this slot; the send is now complete.
-    if DS.p2p then
-        DS.p2p:ReleaseSendSlot(target)
-    end
-    addon:DebugPrint("Scanner: sent data to", target, "(", bytes, "bytes)")
-    if addon.callbacks then
-        addon.callbacks:Fire("SYNC_SENT", target, bytes)
-    end
-end
-
---- Assemble the wire payload from AceDB.
--- Cooldowns are expressed as relative seconds-remaining (0 = Ready).
-function Scanner:BuildPayload()
-    local charKey  = addon:GetCharacterKey()
-    local guildKey = addon:GetGuildKey()
-    local gdb      = addon:GetGuildDb()
-    local now      = GetServerTime()
-
-    if not gdb then
-        return { charKey = charKey, guildKey = guildKey, professions = {},
-                 cooldowns = {}, specializations = {}, timestamp = now }
-    end
-
-    -- Convert stored absolute expiry → relative seconds for the wire.
-    local cdPayload = {}
-    for spellId, expiresAt in pairs(gdb.cooldowns[charKey] or {}) do
-        local remaining = expiresAt - now
-        cdPayload[spellId] = remaining > 0 and remaining or 0
-    end
-
-    -- Reconstruct per-char professions from the inverted recipe index.
-    local professions = {}
-    if gdb.recipes then
-        for profId, profRecipes in pairs(gdb.recipes) do
-            local myRecipes = {}
-            for recipeId, rd in pairs(profRecipes) do
-                if rd.crafters and rd.crafters[charKey] then
-                    -- Wire format: [1]=name [2]=icon [3]=isSpell [4]=spellId [5]=itemLink [6]=reagents
-                    myRecipes[recipeId] = { rd.name, rd.icon, rd.isSpell, rd.spellId, rd.itemLink, rd.reagents }
-                end
-            end
-            if next(myRecipes) then
-                local skill = gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId] or {}
-                professions[profId] = {
-                    skillRank = skill.skillRank or 0,
-                    skillMax  = skill.skillMax  or 300,
-                    recipes   = myRecipes,
-                }
-            end
+    local current = addon.HashManager:GetL0BroadcastMap(gdb)
+    local last    = self._lastBroadcastHashes or {}
+    local delta   = {}
+    local count   = 0
+    for k, v in pairs(current) do
+        local prev = last[k]
+        if not prev or prev.hash ~= v.hash or prev.updatedAt ~= v.updatedAt then
+            delta[k] = v
+            count = count + 1
         end
     end
+    if count == 0 then
+        addon:DebugPrint("Scanner: no hash changes — broadcast skipped")
+        return
+    end
 
-    return {
-        charKey         = charKey,
-        guildKey        = guildKey,
-        professions     = professions,
-        cooldowns       = cdPayload,
-        specializations = gdb.specializations[charKey] or {},
-        timestamp       = now,
-        -- All own characters on this account, so receivers can link alts.
-        accountChars    = addon.guildDb.global.accountChars,
+    DS:BroadcastItemHashes(delta, "BULK")
+    -- Snapshot the FULL current map (not just delta) so future broadcasts
+    -- diff against everything we've ever broadcast, not just the last delta.
+    self._lastBroadcastHashes = current
+    self._lastBroadcastAt = now
+    addon:DebugPrint("Scanner: broadcast", count, "leaf hashes")
+    if addon.callbacks then
+        addon.callbacks:Fire("SYNC_SENT", "guild", count)
+    end
+end
+
+--- v0.2.0 — Broadcast a single leaf's data to the guild on the DATA channel.
+-- Called in response to a leaf-data request from a peer.  All peers on the
+-- guild channel see the broadcast; any with stale data for the same leaf
+-- merges via OnGuildDataReceived.
+function Scanner:BroadcastLeafToGuild(itemKey)
+    local DS = self.DS
+    if not DS then return end
+    local payload = self:BuildLeafPayload(itemKey)
+    if not payload then
+        addon:DebugPrint("Scanner: BroadcastLeafToGuild — no content for", itemKey)
+        return
+    end
+    DS:BroadcastData(payload, "GUILD", "BULK")
+    if DS.p2p then
+        DS.p2p:OnItemCompleted(itemKey, addon:GetCharacterKey())
+    end
+    addon:DebugPrint("Scanner: broadcast leaf", itemKey)
+    if addon.callbacks then
+        addon.callbacks:Fire("SYNC_SENT", "guild", itemKey)
+    end
+end
+
+--- v0.2.0 — Broadcast a sub-hash list for a roll-up parent.
+-- Called in response to a subhashes request.  Receiver compares per-character
+-- hashes locally and follows up with leaf-data requests for differing leaves.
+function Scanner:BroadcastSubhashesToGuild(parentItemKey)
+    local DS = self.DS
+    if not DS then return end
+    local gdb = addon:GetGuildDb()
+    if not gdb then return end
+    local HM = addon.HashManager
+
+    local subhashes
+    if parentItemKey == "guild:cooldowns" then
+        subhashes = HM:GetCooldownLevelMap(gdb)
+    elseif parentItemKey == "guild:accountchars" then
+        subhashes = HM:GetAccountCharsLevelMap(gdb)
+    else
+        addon:DebugPrint("Scanner: BroadcastSubhashesToGuild — unknown parent", parentItemKey)
+        return
+    end
+
+    local payload = {
+        charKey   = addon:GetCharacterKey(),
+        guildKey  = addon:GetGuildKey(),
+        timestamp = GetServerTime(),
+        type      = "subhashes",
+        parent    = parentItemKey,
+        subhashes = subhashes,
     }
+    DS:BroadcastData(payload, "GUILD", "BULK")
+    addon:DebugPrint("Scanner: broadcast subhashes for", parentItemKey)
+end
+
+--- v0.2.0 — Build a wire payload containing one leaf's data.
+-- Returns nil when the local player has no content for itemKey.
+function Scanner:BuildLeafPayload(itemKey)
+    local gdb = addon:GetGuildDb()
+    if not gdb then return nil end
+    local now = GetServerTime()
+
+    local payload = {
+        charKey   = addon:GetCharacterKey(),
+        guildKey  = addon:GetGuildKey(),
+        timestamp = now,
+        leaves    = {},
+    }
+    local lastScanOut = {}
+    local entry = gdb.hashes and gdb.hashes[itemKey] or nil
+
+    if itemKey:sub(1, 9) == "cooldown:" then
+        local owner  = itemKey:sub(10)
+        local bucket = gdb.cooldowns and gdb.cooldowns[owner]
+        if not bucket or not next(bucket) then return nil end
+        -- Convert absolute expiresAt → relative remaining for the wire.
+        local cdRel = {}
+        for spellId, expiresAt in pairs(bucket) do
+            local remaining = expiresAt - now
+            cdRel[spellId] = remaining > 0 and remaining or 0
+        end
+        payload.leaves[itemKey] = {
+            data      = cdRel,
+            hash      = entry and entry.hash      or 0,
+            updatedAt = entry and entry.updatedAt or 0,
+        }
+        local ls = gdb.lastScan and gdb.lastScan[owner]
+        if ls and ls.cooldowns then
+            lastScanOut[owner] = { cooldowns = ls.cooldowns }
+        end
+
+    elseif itemKey:sub(1, 13) == "accountchars:" then
+        local owner = itemKey:sub(14)
+        local group = gdb.accountChars and gdb.accountChars[owner]
+        if not group or #group == 0 then return nil end
+        payload.leaves[itemKey] = {
+            data      = group,
+            hash      = entry and entry.hash      or 0,
+            updatedAt = entry and entry.updatedAt or 0,
+        }
+        local ls = gdb.lastScan and gdb.lastScan[owner]
+        if ls and ls.accountchars then
+            lastScanOut[owner] = { accountchars = ls.accountchars }
+        end
+
+    elseif itemKey:sub(1, 11) == "recipemeta:" then
+        local profId = tonumber(itemKey:sub(12))
+        if not profId or not gdb.recipes or not gdb.recipes[profId]
+           or not next(gdb.recipes[profId]) then return nil end
+        local meta = {}
+        for recipeId, rd in pairs(gdb.recipes[profId]) do
+            meta[recipeId] = {
+                name       = rd.name,
+                icon       = rd.icon,
+                isSpell    = rd.isSpell,
+                spellId    = rd.spellId,
+                itemLink   = rd.itemLink,
+                recipeLink = rd.recipeLink,
+                reagents   = rd.reagents,
+            }
+        end
+        payload.leaves[itemKey] = {
+            data      = meta,
+            hash      = entry and entry.hash      or 0,
+            updatedAt = entry and entry.updatedAt or 0,
+        }
+        if gdb.lastScan then
+            for _, rd in pairs(gdb.recipes[profId]) do
+                for ck in pairs(rd.crafters or {}) do
+                    local ls = gdb.lastScan[ck]
+                    if ls and ls[profId] then
+                        if not lastScanOut[ck] then lastScanOut[ck] = {} end
+                        lastScanOut[ck][profId] = ls[profId]
+                    end
+                end
+            end
+        end
+
+    elseif itemKey:sub(1, 9) == "crafters:" then
+        local profId = tonumber(itemKey:sub(10))
+        if not profId or not gdb.recipes or not gdb.recipes[profId] then return nil end
+        local crafters = {}
+        local hasCrafters = false
+        for recipeId, rd in pairs(gdb.recipes[profId]) do
+            if rd.crafters and next(rd.crafters) then
+                local set = {}
+                for ck, v in pairs(rd.crafters) do
+                    if v then set[ck] = true end
+                end
+                if next(set) then
+                    crafters[recipeId] = set
+                    hasCrafters = true
+                end
+            end
+        end
+        if not hasCrafters then return nil end
+        payload.leaves[itemKey] = {
+            data      = crafters,
+            hash      = entry and entry.hash      or 0,
+            updatedAt = entry and entry.updatedAt or 0,
+        }
+        -- Include skill ranks for everyone who crafts in this profession.
+        if gdb.skills then
+            local skillsOut = {}
+            for ck, charSkills in pairs(gdb.skills) do
+                local s = charSkills[profId]
+                if s then
+                    skillsOut[ck] = { skillRank = s.skillRank, skillMax = s.skillMax }
+                end
+            end
+            if next(skillsOut) then payload.skills = { [profId] = skillsOut } end
+        end
+        if gdb.lastScan then
+            for _, rd in pairs(gdb.recipes[profId]) do
+                for ck in pairs(rd.crafters or {}) do
+                    local ls = gdb.lastScan[ck]
+                    if ls and ls[profId] then
+                        if not lastScanOut[ck] then lastScanOut[ck] = {} end
+                        lastScanOut[ck][profId] = ls[profId]
+                    end
+                end
+            end
+        end
+
+    else
+        return nil
+    end
+
+    if next(lastScanOut) then payload.lastScan = lastScanOut end
+    return payload
 end
 
 -- ---------------------------------------------------------------------------
 -- Receive & merge guild data
 -- ---------------------------------------------------------------------------
 
---- Called by DeltaSync when a guild member's data arrives.
--- @param sender  normalised "Name-Realm" string from DeltaSync
--- @param data    table as built by BuildPayload() on the sender's machine
--- @param bytes   raw wire size of the message in bytes
+--- Rebuild gdb.altGroups (denormalized lookup) from gdb.accountChars (per-broadcaster authoritative).
+-- Each member of any group gets a pointer to the same group array.
+function Scanner:RebuildAltGroups(gdb)
+    gdb.altGroups = {}
+    for _, group in pairs(gdb.accountChars or {}) do
+        for _, member in ipairs(group) do
+            gdb.altGroups[member] = group
+        end
+    end
+end
+
+--- Merge recipe metadata for one profession (incoming from a recipemeta:<profId>
+--- leaf payload).  Preserves richest non-nil per field.  Reagents merge per
+--- entry via mergeReagents so peers with partial reagent data don't wipe
+--- richer data on receive.  Crafters set is left untouched — that lives in
+--- the crafters:<profId> leaf.
+function Scanner:MergeRecipeMetaIntoGdb(gdb, profId, meta)
+    if type(meta) ~= "table" then return end
+    if not gdb.recipes[profId] then gdb.recipes[profId] = {} end
+    local profRecipes = gdb.recipes[profId]
+    for recipeId, rd in pairs(meta) do
+        if type(rd) == "table" then
+            local existing = profRecipes[recipeId]
+            if not existing then
+                profRecipes[recipeId] = {
+                    name       = rd.name,
+                    icon       = rd.icon,
+                    isSpell    = rd.isSpell and true or false,
+                    spellId    = rd.spellId,
+                    itemLink   = asString(rd.itemLink),
+                    recipeLink = asString(rd.recipeLink),
+                    reagents   = mergeReagents(nil, rd.reagents),
+                    crafters   = {},
+                }
+            else
+                if rd.name    and not existing.name    then existing.name    = rd.name    end
+                if rd.icon    and not existing.icon    then existing.icon    = rd.icon    end
+                if rd.isSpell ~= nil and existing.isSpell == nil then existing.isSpell = rd.isSpell and true or false end
+                if rd.spellId and not existing.spellId then existing.spellId = rd.spellId end
+                if asString(rd.itemLink)   and not existing.itemLink   then existing.itemLink   = rd.itemLink   end
+                if asString(rd.recipeLink) and not existing.recipeLink then existing.recipeLink = rd.recipeLink end
+                if type(rd.reagents) == "table" then
+                    local merged = mergeReagents(existing.reagents, rd.reagents)
+                    if merged then existing.reagents = merged end
+                end
+            end
+        end
+    end
+end
+
+--- Merge incoming crafters set for one profession into gdb.recipes[profId].
+--- @param senderClaimsOwnScan  true if the sender authoritatively claims this
+---                             is their own scan output for this profession.
+---                             Triggers wipe-then-re-add for the sender's
+---                             charKey so unlearned recipes get removed.
+---                             Relayed data (false) is union-add only.
+function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderClaimsOwnScan)
+    if type(crafters) ~= "table" then return end
+    if not gdb.recipes[profId] then gdb.recipes[profId] = {} end
+    local profRecipes = gdb.recipes[profId]
+
+    if senderClaimsOwnScan and senderKey then
+        for _, rd in pairs(profRecipes) do
+            if rd.crafters then rd.crafters[senderKey] = nil end
+        end
+    end
+
+    for recipeId, ckSet in pairs(crafters) do
+        if type(ckSet) == "table" then
+            local existing = profRecipes[recipeId]
+            if not existing then
+                profRecipes[recipeId] = { crafters = {} }
+                existing = profRecipes[recipeId]
+            end
+            if not existing.crafters then existing.crafters = {} end
+            for ck, v in pairs(ckSet) do
+                if v and type(ck) == "string" then existing.crafters[ck] = true end
+            end
+        end
+    end
+end
+
+--- v0.2.0 — Called by DeltaSync when a peer's broadcast or whisper arrives.
+-- Two payload shapes are accepted:
+--   1. Subhashes response: { type = "subhashes", parent = ..., subhashes = ... }
+--      Receiver compares per-character hashes locally and follows up with
+--      leaf-data requests for each differing leaf.
+--   2. Leaf-data broadcast: { leaves = { itemKey = { data, hash, updatedAt } } }
+--      Receiver runs content-aware merge per leaf type.
 function Scanner:OnGuildDataReceived(sender, data, bytes)
     if not data or type(data) ~= "table" then
         addon:DebugPrint("Scanner: malformed data from", sender)
         return
     end
 
-    local charKey  = data.charKey
-    local guildKey = data.guildKey
-    if not charKey  or type(charKey)  ~= "string" then return end
-    if not guildKey or type(guildKey) ~= "string" then return end
+    local senderKey = data.charKey
+    if not senderKey or type(senderKey) ~= "string" then return end
 
-    -- Normalize any old "Faction-Realm-GuildName" key from peers who haven't
-    -- updated yet so their data lands in the same bucket as local data.
-    guildKey = addon:NormalizeGuildKey(guildKey)
-
-    -- Normalize bare names (same-server senders have no realm suffix).
     local DS         = self.DS
     local GuildCache = self.GuildCache
     if GuildCache then
-        charKey = GuildCache:NormalizeName(charKey) or charKey
+        senderKey = GuildCache:NormalizeName(senderKey) or senderKey
     end
 
     -- Ignore echoes of our own broadcast.
-    if charKey == addon:GetCharacterKey() then return end
+    if senderKey == addon:GetCharacterKey() then return end
 
-    -- Resolve (and lazily create) the guild-scoped storage bucket.
-    local g = addon.guildDb.global.guilds
-    if not g[guildKey] then
-        g[guildKey] = {
-            recipes = {}, skills = {}, guildData = {}, cooldowns = {},
-            syncTimes = {}, specializations = {}, factions = {},
-        }
-    end
-    local gdb = g[guildKey]
-    -- Lazy-init new fields for buckets created before this version.
-    if not gdb.recipes         then gdb.recipes         = {} end
-    if not gdb.skills          then gdb.skills          = {} end
-    if not gdb.guildData       then gdb.guildData       = {} end
-    if not gdb.cooldowns       then gdb.cooldowns       = {} end
-    if not gdb.syncTimes       then gdb.syncTimes       = {} end
-    if not gdb.specializations then gdb.specializations = {} end
-    if not gdb.factions        then gdb.factions        = {} end
-    if not gdb.altGroups       then gdb.altGroups       = {} end
+    if not addon:GetGuildKey() then return end
+    local gdb = addon:GetGuildDb()
+    if not gdb then return end
     local now = GetServerTime()
 
-    -- Merge profession records into the recipe-centric index.
-    if type(data.professions) == "table" then
-        for profId, profInfo in pairs(data.professions) do
-            if type(profInfo) == "table" then
-                local wireRecipes = type(profInfo.recipes) == "table" and profInfo.recipes or {}
-                self:MergeRecipesIntoGdb(gdb, charKey, profId,
-                    profInfo.skillRank, profInfo.skillMax, wireRecipes)
+    -- ── Subhashes response ─────────────────────────────────────────────────
+    -- Peer broadcast their per-character sub-hashes for a roll-up parent.
+    -- Compare locally, request individual leaves we differ on.
+    if data.type == "subhashes" and type(data.subhashes) == "table" then
+        local localHashes = gdb.hashes or {}
+        local toRequest = {}
+        for itemKey, peerEntry in pairs(data.subhashes) do
+            if type(peerEntry) == "table" and peerEntry.hash then
+                local mine = localHashes[itemKey]
+                if not mine or mine.hash ~= peerEntry.hash then
+                    toRequest[#toRequest + 1] = itemKey
+                end
             end
         end
-    end
-
-    -- Merge cooldowns: convert relative seconds → absolute server timestamp.
-    if type(data.cooldowns) == "table" then
-        if not gdb.cooldowns[charKey] then gdb.cooldowns[charKey] = {} end
-        for spellId, remaining in pairs(data.cooldowns) do
-            if type(remaining) == "number" and remaining >= 0 and remaining < 2592000 then
-                gdb.cooldowns[charKey][spellId] = now + remaining
-            end
+        if #toRequest > 0 and DS and DS.RequestData then
+            DS:RequestData(sender, { type = "leaf-data", keys = toRequest })
         end
-    end
-
-    -- Merge specialisations.
-    if type(data.specializations) == "table" then
-        gdb.specializations[charKey] = data.specializations
-    end
-
-    -- Record sync time.
-    if type(data.timestamp) == "number" then
-        gdb.syncTimes[charKey] = data.timestamp
-    end
-
-    -- Merge the sender's alt group into altGroups.
-    -- data.accountChars is { ["Name-Realm"] = true } for all their characters.
-    -- We store gdb.altGroups[anyMemberKey] = { key1, key2, ... } so any
-    -- member key can quickly resolve the full alt group.
-    if type(data.accountChars) == "table" and next(data.accountChars) then
-        -- Collect all keys that belong to this alt group.
-        local group = {}
-        for ck in pairs(data.accountChars) do
-            if type(ck) == "string" then
-                table.insert(group, ck)
-            end
+        if addon.callbacks then
+            addon.callbacks:Fire("SYNC_RECV", sender, bytes or 0)
         end
-        -- Write the group under every member key for O(1) lookup.
-        for _, ck in ipairs(group) do
-            gdb.altGroups[ck] = group
-        end
+        addon:DebugPrint("Scanner: received", #toRequest, "differing subhashes for",
+            data.parent, "from", sender)
+        return
     end
 
-    addon:DebugPrint("Scanner: merged data for", charKey, "guild:", guildKey, "from", sender, "(", bytes or 0, "bytes)")
+    -- ── Leaf-data merge ────────────────────────────────────────────────────
+    if type(data.leaves) ~= "table" then
+        addon:DebugPrint("Scanner: payload from", sender, "has neither subhashes nor leaves")
+        return
+    end
 
-    -- Rebuild all hash levels to reflect the newly merged data.
-    -- Also notifies P2P that leaf sessions for this character are complete,
-    -- freeing inbound session slots for the next pending dispatch.
-    if DS then
-        addon.HashManager:RebuildAll(DS, gdb)
-
-        -- Complete the cooldown leaf session (and any per-profession recipe
-        -- sessions) so P2P can dispatch pending items for other members.
-        if DS.p2p then
-            DS.p2p:OnItemCompleted("cooldown:" .. charKey, sender)
-            if type(data.professions) == "table" then
-                for profId in pairs(data.professions) do
-                    DS.p2p:OnItemCompleted("recipes:" .. tostring(profId), sender)
+    -- Merge incoming lastScan timestamps first (max wins).  HashManager reads
+    -- these when computing content-derived updatedAt for invalidated leaves.
+    if type(data.lastScan) == "table" then
+        for ck, scopes in pairs(data.lastScan) do
+            if type(ck) == "string" and type(scopes) == "table" then
+                if not gdb.lastScan[ck] then gdb.lastScan[ck] = {} end
+                for scope, ts in pairs(scopes) do
+                    if type(ts) == "number" then
+                        local existing = gdb.lastScan[ck][scope] or 0
+                        if ts > existing then gdb.lastScan[ck][scope] = ts end
+                    end
                 end
             end
         end
     end
 
+    local touchedAltGroups = false
+    local touchedProfessions = {}
+
+    for itemKey, leafEntry in pairs(data.leaves) do
+        if type(leafEntry) == "table" then
+            local leafData = leafEntry.data
+
+            if itemKey:sub(1, 9) == "cooldown:" then
+                local owner = itemKey:sub(10)
+                if not gdb.cooldowns[owner] then gdb.cooldowns[owner] = {} end
+                if type(leafData) == "table" then
+                    for spellId, remaining in pairs(leafData) do
+                        if type(remaining) == "number" and remaining >= 0 and remaining < 2592000 then
+                            local newExpiry = now + remaining
+                            local existing = gdb.cooldowns[owner][spellId]
+                            if not existing or newExpiry > existing then
+                                gdb.cooldowns[owner][spellId] = newExpiry
+                            end
+                        end
+                    end
+                end
+                if DS then addon.HashManager:InvalidateCharCooldowns(DS, gdb, owner) end
+                if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
+
+            elseif itemKey:sub(1, 13) == "accountchars:" then
+                local owner = itemKey:sub(14)
+                if type(leafData) == "table" then
+                    if owner == senderKey then
+                        -- Authoritative replace for the broadcaster's own group.
+                        local arr = {}
+                        for _, ck in ipairs(leafData) do
+                            if type(ck) == "string" then arr[#arr + 1] = ck end
+                        end
+                        table.sort(arr)
+                        gdb.accountChars[owner] = arr
+                    else
+                        -- Relay: union add to existing.
+                        if not gdb.accountChars[owner] then gdb.accountChars[owner] = {} end
+                        local seen = {}
+                        for _, ck in ipairs(gdb.accountChars[owner]) do seen[ck] = true end
+                        for _, ck in ipairs(leafData) do
+                            if type(ck) == "string" and not seen[ck] then
+                                gdb.accountChars[owner][#gdb.accountChars[owner] + 1] = ck
+                                seen[ck] = true
+                            end
+                        end
+                        table.sort(gdb.accountChars[owner])
+                    end
+                    touchedAltGroups = true
+                end
+                if DS then addon.HashManager:InvalidateAccountChars(DS, gdb, owner) end
+                if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
+
+            elseif itemKey:sub(1, 11) == "recipemeta:" then
+                local profId = tonumber(itemKey:sub(12))
+                if profId then
+                    self:MergeRecipeMetaIntoGdb(gdb, profId, leafData)
+                    touchedProfessions[profId] = true
+                end
+                if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
+
+            elseif itemKey:sub(1, 9) == "crafters:" then
+                local profId = tonumber(itemKey:sub(10))
+                if profId then
+                    -- Sender is claiming an authoritative own-scan if they
+                    -- include a skills entry for themselves at this profId.
+                    local senderClaimsOwnScan =
+                        type(data.skills) == "table"
+                        and type(data.skills[profId]) == "table"
+                        and data.skills[profId][senderKey] ~= nil
+                    self:MergeCraftersIntoGdb(gdb, profId, leafData,
+                        senderKey, senderClaimsOwnScan)
+                    -- Skills (per-charKey rank/max) ride along on crafters payloads.
+                    if type(data.skills) == "table"
+                       and type(data.skills[profId]) == "table" then
+                        for ck, sk in pairs(data.skills[profId]) do
+                            if type(sk) == "table" and type(ck) == "string" then
+                                if not gdb.skills[ck] then gdb.skills[ck] = {} end
+                                local existing = gdb.skills[ck][profId]
+                                local incomingRank = sk.skillRank or 0
+                                if not existing
+                                   or incomingRank > (existing.skillRank or 0) then
+                                    gdb.skills[ck][profId] = {
+                                        skillRank = incomingRank,
+                                        skillMax  = sk.skillMax or 300,
+                                    }
+                                end
+                            end
+                        end
+                    end
+                    touchedProfessions[profId] = true
+                end
+                if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
+            end
+        end
+    end
+
+    -- Rebuild altGroups derived view if any accountchars leaf was merged.
+    if touchedAltGroups then self:RebuildAltGroups(gdb) end
+
+    -- Recompute hashes for any professions touched (covers both recipemeta
+    -- and crafters leaves; InvalidateProfession handles both leaves at once).
+    if DS then
+        for profId in pairs(touchedProfessions) do
+            addon.HashManager:InvalidateProfession(DS, gdb, profId)
+        end
+    end
+
+    -- Record sync time so /togpm status reflects "we heard from this peer".
+    if type(data.timestamp) == "number" then
+        gdb.syncTimes[senderKey] = data.timestamp
+    end
+
+    addon:DebugPrint("Scanner: merged leaves from", sender, "(", bytes or 0, "bytes)")
+
     if addon.callbacks then
         addon.callbacks:Fire("SYNC_RECV", sender, bytes or 0)
-        addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey)
+        addon.callbacks:Fire("GUILD_DATA_UPDATED", senderKey)
     end
 end

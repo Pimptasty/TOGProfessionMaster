@@ -137,6 +137,9 @@ local SLASH_COMMANDS = {
     ["debug"]        = "ToggleDebug",
     ["spellcache"]   = "DumpSpellCache",
     ["dumprecipe"]   = "DumpRecipe",
+    ["dumphashes"]   = "DumpHashes",
+    ["dumpcooldowns"] = "DumpCooldowns",
+    ["forcebroadcast"] = "ForceBroadcast",
     ["backfill"]     = "RunBackfill",
     ["help"]         = "PrintHelp",
 }
@@ -257,6 +260,24 @@ function Ace:OnPlayerEnteringWorld(event, isInitialLogin, isReloadingUi)
             end
             g[key] = nil
             addon:DebugPrint("Migrated guild bucket", key, "→", newKey)
+        end
+    end
+
+    -- v0.2.0: populate gdb.accountChars[myKey] from the account-wide flat set.
+    -- This is the per-broadcaster authoritative alt group used by the new sync
+    -- protocol (see docs/v0.2.0-protocol.md §7.4).  Stamp lastScan so the
+    -- accountchars:<myKey> hash leaf has a content-derived updatedAt.
+    if addon:GetGuildKey() then
+        local gdb = addon:GetGuildDb()
+        if gdb then
+            local groupArr = {}
+            for ck in pairs(addon.guildDb.global.accountChars) do
+                if type(ck) == "string" then groupArr[#groupArr + 1] = ck end
+            end
+            table.sort(groupArr)  -- deterministic order so the hash is stable across peers
+            gdb.accountChars[myKey] = groupArr
+            if not gdb.lastScan[myKey] then gdb.lastScan[myKey] = {} end
+            gdb.lastScan[myKey].accountchars = GetServerTime()
         end
     end
 
@@ -428,6 +449,66 @@ function addon:RunBackfill()
     end
 end
 
+--- /togpm dumphashes — print the local L0 hash list for diagnostic comparison.
+function addon:DumpHashes()
+    local gdb = addon:GetGuildDb()
+    if not gdb or not gdb.hashes then
+        Ace:Print("|cffff4444No guild DB or hash cache|r")
+        return
+    end
+    local keys = {}
+    for k in pairs(gdb.hashes) do keys[#keys + 1] = k end
+    table.sort(keys)
+    Ace:Print(("|cffda8cffHash leaves (%d):|r"):format(#keys))
+    for _, k in ipairs(keys) do
+        local e = gdb.hashes[k]
+        Ace:Print(("  %s = hash:%s updatedAt:%s"):format(k,
+            tostring(e.hash), tostring(e.updatedAt)))
+    end
+end
+
+--- /togpm dumpcooldowns <charKey> — print stored cooldown bucket for a character.
+function addon:DumpCooldowns(args)
+    local charKey = strtrim(args or "")
+    local gdb = addon:GetGuildDb()
+    if not gdb then Ace:Print("|cffff4444No guild DB|r"); return end
+    if charKey == "" then
+        -- List every char with cooldowns and their bucket size.
+        Ace:Print("|cffda8cffCooldown buckets:|r")
+        for ck, bucket in pairs(gdb.cooldowns or {}) do
+            local n = 0
+            for _ in pairs(bucket) do n = n + 1 end
+            Ace:Print(("  %s — %d entries"):format(ck, n))
+        end
+        return
+    end
+    local bucket = gdb.cooldowns and gdb.cooldowns[charKey]
+    if not bucket then
+        Ace:Print(("|cffff4444No cooldown data for %s|r"):format(charKey))
+        return
+    end
+    local now = GetServerTime()
+    Ace:Print(("|cffda8cff%s cooldowns:|r"):format(charKey))
+    for spellId, expiresAt in pairs(bucket) do
+        local remaining = expiresAt - now
+        local name = (GetSpellInfo and GetSpellInfo(spellId)) or "?"
+        Ace:Print(("  [%s] %s expiresAt=%d remaining=%ds"):format(
+            tostring(spellId), name, expiresAt, remaining))
+    end
+end
+
+--- /togpm forcebroadcast — bypass debounce and broadcast full hash list now.
+function addon:ForceBroadcast()
+    if not addon.Scanner then
+        Ace:Print("|cffff4444Scanner not available yet|r")
+        return
+    end
+    addon.Scanner._lastBroadcastAt = 0          -- bypass debounce
+    addon.Scanner._lastBroadcastHashes = nil    -- force full hash list (no diff)
+    addon.Scanner:BroadcastHashes()
+    Ace:Print("Force broadcast sent.")
+end
+
 --- /togpm spellcache — dump the spellbook name→id cache to chat for debugging.
 function addon:DumpSpellCache()
     local cache = addon.Scanner:BuildSpellNameCache()
@@ -582,6 +663,8 @@ function addon:GetGuildDb()
             syncTimes       = {},
             specializations = {},
             factions        = {},
+            accountChars    = {},  -- [broadcasterKey] = { charKey, ... }   (v0.2.0: per-broadcaster authoritative alt group)
+            lastScan        = {},  -- [charKey] = { [profId]=ts, cooldowns=ts, accountchars=ts }   (v0.2.0: content-derived hash timestamps)
         }
     end
     -- Lazy-init fields for buckets created before this version.
@@ -594,6 +677,11 @@ function addon:GetGuildDb()
     if not b.specializations then b.specializations = {} end
     if not b.factions        then b.factions        = {} end
     if not b.altGroups       then b.altGroups       = {} end
+    -- v0.2.0 fields: empty on first migration, populated by v0.2.0 scans + receives.
+    -- Existing v0.1.x altGroups data stays usable; gdb.altGroups will be rebuilt
+    -- from gdb.accountChars whenever v0.2.0 broadcasts arrive.
+    if not b.accountChars    then b.accountChars    = {} end
+    if not b.lastScan        then b.lastScan        = {} end
     return b
 end
 

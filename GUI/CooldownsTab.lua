@@ -608,17 +608,21 @@ function CooldownsTab:DrawRow(parent, row, now)
         end
     end
 
-    -- Width budget inside col2 (306px).
+    -- Width budget inside col2 (456px).
     -- The icon is a SEPARATE 18px widget so AceGUI's Label never hits the
     -- "(width - imageWidth) < 200" threshold that stacks text below the icon.
-    --   With reagent + bank : cdNameW = 456-18-96-40-20 = 282px
-    --   With reagent only   : cdNameW = 456-18-96-20    = 322px
-    --   No reagent          : cdNameW = 456-18           = 438px
+    -- AceGUI Flow's wrap math is `(framewidth + usedwidth > width)` (strict
+    -- `>`).  In theory our widths sum exactly to col2's 456 so all five
+    -- widgets fit on one row; empirically the mail icon was wrapping under
+    -- the cooldown name anyway.  Reserve `flowSlack` px so even a small
+    -- rounding/padding discrepancy in any AceGUI Label widget can't push
+    -- the row total past col2 width.
+    local flowSlack = 12
     local iconColW  = 18
     local mailW     = itemId and 20 or 0
     local bankW     = (itemId and hasBank) and 40 or 0
     local reagentW  = itemId and 96 or 0
-    local cdNameW   = 456 - iconColW - reagentW - bankW - mailW
+    local cdNameW   = 456 - iconColW - reagentW - bankW - mailW - flowSlack
 
     local col2 = AceGUI:Create("SimpleGroup")
     col2:SetLayout("Flow")

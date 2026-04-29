@@ -165,6 +165,12 @@ All tabs follow the same structure:
 - Today's date is always available in the system context as `currentDate`.
 - File locations reference TOGProfessionMaster paths (e.g. `GUI/BrowserTab.lua`), not copy-addon paths.
 
+**CurseForge description rules:**
+
+- `docs/Curseforge_Description.html` lives in the repo (gitignored — local-only file used to update the CurseForge listing). Update it on every commit alongside `CHANGELOG.md`.
+- The "Recent Updates" section in the HTML keeps **only the last 5 patches**. When prepending a new patch entry, drop the oldest one so the section stays at 5 entries max.
+- The HTML patch entries should match the CHANGELOG format but condensed (one bullet per fix/feature, code-formatted file paths, `&mdash;` for em-dashes, `&ge;` for `>=`, `&rarr;` for arrows).
+
 ## Common Slash Commands
 
 ```text

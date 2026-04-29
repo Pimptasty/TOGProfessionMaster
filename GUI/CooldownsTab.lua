@@ -382,7 +382,13 @@ end
 -- ---------------------------------------------------------------------------
 
 function CooldownsTab:Draw(container)
-    container:SetLayout("List")
+    -- Flow layout (not List) so the ScrollFrame's SetFullHeight(true) actually
+    -- works.  AceGUI's List layout ignores child.height == "fill"; only Flow
+    -- honors it (anchors the child's BOTTOM to parent content).  Without this
+    -- the scroll frame and its scrollbar grow unbounded past the window edge.
+    -- Toolbar + headers + scroll all SetFullWidth(true), so Flow stacks them
+    -- vertically the same way List did.
+    container:SetLayout("Flow")
 
     -- ---- Toolbar -----------------------------------------------------------
     local toolbar = AceGUI:Create("SimpleGroup")

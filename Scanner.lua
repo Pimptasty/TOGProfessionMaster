@@ -301,6 +301,17 @@ function Scanner:Init()
         end
     end, 2)
 
+    -- v0.2.0 periodic catch-up tick: every 10 minutes, force a non-differential
+    -- L0 hash broadcast.  Without this, an idle peer (no scans triggering
+    -- broadcasts) never sends its hash list, so other peers never see its
+    -- presence and can't push fresher data to it.  The 10-min cadence matches
+    -- TOGBank's pattern and the v0.2.0-protocol.md design.
+    Ace:ScheduleRepeatingTimer(function()
+        Scanner._lastBroadcastHashes = nil  -- bypass differential check
+        Scanner._lastBroadcastAt     = 0    -- bypass debounce
+        Scanner:BroadcastHashes()
+    end, 600)
+
     addon:DebugPrint("Scanner: Init complete")
 end
 

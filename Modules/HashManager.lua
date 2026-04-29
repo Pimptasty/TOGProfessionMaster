@@ -334,7 +334,19 @@ end
 -- ---------------------------------------------------------------------------
 
 function HashManager:HasContent(gdb, itemKey)
-    -- Roll-ups are computed locally; never directly servable as data.
+    -- Roll-ups are servable when we have underlying per-character data.
+    -- We don't serve the roll-up data itself — onSyncAccepted dispatches to
+    -- BroadcastSubhashesToGuild which sends the per-character sub-hash list,
+    -- letting the receiver identify which specific leaves they need.  Returning
+    -- false here would break the drill-down chain entirely: peers wouldn't
+    -- offer for guild:* hashes, so the broadcaster's onSyncAccepted never
+    -- fires, so the subhashes broadcast never happens.
+    if itemKey == "guild:cooldowns" then
+        return gdb.cooldowns and next(gdb.cooldowns) ~= nil
+    end
+    if itemKey == "guild:accountchars" then
+        return gdb.accountChars and next(gdb.accountChars) ~= nil
+    end
     if itemKey:sub(1, 6) == "guild:" then return false end
 
     if itemKey:sub(1, 9) == "cooldown:" then

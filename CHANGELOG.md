@@ -1,5 +1,21 @@
 # TOG Profession Master Changelog
 
+## [v0.2.1] (2026-04-29) - v0.2.0 sync convergence fixes
+
+### Bug Fixes
+
+- **Cooldowns weren't syncing between peers — drill-down chain never fired** — `HashManager:HasContent` returned `false` for `guild:cooldowns` and `guild:accountchars` roll-up keys, on the (incorrect) reasoning that we don't directly serve roll-up data. But DeltaSync's `OnHashListReceived` gates offers on `hasContent(itemKey)` — peers with stale data wouldn't offer for the roll-up because `hasContent` said no, the broadcaster never received an offer for `guild:cooldowns`, `onSyncAccepted` never fired, and the subhashes drill-down never happened. Symptom: PC with 10 cooldowns broadcasting; PC with 3 cooldowns receiving the broadcast but never reporting back. Fixed by returning `true` for `guild:cooldowns` when we have any cooldowns in `gdb.cooldowns`, and similarly for `guild:accountchars`. We don't serve the roll-up *data* — the offer triggers `onSyncAccepted` which calls `BroadcastSubhashesToGuild`, sending the per-character sub-hash list. Location: [Modules/HashManager.lua:HasContent](Modules/HashManager.lua).
+
+- **Idle peers never broadcast — protocol can't push to them** — v0.2.0's broadcasts only fire on event triggers (cooldown scan, recipe scan, login). With differential broadcasting, an idle peer's "no changes since last broadcast" results in a skipped send. Other peers never see the idle peer's hashes, so they never offer fresh data, so the idle peer never receives anything. The protocol doc specified a 10-minute periodic broadcast for exactly this case but the implementation only had event-driven broadcasts. Added a 10-minute repeating timer in `Scanner:Init` that resets `_lastBroadcastHashes = nil` and broadcasts the full L0 hash list (non-differential), guaranteeing every peer is on the wire at least every 10 minutes regardless of local activity. Location: [Scanner.lua:Init](Scanner.lua).
+
+- **Cooldowns tab scroll bar always visible and extending ~2x the window height below the bottom edge** — `CooldownsTab:Draw` set the container's layout to `"List"`, but AceGUI's List layout doesn't honor `child.height == "fill"` — it only manages widths. Only the Flow layout reads `SetFullHeight(true)` and anchors the child's BOTTOM to the parent content. Without that anchor, the AceGUI ScrollFrame's outer frame grew unbounded past the window edge and the scrollbar grew with it. Fixed by switching the container layout from `"List"` to `"Flow"`. Toolbar, headers, and scroll all already had `SetFullWidth(true)`, so Flow stacks them vertically the same way List did — Flow just additionally constrains the scroll's height to fit the remaining space. Location: [GUI/CooldownsTab.lua:Draw](GUI/CooldownsTab.lua).
+
+### How to Force Sync on Already-Stale Data
+
+If you upgraded between PCs and one is missing data, the periodic tick will catch up within 10 minutes. To force immediate sync, run `/togpm forcebroadcast` on the **less-data** PC — that broadcasts its hashes, peers see the mismatch, peers offer, your PC fetches the subhashes and missing leaves, and merges within seconds.
+
+---
+
 ## [v0.2.0] (2026-04-29) - Hash-then-fetch sync protocol, content-aware merge, relay-capable cooldowns + recipes
 
 ### Major Protocol Overhaul

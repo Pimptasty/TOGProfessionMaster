@@ -118,6 +118,17 @@ local SETTINGS_DEFAULTS = {
         -- Shopping list alert flags: [spellId] = true
         shoppingAlerts  = {},
 
+        -- Cached personal bank counts: [itemId] = count.  Refreshed on
+        -- BANKFRAME_CLOSED (mirrors TOGBankClassic's pattern of scanning
+        -- on close to capture all changes).  Combined with bag counts in
+        -- "have" calculations across the addon.
+        bankCounts      = {},
+
+        -- Cached mail-attachment counts: [itemId] = count.  Refreshed on
+        -- MAIL_CLOSED.  COD mail is excluded (can't take attachments
+        -- without paying, so it's not really in our possession).
+        mailCounts      = {},
+
         -- Window positions / sizes saved by AceGUI.
         frames          = {},
     },
@@ -505,6 +516,16 @@ end
 --- which are stored in gdb.cooldowns[charKey].  No spell IDs to look up;
 --- just run the command and paste the output.
 function addon:DumpTransmuteDiag()
+    -- Run the runtime augmentation first so the diagnostic reflects the
+    -- post-refresh state (spellbook-fallback resolution via GetSpellLink may
+    -- have filled in spellIds that the earlier ScanCooldowns missed).
+    if addon.RefreshTransmuteCatalogueFromRecipes then
+        local added = addon:RefreshTransmuteCatalogueFromRecipes()
+        if added > 0 then
+            Ace:Print(("|cff88ff88Augmented catalogue with %d new transmute IDs from recipe DB|r"):format(added))
+        end
+    end
+
     local data = addon:GetCooldownData()
     if not data or not data.transmutes then
         Ace:Print("|cffff4444No cooldown data — addon.isVanilla/etc. not set?|r")

@@ -24,8 +24,8 @@ addon.ReagentWatch = RW
 -- Helpers
 -- ---------------------------------------------------------------------------
 
---- Scan bags, return { [itemId] = count }.
-local function ScanBags()
+--- Scan bags only, return { [itemId] = count }.  Cheap, runs every BAG_UPDATE.
+local function ScanBagsOnly()
     local counts = {}
     local numBags = addon:GetNumBagSlots()
     for bag = 0, numBags do
@@ -42,6 +42,82 @@ local function ScanBags()
     end
     return counts
 end
+
+-- Personal bank container IDs.  -1 is the main 28-slot bank; 5..11 are the
+-- purchasable bank bag slots.  GetContainerNumSlots returns 0 for unowned
+-- slots so we can scan the full range unconditionally.
+local BANK_CONTAINER = -1
+local FIRST_BANK_BAG = 5
+local LAST_BANK_BAG  = 11
+
+--- Scan personal bank slots and overwrite Ace.db.char.bankCounts.
+-- Only meaningful while at the bank — GetContainerItemInfo for these IDs
+-- returns nil otherwise, so calling this when not at the bank would erase
+-- the cache.  Caller must gate this on BANKFRAME_OPENED having fired.
+local function ScanPersonalBank()
+    local counts = {}
+    local function scanBag(bag)
+        local slots = addon:GetContainerNumSlots(bag) or 0
+        for slot = 1, slots do
+            local info = addon:GetContainerItemInfo(bag, slot)
+            if info then
+                local itemId = info.itemID or info.itemId
+                if itemId then
+                    counts[itemId] = (counts[itemId] or 0) + (info.stackCount or 1)
+                end
+            end
+        end
+    end
+    scanBag(BANK_CONTAINER)
+    for bag = FIRST_BANK_BAG, LAST_BANK_BAG do scanBag(bag) end
+    Ace.db.char.bankCounts = counts
+end
+
+--- Scan personal mailbox attachments and overwrite Ace.db.char.mailCounts.
+-- Mirrors TOGBankClassic's MailInventory pattern: scan on MAIL_CLOSED to
+-- capture all changes (items added, taken, mail expired, etc.).  COD mail
+-- is excluded because the attachments aren't really in our possession
+-- until we pay — the WoW mail UI also forbids partial-take on COD.
+local function ScanPersonalMail()
+    local counts = {}
+    local numItems = (GetInboxNumItems and GetInboxNumItems()) or 0
+    local maxAttachments = ATTACHMENTS_MAX_RECEIVE or 16
+    for i = 1, numItems do
+        local _, _, _, _, _, codAmount, _, hasItem = GetInboxHeaderInfo(i)
+        if hasItem and (codAmount or 0) == 0 then
+            for j = 1, maxAttachments do
+                local _, itemID, _, count = GetInboxItem(i, j)
+                if itemID and count and count > 0 then
+                    counts[itemID] = (counts[itemID] or 0) + count
+                end
+            end
+        end
+    end
+    Ace.db.char.mailCounts = counts
+end
+
+--- Scan bags AND merge in cached personal bank + cached mail counts.
+-- Returns { [itemId] = count }.  This is the "have" view used by Reagent
+-- Watch alerts and the Reagent Tracker — anything in the player's bags,
+-- personal bank, or mailbox counts as in possession.  Guild bank stock
+-- (TOGBankClassic) is intentionally NOT included here; that's surfaced
+-- separately as a +<bank> annotation in the UI.
+local function ScanBags()
+    local counts = ScanBagsOnly()
+    local bank = Ace.db.char.bankCounts
+    if bank then
+        for id, n in pairs(bank) do counts[id] = (counts[id] or 0) + n end
+    end
+    local mail = Ace.db.char.mailCounts
+    if mail then
+        for id, n in pairs(mail) do counts[id] = (counts[id] or 0) + n end
+    end
+    return counts
+end
+
+-- Expose the personal-bank/mail scanners for slash-command refresh.
+RW._ScanPersonalBank = ScanPersonalBank
+RW._ScanPersonalMail = ScanPersonalMail
 
 -- ---------------------------------------------------------------------------
 -- 9.3 — Reagent Watch
@@ -129,6 +205,25 @@ Ace:RegisterEvent("BAG_UPDATE", function()
 
     -- Run shopping list alert check
     CheckAlerts(bags)
+end)
+
+-- Bank: scan on close (mirrors TOGBankClassic).  GetContainerItemInfo for
+-- bank slots is reliable while the bank window is shown; scanning on close
+-- captures the final state after the player finishes moving items around.
+-- Cached counts persist via SavedVariables so the data stays usable away
+-- from the bank.
+Ace:RegisterEvent("BANKFRAME_CLOSED", function()
+    ScanPersonalBank()
+    addon.callbacks:Fire("REAGENT_WATCH_UPDATED")
+    CheckAlerts(ScanBags())
+end)
+
+-- Mail: same scan-on-close pattern.  COD-attached mail is filtered out
+-- inside ScanPersonalMail (we don't actually possess those items yet).
+Ace:RegisterEvent("MAIL_CLOSED", function()
+    ScanPersonalMail()
+    addon.callbacks:Fire("REAGENT_WATCH_UPDATED")
+    CheckAlerts(ScanBags())
 end)
 
 -- Also check on login in case bags are already stocked

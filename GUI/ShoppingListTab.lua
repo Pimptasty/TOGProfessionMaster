@@ -411,11 +411,22 @@ function ShoppingListTab:FillReagentWatch(container)
         lbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
         row:AddChild(lbl)
 
-        -- Bag count
+        -- Bag + bank count.  Bag count is coloured (green=present in bags,
+        -- yellow=only in bank, grey=nowhere); bank stock is shown separately
+        -- in light blue so the player can see what the guild bank can supply
+        -- without conflating it with personal possession.
+        local bankCount = addon.Bank and addon.Bank.GetStock(iid) or 0
         local countLbl = AceGUI:Create("Label")
-        local colour = entry.count > 0 and "|cff00ff00" or "|cffaaaaaa"
-        countLbl:SetText(colour .. "x" .. entry.count .. "|r")
-        countLbl:SetWidth(60)
+        local colour
+        if entry.count > 0 then     colour = "|cff00ff00"
+        elseif bankCount > 0 then   colour = "|cffffff00"
+        else                        colour = "|cffaaaaaa"
+        end
+        local bankText = bankCount > 0
+            and (" |cff88ccff+" .. bankCount .. "|r")
+            or  ""
+        countLbl:SetText(colour .. "x" .. entry.count .. "|r" .. bankText)
+        countLbl:SetWidth(120)
         row:AddChild(countLbl)
     end
 end

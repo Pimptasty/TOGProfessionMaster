@@ -323,6 +323,14 @@ end
 --- Anniversary, alt-locale spell IDs) where the actual transmute spell IDs
 --- don't match VANILLA_TRANSMUTES.  Idempotent — only adds missing entries.
 --- Returns the number of new entries added.
+---
+--- Also backfills `rd.spellId` via GetSpellLink(rd.name) when the recipe
+--- arrived without a spellId.  On some Classic Era builds (notably
+--- Anniversary), transmute spells don't appear in the GetNumSpellTabs /
+--- GetSpellBookItemInfo enumeration that BuildSpellNameCache uses, so
+--- ScanTradeSkillInto stores the recipe with rd.spellId = nil.  GetSpellLink
+--- works for any spell the player knows by name regardless of spellbook
+--- presentation, so we use it as a fallback name→ID lookup.
 function addon:RefreshTransmuteCatalogueFromRecipes()
     local data = self:GetCooldownData()
     if not data or not data.transmutes then return 0 end
@@ -331,12 +339,18 @@ function addon:RefreshTransmuteCatalogueFromRecipes()
 
     local added = 0
     for _, rd in pairs(gdb.recipes[171]) do
-        if rd.spellId
-           and type(rd.name) == "string"
-           and rd.name:find("[Tt]ransmute")
-           and not data.transmutes[rd.spellId] then
-            data.transmutes[rd.spellId] = rd.name
-            added = added + 1
+        if type(rd.name) == "string" and rd.name:find("[Tt]ransmute") then
+            -- Fallback name→ID lookup when the spellbook scan didn't catch it.
+            if not rd.spellId and GetSpellLink then
+                local link = GetSpellLink(rd.name)
+                if link then
+                    rd.spellId = tonumber(link:match("spell:(%d+)"))
+                end
+            end
+            if rd.spellId and not data.transmutes[rd.spellId] then
+                data.transmutes[rd.spellId] = rd.name
+                added = added + 1
+            end
         end
     end
     return added

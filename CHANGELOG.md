@@ -1,5 +1,23 @@
 # TOG Profession Master Changelog
 
+## [v0.2.5] (2026-04-29) - GetSpellLink transmute-ID fallback + personal bank / mail in reagent counts
+
+### Bug Fixes
+
+- **Transmutes still didn't show on the cooldown tab on Classic Era Anniversary even with v0.2.4** — the v0.2.4 runtime-augment path required `rd.spellId` to be populated by `BuildSpellNameCache` (spellbook tab iteration via `GetNumSpellTabs` / `GetSpellBookItemInfo`). On Anniversary, transmute spells don't appear in that enumeration, so `ScanTradeSkillInto` stored the recipe with `rd.spellId = nil` and the augment path had nothing to do. Section 5 of `/togpm transmutedebug` showed transmute recipes present but with nil spellIds, confirming the spellbook-scan miss. Fixed by adding a `GetSpellLink(rd.name)` fallback in `RefreshTransmuteCatalogueFromRecipes` — `GetSpellLink` works for any known spell by name regardless of spellbook presentation, returns `|Hspell:NNNNN|h` from which we extract the ID, and the ID is also backfilled onto `rd.spellId` so the rest of the cooldown chain (`knownTransmutes` filter, cooldown-tab grouping) works. Location: [Data/CooldownIds.lua:RefreshTransmuteCatalogueFromRecipes](Data/CooldownIds.lua).
+
+### Improvements
+
+- **Reagent Tracker and Reagent Watch now show personal bank + mail alongside bag count** — the `have` total is now `bags + cached personal bank + cached mail`, where personal bank is scanned on `BANKFRAME_CLOSED` and mail is scanned on `MAIL_CLOSED` (mirroring TOGBankClassic's scan-on-close pattern). COD mail attachments are excluded (not really yours until you pay, matching TOGBank). TOGBankClassic guild-bank stock stays separate, surfaced as a `+<N>` annotation in the row — the user previously asked to keep guild-bank stock visually distinct from "in possession", so personal bank/mail join the `have` side and only TOGBank stays separate. New `Ace.db.char.bankCounts` and `Ace.db.char.mailCounts` cache per-character. First-visit-required: until the user opens their bank or mailbox once with v0.2.5 installed, the caches are empty (same first-time UX as TOGBank). Locations: [Modules/ReagentWatch.lua](Modules/ReagentWatch.lua), [GUI/ReagentTracker.lua:GetPlayerBagCount](GUI/ReagentTracker.lua), [GUI/ShoppingListTab.lua:FillReagentWatch](GUI/ShoppingListTab.lua).
+
+- **Reagent Tracker color coding now reflects bag-vs-bank-vs-shortage** — green = bags alone satisfy the recipe; yellow = bags fall short but bag + bank covers it (request from bank); orange = bag + bank still short, partial; red = nothing in bags or bank. The `+<N>` bank annotation is light blue and always shown when bank stock > 0, deliberately separated from the `have/need` count so the player can read the bank contribution without it being conflated with personal possession. Display widened (`COUNT_W` 48 → 90, `WIN_W` 280 → 320) to fit the new format. Location: [GUI/ReagentTracker.lua:Refresh](GUI/ReagentTracker.lua).
+
+- **Reagent Watch panel applies the same color scheme** — green = in your bags, yellow = only in the guild bank, grey = nowhere. Same `+<N>` annotation pattern. Location: [GUI/ShoppingListTab.lua:FillReagentWatch](GUI/ShoppingListTab.lua).
+
+- **`/togpm transmutedebug` now also runs the runtime augmentation up front** — so the diagnostic reflects post-refresh state, including any spellIds resolved via the new `GetSpellLink` fallback. Prints a confirmation line when new IDs were added. Location: [TOGProfessionMaster.lua:DumpTransmuteDiag](TOGProfessionMaster.lua).
+
+---
+
 ## [v0.2.4] (2026-04-29) - Runtime-augmented transmute catalogue + extended transmutedebug
 
 ### Bug Fixes

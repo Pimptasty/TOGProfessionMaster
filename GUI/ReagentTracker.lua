@@ -17,17 +17,22 @@ local RT = {}
 addon.ReagentTracker = RT
 
 -- Layout constants
-local WIN_W   = 280
+local WIN_W   = 320
 local ROW_H   = 16
 local ICON_SZ = 13
 local HDR_H   = 20
-local COUNT_W = 48
+local COUNT_W = 90       -- room for "30/30 +99999" worst case
 local BANK_W  = 48
 
 -- ---------------------------------------------------------------------------
 -- Data helpers
 -- ---------------------------------------------------------------------------
 
+--- "What I personally have" total: bags + cached personal bank + cached mail.
+-- TOGBankClassic guild-bank stock is intentionally excluded — that's surfaced
+-- separately as a "+N" annotation in the row.  Bank/mail counts are cached
+-- by ReagentWatch on BANKFRAME_CLOSED / MAIL_CLOSED so they persist between
+-- visits to the bank or mailbox.
 local function GetPlayerBagCount(itemId)
     local total = 0
     for bag = 0, addon:GetNumBagSlots() do
@@ -41,6 +46,10 @@ local function GetPlayerBagCount(itemId)
             end
         end
     end
+    local bank = Ace.db.char.bankCounts
+    if bank and bank[itemId] then total = total + bank[itemId] end
+    local mail = Ace.db.char.mailCounts
+    if mail and mail[itemId] then total = total + mail[itemId] end
     return total
 end
 
@@ -167,11 +176,25 @@ function RT:Refresh()
             row.nameLbl:SetWidth(nameWFull)
         end
 
-        -- Have/need count: green = satisfied, yellow = partial, red = none
-        local col = (have >= need) and "|cff00ff00"
-                 or (have > 0     and "|cffffff00"
-                                  or  "|cffff4444")
-        row.countLbl:SetText(col .. have .. "|r/" .. need)
+        -- Have / need / bank.  Bag count colour reflects what we can craft:
+        --   green   = bags alone satisfy the recipe
+        --   yellow  = bags don't satisfy but bag + bank does (request from bank)
+        --   orange  = bag + bank still short, but we have something
+        --   red     = nothing in bags or bank
+        -- Bank annotation always shown (light blue) when stock > 0 so the player
+        -- can see how much the guild bank can contribute without conflating it
+        -- with personal possession.
+        local total = have + bankCount
+        local col
+        if have >= need then         col = "|cff00ff00"   -- bags satisfy
+        elseif total >= need then    col = "|cffffff00"   -- bank fills the gap
+        elseif total > 0 then        col = "|cffff8800"   -- partial
+        else                         col = "|cffff4444"   -- nothing
+        end
+        local bankText = bankCount > 0
+            and (" |cff88ccff+" .. bankCount .. "|r")
+            or  ""
+        row.countLbl:SetText(col .. have .. "|r/" .. need .. bankText)
 
         -- Tooltip + shift-click to link
         local iLink = item.itemLink
@@ -295,6 +318,8 @@ end
 
 local _bagWatcher = CreateFrame("Frame")
 _bagWatcher:RegisterEvent("BAG_UPDATE")
+_bagWatcher:RegisterEvent("BANKFRAME_CLOSED")  -- ReagentWatch refreshes the bank cache here
+_bagWatcher:RegisterEvent("MAIL_CLOSED")       -- ReagentWatch refreshes the mail cache here
 _bagWatcher:SetScript("OnEvent", function()
     RT:QueueRefresh()
 end)

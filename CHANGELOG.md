@@ -1,5 +1,13 @@
 # TOG Profession Master Changelog
 
+## [v0.2.3] (2026-04-29) - /togpm transmutedebug diagnostic command
+
+### New Features
+
+- **`/togpm transmutedebug`** — one-shot diagnostic for the transmute-cooldown chain. Prints what the WoW API says is on cooldown, what's in the recipe DB for the local character, what `IsSpellKnown` says, and what's actually stored in `gdb.cooldowns`. No spell IDs to look up — just run it and paste the output. Useful for triaging "transmute isn't showing on the cooldown tab" reports without making the user dig up spell IDs. Location: [TOGProfessionMaster.lua:DumpTransmuteDiag](TOGProfessionMaster.lua).
+
+---
+
 ## [v0.2.2] (2026-04-29) - Cumulative cooldown ID loading across expansions
 
 ### Bug Fixes

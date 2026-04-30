@@ -139,6 +139,7 @@ local SLASH_COMMANDS = {
     ["dumprecipe"]   = "DumpRecipe",
     ["dumphashes"]   = "DumpHashes",
     ["dumpcooldowns"] = "DumpCooldowns",
+    ["transmutedebug"] = "DumpTransmuteDiag",
     ["forcebroadcast"] = "ForceBroadcast",
     ["backfill"]     = "RunBackfill",
     ["help"]         = "PrintHelp",
@@ -494,6 +495,87 @@ function addon:DumpCooldowns(args)
         local name = (GetSpellInfo and GetSpellInfo(spellId)) or "?"
         Ace:Print(("  [%s] %s expiresAt=%d remaining=%ds"):format(
             tostring(spellId), name, expiresAt, remaining))
+    end
+end
+
+--- /togpm transmutedebug — one-shot diagnostic for the transmute-cooldown
+--- chain.  Walks every transmute spell ID in the version-appropriate
+--- catalogue, prints which one (if any) the WoW API says is on cooldown,
+--- which transmutes are in our recipe DB for the local character, and
+--- which are stored in gdb.cooldowns[charKey].  No spell IDs to look up;
+--- just run the command and paste the output.
+function addon:DumpTransmuteDiag()
+    local data = addon:GetCooldownData()
+    if not data or not data.transmutes then
+        Ace:Print("|cffff4444No cooldown data — addon.isVanilla/etc. not set?|r")
+        return
+    end
+    local charKey = addon:GetCharacterKey()
+    local gdb     = addon:GetGuildDb()
+
+    Ace:Print("|cffda8cffTransmute diagnostic for|r " .. tostring(charKey))
+
+    -- (1) API: which transmute spells does GetSpellCooldown say are on CD?
+    local apiActive = {}
+    local total = 0
+    for spellId, name in pairs(data.transmutes) do
+        total = total + 1
+        local start, duration = GetSpellCooldown(spellId)
+        if start and start > 0 and duration and duration > 1.5 then
+            local remaining = (start + duration) - GetTime()
+            apiActive[spellId] = { name = name, start = start, duration = duration, remaining = remaining }
+        end
+    end
+    Ace:Print(("  [API] %d transmute IDs in catalogue; on-cooldown: %d"):format(
+        total, (function() local n = 0; for _ in pairs(apiActive) do n = n + 1 end; return n end)()))
+    for spellId, info in pairs(apiActive) do
+        Ace:Print(("    %d (%s) start=%.1f duration=%.0f remaining=%.0fs"):format(
+            spellId, info.name, info.start, info.duration, info.remaining))
+    end
+
+    -- (2) Recipe DB: which transmutes does the local char know per gdb.recipes[171]?
+    local recipeKnown = {}
+    if gdb and gdb.recipes and gdb.recipes[171] then
+        for _, rd in pairs(gdb.recipes[171]) do
+            if rd.crafters and rd.crafters[charKey]
+               and rd.spellId and data.transmutes[rd.spellId] then
+                recipeKnown[rd.spellId] = rd.name
+            end
+        end
+    end
+    Ace:Print(("  [Recipes] gdb.recipes[171] crafters[%s] entries matching transmutes: %d"):format(
+        charKey, (function() local n = 0; for _ in pairs(recipeKnown) do n = n + 1 end; return n end)()))
+    for spellId, name in pairs(recipeKnown) do
+        Ace:Print(("    %d (%s)"):format(spellId, name))
+    end
+
+    -- (3) IsSpellKnown: does the WoW API agree the player knows these?
+    local isSpellKnownTrue = 0
+    for spellId in pairs(data.transmutes) do
+        if IsSpellKnown(spellId, false) then
+            isSpellKnownTrue = isSpellKnownTrue + 1
+        end
+    end
+    Ace:Print(("  [IsSpellKnown] returns true for %d / %d transmute IDs"):format(
+        isSpellKnownTrue, total))
+
+    -- (4) Stored: what's in gdb.cooldowns[charKey] for transmute IDs?
+    local stored = {}
+    if gdb and gdb.cooldowns and gdb.cooldowns[charKey] then
+        for spellId, expiresAt in pairs(gdb.cooldowns[charKey]) do
+            if data.transmutes[spellId] then
+                stored[spellId] = expiresAt
+            end
+        end
+    end
+    local now = GetServerTime()
+    Ace:Print(("  [gdb.cooldowns[%s]] transmute entries stored: %d"):format(
+        charKey, (function() local n = 0; for _ in pairs(stored) do n = n + 1 end; return n end)()))
+    for spellId, expiresAt in pairs(stored) do
+        local remaining = expiresAt - now
+        local label = remaining > 0 and (("%ds remaining"):format(remaining)) or "Ready"
+        Ace:Print(("    %d (%s) expiresAt=%d %s"):format(
+            spellId, data.transmutes[spellId] or "?", expiresAt, label))
     end
 end
 

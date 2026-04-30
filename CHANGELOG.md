@@ -1,5 +1,13 @@
 # TOG Profession Master Changelog
 
+## [v0.2.2] (2026-04-29) - Cumulative cooldown ID loading across expansions
+
+### Bug Fixes
+
+- **Transmute cooldowns from earlier expansions never showed up on Cata/MoP clients** — `Data/CooldownIds.lua:Build()` loaded transmute and cooldown spell IDs version-exclusively: only `CATA_TRANSMUTES` on Cata, only `WRATH_TRANSMUTES` on Wrath, etc. But spell IDs from earlier expansions stay valid on later clients — a Cata alchemist still has the 18 Wrath Eternal transmutes, the TBC primal transmutes, and the Vanilla element transmutes in their spellbook, all sharing the same 24-hour cooldown. Casting any one of them was invisible to our scan because we never iterated those IDs in `ScanCooldowns`. Symptom: Cata alchemist casts Eternal Fire to Water → cooldown tab shows nothing for them. Same root cause for non-transmute cooldowns (Mooncloth, Spellcloth, Icy Prism) on later-expansion clients. Fixed by changing `Build()` to load IDs cumulatively — the current expansion plus every earlier one. Doesn't change behavior on Classic Era (only Vanilla IDs load, same as before). Location: [Data/CooldownIds.lua:Build](Data/CooldownIds.lua).
+
+---
+
 ## [v0.2.1] (2026-04-29) - v0.2.0 sync convergence fixes
 
 ### Bug Fixes

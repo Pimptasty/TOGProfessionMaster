@@ -265,19 +265,25 @@ local function Build()
     local a = addon
     local cooldowns, transmutes = {}, {}
 
-    if a.isVanilla then
+    -- Cumulative loading: spell/item IDs from earlier expansions stay valid on
+    -- later clients (Wrath transmutes still tick on Cata, etc.), and a Cata
+    -- alchemist almost certainly still has them on cooldown.  The previous
+    -- version-exclusive loading missed transmutes from any expansion before
+    -- the current one, so casting e.g. Eternal Fire on a Cata client never
+    -- showed up on the cooldown tab.
+    if a.isVanilla or a.isTBC or a.isWrath or a.isCata or a.isMoP then
         for id, name in pairs(VANILLA_COOLDOWNS)   do cooldowns[id]  = name end
         for id, name in pairs(VANILLA_TRANSMUTES)  do transmutes[id] = name end
     end
-    if a.isTBC then
+    if a.isTBC or a.isWrath or a.isCata or a.isMoP then
         for id, name in pairs(TBC_COOLDOWNS)       do cooldowns[id]  = name end
         for id, name in pairs(TBC_TRANSMUTES)      do transmutes[id] = name end
     end
-    if a.isWrath then
+    if a.isWrath or a.isCata or a.isMoP then
         for id, name in pairs(WRATH_COOLDOWNS)     do cooldowns[id]  = name end
         for id, name in pairs(WRATH_TRANSMUTES)    do transmutes[id] = name end
     end
-    if a.isCata then
+    if a.isCata or a.isMoP then
         for id, name in pairs(CATA_COOLDOWNS)      do cooldowns[id]  = name end
         for id, name in pairs(CATA_TRANSMUTES)     do transmutes[id] = name end
     end

@@ -1,5 +1,17 @@
 # TOG Profession Master Changelog
 
+## [v0.2.4] (2026-04-29) - Runtime-augmented transmute catalogue + extended transmutedebug
+
+### Bug Fixes
+
+- **Transmutes never showed up on the cooldown tab on Classic Era Anniversary (and any client whose actual spell IDs don't match `VANILLA_TRANSMUTES`)** — the static spell-ID catalogue in `Data/CooldownIds.lua` was the only thing `ScanCooldowns` consulted. If the alchemist's actual transmute spells used different spell IDs than the ones we hard-coded (a real condition on Anniversary, where the recipe DB shows transmutes with spellIds that aren't in our catalogue), `GetSpellCooldown` was called with the wrong IDs, the recipe-DB filter found zero matches, and nothing got stored. New `addon:RefreshTransmuteCatalogueFromRecipes()` walks `gdb.recipes[171]` for any recipe whose name contains "Transmute" and adds its `spellId` to `data.transmutes` at runtime. Idempotent, cheap, runs at the start of every `ScanCooldowns`. The catalogue self-heals against any client-specific or locale-specific ID variation, picks up newly-learned transmutes from guildmate broadcasts, and the rest of the cooldown chain (cooldown-tab grouping, transmute popup, mail integration) works as a side effect. Locations: [Data/CooldownIds.lua:RefreshTransmuteCatalogueFromRecipes](Data/CooldownIds.lua), [Scanner.lua:ScanCooldowns](Scanner.lua).
+
+### Improvements
+
+- **`/togpm transmutedebug` now also dumps the actual alchemy recipe DB and a spellbook walk** — v0.2.3's diagnostic only showed which transmutes matched our catalogue. If the catalogue was stale, the diagnostic showed all zeros without a way to tell *why*. v0.2.4 adds two more sections: (5) total alchemy recipes in `gdb.recipes[171]` for the local char with their actual `spellId` values (filtered to anything whose name contains "Transmute"), and (6) a full spellbook walk for any spell whose name contains "Transmute" with the spell ID the client is actually using. If section 6 prints IDs that aren't in the catalogue, the new runtime augmentation will pick them up automatically; it's still a useful triage signal. Location: [TOGProfessionMaster.lua:DumpTransmuteDiag](TOGProfessionMaster.lua).
+
+---
+
 ## [v0.2.3] (2026-04-29) - /togpm transmutedebug diagnostic command
 
 ### New Features

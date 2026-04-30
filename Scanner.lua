@@ -869,6 +869,13 @@ function Scanner:ScanCooldowns()
     local gdb     = addon:GetGuildDb()
     if not gdb then return end
     local now     = GetServerTime()
+
+    -- Augment the transmute catalogue from the alchemy recipe DB.  This
+    -- self-heals for clients (Classic Era Anniversary, locale variants)
+    -- where the actual transmute spell IDs differ from VANILLA_TRANSMUTES.
+    -- Idempotent; cheap; runs every scan so newly-learned transmutes from
+    -- guildmate broadcasts get picked up too.
+    addon:RefreshTransmuteCatalogueFromRecipes()
     local data    = addon:GetCooldownData()
 
     if not gdb.cooldowns[charKey] then gdb.cooldowns[charKey] = {} end

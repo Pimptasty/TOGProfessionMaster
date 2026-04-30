@@ -317,3 +317,27 @@ function addon:GetCooldownData()
     if not _cache then _cache = Build() end
     return _cache
 end
+
+--- Augment the cached transmute catalogue with any "Transmute*" alchemy
+--- recipes from the guild DB.  Self-heals for clients (Classic Era
+--- Anniversary, alt-locale spell IDs) where the actual transmute spell IDs
+--- don't match VANILLA_TRANSMUTES.  Idempotent — only adds missing entries.
+--- Returns the number of new entries added.
+function addon:RefreshTransmuteCatalogueFromRecipes()
+    local data = self:GetCooldownData()
+    if not data or not data.transmutes then return 0 end
+    local gdb = self:GetGuildDb()
+    if not gdb or not gdb.recipes or not gdb.recipes[171] then return 0 end
+
+    local added = 0
+    for _, rd in pairs(gdb.recipes[171]) do
+        if rd.spellId
+           and type(rd.name) == "string"
+           and rd.name:find("[Tt]ransmute")
+           and not data.transmutes[rd.spellId] then
+            data.transmutes[rd.spellId] = rd.name
+            added = added + 1
+        end
+    end
+    return added
+end

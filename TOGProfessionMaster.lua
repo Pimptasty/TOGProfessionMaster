@@ -577,6 +577,61 @@ function addon:DumpTransmuteDiag()
         Ace:Print(("    %d (%s) expiresAt=%d %s"):format(
             spellId, data.transmutes[spellId] or "?", expiresAt, label))
     end
+
+    -- (5) Total alchemy recipes in the DB for this char, with whatever
+    -- spellIds they actually have.  If this is 0, the alchemy scan never ran
+    -- (need to open the alchemy trade skill window).  If non-zero but with
+    -- mostly nil spellIds, BuildSpellNameCache isn't finding the spells.  If
+    -- non-zero with populated spellIds that don't match data.transmutes, the
+    -- IDs in VANILLA_TRANSMUTES are wrong for this client (Anniversary may
+    -- use different IDs).
+    local profCount, withSpellId, transmuteByName = 0, 0, {}
+    if gdb and gdb.recipes and gdb.recipes[171] then
+        for _, rd in pairs(gdb.recipes[171]) do
+            if rd.crafters and rd.crafters[charKey] then
+                profCount = profCount + 1
+                if rd.spellId then withSpellId = withSpellId + 1 end
+                if type(rd.name) == "string" and rd.name:find("[Tt]ransmute") then
+                    transmuteByName[rd.name] = rd.spellId or "(nil spellId)"
+                end
+            end
+        end
+    end
+    Ace:Print(("  [gdb.recipes[171] total for %s] %d recipes, %d with spellId"):format(
+        charKey, profCount, withSpellId))
+    Ace:Print("  [recipes whose name contains 'Transmute']:")
+    for name, spellId in pairs(transmuteByName) do
+        Ace:Print(("    %s -> spellId=%s%s"):format(
+            name, tostring(spellId),
+            (type(spellId) == "number" and data.transmutes[spellId]) and " (in catalogue)" or ""))
+    end
+
+    -- (6) Spellbook walk: find every spell whose name starts with "Transmute"
+    -- and print the spell ID the client uses.  This bypasses the recipe DB
+    -- entirely.  If the IDs printed here aren't in VANILLA_TRANSMUTES, our
+    -- catalogue is stale for this client.
+    Ace:Print("  [Spellbook 'Transmute*' entries]:")
+    local sbHits = 0
+    local numTabs = GetNumSpellTabs and GetNumSpellTabs() or 0
+    for tab = 1, numTabs do
+        local _, _, offset, numSpells = GetSpellTabInfo(tab)
+        for j = 1, (numSpells or 0) do
+            local idx = offset + j
+            local _, sId = GetSpellBookItemInfo(idx, "spell")
+            if sId then
+                local sName = GetSpellInfo(sId)
+                if sName and sName:find("[Tt]ransmute") then
+                    sbHits = sbHits + 1
+                    Ace:Print(("    %s -> spellId=%d%s"):format(
+                        sName, sId,
+                        data.transmutes[sId] and " (in catalogue)" or " (NOT in catalogue)"))
+                end
+            end
+        end
+    end
+    if sbHits == 0 then
+        Ace:Print("    (no 'Transmute*' spells in the spellbook)")
+    end
 end
 
 --- /togpm forcebroadcast — bypass debounce and broadcast full hash list now.

@@ -73,6 +73,35 @@ local function mergeReagents(existing, incoming)
     return merged
 end
 
+-- Returns a clean human-readable recipe name.  Classic Era's GetTradeSkillInfo
+-- can return placeholder text like "? 10002" when the underlying item info
+-- hasn't loaded into the client cache yet (typical for long-tail recipes the
+-- player hasn't seen recently).  Item links always carry the real name in
+-- their [...] field, even when the trade-skill window hasn't loaded the item
+-- name — so when the raw name is one of those placeholders, extract from
+-- itemLink (preferred) or recipeLink.  Falls through to the raw value if
+-- nothing better is available.
+local function isBogusName(n)
+    if type(n) ~= "string" or n == "" then return true end
+    -- "? 10002", "?10002", "? " — Classic Era placeholder forms
+    if n:match("^%?") then return true end
+    return false
+end
+
+local function extractNameFromLink(link)
+    if type(link) ~= "string" then return nil end
+    local name = link:match("%[(.-)%]")
+    if name and name ~= "" and not isBogusName(name) then return name end
+    return nil
+end
+
+local function cleanRecipeName(rawName, itemLink, recipeLink)
+    if not isBogusName(rawName) then return rawName end
+    return extractNameFromLink(itemLink)
+        or extractNameFromLink(recipeLink)
+        or rawName
+end
+
 -- Broadcast state
 Scanner._pendingBroadcast = false
 Scanner._lastBroadcastAt  = 0
@@ -122,30 +151,15 @@ local SPEC_SPELLS = {
 -- ---------------------------------------------------------------------------
 
 function Scanner:InitDeltaSync()
-    -- v0.2.0 requires DeltaSync MINOR>=9 (hash-mismatch offer condition,
-    -- shipped in DeltaSync v2.0.3).  LibStub:GetLibrary returns the lib and
-    -- its MINOR; we need MINOR to gate the new sync semantics.  Older
-    -- DeltaSync versions still load the addon but guild sync is disabled.
-    local DS, deltaSyncMinor = LibStub("DeltaSync-1.0", true), 0
-    if DS and LibStub.libs and LibStub.libs["DeltaSync-1.0"] then
-        deltaSyncMinor = LibStub.minors["DeltaSync-1.0"] or 0
-    end
+    -- DeltaSync-1.0 and GuildCache-1.0 are declared as ## Dependencies in the
+    -- .toc — version compatibility is the responsibility of the dependency
+    -- declaration, not a runtime hardcoded version check here.
+    local DS = LibStub("DeltaSync-1.0", true)
     if not DS then
         addon:DebugPrint("Scanner: DeltaSync-1.0 not found — guild sync disabled")
         return
     end
-    if deltaSyncMinor < 9 then
-        addon:Print(string.format(
-            "|cffff4444TOGPM v0.2.0 requires DeltaSync MINOR>=9 (v2.0.3+). Found MINOR=%d. Guild sync disabled.|r",
-            deltaSyncMinor))
-        return
-    end
 
-    -- GuildCache-1.0 ships inside the DeltaSync addon and provides roster
-    -- helpers (NormalizeName, GetNormalizedPlayer, IsInGuild, IsPlayerOnline,
-    -- GetOnlineGuildMembers).  In the previous embedded copy these methods
-    -- lived on the DeltaSync-1.0 handle itself; in the external lib they were
-    -- split into a separate LibStub library.
     local GuildCache = LibStub("GuildCache-1.0", true)
     if not GuildCache then
         addon:DebugPrint("Scanner: GuildCache-1.0 not found — guild sync disabled")
@@ -168,6 +182,10 @@ function Scanner:InitDeltaSync()
         -- We respond by broadcasting the requested data on GUILD/BULK so any
         -- peer with a stale hash for the same leaf merges for free.
         onDataRequest = function(sender, baseline)
+            addon:DebugPrint("Scanner: onDataRequest ENTRY from", sender,
+                "type=", baseline and baseline.type or "nil",
+                "parent=", baseline and baseline.parent or "nil",
+                "keys=", baseline and baseline.keys and #baseline.keys or 0)
             if type(baseline) ~= "table" then
                 addon:DebugPrint("Scanner: onDataRequest from", sender, "with no baseline (legacy?), ignoring")
                 return
@@ -185,6 +203,10 @@ function Scanner:InitDeltaSync()
         -- more leaves with content) or a subhashes response.  Dispatch is
         -- inside OnGuildDataReceived based on the payload shape.
         onDataReceived = function(sender, data, bytes)
+            addon:DebugPrint("Scanner: onDataReceived ENTRY from", sender,
+                "bytes=", bytes or 0,
+                "type=", data and data.type or "leaves",
+                "charKey=", data and data.charKey or "nil")
             Scanner:OnGuildDataReceived(sender, data, bytes or 0)
         end,
 
@@ -222,6 +244,19 @@ function Scanner:InitDeltaSync()
     --   3. cooldown:<charKey> / accountchars:<charKey> direct mismatch (when
     --      a peer broadcasts these explicitly) → request leaf data.
     DS:InitP2P({
+        -- DeltaSync defaults (3 sessions, 3 sends, 10s collect window) are
+        -- tuned for small numbers of peers.  In active guilds with 30+ online
+        -- members, we end up with the cap saturated by leaf fetches that
+        -- back up while peers wait on each other's caps too — sync grinds
+        -- to a halt for everything outside the first three slots.  Bump
+        -- both inbound and outbound concurrency to 8 and stretch the
+        -- collect window to 30s so we accumulate offers from more peers
+        -- before picking one (gives a better chance of catching all the
+        -- broadcasters that have what we want).
+        maxActiveSessions = 8,
+        maxActiveSends    = 8,
+        collectWindow     = 30,
+
         getMyHashes = function()
             local gdb = addon:GetGuildDb()
             if not gdb then return {} end
@@ -252,14 +287,19 @@ function Scanner:InitDeltaSync()
         -- Leaf sync accepted: peer has data we need.  Request the appropriate
         -- payload type via baseline.type encoded in the QUERY message.
         onSyncAccepted = function(itemKey, sender)
+            addon:DebugPrint("Scanner: onSyncAccepted itemKey=", itemKey, "sender=", sender)
             if itemKey == "guild:cooldowns" or itemKey == "guild:accountchars" then
                 -- Roll-up mismatch — ask for per-character sub-hashes.
+                addon:DebugPrint("Scanner:   → sending subhashes RequestData to", sender)
                 DS:RequestData(sender, { type = "subhashes", parent = itemKey })
             elseif itemKey:sub(1, 11) == "recipemeta:"
                 or itemKey:sub(1, 9)  == "crafters:"
                 or itemKey:sub(1, 9)  == "cooldown:"
                 or itemKey:sub(1, 13) == "accountchars:" then
+                addon:DebugPrint("Scanner:   → sending leaf-data RequestData to", sender, "for", itemKey)
                 DS:RequestData(sender, { type = "leaf-data", keys = { itemKey } })
+            else
+                addon:DebugPrint("Scanner:   → UNRECOGNIZED itemKey shape, no QUERY sent")
             end
         end,
     })
@@ -327,7 +367,18 @@ end)
 hooksecurefunc(Ace, "OnPlayerEnteringWorld", function(_self, _event, isInitialLogin, isReloadingUi)
     if isInitialLogin or isReloadingUi then
         Scanner:InitDeltaSync()
-        Ace:ScheduleTimer(function() Scanner:BackfillReagentItemIds() end, 3)
+        -- Both backfills retry several times because GetItemInfo returns nil for
+        -- items not yet in the client cache, and the cache fills lazily over the
+        -- first ~couple minutes after login.  Each pass only logs when it
+        -- actually had something to check, so silent retries don't spam chat.
+        -- The reagent backfill's GetItemInfo call also kicks an async server-side
+        -- load, so later passes pick up resolutions kicked by earlier passes.
+        Ace:ScheduleTimer(function() Scanner:BackfillReagentItemIds()    end, 3)
+        Ace:ScheduleTimer(function() Scanner:BackfillBogusRecipeNames()  end, 4)
+        Ace:ScheduleTimer(function() Scanner:BackfillReagentItemIds()    end, 30)
+        Ace:ScheduleTimer(function() Scanner:BackfillBogusRecipeNames()  end, 30)
+        Ace:ScheduleTimer(function() Scanner:BackfillReagentItemIds()    end, 120)
+        Ace:ScheduleTimer(function() Scanner:BackfillBogusRecipeNames()  end, 120)
     end
 end)
 
@@ -612,7 +663,8 @@ function Scanner:ScanTradeSkillInto(charKey, isLinked)  --luacheck: ignore isLin
                         })
                     end
                 end
-                recipes[recipeId] = { recipeName, GetTradeSkillIcon(i), isSpell, spellId, itemLink, reagents, recipeLink }
+                local cleanName = cleanRecipeName(recipeName, itemLink, recipeLink)
+                recipes[recipeId] = { cleanName, GetTradeSkillIcon(i), isSpell, spellId, itemLink, reagents, recipeLink }
             end
         end
     end
@@ -774,7 +826,8 @@ function Scanner:ScanCraftSkillInto(charKey)
                     end
                 end
                 -- [1]=name [2]=icon [3]=isSpell [4]=spellId [5]=itemLink [6]=reagents
-                recipes[spellId] = { craftName, craftIcon, true, nil, nil, reagents }
+                local cleanName = cleanRecipeName(craftName, link, link)
+                recipes[spellId] = { cleanName, craftIcon, true, nil, nil, reagents }
             end
         end
     end
@@ -978,7 +1031,17 @@ end
 -- GetItemInfoInstant(name).  Needed because pre-v0.1.5 scans (and scans on
 -- builds where GetTradeSkillReagentItemLink returns nil) stored reagents
 -- with neither itemLink nor itemId, breaking the bank-stock lookup and
--- reagent-watch features that key off the item ID.  Runs once at login.
+-- reagent-watch features that key off the item ID.
+--
+-- Recovery sources, in order:
+--   1. itemLink → tonumber(...:match("item:(%d+)"))      (instant, cache-free)
+--   2. GetItemInfoInstant(name)                          (instant, cache-only)
+--   3. GetItemInfo(name)                                 (cache + lazy fetch:
+--      kicks the client to load the item.  Returns nil on this call but the
+--      load resolves async; subsequent backfill retries pick it up via path 2.)
+--
+-- Scheduled with retries (4s/30s/120s post-PEW) so async loads kicked in pass 1
+-- have a chance to resolve in pass 2/3.
 function Scanner:BackfillReagentItemIds()
     if not GetItemInfoInstant then
         addon:Print("|cffff4444Backfill: GetItemInfoInstant unavailable|r")
@@ -1003,6 +1066,19 @@ function Scanner:BackfillReagentItemIds()
                         if (not rg.itemId or rg.itemId == 0) and rg.name then
                             rg.itemId = (GetItemInfoInstant(rg.name))
                         end
+                        if (not rg.itemId or rg.itemId == 0) and rg.name and GetItemInfo then
+                            -- Cache-loading variant: returns nil on this call if
+                            -- the item isn't cached yet, but issues a server-side
+                            -- load.  Next retry picks up the result via the
+                            -- GetItemInfoInstant path above once the load resolves.
+                            local _, link = GetItemInfo(rg.name)
+                            if type(link) == "string" then
+                                rg.itemId = tonumber(link:match("item:(%d+)"))
+                                if not rg.itemLink or rg.itemLink == "" then
+                                    rg.itemLink = link
+                                end
+                            end
+                        end
                         if rg.itemId and rg.itemId > 0 then
                             fixed = fixed + 1
                         else
@@ -1013,7 +1089,66 @@ function Scanner:BackfillReagentItemIds()
             end
         end
     end
-    addon:Print(("Backfill: checked=%d fixed=%d missed=%d"):format(checked, fixed, missed))
+    -- Only log when something was actually checked, so silent retry passes
+    -- don't spam chat after the data is fully healed.
+    if checked > 0 then
+        addon:Print(("Backfill: checked=%d fixed=%d missed=%d"):format(checked, fixed, missed))
+    end
+end
+
+--- Walk gdb.recipes once and recover any missing or placeholder recipe metadata.
+--- Two failure modes this fixes:
+---   1. Classic Era's GetTradeSkillInfo returns "? <id>" placeholder strings when
+---      the item info hasn't loaded into the client cache yet.
+---   2. MergeCraftersIntoGdb creates {crafters={}} stubs when a crafters:<profId>
+---      leaf arrives before the matching recipemeta:<profId> leaf — leaving the
+---      recipe with crafters but no name/icon/links.
+--- Recovery sources, in order: existing itemLink/recipeLink [...] field, then
+--- GetItemInfo(recipeId) for item-keyed recipes, then GetSpellInfo for spells.
+--- Run once on PEW after BackfillReagentItemIds.  Idempotent.
+function Scanner:BackfillBogusRecipeNames()
+    local gdb = addon:GetGuildDb()
+    if not gdb or not gdb.recipes then return end
+    local checked, fixed = 0, 0
+    for _, profRecipes in pairs(gdb.recipes) do
+        for recipeId, rd in pairs(profRecipes) do
+            local needsName = isBogusName(rd.name)
+            if needsName then
+                checked = checked + 1
+                local clean = cleanRecipeName(rd.name, rd.itemLink, rd.recipeLink)
+                if not isBogusName(clean) then
+                    rd.name = clean
+                end
+            end
+            -- Item-keyed recipe (most professions): recipeId IS the crafted item
+            -- ID, so GetItemInfo gives us name + icon + a real itemLink.
+            if isBogusName(rd.name) and rd.isSpell ~= true and type(recipeId) == "number" then
+                local nm, link, _, _, _, _, _, _, _, icon = GetItemInfo(recipeId)
+                if nm then
+                    rd.name     = rd.name     and not isBogusName(rd.name)     and rd.name     or nm
+                    rd.icon     = rd.icon     or icon
+                    rd.itemLink = rd.itemLink or link
+                end
+            end
+            -- Spell-keyed recipe (enchanting / craft frame): try GetSpellInfo.
+            if isBogusName(rd.name) and (rd.isSpell == true or rd.spellId) then
+                local sid = rd.spellId or recipeId
+                if type(sid) == "number" and GetSpellInfo then
+                    local nm, _, icon = GetSpellInfo(sid)
+                    if nm then
+                        rd.name = nm
+                        rd.icon = rd.icon or icon
+                    end
+                end
+            end
+            if needsName and not isBogusName(rd.name) then
+                fixed = fixed + 1
+            end
+        end
+    end
+    if checked > 0 then
+        addon:Print(("Recipe-name backfill: checked=%d fixed=%d"):format(checked, fixed))
+    end
 end
 
 function Scanner:ScanSaltShaker(stored, now, itemId)
@@ -1318,7 +1453,7 @@ function Scanner:MergeRecipeMetaIntoGdb(gdb, profId, meta)
             local existing = profRecipes[recipeId]
             if not existing then
                 profRecipes[recipeId] = {
-                    name       = rd.name,
+                    name       = cleanRecipeName(rd.name, rd.itemLink, rd.recipeLink),
                     icon       = rd.icon,
                     isSpell    = rd.isSpell and true or false,
                     spellId    = rd.spellId,
@@ -1328,7 +1463,16 @@ function Scanner:MergeRecipeMetaIntoGdb(gdb, profId, meta)
                     crafters   = {},
                 }
             else
-                if rd.name    and not existing.name    then existing.name    = rd.name    end
+                -- Self-heal: if the stored name is a "? <id>" placeholder, replace it
+                -- with whatever the new payload (or our existing links) can produce.
+                if isBogusName(existing.name) then
+                    local clean = cleanRecipeName(rd.name,
+                        rd.itemLink   or existing.itemLink,
+                        rd.recipeLink or existing.recipeLink)
+                    if not isBogusName(clean) then existing.name = clean end
+                elseif rd.name and not existing.name then
+                    existing.name = rd.name
+                end
                 if rd.icon    and not existing.icon    then existing.icon    = rd.icon    end
                 if rd.isSpell ~= nil and existing.isSpell == nil then existing.isSpell = rd.isSpell and true or false end
                 if rd.spellId and not existing.spellId then existing.spellId = rd.spellId end
@@ -1364,8 +1508,22 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
         if type(ckSet) == "table" then
             local existing = profRecipes[recipeId]
             if not existing then
-                profRecipes[recipeId] = { crafters = {} }
-                existing = profRecipes[recipeId]
+                -- Try to populate name/icon/itemLink from WoW's item cache so
+                -- the row doesn't render as "? <id>" between when crafters:<profId>
+                -- arrives and recipemeta:<profId> catches up.  GetItemInfo returns
+                -- nil if the item isn't cached yet — backfill recovers later.
+                local stub = { crafters = {} }
+                if type(recipeId) == "number" then
+                    local nm, link, _, _, _, _, _, _, _, icon = GetItemInfo(recipeId)
+                    if nm then
+                        stub.name     = nm
+                        stub.icon     = icon
+                        stub.itemLink = link
+                        stub.isSpell  = false
+                    end
+                end
+                profRecipes[recipeId] = stub
+                existing = stub
             end
             if not existing.crafters then existing.crafters = {} end
             for ck, v in pairs(ckSet) do
@@ -1383,13 +1541,17 @@ end
 --   2. Leaf-data broadcast: { leaves = { itemKey = { data, hash, updatedAt } } }
 --      Receiver runs content-aware merge per leaf type.
 function Scanner:OnGuildDataReceived(sender, data, bytes)
+    addon:DebugPrint("Scanner: OnGuildDataReceived ENTRY sender=", sender, "bytes=", bytes or 0)
     if not data or type(data) ~= "table" then
-        addon:DebugPrint("Scanner: malformed data from", sender)
+        addon:DebugPrint("Scanner: BAIL — malformed data from", sender)
         return
     end
 
     local senderKey = data.charKey
-    if not senderKey or type(senderKey) ~= "string" then return end
+    if not senderKey or type(senderKey) ~= "string" then
+        addon:DebugPrint("Scanner: BAIL — no charKey in payload from", sender)
+        return
+    end
 
     local DS         = self.DS
     local GuildCache = self.GuildCache
@@ -1398,11 +1560,20 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     end
 
     -- Ignore echoes of our own broadcast.
-    if senderKey == addon:GetCharacterKey() then return end
+    if senderKey == addon:GetCharacterKey() then
+        addon:DebugPrint("Scanner: BAIL — own echo from", sender, "(senderKey=", senderKey, ")")
+        return
+    end
 
-    if not addon:GetGuildKey() then return end
+    if not addon:GetGuildKey() then
+        addon:DebugPrint("Scanner: BAIL — no guild key (not in a guild?) sender=", sender)
+        return
+    end
     local gdb = addon:GetGuildDb()
-    if not gdb then return end
+    if not gdb then
+        addon:DebugPrint("Scanner: BAIL — no gdb sender=", sender)
+        return
+    end
     local now = GetServerTime()
 
     -- ── Subhashes response ─────────────────────────────────────────────────
@@ -1421,6 +1592,16 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
         end
         if #toRequest > 0 and DS and DS.RequestData then
             DS:RequestData(sender, { type = "leaf-data", keys = toRequest })
+        end
+        -- Complete the parent session.  Without this, P2P keeps the parent
+        -- itemKey (e.g., "guild:cooldowns") in ACTIVE state until the
+        -- session timeout fires (~180s), which clogs the maxActiveSessions
+        -- slot and blocks dispatch of any new sessions — including the
+        -- per-character leaves we just requested.  The subhashes response
+        -- IS the completion of the parent's request; child leaf sessions
+        -- are tracked separately and complete on their own data arrival.
+        if DS and DS.p2p and data.parent then
+            DS.p2p:OnItemCompleted(data.parent, sender)
         end
         if addon.callbacks then
             addon.callbacks:Fire("SYNC_RECV", sender, bytes or 0)

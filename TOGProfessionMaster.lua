@@ -456,6 +456,9 @@ end
 function addon:RunBackfill()
     if addon.Scanner and addon.Scanner.BackfillReagentItemIds then
         addon.Scanner:BackfillReagentItemIds()
+        if addon.Scanner.BackfillBogusRecipeNames then
+            addon.Scanner:BackfillBogusRecipeNames()
+        end
     else
         Ace:Print("|cffff4444Scanner not available yet|r")
     end

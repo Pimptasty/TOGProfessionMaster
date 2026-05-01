@@ -1371,14 +1371,24 @@ function BrowserTab:DrawDetail(entry)
                     GameTooltip:Show()
                 end)
                 rf:SetScript("OnLeave", function() GameTooltip:Hide() end)
-                rf:SetScript("OnClick", function(_, btn)
+                -- OnMouseDown (not OnClick) for the row's shift-click-link behaviour.
+                -- Parent OnClick competes with the child bankBtn's OnClick on some
+                -- WoW builds — the parent-Button click handler swallows the event
+                -- and the inner [Bank] button's OnClick never fires.  Using
+                -- OnMouseDown for the row avoids the conflict (different event)
+                -- while preserving the shift-click-to-insert-link behaviour.
+                -- This matches the recipe-row mouse handler pattern at
+                -- BrowserTab.lua:936 (which always worked).
+                rf:SetScript("OnMouseDown", function(_, btn)
                     if btn == "LeftButton" and IsShiftKeyDown() and rLink then
                         ChatEdit_InsertLink(rLink)
                     end
                 end)
+                rf:SetScript("OnClick", nil)  -- ensure no stale OnClick from a prior render
             else
                 rf:SetScript("OnEnter", nil)
                 rf:SetScript("OnLeave", nil)
+                rf:SetScript("OnMouseDown", nil)
                 rf:SetScript("OnClick", nil)
             end
 

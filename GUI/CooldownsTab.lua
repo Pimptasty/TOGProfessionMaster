@@ -54,6 +54,20 @@ local function BuildRows(readyOnly)
     local gdb = addon:GetGuildDb()
     if not gdb then return {} end
 
+    -- Refresh the transmute catalogue from the recipe DB so any alchemist
+    -- spellIds that arrived via guild sync are recognised as transmutes.
+    -- Without this, non-alchemist viewers only have the static VANILLA_TRANSMUTES
+    -- IDs in data.transmutes — Anniversary client IDs that the alchemist
+    -- broadcast (with their own GetSpellLink fallback) don't match, so the
+    -- cooldown row falls through the "is this a transmute?" check and renders
+    -- as a regular row showing the specific spell name (e.g., "Earth to Water")
+    -- instead of the generic "[+] Transmute" group with the per-spell popup.
+    -- ScanCooldowns calls this too, but only fires on the LOCAL player's scan
+    -- events; non-alchemists rarely trigger it.  Cheap and idempotent.
+    if addon.RefreshTransmuteCatalogueFromRecipes then
+        addon:RefreshTransmuteCatalogueFromRecipes()
+    end
+
     local data = addon:GetCooldownData()
     local now  = GetServerTime()
     local rows = {}

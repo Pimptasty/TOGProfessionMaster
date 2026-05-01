@@ -121,6 +121,29 @@ function addon.Tooltip.Owner(frame)
     GameTooltip:SetOwner(frame, anchor)
 end
 
+--- Anchor an arbitrary frame relative to a source row using the same
+--- screen-half logic as Tooltip.Owner — popup appears just below the source
+--- when the source is in the top half of the screen, just above when in the
+--- bottom half.  Use this for click-popups (transmute group expansion, etc.)
+--- so they sit adjacent to the row that opened them and the user can mouse
+--- onto the popup without losing context.  Accepts either a raw Frame or an
+--- AceGUI widget (unwraps via the widget's .frame member).
+function addon.Tooltip.AnchorFrame(frame, source)
+    -- Unwrap AceGUI widgets — they aren't Frames themselves; the underlying
+    -- frame is at widget.frame.  Raw Frames have GetCenter directly.
+    local sourceFrame = source.GetCenter and source or source.frame
+    if not sourceFrame or not sourceFrame.GetCenter then return end
+    frame:ClearAllPoints()
+    local _, y = sourceFrame:GetCenter()
+    if y and y > GetScreenHeight() / 2 then
+        -- Source in upper half: place popup below source.
+        frame:SetPoint("TOPLEFT", sourceFrame, "BOTTOMLEFT", 0, 0)
+    else
+        -- Source in lower half: place popup above source.
+        frame:SetPoint("BOTTOMLEFT", sourceFrame, "TOPLEFT", 0, 0)
+    end
+end
+
 -- TOGBankClassic integration helpers
 -- Shared by BrowserTab and CooldownsTab (and any future caller).
 -- All three functions are no-ops when TOGBankClassic is not loaded.

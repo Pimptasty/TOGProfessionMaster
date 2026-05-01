@@ -340,7 +340,25 @@ function addon:RefreshTransmuteCatalogueFromRecipes()
     local added = 0
     for _, rd in pairs(gdb.recipes[171]) do
         if type(rd.name) == "string" and rd.name:find("[Tt]ransmute") then
-            -- Fallback name→ID lookup when the spellbook scan didn't catch it.
+            -- (1) Static-catalogue name match.  data.transmutes is populated
+            -- from the cumulative VANILLA / TBC / WRATH / CATA / MOP transmute
+            -- tables in this file — every transmute spell ID/name pair we've
+            -- ever shipped, regardless of which client the viewer is on.
+            -- Name-matching against this hardcoded data resolves the spellId
+            -- without needing GetSpellLink, which means it works for
+            -- non-alchemist viewers too (they don't "know" the spell, so
+            -- GetSpellLink would return nil for them).
+            if not rd.spellId then
+                for sid, sname in pairs(data.transmutes) do
+                    if sname == rd.name then
+                        rd.spellId = sid
+                        break
+                    end
+                end
+            end
+            -- (2) GetSpellLink fallback — works only for spells the local
+            -- player currently knows.  Catches any transmute IDs added by
+            -- a future expansion that aren't yet in the static catalogue.
             if not rd.spellId and GetSpellLink then
                 local link = GetSpellLink(rd.name)
                 if link then

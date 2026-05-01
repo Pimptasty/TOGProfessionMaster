@@ -153,9 +153,87 @@ local function BuildRows(readyOnly)
     for charKey, tg in pairs(transmuteGroups) do
         local remaining = tg.expiresAt - now
         if not readyOnly or remaining <= 0 then
-            -- Sort transmute spell IDs by name for a stable popup order.
-            table.sort(tg.spellIds, function(a, b)
-                return (GetSpellInfo(a) or tostring(a)) < (GetSpellInfo(b) or tostring(b))
+            -- Build the popup entries list.  Each entry is one row in the
+            -- popup — for transmutes that take multiple reagents (e.g.,
+            -- Arcanite Bar = Thorium Bar + Arcane Crystal), we emit ONE row
+            -- per reagent so the user can [Bank]-request or mail each
+            -- independently.  showName/showTime flags collapse repeated
+            -- name/time labels: they appear only on the first row of a
+            -- multi-reagent transmute, leaving sibling rows visually grouped.
+            local entries = {}
+            local seenSpellIds = {}
+
+            local function emitTransmute(spellId, displayName, recipeId, reagents)
+                if #reagents == 0 then
+                    table.insert(entries, {
+                        spellId = spellId, name = displayName, recipeId = recipeId,
+                        showName = true, showTime = true,
+                    })
+                    return
+                end
+                for ri, r in ipairs(reagents) do
+                    table.insert(entries, {
+                        spellId    = spellId,
+                        name       = displayName,
+                        recipeId   = recipeId,
+                        reagentId  = r.id,
+                        reagentQty = r.qty,
+                        showName   = ri == 1,
+                        showTime   = ri == 1,
+                    })
+                end
+            end
+
+            -- Cooldown-derived entries (definite spellIds).  Use hardcoded
+            -- transReagents (always single-reagent) for these.
+            for _, sid in ipairs(tg.spellIds) do
+                seenSpellIds[sid] = true
+                local rg = data.transReagents and data.transReagents[sid]
+                local reagents = rg and { { id = rg.id, qty = rg.qty or 1 } } or {}
+                emitTransmute(sid, GetSpellInfo(sid) or ("Spell " .. tostring(sid)), nil, reagents)
+            end
+
+            -- Recipe-DB-derived entries (covers transmutes the char knows but
+            -- hasn't cast).  Reagent source preference:
+            --   (1) rd.reagents — alchemist's actual trade-skill scan; the
+            --       only source that captures multi-reagent transmutes like
+            --       Arcanite (Thorium Bar + Arcane Crystal).
+            --   (2) data.transReagents[rd.spellId] — hard-coded single-reagent
+            --       map; used only when rd.reagents is empty/missing.
+            -- Order matters: data.transReagents collapses a multi-reagent
+            -- transmute into a single arbitrary reagent, so it must be the
+            -- fallback, not the primary.
+            if gdb.recipes and gdb.recipes[171] then
+                for recipeId, rd in pairs(gdb.recipes[171]) do
+                    if rd.crafters and rd.crafters[charKey]
+                       and type(rd.name) == "string"
+                       and rd.name:find("[Tt]ransmute")
+                       and not (rd.spellId and seenSpellIds[rd.spellId]) then
+                        if rd.spellId then seenSpellIds[rd.spellId] = true end
+                        local reagents = {}
+                        if type(rd.reagents) == "table" and rd.reagents[1] then
+                            for _, rge in ipairs(rd.reagents) do
+                                if rge.itemId then
+                                    reagents[#reagents + 1] = { id = rge.itemId, qty = rge.count or 1 }
+                                end
+                            end
+                        end
+                        if #reagents == 0 and rd.spellId
+                           and data.transReagents and data.transReagents[rd.spellId] then
+                            local rg = data.transReagents[rd.spellId]
+                            reagents[1] = { id = rg.id, qty = rg.qty or 1 }
+                        end
+                        emitTransmute(rd.spellId, rd.name, recipeId, reagents)
+                    end
+                end
+            end
+
+            -- Sort by name, keeping multi-reagent rows of the same transmute
+            -- adjacent (showName=true row first, then siblings).
+            table.sort(entries, function(a, b)
+                if a.name ~= b.name then return (a.name or "") < (b.name or "") end
+                if a.showName ~= b.showName then return a.showName == true end
+                return false
             end)
             table.insert(rows, {
                 charKey           = charKey,
@@ -166,8 +244,7 @@ local function BuildRows(readyOnly)
                 expiresAt         = tg.expiresAt,
                 isGroup           = true,
                 isTransmuteGroup  = true,
-                transmutes        = tg.spellIds,
-                transmuteReagents = data.transReagents,
+                transmuteEntries  = entries,
             })
         end
     end
@@ -700,7 +777,7 @@ function CooldownsTab:DrawRow(parent, row, now)
         end)
         cdNameLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
         cdNameLbl:SetCallback("OnClick", function(_widget, _event, button)
-            if button == "LeftButton" then self:ShowGroupPopup(row, now) end
+            if button == "LeftButton" then self:ShowGroupPopup(row, now, _widget) end
         end)
     else
         cdNameLbl:SetCallback("OnEnter", function(_widget)
@@ -803,7 +880,7 @@ end
 -- For transmute groups: shows each spell with its per-spell reagent and a mail button.
 -- For other groups: shows spell name and time remaining.
 -- Clicking the same row again or clicking outside closes the popup.
-function CooldownsTab:ShowGroupPopup(row, now)
+function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
     -- Toggle off if the same row was clicked again.
     if self._groupPopup then
         local wasRow = self._groupPopup._sourceRow == row
@@ -812,28 +889,42 @@ function CooldownsTab:ShowGroupPopup(row, now)
         if wasRow then return end
     end
 
-    local spells = row.transmutes or (row.group and row.group.spells and
-        (function()
-            local t = {}
-            for id in pairs(row.group.spells) do t[#t + 1] = id end
-            table.sort(t, function(a, b)
-                return (GetSpellInfo(a) or tostring(a)) < (GetSpellInfo(b) or tostring(b))
-            end)
-            return t
-        end)())
-    if not spells or #spells == 0 then return end
+    -- Two row shapes are supported:
+    --   transmute groups: row.transmuteEntries — list of {spellId, name,
+    --     reagentId, reagentQty} (spellId may be nil on Anniversary clients
+    --     where the alchemist's spellId backfill couldn't resolve all spells).
+    --   non-transmute groups: row.group.spells — set of spellIds.  These
+    --     always have spellIds (legacy hard-coded groups), no reagents.
+    local entries
+    if row.transmuteEntries and #row.transmuteEntries > 0 then
+        entries = row.transmuteEntries
+    elseif row.group and row.group.spells then
+        entries = {}
+        for sid in pairs(row.group.spells) do
+            entries[#entries + 1] = {
+                spellId = sid,
+                name    = GetSpellInfo(sid) or ("Spell " .. sid),
+            }
+        end
+        table.sort(entries, function(a, b) return a.name < b.name end)
+    end
+    if not entries or #entries == 0 then return end
 
-    local reagentsMap = row.transmuteReagents  -- nil for non-transmute groups
-    local charKey     = row.charKey
-    local gdb         = addon:GetGuildDb()
-    local charCds     = gdb and gdb.cooldowns[charKey] or {}
+    local hasReagents = false
+    for _, e in ipairs(entries) do
+        if e.reagentId then hasReagents = true; break end
+    end
+    local charKey = row.charKey
+    local gdb     = addon:GetGuildDb()
+    local charCds = gdb and gdb.cooldowns[charKey] or {}
 
     local rowH   = 14
     local pad    = 6
-    local popupW = 400
-    local totalH = pad + #spells * rowH + pad
+    local popupW = 460
+    local totalH = pad + #entries * rowH + pad
 
     local popup = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+    popup:Hide()  -- start hidden so popup:Show() at the end fires OnShow
     popup:SetWidth(popupW)
     popup:SetHeight(totalH)
     popup:SetFrameStrata("TOOLTIP")
@@ -845,7 +936,14 @@ function CooldownsTab:ShowGroupPopup(row, now)
     })
     popup:SetBackdropColor(0.06, 0.06, 0.06, 0.95)
     popup:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
-    popup:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    -- Position adjacent to the clicked widget using the shared screen-half
+    -- helper (mirrors Tooltip.Owner for arbitrary frames).  Falls back to
+    -- centered on UIParent if the caller didn't pass a source widget.
+    if sourceWidget then
+        addon.Tooltip.AnchorFrame(popup, sourceWidget)
+    else
+        popup:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    end
     popup._sourceRow = row
 
     -- Click-outside-to-close overlay
@@ -859,62 +957,112 @@ function CooldownsTab:ShowGroupPopup(row, now)
     end)
     popup:EnableMouse(true)
     popup:SetScript("OnMouseDown", function() end)  -- block click-through
-    popup:SetScript("OnHide", function() closeOnClick:Hide() end)
 
-    local mailW    = reagentsMap and 20 or 0
-    local bankW    = reagentsMap and 48 or 0
-    local reagentW = reagentsMap and 110 or 0
+    -- The popup itself sits at TOOLTIP strata, which is the same strata as
+    -- GameTooltip — so GameTooltip's default frame level loses to the popup's
+    -- inner buttons/labels and tooltips render visually behind them.  Bumping
+    -- the GameTooltip frame level after every Show() forces it on top.  Used
+    -- by every OnEnter handler in the popup that opens a tooltip.
+    local function showAbovePopup()
+        GameTooltip:Show()
+        GameTooltip:SetFrameLevel(popup:GetFrameLevel() + 20)
+    end
+
+    -- Per-row [Bank] button visibility refreshers.  TOGBankClassic constructs
+    -- its `_G.TOGBankClassic_Guild.Info.alts` lazily — the first call that
+    -- queries it during its uninitialized state returns 0 and we'd skip
+    -- creating the button.  Solution: always create the button, hide it when
+    -- stock is 0, and re-evaluate on popup OnShow plus a short deferred tick
+    -- so a late-loading TOGBank populates correctly without requiring the
+    -- user to close and reopen the popup.
+    local bankRefreshers = {}
+    popup:SetScript("OnHide", function() closeOnClick:Hide() end)
+    popup:SetScript("OnShow", function()
+        for _, fn in ipairs(bankRefreshers) do fn() end
+        C_Timer.After(0.1, function()
+            if popup:IsShown() then
+                for _, fn in ipairs(bankRefreshers) do fn() end
+            end
+        end)
+    end)
+
+    local mailW    = hasReagents and 20 or 0
+    local bankW    = hasReagents and 48 or 0
+    local reagentW = hasReagents and 110 or 0
     local timeW    = 70
     local nameW    = popupW - pad * 2 - reagentW - bankW - mailW - timeW - 6
 
-    for i, spellId in ipairs(spells) do
-        local expiresAt = charCds[spellId]
-        local timeStr   = expiresAt and SecondsToString(expiresAt - now) or "|cffaaaaaa?|r"
-        local timeColor = (expiresAt and (expiresAt - now) <= 0) and "|cff00ff00" or "|cffaaaaaa"
-        local reagentEntry = reagentsMap and reagentsMap[spellId]
-        local reagentId    = reagentEntry and reagentEntry.id
-        local reagentQty   = reagentEntry and reagentEntry.qty or 1
+    for i, e in ipairs(entries) do
+        local spellId    = e.spellId
+        local recipeId   = e.recipeId
+        local entryName  = e.name or (spellId and ("Spell " .. spellId)) or "?"
+        local reagentId  = e.reagentId
+        local reagentQty = e.reagentQty or 1
+        local showName   = e.showName ~= false
+        local showTime   = e.showTime ~= false
+        local expiresAt  = spellId and charCds[spellId]
+        local remaining  = expiresAt and (expiresAt - now) or nil
+        -- No spellId → cooldown can't be tracked, treat as Ready.
+        -- No cooldown record OR expired (remaining <= 0) → spell is castable.
+        local isReady   = (not expiresAt) or remaining <= 0
+        local timeStr   = isReady and "Ready" or SecondsToString(remaining)
+        local timeColor = isReady and "|cff00ff00" or "|cffaaaaaa"
 
         local yOff = -(pad + (i - 1) * rowH)
 
-        local entry = CreateFrame("Frame", nil, popup)
-        entry:SetHeight(rowH)
-        entry:SetPoint("TOPLEFT",  popup, "TOPLEFT",  pad, yOff)
-        entry:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -pad, yOff)
+        local rowFrame = CreateFrame("Frame", nil, popup)
+        rowFrame:SetHeight(rowH)
+        rowFrame:SetPoint("TOPLEFT",  popup, "TOPLEFT",  pad, yOff)
+        rowFrame:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -pad, yOff)
 
-        -- Spell name
-        local nameLbl = entry:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        -- Spell name (blank on the 2nd+ row of a multi-reagent transmute so
+        -- the visual grouping stays clean).
+        local nameLbl = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         nameLbl:SetPoint("LEFT", 0, 0)
         nameLbl:SetWidth(nameW)
         nameLbl:SetJustifyH("LEFT")
-        nameLbl:SetText(GetSpellInfo(spellId) or ("Spell " .. spellId))
+        nameLbl:SetText(showName and entryName or "")
 
-        local nameZone = CreateFrame("Frame", nil, entry)
-        nameZone:SetPoint("TOPLEFT",     entry, "TOPLEFT",    0, 0)
-        nameZone:SetPoint("BOTTOMRIGHT", entry, "BOTTOMLEFT", nameW, 0)
+        -- Mouseover tooltip for the name zone: spell tooltip when we have a
+        -- spellId, falls back to the recipe's output-item tooltip via recipeId
+        -- (which IS the output itemId for non-spell recipes).  Either way the
+        -- user gets some hover info on every row.
+        local nameZone = CreateFrame("Frame", nil, rowFrame)
+        nameZone:SetPoint("TOPLEFT",     rowFrame, "TOPLEFT",    0, 0)
+        nameZone:SetPoint("BOTTOMRIGHT", rowFrame, "BOTTOMLEFT", nameW, 0)
         nameZone:EnableMouse(true)
         nameZone:SetScript("OnEnter", function()
-            nameLbl:SetTextColor(1, 1, 0, 1)
-            addon.Tooltip.Owner(nameZone)
-            GameTooltip:SetHyperlink("spell:" .. spellId)
-            GameTooltip:Show()
+            if showName then nameLbl:SetTextColor(1, 1, 0, 1) end
+            if spellId then
+                addon.Tooltip.Owner(nameZone)
+                GameTooltip:SetHyperlink("spell:" .. spellId)
+                showAbovePopup()
+            elseif recipeId then
+                addon.Tooltip.Owner(nameZone)
+                GameTooltip:SetHyperlink("item:" .. recipeId)
+                showAbovePopup()
+            end
         end)
         nameZone:SetScript("OnLeave", function()
             nameLbl:SetTextColor(1, 1, 1, 1)
             GameTooltip:Hide()
         end)
 
-        -- Time remaining
-        local timeLbl = entry:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        -- Time remaining (only on the leading row of a multi-reagent transmute
+        -- so the cooldown isn't repeated for every reagent of the same spell).
+        local timeLbl = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         timeLbl:SetPoint("LEFT", nameW + 4, 0)
         timeLbl:SetWidth(timeW)
         timeLbl:SetJustifyH("LEFT")
-        timeLbl:SetText(timeColor .. timeStr .. "|r")
+        timeLbl:SetText(showTime and (timeColor .. timeStr .. "|r") or "")
 
         -- Reagent and mail button (transmute groups only)
         if reagentId then
-            local reagentLbl = entry:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            reagentLbl:SetPoint("RIGHT", entry, "RIGHT", -(mailW + 2), 0)
+            local reagentLbl = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            -- Sit to the LEFT of the bank button (which is at -(mailW+2)).
+            -- Previously this was anchored at the same offset as the bank
+            -- button, causing the label and button to overlap.
+            reagentLbl:SetPoint("RIGHT", rowFrame, "RIGHT", -(bankW + mailW + 4), 0)
             reagentLbl:SetWidth(reagentW)
             reagentLbl:SetJustifyH("RIGHT")
             reagentLbl:SetTextColor(0.65, 0.65, 0.65, 1)
@@ -929,15 +1077,15 @@ function CooldownsTab:ShowGroupPopup(row, now)
                 end)
             end
 
-            local reagentZone = CreateFrame("Frame", nil, entry)
-            reagentZone:SetPoint("TOPLEFT",     entry, "TOPRIGHT",    -(reagentW + bankW + mailW + 4), 0)
-            reagentZone:SetPoint("BOTTOMRIGHT", entry, "BOTTOMRIGHT", -(bankW + mailW + 4), 0)
+            local reagentZone = CreateFrame("Frame", nil, rowFrame)
+            reagentZone:SetPoint("TOPLEFT",     rowFrame, "TOPRIGHT",    -(reagentW + bankW + mailW + 4), 0)
+            reagentZone:SetPoint("BOTTOMRIGHT", rowFrame, "BOTTOMRIGHT", -(bankW + mailW + 4), 0)
             reagentZone:EnableMouse(true)
             reagentZone:SetScript("OnEnter", function()
                 reagentLbl:SetTextColor(1, 1, 0, 1)
                 addon.Tooltip.Owner(reagentZone)
                 GameTooltip:SetHyperlink("item:" .. reagentId)
-                GameTooltip:Show()
+                showAbovePopup()
             end)
             reagentZone:SetScript("OnLeave", function()
                 reagentLbl:SetTextColor(0.65, 0.65, 0.65, 1)
@@ -950,13 +1098,17 @@ function CooldownsTab:ShowGroupPopup(row, now)
                 end
             end)
 
-            -- [Bank] button (visible only when TOGBankClassic has stock)
-            if addon.Bank and addon.Bank.GetStock(reagentId) > 0 then
-                local bankBtn = CreateFrame("Button", nil, entry)
+            -- [Bank] button — always created, visibility toggled per row by
+            -- a refresher that runs on popup OnShow + a deferred tick (handles
+            -- TOGBankClassic's lazy Info.alts initialization that returns 0
+            -- on the first GetStock query of a session).
+            if addon.Bank then
+                local bankBtn = CreateFrame("Button", nil, rowFrame)
                 bankBtn:SetSize(bankW, rowH)
-                bankBtn:SetPoint("RIGHT", entry, "RIGHT", -(mailW + 2), 0)
+                bankBtn:SetPoint("RIGHT", rowFrame, "RIGHT", -(mailW + 2), 0)
                 bankBtn:SetNormalFontObject(GameFontNormalSmall)
                 bankBtn:SetText("|cFF88FF88[Bank]|r")
+                bankBtn:Hide()  -- starts hidden; refresher reveals when stock > 0
                 bankBtn:SetScript("OnClick", function()
                     local name = GetItemInfo(reagentId)
                     local link = select(2, GetItemInfo(reagentId))
@@ -966,31 +1118,47 @@ function CooldownsTab:ShowGroupPopup(row, now)
                     addon.Tooltip.Owner(bankBtn)
                     GameTooltip:SetText("Request from Bank", 1, 1, 1)
                     GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker.", nil, nil, nil, true)
-                    GameTooltip:Show()
+                    showAbovePopup()
                 end)
                 bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+                bankRefreshers[#bankRefreshers + 1] = function()
+                    if addon.Bank.GetStock(reagentId) > 0 then
+                        bankBtn:Show()
+                    else
+                        bankBtn:Hide()
+                    end
+                end
             end
 
             -- Mail icon button
-            local mailBtn = CreateFrame("Button", nil, entry)
+            local mailBtn = CreateFrame("Button", nil, rowFrame)
             mailBtn:SetSize(16, 16)
-            mailBtn:SetPoint("RIGHT", entry, "RIGHT", 0, 0)
+            mailBtn:SetPoint("RIGHT", rowFrame, "RIGHT", 0, 0)
             mailBtn:SetNormalTexture("Interface\\Icons\\INV_Letter_15")
             mailBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
             mailBtn:SetScript("OnClick", function()
-                local spellName = GetSpellInfo(spellId) or ("Spell " .. spellId)
+                local spellName = (spellId and GetSpellInfo(spellId)) or entryName
                 CdMail_PrepareSupplyMail(charKey, spellName, reagentId, reagentQty)
             end)
             mailBtn:SetScript("OnEnter", function()
                 addon.Tooltip.Owner(mailBtn)
                 GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1)
                 GameTooltip:AddLine(L["MailBtnTooltipDesc"] or "Open a mailbox, then click to mail reagents to this player.", nil, nil, nil, true)
-                GameTooltip:Show()
+                showAbovePopup()
             end)
             mailBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
         end
     end
 
     popup:Show()
+    -- Belt-and-suspenders: invoke refreshers directly even if OnShow already
+    -- did so, in case something about the WoW frame lifecycle skips it.  The
+    -- refreshers are idempotent (just toggle Show/Hide based on current stock).
+    for _, fn in ipairs(bankRefreshers) do fn() end
+    C_Timer.After(0.1, function()
+        if popup:IsShown() then
+            for _, fn in ipairs(bankRefreshers) do fn() end
+        end
+    end)
     self._groupPopup = popup
 end

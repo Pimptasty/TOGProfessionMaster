@@ -286,8 +286,19 @@ function Scanner:InitDeltaSync()
 
         -- Leaf sync accepted: peer has data we need.  Request the appropriate
         -- payload type via baseline.type encoded in the QUERY message.
+        --
+        -- Online gate: skip if the peer went offline between their broadcast
+        -- and this dispatch. DeltaSync has its own internal offline check
+        -- but that races with GUILD_ROSTER_UPDATE propagation; gating here
+        -- catches the common case where GuildCache has already seen the
+        -- offline transition. Mirrors the TOGBankClassic pattern from
+        -- DeltaComms.lua — every send site gets a guard before dispatch.
         onSyncAccepted = function(itemKey, sender)
             addon:DebugPrint("Scanner: onSyncAccepted itemKey=", itemKey, "sender=", sender)
+            if Scanner.GuildCache and not Scanner.GuildCache:IsPlayerOnline(sender) then
+                addon:DebugPrint("Scanner:   → skip RequestData — peer offline:", sender)
+                return
+            end
             if itemKey == "guild:cooldowns" or itemKey == "guild:accountchars" then
                 -- Roll-up mismatch — ask for per-character sub-hashes.
                 addon:DebugPrint("Scanner:   → sending subhashes RequestData to", sender)
@@ -311,7 +322,52 @@ end
 -- Event wiring — hooked into the Ace lifecycle via hooksecurefunc
 -- ---------------------------------------------------------------------------
 
+-- ---------------------------------------------------------------------------
+-- Chat filter: swallow "No player named X is currently playing." spam
+-- ---------------------------------------------------------------------------
+-- The race window: a peer broadcasts hashes on the GUILD channel, then
+-- logs out. Our addon (or DeltaSync's internal P2P logic) decides to
+-- whisper them an OFFER / RequestData based on that broadcast. The
+-- whisper hits the server, the server can't find the player, the server
+-- replies with this system message, WoW prints it to the active chat
+-- frame. A guild with active sync can produce this spam dozens of times
+-- per logout event.
+--
+-- Mirrors the TOGBankClassic pattern in Modules/Events.lua:62-77 — fast
+-- plain-text prefix check first (cheap on the high-volume CHAT_MSG_SYSTEM
+-- stream which carries every guild login/logout/achievement message),
+-- then the full pattern match only when the prefix matched. Suppresses
+-- both quote variants ("No player named 'X'..." and "No player named
+-- X...") and the "Player not found" alternate phrasing seen on some
+-- clients.
+--
+-- Trade-off: a manual /w to a player who logged off ALSO won't show the
+-- error — the TOGBank precedent accepted this because the addon itself
+-- generates orders of magnitude more such errors than user typos do, and
+-- the lack of a typing response in the chat window already signals the
+-- failed send. If the player is in your guild the offline status is
+-- visible in the guild roster anyway.
+local _chatFilterInstalled = false
+local function InstallChatFilter()
+    if _chatFilterInstalled or not ChatFrame_AddMessageEventFilter then return end
+    _chatFilterInstalled = true
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(_self, _event, message)
+        if not message then return false end
+        if message:find("No player named ", 1, true) then
+            if message:match("^No player named .+ is currently playing%.$") then
+                return true  -- suppress
+            end
+        end
+        if message:find("Player not found", 1, true) then
+            return true  -- suppress
+        end
+        return false
+    end)
+end
+
 function Scanner:Init()
+    InstallChatFilter()
+
     -- Trade skill window (TBC+/Wrath/Cata/MoP — most professions)
     Ace:RegisterEvent("TRADE_SKILL_SHOW",   function() Scanner:OnTradeSkillEvent() end)
     Ace:RegisterEvent("TRADE_SKILL_UPDATE", function() Scanner:OnTradeSkillEvent() end)
@@ -1617,7 +1673,14 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
             end
         end
         if #toRequest > 0 and DS and DS.RequestData then
-            DS:RequestData(sender, { type = "leaf-data", keys = toRequest })
+            -- Online gate (mirrors onSyncAccepted above): peer may have
+            -- gone offline between sending us their subhashes and our
+            -- follow-up leaf-data request landing on the wire.
+            if Scanner.GuildCache and not Scanner.GuildCache:IsPlayerOnline(sender) then
+                addon:DebugPrint("Scanner:   → skip leaf-data RequestData — peer offline:", sender)
+            else
+                DS:RequestData(sender, { type = "leaf-data", keys = toRequest })
+            end
         end
         -- Complete the parent session.  Without this, P2P keeps the parent
         -- itemKey (e.g., "guild:cooldowns") in ACTIVE state until the

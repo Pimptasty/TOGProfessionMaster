@@ -31,24 +31,16 @@ CooldownsTab._readyOnly = false
 CooldownsTab._filterProf = 0
 CooldownsTab._filterCd   = "all"
 
--- Profession spell-id → display name. Mirrors BrowserTab's static list.
-local PROF_NAMES = {
-    [171] = "Alchemy",
-    [164] = "Blacksmithing",
-    [185] = "Cooking",
-    [333] = "Enchanting",
-    [202] = "Engineering",
-    [165] = "Leatherworking",
-    [186] = "Mining",
-    [197] = "Tailoring",
-    [755] = "Jewelcrafting",
-    [773] = "Inscription",
-}
+-- Profession display names come from the shared addon.PROF_NAMES table
+-- in TOGProfessionMaster.lua — single source of truth for every tab.
 
--- Version availability helpers. Cumulative — a TBC entry stays available on
+-- Cumulative version availability helpers. A TBC entry stays available on
 -- Wrath/Cata/MoP because the cooldown spells from earlier expansions still
 -- exist on later clients (the cooldown data tables are loaded cumulatively
--- in Data/CooldownIds.lua for the same reason).
+-- in Data/CooldownIds.lua for the same reason). Profession-level version
+-- gating (e.g. JC = TBC+, Inscription = Wrath+) lives in
+-- addon.PROF_AVAILABILITY; these per-cooldown helpers gate individual
+-- shared-timer entries within COOLDOWN_BY_PROFESSION below.
 local function fromVanilla() return true end
 local function fromTBC()     return addon.isTBC   or addon.isWrath or addon.isCata or addon.isMoP end
 local function fromWrath()   return addon.isWrath or addon.isCata  or addon.isMoP end
@@ -809,16 +801,25 @@ function CooldownsTab:Draw(container)
     -- nothing meaningful to filter by until the user narrows the scope.
     local brand = addon.BrandColor or "ffFF8000"
 
+    -- Build the profession dropdown from COOLDOWN_BY_PROFESSION (only
+    -- professions that have at least one cooldown applicable to the
+    -- current client version make the cut). Belt-and-suspenders the
+    -- per-cooldown isAvailable() check with addon.IsProfessionAvailable
+    -- — defensive against any future profession-level gating that the
+    -- per-cooldown predicates might miss. Names from the shared
+    -- addon.PROF_NAMES master table.
     local profList  = { [0] = L["AllProfessions"] }
     local profOrder = { 0 }
     for profId, entries in pairs(COOLDOWN_BY_PROFESSION) do
-        local anyAvailable = false
-        for _, cd in ipairs(entries) do
-            if cd.isAvailable() then anyAvailable = true; break end
-        end
-        if anyAvailable then
-            profList[profId] = PROF_NAMES[profId] or ("Profession " .. profId)
-            profOrder[#profOrder + 1] = profId
+        if addon.IsProfessionAvailable(profId) then
+            local anyAvailable = false
+            for _, cd in ipairs(entries) do
+                if cd.isAvailable() then anyAvailable = true; break end
+            end
+            if anyAvailable then
+                profList[profId] = addon.PROF_NAMES[profId] or ("Profession " .. profId)
+                profOrder[#profOrder + 1] = profId
+            end
         end
     end
     table.sort(profOrder, function(a, b)

@@ -26,22 +26,13 @@ addon.MissingRecipesTab = MissingRecipesTab
 -- with CooldownsTab.WINDOW_SIZE — that's the whole point.
 MissingRecipesTab.WINDOW_SIZE = { width = 720, height = 500, locked = true }
 
--- Profession spell-id → display name. Mirrors BrowserTab's static list and
--- adds the two extras (Fishing 356, Poisons 40) that PS provides data for so
--- the dropdown can offer them when those skills appear in the local roster.
-local PROF_NAMES = {
-    [171] = "Alchemy",
-    [164] = "Blacksmithing",
-    [185] = "Cooking",
-    [333] = "Enchanting",
-    [202] = "Engineering",
-    [129] = "First Aid",
-    [165] = "Leatherworking",
-    [186] = "Mining",
-    [197] = "Tailoring",
-    [356] = "Fishing",
-    [40]  = "Poisons",
-}
+-- Profession display names come from the shared addon.PROF_NAMES table
+-- in TOGProfessionMaster.lua (covers everything Vanilla through MoP).
+-- Per-version filtering happens via addon.IsProfessionAvailable in the
+-- dropdown build below — a profession that doesn't exist on the current
+-- client (Jewelcrafting on Vanilla, Inscription on Vanilla / TBC,
+-- Poisons on Wrath+) is hidden even if the character somehow has stale
+-- skill data for it cached.
 
 -- Source key → locale key. Order here drives display order on each row.
 local SRC_LABELS = {
@@ -128,18 +119,23 @@ local function GetCharactersWithProfessions()
 end
 
 -- Return profIds the given charKey has tracked skills for, restricted to
--- professions we have a static recipe DB for.
+-- (a) professions we have a static recipe DB for AND (b) professions
+-- that exist on the current client version. The version check guards
+-- against stale skill data — e.g. a character whose Wrath-era data
+-- lingers in the SavedVariables shouldn't surface Inscription on a
+-- Vanilla client.
 local function GetProfessionsForCharacter(charKey)
     local gdb = addon:GetGuildDb()
     if not gdb or not gdb.skills or not gdb.skills[charKey] then return {} end
     local out = {}
     for profId in pairs(gdb.skills[charKey]) do
-        if addon.recipeDB and addon.recipeDB[profId] then
+        if addon.recipeDB and addon.recipeDB[profId]
+           and addon.IsProfessionAvailable(profId) then
             table.insert(out, profId)
         end
     end
     table.sort(out, function(a, b)
-        return (PROF_NAMES[a] or tostring(a)) < (PROF_NAMES[b] or tostring(b))
+        return (addon.PROF_NAMES[a] or tostring(a)) < (addon.PROF_NAMES[b] or tostring(b))
     end)
     return out
 end
@@ -308,7 +304,7 @@ function MissingRecipesTab:Draw(container)
 
     local profList, profOrder = {}, {}
     for _, pid in ipairs(profIds) do
-        profList[pid] = PROF_NAMES[pid] or ("Profession " .. pid)
+        profList[pid] = addon.PROF_NAMES[pid] or ("Profession " .. pid)
         table.insert(profOrder, pid)
     end
     if (self._profId == 0 or not profList[self._profId]) and #profIds > 0 then

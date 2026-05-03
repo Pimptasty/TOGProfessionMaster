@@ -1,5 +1,30 @@
 # TOG Profession Master Changelog
 
+## [v0.3.1] (2026-05-03) - Version-aware profession dropdowns + de-duplicated profession lookup
+
+### Bug Fixes
+
+- **Jewelcrafting and Inscription missing from the Profession Browser dropdown on TBC / Wrath / Cata / MoP clients** — `BrowserTab.ALL_PROFESSIONS` was a hardcoded static list of 9 Vanilla professions (the comment literally said "Static list of all Vanilla crafting professions"). Users on later clients couldn't filter by JC (added in TBC) or Inscription (added in Wrath) even when guildmates had broadcast recipes for them. Now the Browser dropdown derives from the shared `addon.PROF_NAMES` master table filtered by `addon.IsProfessionAvailable(profId)` and `addon.CRAFTING_PROFS` set, so JC appears on TBC+ and Inscription appears on Wrath+ automatically. Location: [GUI/BrowserTab.lua:GetProfDropdownEntries](GUI/BrowserTab.lua).
+
+### Improvements
+
+- **De-duplicated profession lookup tables** — `PROF_NAMES` was previously copy-pasted in 4 places (`addon.PROF_NAMES` in TOGProfessionMaster.lua, plus local `PROF_NAMES` in CooldownsTab / MissingRecipesTab, plus `ALL_PROFESSIONS` in BrowserTab) and had drifted out of sync (Cooldowns had JC + Inscription, Missing didn't, Browser had neither). Consolidated into one master table on `addon.PROF_NAMES` with all 16 known professions. Adding a profession or fixing a display name is now one edit instead of four, and the three tabs can't drift apart again. Location: [TOGProfessionMaster.lua](TOGProfessionMaster.lua), [GUI/BrowserTab.lua](GUI/BrowserTab.lua), [GUI/CooldownsTab.lua](GUI/CooldownsTab.lua), [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua).
+
+- **Version-aware profession dropdowns across every tab** — new `addon.PROF_AVAILABILITY` map declares which client versions a profession exists on (default = always-available / Vanilla). New `addon.IsProfessionAvailable(profId)` helper returns true/false based on the current `addon.is*` flags. Every tab's profession dropdown filters by this:
+  - **Jewelcrafting (755)** — TBC, Wrath, Cata, Mists only (hidden on Vanilla)
+  - **Inscription (773)** — Wrath, Cata, Mists only (hidden on Vanilla / TBC)
+  - **Poisons (40)** — Vanilla, TBC only (hidden on Wrath+ since the WotLK 3.1 patch made Rogue poisons automatic)
+
+  No data migration: profession IDs and saved selections stay valid; the existing "selected profession not in list → fall back to first available" guards in each tab handle stale per-character state silently. Location: [TOGProfessionMaster.lua](TOGProfessionMaster.lua).
+
+- **New `addon.CRAFTING_PROFS` set** — explicit list of professions that produce learnable recipes (i.e. belong in the Browser / Missing Recipes lists). Excludes pure gathering (Herbalism / Skinning / Fishing). Mining stays in because Smelting produces craftable bars. Used by BrowserTab to filter its dropdown; Cooldowns and Missing have their own implicit category filters (cooldown definitions / character skill data). Location: [TOGProfessionMaster.lua](TOGProfessionMaster.lua).
+
+### Known Gaps
+
+- **Missing Recipes data for Jewelcrafting and Inscription** — the dropdown now shows JC on TBC+ and Inscription on Wrath+, but our static `recipeDB` / `sourceDB` (copied from PersonalShopper, which is Vanilla-only) doesn't contain entries for these professions yet. A character with JC / Inscription will see the profession in the dropdown but no scrolls listed. Curating the recipe-scroll universe and source tags for these professions is planned for v0.3.2.
+
+---
+
 ## [v0.3.0] (2026-05-03) - Missing Recipes tab + AH scanner + shared widget factories
 
 ### New Features

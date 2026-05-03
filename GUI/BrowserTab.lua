@@ -124,30 +124,31 @@ local function GetGuildDb()
     return addon:GetGuildDb()
 end
 
--- Static list of all Vanilla crafting professions, sorted A->Z.
-local ALL_PROFESSIONS = {
-    { profId = 171, name = "Alchemy"        },
-    { profId = 164, name = "Blacksmithing"  },
-    { profId = 185, name = "Cooking"        },
-    { profId = 333, name = "Enchanting"     },
-    { profId = 202, name = "Engineering"    },
-    { profId = 129, name = "First Aid"      },
-    { profId = 165, name = "Leatherworking" },
-    { profId = 186, name = "Mining"         },
-    { profId = 197, name = "Tailoring"      },
-}
-
+-- Profession dropdown entries — built fresh each call from the shared
+-- master list so a profession added to addon.PROF_NAMES (in
+-- TOGProfessionMaster.lua) automatically appears here on the right
+-- versions. Filters by:
+--   • addon.CRAFTING_PROFS — Browser shows craftable recipes only,
+--     skipping pure gathering professions (Herbalism / Skinning /
+--     Fishing) and Smelting (which is a sub-skill of Mining).
+--   • addon.IsProfessionAvailable — hide professions that don't exist
+--     on this client version (Jewelcrafting on Vanilla, Inscription on
+--     Vanilla / TBC, Poisons on Wrath+).
 local function GetProfDropdownEntries()
     local entries = { { profId = 0, name = L["AllProfessions"] } }
-    for _, p in ipairs(ALL_PROFESSIONS) do
-        table.insert(entries, p)
+    local crafting = {}
+    for profId in pairs(addon.CRAFTING_PROFS or {}) do
+        if addon.IsProfessionAvailable(profId) then
+            crafting[#crafting + 1] = profId
+        end
+    end
+    table.sort(crafting, function(a, b)
+        return (addon.PROF_NAMES[a] or "") < (addon.PROF_NAMES[b] or "")
+    end)
+    for _, profId in ipairs(crafting) do
+        entries[#entries + 1] = { profId = profId, name = addon.PROF_NAMES[profId] }
     end
     return entries
-end
-
-local PROF_ID_TO_NAME = {}
-for _, p in ipairs(ALL_PROFESSIONS) do
-    PROF_ID_TO_NAME[p.profId] = p.name
 end
 
 local function BuildRecipeList(profId, viewMode, searchText)
@@ -161,7 +162,7 @@ local function BuildRecipeList(profId, viewMode, searchText)
 
     local function processProf(thisProfId, profRecipes)
         if not profRecipes then return end
-        local profName   = PROF_ID_TO_NAME[thisProfId] or ""
+        local profName   = addon.PROF_NAMES[thisProfId] or ""
         local profIconId = addon.ProfessionIcons and addon.ProfessionIcons[thisProfId]
                         or (addon.ProfessionIconFallback or 134400)
         for recipeId, rd in pairs(profRecipes) do

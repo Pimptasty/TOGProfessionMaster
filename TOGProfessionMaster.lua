@@ -311,12 +311,63 @@ end
 -- Crafter alert
 -- ---------------------------------------------------------------------------
 
+-- Master profession ID → display name table. Shared across every tab so
+-- a single edit here propagates to Browser / Cooldowns / Missing Recipes
+-- dropdowns and the Tooltip / crafter-alert lookups. Per-version filtering
+-- happens via addon.PROF_AVAILABILITY below; per-tab category filtering
+-- happens via addon.CRAFTING_PROFS.
 addon.PROF_NAMES = {
     [171] = "Alchemy",       [164] = "Blacksmithing", [185] = "Cooking",
     [333] = "Enchanting",    [202] = "Engineering",   [129] = "First Aid",
     [165] = "Leatherworking",[186] = "Mining",        [197] = "Tailoring",
     [182] = "Herbalism",     [393] = "Skinning",      [755] = "Jewelcrafting",
     [773] = "Inscription",   [356] = "Fishing",       [374] = "Smelting",
+    [40]  = "Poisons",
+}
+
+-- Per-profession version availability. Each entry is a function that
+-- returns true when the profession exists on the current client. Default
+-- (no entry) = available on every supported client (Vanilla onwards).
+--
+-- Functions, not flags — the addon.is* version flags aren't set until
+-- Compat.lua runs (loaded after this file), so anything evaluated at
+-- assignment time would see nil. Calls happen at dropdown-build time
+-- where the flags are guaranteed populated.
+addon.PROF_AVAILABILITY = {
+    [755] = function() return addon.isTBC   or addon.isWrath or addon.isCata or addon.isMists end,  -- Jewelcrafting (TBC+)
+    [773] = function() return addon.isWrath or addon.isCata  or addon.isMists end,                  -- Inscription (Wrath+)
+    [40]  = function() return addon.isVanilla or addon.isTBC end,                                   -- Poisons (made automatic in WotLK 3.1)
+}
+
+--- True if this profession exists on the current WoW client version.
+-- Used by every tab's profession dropdown to hide professions that
+-- aren't in the current expansion (e.g. Jewelcrafting on Vanilla,
+-- Poisons on Wrath+).
+function addon.IsProfessionAvailable(profId)
+    local check = addon.PROF_AVAILABILITY[profId]
+    if not check then return true end  -- default: always available
+    return check() == true
+end
+
+-- Crafting professions — produce learnable recipes that belong in the
+-- Browser / Missing Recipes lists. Excludes pure gathering professions
+-- (Herbalism / Skinning / Fishing) which have no craft output. Mining
+-- IS included because Smelting produces craftable bars. Cooldowns tab
+-- ignores this; its dropdown is filtered by COOLDOWN_BY_PROFESSION
+-- presence instead.
+addon.CRAFTING_PROFS = {
+    [171] = true,  -- Alchemy
+    [164] = true,  -- Blacksmithing
+    [185] = true,  -- Cooking
+    [333] = true,  -- Enchanting
+    [202] = true,  -- Engineering
+    [129] = true,  -- First Aid
+    [165] = true,  -- Leatherworking
+    [186] = true,  -- Mining (smelting)
+    [197] = true,  -- Tailoring
+    [755] = true,  -- Jewelcrafting (TBC+)
+    [773] = true,  -- Inscription (Wrath+)
+    [40]  = true,  -- Poisons (Vanilla / TBC only)
 }
 
 function addon:OnCrafterCameOnline(charKey)

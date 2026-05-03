@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m ' *)",
+      "Bash(git -C \"c:/Program Files \\(x86\\)/World of Warcraft/_classic_era_/Interface/AddOns/TOGProfessionMaster\" add CHANGELOG.md .luarc.json GUI/BrowserTab.lua TOGProfessionMaster.lua Tooltip.lua)",
+      "Bash(git -C 'c:/Program Files \\(x86\\)/World of Warcraft/_classic_era_/Interface/AddOns/TOGProfessionMaster' commit -m ' *)",
+      "Bash(git -C \"c:/Program Files \\(x86\\)/World of Warcraft/_classic_era_/Interface/AddOns/TOGProfessionMaster\" status)",
+      "Bash(git -C \"c:/Program Files \\(x86\\)/World of Warcraft/_classic_era_/Interface/AddOns/TOGProfessionMaster\" diff --stat)",
+      "Bash(git -C \"c:/Program Files \\(x86\\)/World of Warcraft/_classic_era_/Interface/AddOns/TOGProfessionMaster\" add CHANGELOG.md GUI/MainWindow.lua GUI/ShoppingListTab.lua)"
+    ]
+  }
+}

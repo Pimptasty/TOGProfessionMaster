@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    ".pkgmeta": "yaml",
+    "pkgmeta.yaml": "yaml"
+  }
+}

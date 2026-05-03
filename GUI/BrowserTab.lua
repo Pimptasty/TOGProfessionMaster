@@ -38,6 +38,24 @@ local DP_GAP  = 4     -- gap between left list and detail panel
 local DP_ROW  = 14    -- row height inside the detail panel
 local DP_ICON = 18    -- recipe icon size in detail header
 
+-- Minimum row width below which the recipe pool's name + crafter list +
+-- [Bank] start to stack and overlap. Computed from the row's anchor
+-- arithmetic: 22 (icon area) + 160 (nameLbl fixed width) + 80 (minimum
+-- crafter list area) + 56 (bank button + right pad) = 318 for the recipe
+-- pool, + 4 (DP_GAP) + 268 (DP_W) = 590 total content. Add safety to
+-- guarantee fit. MainWindow reads this and uses max() with the other
+-- tabs' minimums when setting SetResizeBounds — preventing the user
+-- from dragging the window narrow enough to break this tab's layout.
+BrowserTab.MIN_ROW_WIDTH = 600
+
+-- Window size policy — Browser is the ONLY resizable tab. Unlike Cooldowns
+-- and Missing (which lock to a fixed size for content predictability),
+-- Browser benefits from extra width for the recipe-pool / detail-panel
+-- split. MainWindow reads this on tab switch: it restores the user's last
+-- Browser-tab size from saved-vars (browserWidth/browserHeight) and
+-- enforces this minimum via SetResizeBounds.
+BrowserTab.WINDOW_SIZE = { minWidth = BrowserTab.MIN_ROW_WIDTH + 80, minHeight = 350 }
+
 -- ---------------------------------------------------------------------------
 -- TOGBankClassic integration helpers
 -- ---------------------------------------------------------------------------
@@ -294,13 +312,8 @@ function BrowserTab:Draw(container)
         end
         self:RefreshList()
     end)
-    profDD.frame:SetScript("OnEnter", function(f)
-        addon.Tooltip.Owner(f)
-        GameTooltip:SetText("Profession Filter", 1, 1, 1)
-        GameTooltip:AddLine("Filter the recipe list to a single profession, or show all.", nil, nil, nil, true)
-        GameTooltip:Show()
-    end)
-    profDD.frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    addon.GUI.AttachTooltip(profDD, "Profession Filter",
+        "Filter the recipe list to a single profession, or show all.")
     toolbar:AddChild(profDD)
 
     local sp = AceGUI:Create("Label")
@@ -315,13 +328,8 @@ function BrowserTab:Draw(container)
         self._searchText = text
         self:RefreshList()
     end)
-    search.frame:SetScript("OnEnter", function(f)
-        addon.Tooltip.Owner(f)
-        GameTooltip:SetText("Search Recipes", 1, 1, 1)
-        GameTooltip:AddLine("Type to filter recipes by name.", nil, nil, nil, true)
-        GameTooltip:Show()
-    end)
-    search.frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    addon.GUI.AttachTooltip(search, "Search Recipes",
+        "Type to filter recipes by name.")
     toolbar:AddChild(search)
 
     local sp2 = AceGUI:Create("Label")
@@ -345,6 +353,49 @@ function BrowserTab:Draw(container)
         end)
     end)
     toolbar:AddChild(viewDD)
+
+    -- 8px spacer to match the existing toolbar gap convention (between
+    -- profession dropdown / search / view dropdown).
+    local sp3 = AceGUI:Create("Label"); sp3:SetWidth(8); toolbar:AddChild(sp3)
+
+    -- Scan AH button — kicks off a throttled scan over every reagent in
+    -- the user's shopping list. After completion, reagent rows in the
+    -- shopping list section AND the detail panel that have live AH
+    -- listings get an [AH] button (gated on AH.GetListingsFor — same
+    -- pattern as [Bank] gating on Bank.GetStock). Disabled when AH is
+    -- closed; shows scan progress while running. Click during scan
+    -- cancels. Mirrors the Missing Recipes tab's Scan AH button.
+    addon.GUI.MakeScanAHButton({
+        parent        = toolbar,
+        tabName       = "browser",
+        label         = L["BrowserScanAH"],
+        progressLabel = L["BrowserScanAHProgress"],
+        tooltipTitle  = L["BrowserScanAH"],
+        tooltipDesc   = L["BrowserScanAHDesc"],
+        noItemsError  = "Shopping list is empty — nothing to scan.",
+        getItems      = function()
+            local items, seen = {}, {}
+            for _, ent in pairs(Ace.db.char.shoppingList or {}) do
+                for _, r in ipairs((ent and ent.reagents) or {}) do
+                    local id   = r.itemId
+                    local name = r.name
+                    if id and type(name) == "string" and name ~= "" and not seen[id] then
+                        seen[id] = true
+                        items[#items + 1] = { itemId = id, itemName = name }
+                    end
+                end
+            end
+            return items
+        end,
+        onRefresh     = function()
+            if BrowserTab._slSection then
+                BrowserTab:FillShoppingListSection(BrowserTab._slSection)
+            end
+            if BrowserTab._selectedEntry then
+                BrowserTab:DrawDetail(BrowserTab._selectedEntry)
+            end
+        end,
+    })
 
     -- ---- Shopping list (below toolbar) -------------------------------------
     if hasSL then
@@ -605,6 +656,26 @@ function BrowserTab:FillShoppingListSection(container)
         bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
         f.bankBtn = bankBtn
 
+        -- [AH] button — visible only when the AH scanner has found live
+        -- listings for this reagent (gates on AH.GetListingsFor.count > 0).
+        -- Click jumps the AH browse search to this reagent's name. Anchor
+        -- gets re-set per-row in the update loop below depending on
+        -- whether [Bank] is also showing, so the two buttons sit cleanly
+        -- side-by-side without a gap when only one is visible.
+        local ahBtn = CreateFrame("Button", nil, f)
+        ahBtn:SetSize(36, 14)
+        ahBtn:SetNormalFontObject(GameFontNormalSmall)
+        ahBtn:SetText("|cFF88CCFF[AH]|r")
+        ahBtn:Hide()
+        ahBtn:SetScript("OnEnter", function()
+            addon.Tooltip.Owner(ahBtn)
+            GameTooltip:SetText("Search Auction House", 1, 1, 1)
+            GameTooltip:AddLine("Open this reagent in the AH browse search.", nil, nil, nil, true)
+            GameTooltip:Show()
+        end)
+        ahBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        f.ahBtn = ahBtn
+
         self._slReagentPool[idx] = f
         return f
     end
@@ -759,13 +830,51 @@ function BrowserTab:FillShoppingListSection(container)
                 local needed = (r.count or 1) * qty
                 rf.countLbl:SetText("|cffffffff x" .. needed .. "|r")
 
-                if rItemId and addon.Bank and addon.Bank.GetStock(rItemId) > 0 then
+                local hasBank = rItemId and addon.Bank and addon.Bank.GetStock(rItemId) > 0
+                local ahData  = rItemId and addon.AH and addon.AH.GetListingsFor(rItemId)
+                local hasAH   = ahData and (ahData.count or 0) > 0 and r.name and r.name ~= ""
+
+                if hasBank then
                     rf.bankBtn:SetScript("OnClick", function()
                         addon.Bank.ShowRequestDialog(rItemId, r.name or "", rItemLink)
                     end)
+                end
+                if hasAH then
+                    local rName = r.name
+                    rf.ahBtn:SetScript("OnClick", function()
+                        addon.AH.SearchFor(rName)
+                    end)
+                end
+
+                -- Dynamic anchoring: order is [Bank] [AH] (left to right).
+                -- count→bank gap is 8 (not 4) to balance the perceived gap
+                -- with bank→ah: countLbl's right-justified text is flush
+                -- against its frame edge, but both [Bank] and [AH] have
+                -- internal text padding inside their button frames, so the
+                -- visible "]" / "[" gap is wider than a 4px frame gap. 8px
+                -- frame gap to count compensates for the missing left-text-
+                -- padding that count doesn't have. When only one button
+                -- shows, it anchors to countLbl directly so there's never an
+                -- empty slot gap from the other.
+                rf.bankBtn:ClearAllPoints()
+                rf.ahBtn:ClearAllPoints()
+                if hasBank then
+                    rf.bankBtn:SetPoint("LEFT", rf.countLbl, "RIGHT", 8, 0)
                     rf.bankBtn:Show()
+                    if hasAH then
+                        rf.ahBtn:SetPoint("LEFT", rf.bankBtn, "RIGHT", 4, 0)
+                        rf.ahBtn:Show()
+                    else
+                        rf.ahBtn:Hide()
+                    end
                 else
                     rf.bankBtn:Hide()
+                    if hasAH then
+                        rf.ahBtn:SetPoint("LEFT", rf.countLbl, "RIGHT", 8, 0)
+                        rf.ahBtn:Show()
+                    else
+                        rf.ahBtn:Hide()
+                    end
                 end
 
                 rf:Show()
@@ -1210,6 +1319,22 @@ function BrowserTab:GetDetailReagRow(idx)
     bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     f.bankBtn = bankBtn
 
+    -- [AH] button — sibling of [Bank], shown only when the AH scanner has
+    -- found live listings for this reagent. Click jumps to AH browse search.
+    local ahBtn = CreateFrame("Button", nil, f)
+    ahBtn:SetSize(32, 12)
+    ahBtn:SetNormalFontObject(GameFontNormalSmall)
+    ahBtn:SetText("|cFF88CCFF[AH]|r")
+    ahBtn:Hide()
+    ahBtn:SetScript("OnEnter", function()
+        addon.Tooltip.Owner(ahBtn)
+        GameTooltip:SetText("Search Auction House", 1, 1, 1)
+        GameTooltip:AddLine("Open this reagent in the AH browse search.", nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    ahBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    f.ahBtn = ahBtn
+
     self._dpReagPool[idx] = f
     return f
 end
@@ -1392,13 +1517,44 @@ function BrowserTab:DrawDetail(entry)
                 rf:SetScript("OnClick", nil)
             end
 
-            if rItemId and addon.Bank and addon.Bank.GetStock(rItemId) > 0 then
+            local hasBank = rItemId and addon.Bank and addon.Bank.GetStock(rItemId) > 0
+            local ahData  = rItemId and addon.AH and addon.AH.GetListingsFor(rItemId)
+            local hasAH   = ahData and (ahData.count or 0) > 0 and r.name and r.name ~= ""
+
+            if hasBank then
                 rf.bankBtn:SetScript("OnClick", function()
                     addon.Bank.ShowRequestDialog(rItemId, r.name or "", rLink)
                 end)
+            end
+            if hasAH then
+                local rName = r.name
+                rf.ahBtn:SetScript("OnClick", function()
+                    addon.AH.SearchFor(rName)
+                end)
+            end
+
+            -- Dynamic anchoring: order is [Bank] [AH] (left to right).
+            -- count→bank gap is 8 (not 4) to balance against bank→ah; see
+            -- the matching comment in FillShoppingListSection above for why.
+            rf.bankBtn:ClearAllPoints()
+            rf.ahBtn:ClearAllPoints()
+            if hasBank then
+                rf.bankBtn:SetPoint("LEFT", rf.countLbl, "RIGHT", 8, 0)
                 rf.bankBtn:Show()
+                if hasAH then
+                    rf.ahBtn:SetPoint("LEFT", rf.bankBtn, "RIGHT", 4, 0)
+                    rf.ahBtn:Show()
+                else
+                    rf.ahBtn:Hide()
+                end
             else
                 rf.bankBtn:Hide()
+                if hasAH then
+                    rf.ahBtn:SetPoint("LEFT", rf.countLbl, "RIGHT", 8, 0)
+                    rf.ahBtn:Show()
+                else
+                    rf.ahBtn:Hide()
+                end
             end
 
             rf:Show()
@@ -1579,3 +1735,18 @@ function BrowserTab:UpdateVirtualRows()
         end
     end
 end
+
+-- ---------------------------------------------------------------------------
+-- AH callbacks
+-- ---------------------------------------------------------------------------
+-- Refresh the scan button label whenever the AH opens or closes (it
+-- enables/disables based on AH availability), and refresh the shopping list
+-- section + detail panel so [AH] buttons appear/disappear on reagent rows
+-- as scan results arrive or get cleared (addon.AH wipes results on close).
+-- Both callbacks early-out unless the browser tab is the active tab and
+-- has its widgets built — cheap when the tab is closed.
+-- (Removed: per-tab AH_OPEN_STATE_CHANGED / AH_SCAN_COMPLETE handlers.
+-- The shared addon.GUI.MakeScanAHButton factory in GUI/SharedWidgets.lua
+-- owns one global handler that refreshes the active tab's scan button
+-- and runs the tab's onRefresh hook — for browser, that hook re-fills
+-- the shopping list section + the detail panel.)

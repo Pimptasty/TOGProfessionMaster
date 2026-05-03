@@ -24,6 +24,13 @@ addon.ColorOffline     = "ff888888"   -- dark gray for offline guild members
 local _GetAddOnMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
 addon.Version = _GetAddOnMetadata(addonName, "Version") or "dev"
 
+-- Static recipe-universe tables populated by Data/Recipes/*.lua and
+-- Data/Sources/*.lua at load time. Used by GUI/MissingRecipesTab.lua to
+-- compute the set of recipes a character is missing for each profession.
+-- Keyed by [professionSpellId][recipeSpellId].
+addon.recipeDB = addon.recipeDB or {}
+addon.sourceDB = addon.sourceDB or {}
+
 -- ---------------------------------------------------------------------------
 -- AceAddon
 -- Mixin order: AceConsole for slash, AceEvent for WoW events, AceTimer for

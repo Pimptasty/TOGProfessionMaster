@@ -26,6 +26,272 @@ addon.CooldownsTab = CooldownsTab
 CooldownsTab._sortCol   = "time"    -- "char" | "cd" | "time"
 CooldownsTab._sortAsc   = true
 CooldownsTab._readyOnly = false
+-- Two-level cooldown filter: profession (0 = All) → specific cooldown
+-- ("all" = All within that profession). Two AceGUI dropdowns on the toolbar.
+CooldownsTab._filterProf = 0
+CooldownsTab._filterCd   = "all"
+
+-- Profession spell-id → display name. Mirrors BrowserTab's static list.
+local PROF_NAMES = {
+    [171] = "Alchemy",
+    [164] = "Blacksmithing",
+    [185] = "Cooking",
+    [333] = "Enchanting",
+    [202] = "Engineering",
+    [165] = "Leatherworking",
+    [186] = "Mining",
+    [197] = "Tailoring",
+    [755] = "Jewelcrafting",
+    [773] = "Inscription",
+}
+
+-- Version availability helpers. Cumulative — a TBC entry stays available on
+-- Wrath/Cata/MoP because the cooldown spells from earlier expansions still
+-- exist on later clients (the cooldown data tables are loaded cumulatively
+-- in Data/CooldownIds.lua for the same reason).
+local function fromVanilla() return true end
+local function fromTBC()     return addon.isTBC   or addon.isWrath or addon.isCata or addon.isMoP end
+local function fromWrath()   return addon.isWrath or addon.isCata  or addon.isMoP end
+local function fromCata()    return addon.isCata  or addon.isMoP end
+local function fromMoP()     return addon.isMoP end
+
+-- Match-function builders. spellIdMatcher(...) returns a closure that tests
+-- row.spellId against the supplied id set; groupKeyMatcher(key) tests the
+-- row's group identity for cooldowns that BuildRows already collapses into
+-- a single grouped row (Dreamcloth, JC Daily Cut, etc.).
+local function spellIdMatcher(...)
+    local set = {}
+    for i = 1, select("#", ...) do set[(select(i, ...))] = true end
+    return function(row) return set[row.spellId] == true end
+end
+local function groupKeyMatcher(key)
+    return function(row) return row.isGroup and row.group and row.group.groupKey == key end
+end
+
+-- Cooldown filter taxonomy, organised by profession. Each profession bucket
+-- lists logical "shared-timer" entries — multiple spells that share one
+-- cooldown collapse to ONE entry (e.g. all vanilla transmutes share one
+-- timer per alchemist, so Alchemy has just "Transmute" rather than 11
+-- individual transmute entries). Spec-locked spells that aren't technically
+-- shared but where a single character can only ever cast one (TBC/Wrath
+-- specialty cloth) likewise collapse to one entry. `match(row)` returns
+-- true for cooldown rows belonging to that entry. `isAvailable()` gates by
+-- game version. Add new entries here for future expansions; the parent
+-- profession's match coverage extends automatically (it's the union of its
+-- entries' matches), and the dropdowns rebuild themselves with no further
+-- UI plumbing changes.
+local COOLDOWN_BY_PROFESSION = {
+    [171] = {  -- Alchemy
+        { id = "transmute",       labelKey = "FilterTransmute",
+          isAvailable = fromVanilla,
+          match = function(row) return row.isTransmuteGroup == true end },
+        { id = "alch_research",   labelKey = "FilterAlchResearch",
+          isAvailable = fromWrath,
+          match = spellIdMatcher(60893) },                                   -- Northrend Alchemy Research
+    },
+    [197] = {  -- Tailoring
+        { id = "mooncloth",       labelKey = "FilterMooncloth",
+          isAvailable = fromVanilla,
+          match = spellIdMatcher(18560) },                                   -- Mooncloth (4-day)
+        { id = "specialty_cloth", labelKey = "FilterSpecialtyCloth",
+          isAvailable = fromTBC,
+          match = spellIdMatcher(
+              26751, 31373, 36686,                                           -- TBC: Primal Mooncloth, Spellcloth, Shadowcloth
+              56001, 56002, 56003                                            -- Wrath: Moonshroud, Ebonweave, Spellweave
+          ) },
+        { id = "glacial_bag",     labelKey = "FilterGlacialBag",
+          isAvailable = fromWrath,
+          match = spellIdMatcher(56005) },                                   -- Glacial Bag (7-day)
+        { id = "dreamcloth",      labelKey = "FilterDreamcloth",
+          isAvailable = fromCata,
+          match = groupKeyMatcher("dreamcloth") },                           -- 5-spell group
+        { id = "imperial_silk",   labelKey = "FilterImperialSilk",
+          isAvailable = fromMoP,
+          match = spellIdMatcher(125557) },
+    },
+    [333] = {  -- Enchanting
+        { id = "magic_sphere",    labelKey = "FilterMagicSphere",
+          isAvailable = fromTBC,
+          match = spellIdMatcher(28027, 28028) },                            -- Prismatic Sphere + Void Sphere
+        { id = "sha_crystal",     labelKey = "FilterShaCrystal",
+          isAvailable = fromMoP,
+          match = spellIdMatcher(116499) },
+    },
+    [755] = {  -- Jewelcrafting
+        { id = "brilliant_glass", labelKey = "FilterBrilliantGlass",
+          isAvailable = fromTBC,
+          match = spellIdMatcher(47280) },
+        { id = "icy_prism",       labelKey = "FilterIcyPrism",
+          isAvailable = fromWrath,
+          match = spellIdMatcher(62242) },
+        { id = "fire_prism",      labelKey = "FilterFirePrism",
+          isAvailable = fromCata,
+          match = spellIdMatcher(73478) },
+        { id = "jc_daily",        labelKey = "FilterJcDaily",
+          isAvailable = fromMoP,
+          match = groupKeyMatcher("jc_daily") },                             -- 7-spell daily-cut group
+    },
+    [773] = {  -- Inscription
+        { id = "inscription_research", labelKey = "FilterInscriptionResearch",
+          isAvailable = fromWrath,
+          match = groupKeyMatcher("inscription_research") },                 -- Minor + Northrend group
+        { id = "forged_documents", labelKey = "FilterForgedDocuments",
+          isAvailable = fromCata,
+          match = spellIdMatcher(86654, 89244) },                            -- Horde + Alliance variants
+        { id = "scroll_of_wisdom", labelKey = "FilterScrollOfWisdom",
+          isAvailable = fromMoP,
+          match = spellIdMatcher(112996) },
+    },
+    [164] = {  -- Blacksmithing
+        { id = "titansteel_bar",  labelKey = "FilterTitansteelBar",
+          isAvailable = fromWrath,
+          match = spellIdMatcher(55208) },
+        { id = "bs_ingot",        labelKey = "FilterBsIngot",
+          isAvailable = fromMoP,
+          match = groupKeyMatcher("bs_ingot") },                             -- Balanced Trillium + Lightning Steel group
+    },
+    [165] = {  -- Leatherworking
+        -- Salt Shaker is an item-based cooldown (no profession requirement to
+        -- USE it), but its output Refined Deeprock Salt is a Leatherworking
+        -- reagent — so leatherworkers are the ones who actually rotate it on
+        -- cooldown for crafting purposes. Filed here rather than under
+        -- Cooking despite the misleading name.
+        { id = "saltshaker",      labelKey = "FilterSaltShaker",
+          isAvailable = fromVanilla,
+          match = spellIdMatcher(15846) },                                   -- Salt Shaker (8-hour)
+        { id = "magnificence",    labelKey = "FilterMagnificence",
+          isAvailable = fromMoP,
+          match = groupKeyMatcher("magnificence") },                         -- of Leather + of Scales group
+    },
+    [202] = {  -- Engineering
+        { id = "jards",           labelKey = "FilterJards",
+          isAvailable = fromMoP,
+          match = spellIdMatcher(139176) },                                  -- Jard's Peculiar Energy Source
+    },
+}
+
+-- Profession-level row matcher: a row belongs to profession X iff any of
+-- X's cooldown entries match it. Self-managing — adding a new entry to
+-- COOLDOWN_BY_PROFESSION automatically extends the parent profession's
+-- match coverage with no separate map to maintain.
+local function ProfessionMatchesRow(profId, row)
+    local entries = COOLDOWN_BY_PROFESSION[profId]
+    if not entries then return false end
+    for _, cd in ipairs(entries) do
+        if cd.isAvailable() and cd.match(row) then return true end
+    end
+    return false
+end
+
+-- ---------------------------------------------------------------------------
+-- Responsive column widths
+-- ---------------------------------------------------------------------------
+-- The Cooldowns tab adapts its column widths to the available content area
+-- so a user-resized window squeezes the columns gracefully instead of
+-- clipping rows off the right edge. COL_MIN sets the lower bound for each
+-- top-level column; below the sum of these the resize bound on the frame
+-- prevents further dragging. COL_PREFER is the comfortable / max width.
+-- Fixed column widths. Cooldowns previously computed widths from window
+-- size on every WINDOW_RESIZED redraw, but that meant AceGUI Flow inside
+-- each rowGroup reflowed mid-drag (the user perceived this as "rows
+-- stacking into 2-3 lines and snapping back when the drag stops"). The
+-- MissingRecipesTab and BrowserTab don't have this problem because their
+-- virtual-scroll rows are raw CreateFrame frames at fixed widths — Flow
+-- never re-runs on them. We get the same smooth-resize behaviour by just
+-- using fixed widths here and letting wider windows leave empty space on
+-- the right of the rows, instead of stretching.
+--
+-- col2 = 360 covers icon(18) + cdName(80) + reagent(80) + [AH](40) +
+-- [Bank](40) + mail(20) + Flow inter-widget slack (40) + 42px headroom
+-- so the [AH] button has definite room when scan results gate it on.
+-- time = 80 fits the "Time Left" header comfortably (below ~70 it wraps).
+local COL_W      = { char = 140, col2 = 360, time = 80 }
+-- Total width the row needs, exposed so MainWindow can size the frame's
+-- SetResizeBounds correctly — preventing the user from dragging the
+-- window below the point where columns would clip past the right edge.
+-- With fixed widths (no responsive shrinking), this IS the row width
+-- always — not just a floor.
+CooldownsTab.MIN_ROW_WIDTH = COL_W.char + COL_W.col2 + COL_W.time  -- 580
+
+-- Window size policy for this tab — read by MainWindow on tab switch
+-- and on Open. `locked = true` means the resize grip is disabled and
+-- the frame snaps to width/height. Cooldowns and Missing share the
+-- SAME locked dimensions so switching between those two tabs produces
+-- no visible jump (only switching to/from Browser changes the size).
+CooldownsTab.WINDOW_SIZE = { width = 720, height = 500, locked = true }
+
+-- Inside col2 (the "Cooldown" column), widget widths break down as
+-- icon + cdName + reagent + [AH] + [Bank] + mail. icon / [AH] / [Bank] /
+-- mail are fixed-width; cdName + reagent share the remaining space.
+local C2_ICON      = 18
+local C2_MAIL      = 20
+local C2_AH_BTN    = 40
+local C2_BANK_BTN  = 40
+local C2_MIN_NAME  = 80
+local C2_MIN_RGNT  = 80
+
+--- Compute inner col2 widths for the fixed col2 width and which buttons
+--- are currently shown for this row. Returns iconW, cdNameW, reagentW,
+--- ahW, bankW, mailW.
+---
+--- Reserves ~40px of internal slack for AceGUI Flow's per-widget gaps
+--- between col2's children (icon / cdName / reagent / AH / Bank / mail —
+--- up to 5 inter-widget gaps). Without the slack, the children sum
+--- to col2W exactly; Flow then can't fit them on one line, wraps the last
+--- few widgets to a second line, and col2 becomes ~2 rows tall — which
+--- visually pushes the row's Time Left column off to look like it's on
+--- the row below.
+local function ComputeCol2InnerWidths(col2W, hasReagent, hasAH, hasBank)
+    local mailW = hasReagent and C2_MAIL    or 0
+    local ahW   = hasAH      and C2_AH_BTN  or 0
+    local bankW = hasBank    and C2_BANK_BTN or 0
+    local fixed = C2_ICON + mailW + ahW + bankW
+    -- 40px slack for AceGUI Flow's per-widget gaps inside col2 (up to 5
+    -- inter-widget gaps × ~8px). Without enough slack the children sum
+    -- exceeds col2W and Flow wraps the last few widgets to a second line,
+    -- which makes col2 visually 2 rows tall and pushes the row's data
+    -- (including the Time Left text) onto a second visual row.
+    local internal_slack = 40
+    local variable = col2W - fixed - internal_slack
+    if variable < (C2_MIN_NAME + (hasReagent and C2_MIN_RGNT or 0)) then
+        variable = C2_MIN_NAME + (hasReagent and C2_MIN_RGNT or 0)
+    end
+    if not hasReagent then
+        return C2_ICON, math.max(C2_MIN_NAME, variable), 0, ahW, bankW, mailW
+    end
+    -- 50/50 split between cdName and reagent, with per-side minimums.
+    local cdNameW  = math.max(C2_MIN_NAME, math.floor(variable * 0.5))
+    local reagentW = math.max(C2_MIN_RGNT, variable - cdNameW)
+    return C2_ICON, cdNameW, reagentW, ahW, bankW, mailW
+end
+
+--- Disable word-wrap on an AceGUI Label / InteractiveLabel widget — text
+--- that's slightly too wide for the cell truncates instead of wrapping
+--- to a second line and inflating the row height. AceGUI's internal
+--- fontstring lives at widget.label; SetWordWrap(false) was added to
+--- WoW FontString in patch 3.0 so we guard for older clients.
+--- Module-level so DrawHeaders, DrawRow, and the group popup all share
+--- the same helper — applied to every Label-style widget the cooldowns
+--- table renders so wrap is impossible anywhere.
+local function nowrap(w)
+    if w and w.label and w.label.SetWordWrap then
+        w.label:SetWordWrap(false)
+    end
+end
+
+-- Leak-safe wrapper for `widget.frame:SetScript(...)` on AceGUI widgets.
+-- Used here only for the rowGroup right-click handler — SimpleGroup has
+-- no native OnMouseDown dispatch so we have to install a raw script and
+-- restore the prior one on release. For Button / Dropdown / EditBox use
+-- widget:SetCallback("OnEnter"/"OnLeave"/...) instead — those widgets'
+-- Constructors install their own internal Control_OnEnter dispatch that
+-- fires the SetCallback registry, and AceGUI clears the registry on
+-- release for free. See addon.AceGUIFrameScripts in MainWindow.lua.
+local frameScripts = addon.AceGUIFrameScripts
+
+-- (Removed: GetAvailableWidth + ComputeColWidths. The cooldowns tab now
+-- uses fixed COL_W widths so rows don't reflow during resize-drag — same
+-- smoothness as the Missing/Browser tabs which also use fixed widths.)
 
 -- ---------------------------------------------------------------------------
 -- Helpers
@@ -184,47 +450,68 @@ local function BuildRows(readyOnly)
                 end
             end
 
-            -- Cooldown-derived entries (definite spellIds).  Use hardcoded
-            -- transReagents (always single-reagent) for these.
-            for _, sid in ipairs(tg.spellIds) do
-                seenSpellIds[sid] = true
-                local rg = data.transReagents and data.transReagents[sid]
-                local reagents = rg and { { id = rg.id, qty = rg.qty or 1 } } or {}
-                emitTransmute(sid, GetSpellInfo(sid) or ("Spell " .. tostring(sid)), nil, reagents)
-            end
-
-            -- Recipe-DB-derived entries (covers transmutes the char knows but
-            -- hasn't cast).  Reagent source preference:
-            --   (1) rd.reagents — alchemist's actual trade-skill scan; the
-            --       only source that captures multi-reagent transmutes like
-            --       Arcanite (Thorium Bar + Arcane Crystal).
-            --   (2) data.transReagents[rd.spellId] — hard-coded single-reagent
-            --       map; used only when rd.reagents is empty/missing.
-            -- Order matters: data.transReagents collapses a multi-reagent
-            -- transmute into a single arbitrary reagent, so it must be the
-            -- fallback, not the primary.
+            -- Build a quick spellId → recipe-DB lookup for this character.
+            -- Used by BOTH the cooldown branch (so cast spells pick up
+            -- multi-reagent data) AND the unseen-recipes branch below.
+            -- Without this, cast spells fall through to data.transReagents
+            -- which is single-reagent only — Arcanite would show ONE row
+            -- for Arcane Crystal instead of TWO rows (Arcane Crystal +
+            -- Thorium Bar). Same regression for any other multi-reagent
+            -- transmute.
+            local recipeBySpellId = {}
             if gdb.recipes and gdb.recipes[171] then
                 for recipeId, rd in pairs(gdb.recipes[171]) do
                     if rd.crafters and rd.crafters[charKey]
                        and type(rd.name) == "string"
                        and rd.name:find("[Tt]ransmute")
-                       and not (rd.spellId and seenSpellIds[rd.spellId]) then
-                        if rd.spellId then seenSpellIds[rd.spellId] = true end
-                        local reagents = {}
-                        if type(rd.reagents) == "table" and rd.reagents[1] then
-                            for _, rge in ipairs(rd.reagents) do
-                                if rge.itemId then
-                                    reagents[#reagents + 1] = { id = rge.itemId, qty = rge.count or 1 }
-                                end
-                            end
-                        end
-                        if #reagents == 0 and rd.spellId
-                           and data.transReagents and data.transReagents[rd.spellId] then
-                            local rg = data.transReagents[rd.spellId]
-                            reagents[1] = { id = rg.id, qty = rg.qty or 1 }
-                        end
-                        emitTransmute(rd.spellId, rd.name, recipeId, reagents)
+                       and rd.spellId then
+                        recipeBySpellId[rd.spellId] = { rd = rd, recipeId = recipeId }
                     end
+                end
+            end
+
+            -- Helper to extract a reagent list from a recipe DB entry,
+            -- with the hardcoded single-reagent fallback when the scan
+            -- never captured the recipe's reagent rows (older client
+            -- versions, peer broadcasts predating the reagent-scan fix).
+            local function reagentsFor(spellId, rd)
+                local reagents = {}
+                if rd and type(rd.reagents) == "table" then
+                    for _, rge in ipairs(rd.reagents) do
+                        if rge.itemId then
+                            reagents[#reagents + 1] = { id = rge.itemId, qty = rge.count or 1 }
+                        end
+                    end
+                end
+                if #reagents == 0 and spellId
+                   and data.transReagents and data.transReagents[spellId] then
+                    local rg = data.transReagents[spellId]
+                    reagents[1] = { id = rg.id, qty = rg.qty or 1 }
+                end
+                return reagents
+            end
+
+            -- Cooldown-derived entries (definite spellIds, on cooldown).
+            -- Prefer recipe-DB multi-reagent data when available; fall
+            -- back to hardcoded single-reagent transReagents only when
+            -- the recipe scan didn't catch this spell.
+            for _, sid in ipairs(tg.spellIds) do
+                seenSpellIds[sid] = true
+                local hit = recipeBySpellId[sid]
+                local rd  = hit and hit.rd
+                local recipeId = hit and hit.recipeId
+                local displayName = (rd and rd.name) or GetSpellInfo(sid) or ("Spell " .. tostring(sid))
+                emitTransmute(sid, displayName, recipeId, reagentsFor(sid, rd))
+            end
+
+            -- Recipe-DB-derived entries — covers transmutes the char
+            -- knows but hasn't cast (so they're not in tg.spellIds).
+            -- The seenSpellIds guard skips anything the cooldown branch
+            -- already emitted.
+            for spellId, hit in pairs(recipeBySpellId) do
+                if not seenSpellIds[spellId] then
+                    seenSpellIds[spellId] = true
+                    emitTransmute(spellId, hit.rd.name, hit.recipeId, reagentsFor(spellId, hit.rd))
                 end
             end
 
@@ -265,6 +552,17 @@ local function SortRows(rows, col, asc)
             -- Ready (<=0) sorts to the top when ascending.
             if va <= 0 then va = -math.huge end
             if vb <= 0 then vb = -math.huge end
+        end
+        -- Stable tiebreaker (cooldown name → character name, both ascending
+        -- regardless of the primary asc flag). Without this, equal-keyed
+        -- rows — most notably every ready cooldown all tied at -math.huge —
+        -- shuffle into a different order every redraw because Lua's
+        -- table.sort is not stable. Now the Ready Only view stays in a
+        -- predictable A-Z order across refreshes.
+        if va == vb then
+            local na, nb = (a.cdName or ""):lower(), (b.cdName or ""):lower()
+            if na ~= nb then return na < nb end
+            return (a.shortName or ""):lower() < (b.shortName or ""):lower()
         end
         if asc then return va < vb else return va > vb end
     end)
@@ -481,6 +779,11 @@ function CooldownsTab:Draw(container)
     -- vertically the same way List did.
     container:SetLayout("Flow")
 
+    -- Fixed column widths — see COL_W comment block. No more responsive
+    -- recomputation per resize; rows stay put as the window drags wider
+    -- or narrower (matching the Missing/Browser tab feel).
+    self._colWidths = COL_W
+
     -- ---- Toolbar -----------------------------------------------------------
     local toolbar = AceGUI:Create("SimpleGroup")
     toolbar:SetLayout("Flow")
@@ -497,6 +800,173 @@ function CooldownsTab:Draw(container)
     end)
     toolbar:AddChild(readyBtn)
 
+    -- Two-level filter: Profession dropdown → Cooldown dropdown. Mirrors the
+    -- BrowserTab / MissingRecipesTab dropdown style. The cooldown dropdown
+    -- lists shared-timer entries from COOLDOWN_BY_PROFESSION (e.g. all
+    -- transmutes collapse to one "Transmute" entry under Alchemy), so it
+    -- doesn't get janky for alchemists with 11 individual transmute spells.
+    -- When profession is "All", the cooldown dropdown is hidden — there's
+    -- nothing meaningful to filter by until the user narrows the scope.
+    local brand = addon.BrandColor or "ffFF8000"
+
+    local profList  = { [0] = L["AllProfessions"] }
+    local profOrder = { 0 }
+    for profId, entries in pairs(COOLDOWN_BY_PROFESSION) do
+        local anyAvailable = false
+        for _, cd in ipairs(entries) do
+            if cd.isAvailable() then anyAvailable = true; break end
+        end
+        if anyAvailable then
+            profList[profId] = PROF_NAMES[profId] or ("Profession " .. profId)
+            profOrder[#profOrder + 1] = profId
+        end
+    end
+    table.sort(profOrder, function(a, b)
+        if a == 0 then return true end
+        if b == 0 then return false end
+        return (profList[a] or ""):lower() < (profList[b] or ""):lower()
+    end)
+
+    -- Validate persisted selection against the rebuilt profession list — if
+    -- the user was filtered to a profession that's no longer available
+    -- (e.g. they switched WoW versions), fall back to All.
+    if self._filterProf ~= 0 and not profList[self._filterProf] then
+        self._filterProf = 0
+        self._filterCd   = "all"
+    end
+
+    local profDD = AceGUI:Create("Dropdown")
+    profDD:SetLabel("|c" .. brand .. L["FilterColProfession"] .. "|r")
+    profDD:SetWidth(160)
+    profDD:SetList(profList, profOrder)
+    profDD:SetValue(self._filterProf or 0)
+    profDD:SetCallback("OnValueChanged", function(_w, _e, value)
+        self._filterProf = value
+        self._filterCd   = "all"  -- reset specific-cooldown filter on profession change
+        self:RedrawTable(container)
+    end)
+    addon.GUI.AttachTooltip(profDD, L["FilterColProfession"], L["FilterProfessionDesc"])
+    toolbar:AddChild(profDD)
+
+    -- Cooldown dropdown is only meaningful once a specific profession is
+    -- selected. Skip rendering it when profession is "All" — keeps the
+    -- toolbar compact and avoids a "Cooldown ▼" stub that does nothing.
+    if (self._filterProf or 0) ~= 0 then
+        local cdList  = { ["all"] = L["AllCooldowns"] }
+        local cdOrder = { "all" }
+        for _, cd in ipairs(COOLDOWN_BY_PROFESSION[self._filterProf] or {}) do
+            if cd.isAvailable() then
+                cdList[cd.id] = L[cd.labelKey] or cd.id
+                cdOrder[#cdOrder + 1] = cd.id
+            end
+        end
+        table.sort(cdOrder, function(a, b)
+            if a == "all" then return true end
+            if b == "all" then return false end
+            return (cdList[a] or ""):lower() < (cdList[b] or ""):lower()
+        end)
+
+        if not cdList[self._filterCd] then self._filterCd = "all" end
+
+        local cdDD = AceGUI:Create("Dropdown")
+        cdDD:SetLabel("|c" .. brand .. L["FilterColCooldown"] .. "|r")
+        cdDD:SetWidth(180)
+        cdDD:SetList(cdList, cdOrder)
+        cdDD:SetValue(self._filterCd or "all")
+        cdDD:SetCallback("OnValueChanged", function(_w, _e, value)
+            self._filterCd = value
+            self:RedrawTable(container)
+        end)
+        addon.GUI.AttachTooltip(cdDD, L["FilterColCooldown"], L["FilterCooldownDesc"])
+        toolbar:AddChild(cdDD)
+    end
+
+    -- 8px spacer matching the existing toolbar gap convention.
+    local sp4 = AceGUI:Create("Label"); sp4:SetWidth(8); toolbar:AddChild(sp4)
+
+    -- Scan AH button — kicks off a throttled scan over every unique reagent
+    -- itemId in the currently-visible cooldown rows (after filter applied).
+    -- After completion, rows whose reagent has live AH listings get an
+    -- [AH] button left of [Bank] (gates on AH.GetListingsFor — same pattern
+    -- as [Bank] gating on Bank.GetStock). All boilerplate (label refresh,
+    -- AH state gating, scan dispatch, AH callbacks) lives in the shared
+    -- factory; this site only owns the per-tab item-collection logic.
+    addon.GUI.MakeScanAHButton({
+        parent        = toolbar,
+        tabName       = "cooldowns",
+        label         = L["BrowserScanAH"],
+        progressLabel = L["BrowserScanAHProgress"],
+        tooltipTitle  = L["BrowserScanAH"],
+        tooltipDesc   = L["CooldownsScanAHDesc"],
+        noItemsError  = "No reagents to scan in the current view.",
+        getItems      = function()
+            local rows = BuildRows(self._readyOnly)
+            local profId = self._filterProf or 0
+            local cdId   = self._filterCd   or "all"
+            if profId ~= 0 then
+                local kept = {}
+                if cdId == "all" then
+                    for _, row in ipairs(rows) do
+                        if ProfessionMatchesRow(profId, row) then
+                            kept[#kept + 1] = row
+                        end
+                    end
+                else
+                    local cdEntry
+                    for _, cd in ipairs(COOLDOWN_BY_PROFESSION[profId] or {}) do
+                        if cd.id == cdId then cdEntry = cd; break end
+                    end
+                    if cdEntry then
+                        for _, row in ipairs(rows) do
+                            if cdEntry.match(row) then
+                                kept[#kept + 1] = row
+                            end
+                        end
+                    end
+                end
+                rows = kept
+            end
+            local items, seen = {}, {}
+            local function addItem(id)
+                if not id or seen[id] then return end
+                local name = GetItemInfo(id)
+                if type(name) == "string" and name ~= "" then
+                    seen[id] = true
+                    items[#items + 1] = { itemId = id, itemName = name }
+                end
+            end
+            for _, row in ipairs(rows) do
+                if row.isTransmuteGroup and row.transmuteEntries then
+                    -- Transmute group rows have row.reagentItemId == nil
+                    -- because each transmute spell inside the group has
+                    -- its own reagent (sometimes multiple — e.g.
+                    -- Arcanite needs Thorium Bar + Arcane Crystal).
+                    -- Iterate the per-spell entries to pick up every
+                    -- reagent so the scan covers the actual transmutes
+                    -- the user can craft, not just the standalone non-
+                    -- transmute cooldowns (Salt Shaker, Mooncloth, etc.).
+                    for _, e in ipairs(row.transmuteEntries) do
+                        addItem(e.reagentId)
+                    end
+                else
+                    addItem(row.reagentItemId)
+                end
+            end
+            return items
+        end,
+        onRefresh     = function()
+            -- Re-fill rows so [AH] buttons appear/disappear with scan
+            -- results. ReleaseChildren on _scroll only — preserves toolbar
+            -- and headers (and crucially the live scanBtn).
+            local scroll = CooldownsTab._scroll
+            if scroll and scroll.ReleaseChildren then
+                scroll:ReleaseChildren()
+                CooldownsTab:FillRows(scroll)
+                if scroll.DoLayout then scroll:DoLayout() end
+            end
+        end,
+    })
+
     -- ---- Column headers ----------------------------------------------------
     local headers = AceGUI:Create("SimpleGroup")
     headers:SetLayout("Flow")
@@ -505,59 +975,81 @@ function CooldownsTab:Draw(container)
     self:DrawHeaders(headers, container)
 
     -- ---- Scrollable rows ---------------------------------------------------
+    -- Persist scroll position across redraws so sync-triggered
+    -- GUILD_DATA_UPDATED rebuilds (every few seconds in active guilds)
+    -- don't yank the user back to the top mid-scroll. Use SetStatusTable
+    -- with a persistent _scrollStatus table — this is AceGUI's blessed
+    -- way and applies during AceGUI's own layout pass, so there's no
+    -- visible flash like the C_Timer.After approach had (where OnAcquire
+    -- briefly showed the scrollbar at 0 before our deferred SetScroll
+    -- restored it). The status.offset field gets cleared each Draw
+    -- because content height changes between redraws (filter toggled,
+    -- new rows arrived) and a stale offset would point at the wrong row;
+    -- AceGUI's FixScroll re-derives offset from scrollvalue + current
+    -- content/view sizes after we DoLayout below.
+    self._scrollStatus = self._scrollStatus or { scrollvalue = 0 }
+    self._scrollStatus.offset = nil  -- recomputed from scrollvalue + new content size
+
     local scroll = AceGUI:Create("ScrollFrame")
     scroll:SetLayout("List")
     scroll:SetFullWidth(true)
     scroll:SetFullHeight(true)
+    scroll:SetStatusTable(self._scrollStatus)
     container:AddChild(scroll)
     self._scroll       = scroll
     self._container    = container
 
     self:FillRows(scroll)
+
+    -- Force a synchronous layout pass so scroll.content's height is set
+    -- from the rows we just added BEFORE we apply scrollvalue. Without
+    -- this, the next-frame FixScroll reads a content height of 0 and
+    -- computes a wrong scrollbar position (or hides the scrollbar).
+    if scroll.DoLayout then scroll:DoLayout() end
+
+    -- Apply the saved scrollvalue synchronously. SetScroll re-derives
+    -- offset from value + the now-correct content size, writes both to
+    -- the status table, and positions the content frame — all in one
+    -- atomic step within the same render frame, so the user never sees
+    -- a momentary scroll-to-top.
+    local saved = self._scrollStatus.scrollvalue
+    if saved and saved > 0 and scroll.SetScroll then
+        scroll:SetScroll(saved)
+    end
 end
 
 function CooldownsTab:DrawHeaders(parent, container)
-    -- Column widths: Character=190, Cooldown=456, TimeLeft=80
-    -- Sort indicator is embedded directly in the button label text (▲/▼) so
-    -- there are no textures on the headers SimpleGroup frame.  AceGUI recycles
-    -- SimpleGroup frames when ReleaseChildren() is called; any texture parented
-    -- to a recycled frame follows it onto data rows.  Text in the button label
-    -- has no such lifetime — it's just a string, created fresh each Draw().
+    -- Column widths are fixed (COL_W) — same widths for headers and data
+    -- rows, so the header columns visually align with the row contents.
+    -- self._colWidths is set in Draw() to COL_W before this runs.
+    local cw = self._colWidths or { char = 190, col2 = 456, time = 80 }
     local cols = {
-        { key = "char", label = L["ColCharacter"], width = 190,
+        { key = "char", label = L["ColCharacter"], width = cw.char,
           tip = "Character", tipDesc = "The guild member who has this cooldown. Right-click a row to whisper them." },
-        { key = "cd",   label = L["ColCooldown"],  width = 456,
+        { key = "cd",   label = L["ColCooldown"],  width = cw.col2,
           tip = "Cooldown", tipDesc = "The name of the profession cooldown spell." },
-        { key = "time", label = L["ColTimeLeft"],  width = 80,
+        { key = "time", label = L["ColTimeLeft"],  width = cw.time,
           tip = "Time Left", tipDesc = "How long until this cooldown is ready. Green = ready now." },
     }
 
     for _, col in ipairs(cols) do
-        local btn = AceGUI:Create("InteractiveLabel")
-        btn:SetText("|c" .. (addon.BrandColor or "ffFF8000") .. col.label .. "|r")
-        btn:SetWidth(col.width)
-
-        local tipTitle = col.tip
-        local tipBody  = col.tipDesc
-        btn:SetCallback("OnEnter", function(_w)
-            addon.Tooltip.Owner(_w.frame)
-            GameTooltip:SetText(tipTitle, 1, 1, 1)
-            GameTooltip:AddLine(tipBody, nil, nil, nil, true)
-            GameTooltip:Show()
-        end)
-        btn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-
         local key = col.key
-        btn:SetCallback("OnClick", function()
-            if self._sortCol == key then
-                self._sortAsc = not self._sortAsc
-            else
-                self._sortCol = key
-                self._sortAsc = true
-            end
-            self:RedrawTable(container)
-        end)
-        parent:AddChild(btn)
+        addon.GUI.MakeColumnHeader({
+            parent       = parent,
+            label        = col.label,
+            width        = col.width,
+            tooltipTitle = col.tip,
+            tooltipDesc  = col.tipDesc,
+            onClick      = function()
+                if self._sortCol == key then
+                    self._sortAsc = not self._sortAsc
+                else
+                    self._sortCol = key
+                    self._sortAsc = true
+                end
+                self:RedrawTable(container)
+            end,
+        })
     end
 end
 
@@ -568,6 +1060,40 @@ end
 
 function CooldownsTab:FillRows(scroll)
     local rows = BuildRows(self._readyOnly)
+
+    -- Two-level dropdown filter:
+    --   profession=All        → no filter
+    --   profession=X, cd=All  → only rows belonging to profession X
+    --   profession=X, cd=Y    → only rows matching the specific cooldown Y
+    -- ProfessionMatchesRow is the union of all of X's cooldown predicates,
+    -- so adding a new entry to COOLDOWN_BY_PROFESSION automatically extends
+    -- both the profession-level match and the cooldown dropdown.
+    local profId = self._filterProf or 0
+    local cdId   = self._filterCd   or "all"
+    if profId ~= 0 then
+        local kept = {}
+        if cdId == "all" then
+            for _, row in ipairs(rows) do
+                if ProfessionMatchesRow(profId, row) then
+                    kept[#kept + 1] = row
+                end
+            end
+        else
+            local cdEntry
+            for _, cd in ipairs(COOLDOWN_BY_PROFESSION[profId] or {}) do
+                if cd.id == cdId then cdEntry = cd; break end
+            end
+            if cdEntry then
+                for _, row in ipairs(rows) do
+                    if cdEntry.match(row) then
+                        kept[#kept + 1] = row
+                    end
+                end
+            end
+        end
+        rows = kept
+    end
+
     SortRows(rows, self._sortCol, self._sortAsc)
     local now = GetServerTime()
 
@@ -585,6 +1111,11 @@ function CooldownsTab:FillRows(scroll)
 end
 
 function CooldownsTab:DrawRow(parent, row, now)
+    -- Responsive column widths shared by charLbl / col2 / timeLbl below.
+    -- Computed once in Draw() per redraw; falls back to preferred values
+    -- if Draw hasn't run yet (defensive — shouldn't happen in practice).
+    local cw = self._colWidths or { char = 190, col2 = 456, time = 80 }
+
     local remaining = row.expiresAt - now
     local timeStr   = SecondsToString(remaining)
     local timeColor
@@ -600,6 +1131,8 @@ function CooldownsTab:DrawRow(parent, row, now)
 
     local _fp, _fs, _ff = GameFontNormalSmall:GetFont()
     local function sf(w) w:SetFont(_fp, _fs, _ff or "") end
+    -- nowrap helper is module-level (defined near the top of this file)
+    -- so it's also reachable from DrawHeaders and the group popup.
 
     local rowGroup = AceGUI:Create("SimpleGroup")
     rowGroup:SetLayout("Flow")
@@ -632,9 +1165,11 @@ function CooldownsTab:DrawRow(parent, row, now)
         end
     end
     rowGroup.frame:EnableMouse(true)
-    rowGroup.frame:SetScript("OnMouseDown", function(f, button)
-        if button == "RightButton" then doWhisper(f) end
-    end)
+    frameScripts(rowGroup, {
+        OnMouseDown = function(f, button)
+            if button == "RightButton" then doWhisper(f) end
+        end,
+    })
 
     -- ── Column 1: Character (190px) — online=white, offline=grey ─────────────
     local charLbl = AceGUI:Create("InteractiveLabel")
@@ -669,8 +1204,9 @@ function CooldownsTab:DrawRow(parent, row, now)
     local colorOffline = "|c" .. (addon.ColorOffline or "ffaaaaaa")
     local nameColor = isYou and colorYou or (online and colorOnline or colorOffline)
     charLbl:SetText(nameColor .. displayName .. "|r")
-    charLbl:SetWidth(190)
+    charLbl:SetWidth(cw.char)
     sf(charLbl)
+    nowrap(charLbl)
     charLbl:SetCallback("OnClick", function(_widget, _event, button)
         if button == "RightButton" then doWhisper(_widget.frame) end
     end)
@@ -705,25 +1241,27 @@ function CooldownsTab:DrawRow(parent, row, now)
         end
     end
 
-    -- Width budget inside col2 (456px).
-    -- The icon is a SEPARATE 18px widget so AceGUI's Label never hits the
-    -- "(width - imageWidth) < 200" threshold that stacks text below the icon.
-    -- AceGUI Flow's wrap math is `(framewidth + usedwidth > width)` (strict
-    -- `>`).  In theory our widths sum exactly to col2's 456 so all five
-    -- widgets fit on one row; empirically the mail icon was wrapping under
-    -- the cooldown name anyway.  Reserve `flowSlack` px so even a small
-    -- rounding/padding discrepancy in any AceGUI Label widget can't push
-    -- the row total past col2 width.
-    local flowSlack = 12
-    local iconColW  = 18
-    local mailW     = itemId and 20 or 0
-    local bankW     = (itemId and hasBank) and 40 or 0
-    local reagentW  = itemId and 96 or 0
-    local cdNameW   = 456 - iconColW - reagentW - bankW - mailW - flowSlack
+    -- Pre-check whether the AH scanner has cached listings for this row's
+    -- reagent — same gating model as hasBank above. Flag drives whether
+    -- the [AH] widget gets a width slot in the Flow layout below.
+    local hasAH = false
+    if itemId and addon.AH then
+        local listings = addon.AH.GetListingsFor(itemId)
+        hasAH = listings and (listings.count or 0) > 0
+    end
+
+    -- Width budget inside col2. ComputeCol2InnerWidths splits the fixed
+    -- col2 width across the icon, cdName, reagent, [AH], [Bank], and mail
+    -- widgets. Buttons get fixed slots when shown; cdName + reagent share
+    -- the remainder 50/50 with per-side minimums. col2 itself is COL_W.col2
+    -- (fixed), passed in via self._colWidths (read into `cw` at the top of
+    -- this function).
+    local iconColW, cdNameW, reagentW, ahW, bankW, mailW =
+        ComputeCol2InnerWidths(cw.col2, itemId ~= nil, hasAH, hasBank)
 
     local col2 = AceGUI:Create("SimpleGroup")
     col2:SetLayout("Flow")
-    col2:SetWidth(456)
+    col2:SetWidth(cw.col2)
     rowGroup:AddChild(col2)
 
     -- Icon widget (image only, empty text).
@@ -765,6 +1303,7 @@ function CooldownsTab:DrawRow(parent, row, now)
     local cdText = row.isGroup and ("[+] " .. row.cdName) or row.cdName
     cdNameLbl:SetText(cdText)
     sf(cdNameLbl)
+    nowrap(cdNameLbl)
     if row.isGroup then
         cdNameLbl:SetCallback("OnEnter", function(_widget)
             addon.Tooltip.Owner(_widget.frame)
@@ -801,6 +1340,7 @@ function CooldownsTab:DrawRow(parent, row, now)
         local reagentLbl = AceGUI:Create("InteractiveLabel")
         reagentLbl:SetWidth(reagentW)
         sf(reagentLbl)
+        nowrap(reagentLbl)
         local reagentName = GetItemInfo(itemId)
         if reagentName then
             reagentLbl:SetText("|cffaaaaaa" .. reagentName .. "|r")
@@ -825,6 +1365,31 @@ function CooldownsTab:DrawRow(parent, row, now)
             end
         end)
         col2:AddChild(reagentLbl)
+
+        -- [AH] button — sits to the LEFT of [Bank] in the Flow order.
+        -- Visible only when the AH scanner has cached listings for this
+        -- reagent (gates on AH.GetListingsFor.count > 0). Click jumps the
+        -- AH browse search to the reagent's name. Order matches the user's
+        -- explicit preference for the Cooldowns tab (Professions tab uses
+        -- the opposite [Bank] [AH] order on its reagent rows).
+        if hasAH then
+            local ahBtn = AceGUI:Create("InteractiveLabel")
+            ahBtn:SetText("|cFF88CCFF[AH]|r")
+            ahBtn:SetWidth(ahW)
+            sf(ahBtn)
+            ahBtn:SetCallback("OnClick", function()
+                local name = GetItemInfo(itemId)
+                if name then addon.AH.SearchFor(name) end
+            end)
+            ahBtn:SetCallback("OnEnter", function(_widget)
+                addon.Tooltip.Owner(_widget.frame)
+                GameTooltip:SetText("Search Auction House", 1, 1, 1)
+                GameTooltip:AddLine("Open this reagent in the AH browse search.", nil, nil, nil, true)
+                GameTooltip:Show()
+            end)
+            ahBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+            col2:AddChild(ahBtn)
+        end
 
         -- [Bank] button
         if hasBank then
@@ -868,11 +1433,12 @@ function CooldownsTab:DrawRow(parent, row, now)
         col2:AddChild(mailBtn)
     end
 
-    -- ── Column 3: Time Remaining (80px) — always at 496px, never displaced ───
+    -- ── Column 3: Time Remaining — always at the right, never displaced ───
     local timeLbl = AceGUI:Create("Label")
     timeLbl:SetText(timeColor .. timeStr .. "|r")
-    timeLbl:SetWidth(80)
+    timeLbl:SetWidth(cw.time)
     sf(timeLbl)
+    nowrap(timeLbl)
     rowGroup:AddChild(timeLbl)
 end
 
@@ -920,7 +1486,12 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
 
     local rowH   = 14
     local pad    = 6
-    local popupW = 460
+    -- popupW = 500 to make room for the [AH] button slot added between
+    -- the reagent label and [Bank] (the slot is 40px). Without the bump,
+    -- the spell-name column would compress from ~190px to ~150px and
+    -- longer transmute names like "Transmute: Earth to Water" would
+    -- truncate.
+    local popupW = 500
     local totalH = pad + #entries * rowH + pad
 
     local popup = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
@@ -968,29 +1539,38 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
         GameTooltip:SetFrameLevel(popup:GetFrameLevel() + 20)
     end
 
-    -- Per-row [Bank] button visibility refreshers.  TOGBankClassic constructs
-    -- its `_G.TOGBankClassic_Guild.Info.alts` lazily — the first call that
-    -- queries it during its uninitialized state returns 0 and we'd skip
-    -- creating the button.  Solution: always create the button, hide it when
-    -- stock is 0, and re-evaluate on popup OnShow plus a short deferred tick
-    -- so a late-loading TOGBank populates correctly without requiring the
-    -- user to close and reopen the popup.
-    local bankRefreshers = {}
+    -- Per-row [Bank] / [AH] button visibility refreshers. TOGBankClassic
+    -- constructs its `_G.TOGBankClassic_Guild.Info.alts` lazily — the
+    -- first call that queries it during its uninitialized state returns
+    -- 0 and we'd skip creating the button. Solution: always create the
+    -- button, hide it when stock is 0, and re-evaluate on popup OnShow
+    -- plus a short deferred tick so a late-loading TOGBank populates
+    -- correctly without requiring the user to close and reopen the popup.
+    -- AH refreshers piggyback on the same list so all per-row visibility
+    -- updates run together — the gating data (Bank.GetStock and
+    -- AH.GetListingsFor) are both queried fresh per refresh.
+    local rowRefreshers = {}
     popup:SetScript("OnHide", function() closeOnClick:Hide() end)
     popup:SetScript("OnShow", function()
-        for _, fn in ipairs(bankRefreshers) do fn() end
+        for _, fn in ipairs(rowRefreshers) do fn() end
         C_Timer.After(0.1, function()
             if popup:IsShown() then
-                for _, fn in ipairs(bankRefreshers) do fn() end
+                for _, fn in ipairs(rowRefreshers) do fn() end
             end
         end)
     end)
 
     local mailW    = hasReagents and 20 or 0
     local bankW    = hasReagents and 48 or 0
+    -- AH button column. 40px matches the per-row [AH] width used in the
+    -- main cooldown row (C2_AH_BTN). Sits to the LEFT of [Bank], to the
+    -- RIGHT of the reagent label — same ordering as the main row so users
+    -- get consistent button positioning whether they're looking at the
+    -- table or the transmute popup.
+    local ahW      = hasReagents and 40 or 0
     local reagentW = hasReagents and 110 or 0
     local timeW    = 70
-    local nameW    = popupW - pad * 2 - reagentW - bankW - mailW - timeW - 6
+    local nameW    = popupW - pad * 2 - reagentW - ahW - bankW - mailW - timeW - 8
 
     for i, e in ipairs(entries) do
         local spellId    = e.spellId
@@ -1059,10 +1639,13 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
         -- Reagent and mail button (transmute groups only)
         if reagentId then
             local reagentLbl = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            -- Sit to the LEFT of the bank button (which is at -(mailW+2)).
-            -- Previously this was anchored at the same offset as the bank
-            -- button, causing the label and button to overlap.
-            reagentLbl:SetPoint("RIGHT", rowFrame, "RIGHT", -(bankW + mailW + 4), 0)
+            -- Sit to the LEFT of [AH] [Bank] [mail] (the +6 is per-button
+            -- gap padding × 3 stacked widgets). Order right-to-left:
+            --   mailBtn   at -(mailW + 2)
+            --   bankBtn   at -(bankW + mailW + 4)
+            --   ahBtn     at -(ahW + bankW + mailW + 6)
+            --   reagent   at -(reagentW + ahW + bankW + mailW + 8)
+            reagentLbl:SetPoint("RIGHT", rowFrame, "RIGHT", -(ahW + bankW + mailW + 6), 0)
             reagentLbl:SetWidth(reagentW)
             reagentLbl:SetJustifyH("RIGHT")
             reagentLbl:SetTextColor(0.65, 0.65, 0.65, 1)
@@ -1078,8 +1661,8 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
             end
 
             local reagentZone = CreateFrame("Frame", nil, rowFrame)
-            reagentZone:SetPoint("TOPLEFT",     rowFrame, "TOPRIGHT",    -(reagentW + bankW + mailW + 4), 0)
-            reagentZone:SetPoint("BOTTOMRIGHT", rowFrame, "BOTTOMRIGHT", -(bankW + mailW + 4), 0)
+            reagentZone:SetPoint("TOPLEFT",     rowFrame, "TOPRIGHT",    -(reagentW + ahW + bankW + mailW + 6), 0)
+            reagentZone:SetPoint("BOTTOMRIGHT", rowFrame, "BOTTOMRIGHT", -(ahW + bankW + mailW + 6), 0)
             reagentZone:EnableMouse(true)
             reagentZone:SetScript("OnEnter", function()
                 reagentLbl:SetTextColor(1, 1, 0, 1)
@@ -1097,6 +1680,40 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
                     if link then HandleModifiedItemClick(link) end
                 end
             end)
+
+            -- [AH] button — always created, visibility toggled per row by
+            -- a refresher that queries addon.AH.GetListingsFor(reagentId)
+            -- (gates same way [Bank] gates on Bank.GetStock). The refresher
+            -- runs on popup OnShow + the deferred tick alongside the bank
+            -- refreshers so a Scan AH that completes BEFORE the user opens
+            -- the popup is reflected in row visibility immediately.
+            if addon.AH then
+                local ahBtn = CreateFrame("Button", nil, rowFrame)
+                ahBtn:SetSize(ahW, rowH)
+                ahBtn:SetPoint("RIGHT", rowFrame, "RIGHT", -(bankW + mailW + 4), 0)
+                ahBtn:SetNormalFontObject(GameFontNormalSmall)
+                ahBtn:SetText("|cFF88CCFF[AH]|r")
+                ahBtn:Hide()  -- starts hidden; refresher reveals when listings exist
+                ahBtn:SetScript("OnClick", function()
+                    local name = GetItemInfo(reagentId)
+                    if name then addon.AH.SearchFor(name) end
+                end)
+                ahBtn:SetScript("OnEnter", function()
+                    addon.Tooltip.Owner(ahBtn)
+                    GameTooltip:SetText("Search Auction House", 1, 1, 1)
+                    GameTooltip:AddLine("Open this reagent in the AH browse search.", nil, nil, nil, true)
+                    showAbovePopup()
+                end)
+                ahBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+                rowRefreshers[#rowRefreshers + 1] = function()
+                    local listings = addon.AH.GetListingsFor(reagentId)
+                    if listings and (listings.count or 0) > 0 then
+                        ahBtn:Show()
+                    else
+                        ahBtn:Hide()
+                    end
+                end
+            end
 
             -- [Bank] button — always created, visibility toggled per row by
             -- a refresher that runs on popup OnShow + a deferred tick (handles
@@ -1121,7 +1738,7 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
                     showAbovePopup()
                 end)
                 bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-                bankRefreshers[#bankRefreshers + 1] = function()
+                rowRefreshers[#rowRefreshers + 1] = function()
                     if addon.Bank.GetStock(reagentId) > 0 then
                         bankBtn:Show()
                     else
@@ -1154,11 +1771,24 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
     -- Belt-and-suspenders: invoke refreshers directly even if OnShow already
     -- did so, in case something about the WoW frame lifecycle skips it.  The
     -- refreshers are idempotent (just toggle Show/Hide based on current stock).
-    for _, fn in ipairs(bankRefreshers) do fn() end
+    for _, fn in ipairs(rowRefreshers) do fn() end
     C_Timer.After(0.1, function()
         if popup:IsShown() then
-            for _, fn in ipairs(bankRefreshers) do fn() end
+            for _, fn in ipairs(rowRefreshers) do fn() end
         end
     end)
     self._groupPopup = popup
 end
+
+-- ---------------------------------------------------------------------------
+-- AH callbacks
+-- ---------------------------------------------------------------------------
+-- (Removed: per-tab AH_OPEN_STATE_CHANGED / AH_SCAN_COMPLETE handlers.
+-- The shared addon.GUI.MakeScanAHButton factory in GUI/SharedWidgets.lua
+-- owns one global handler that refreshes the active tab's scan button +
+-- runs the tab's onRefresh hook. The hook for this tab refills row
+-- children so [AH] buttons appear/disappear with scan results.)
+
+-- (Removed: WINDOW_RESIZED handler. Column widths are now fixed (COL_W),
+-- so window resizes need no per-tab response — Flow no longer reflows
+-- mid-drag, and the rows stay put exactly like the Missing/Browser tabs.)

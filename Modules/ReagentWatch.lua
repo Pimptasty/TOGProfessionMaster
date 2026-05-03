@@ -139,6 +139,13 @@ function RW:Unwatch(itemId)
     addon.callbacks:Fire("REAGENT_WATCH_UPDATED")
 end
 
+--- Return true if itemId is currently on the watch list.
+function RW:IsWatching(itemId)
+    itemId = tonumber(itemId)
+    if not itemId then return false end
+    return Ace.db.char.reagentWatch[itemId] == true
+end
+
 --- Return sorted array of { itemId, itemName, count } for the watch list.
 function RW:GetWatchedItems()
     local bags = ScanBags()

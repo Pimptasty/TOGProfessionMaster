@@ -1131,14 +1131,25 @@ function Scanner:BackfillBogusRecipeNames()
                 end
             end
             -- Spell-keyed recipe (enchanting / craft frame): try GetSpellInfo.
-            if isBogusName(rd.name) and (rd.isSpell == true or rd.spellId) then
+            -- Run regardless of the isSpell flag because (a) GetSpellInfo
+            -- returns nil for non-spell IDs so there are no false positives,
+            -- and (b) stubs created by MergeCraftersIntoGdb when crafters:<pid>
+            -- arrives before recipemeta:<pid> leave isSpell/spellId both unset.
+            -- Without this fallback, Enchanting recipeIds (which ARE the
+            -- enchant spell ID) stay as "? <id>" forever — /togpm backfill
+            -- can't fix them because the spell branch never runs. When the
+            -- lookup succeeds we backfill isSpell + spellId so future tooltip
+            -- resolution in BrowserTab uses SetSpellByID instead of falling
+            -- through to "item:<id>" (which produces "Retrieving item
+            -- information" for spell-only IDs).
+            if isBogusName(rd.name) and type(recipeId) == "number" and GetSpellInfo then
                 local sid = rd.spellId or recipeId
-                if type(sid) == "number" and GetSpellInfo then
-                    local nm, _, icon = GetSpellInfo(sid)
-                    if nm then
-                        rd.name = nm
-                        rd.icon = rd.icon or icon
-                    end
+                local nm, _, icon = GetSpellInfo(sid)
+                if nm then
+                    rd.name    = nm
+                    rd.icon    = rd.icon or icon
+                    rd.isSpell = true
+                    rd.spellId = rd.spellId or sid
                 end
             end
             if needsName and not isBogusName(rd.name) then
@@ -1520,6 +1531,21 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
                         stub.icon     = icon
                         stub.itemLink = link
                         stub.isSpell  = false
+                    elseif GetSpellInfo then
+                        -- Fallback: Enchanting recipes are spell-keyed (recipeId
+                        -- IS the enchant spell ID), and many stubs land here
+                        -- because GetItemInfo returns nil for spell IDs. Without
+                        -- this fallback the stub stays nameless until the
+                        -- recipemeta leaf catches up — and BrowserTab's tooltip
+                        -- falls through to SetHyperlink("item:<id>") producing
+                        -- "Retrieving item information" for spell-only IDs.
+                        local sname, _, sicon = GetSpellInfo(recipeId)
+                        if sname then
+                            stub.name    = sname
+                            stub.icon    = sicon
+                            stub.isSpell = true
+                            stub.spellId = recipeId
+                        end
                     end
                 end
                 profRecipes[recipeId] = stub

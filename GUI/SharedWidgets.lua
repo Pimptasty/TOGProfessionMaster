@@ -12,6 +12,36 @@ local L      = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 addon.GUI = addon.GUI or {}
 
 -- ---------------------------------------------------------------------------
+-- Pool detach
+-- ---------------------------------------------------------------------------
+-- Tabs that maintain a pool of raw CreateFrame rows (faster than AceGUI for
+-- virtual-scroll lists) parent those frames to an AceGUI widget's content
+-- frame. When AceGUI later recycles that widget into another addon's UI,
+-- our pool frames stay parented to it and visibly bleed into that addon —
+-- the bug the user hit on TBC / Anniversary with the shopping-list rows.
+--
+-- The fix is always the same three operations: Hide, re-parent to UIParent
+-- (a globally-rooted frame the pool can sit under harmlessly), ClearAllPoints
+-- so stale anchors don't reach into a destroyed parent. This helper is the
+-- single point of truth for that cleanup so we never have to do it inline
+-- again.
+--
+-- Usage: from inside any AceGUI widget's OnRelease callback,
+--   addon.GUI.DetachPool(self._myPool)
+-- Frames stay alive in the pool table for the next attach (raw frames are
+-- session-lifetime and never GC'd), they're just safely orphaned for now.
+function addon.GUI.DetachPool(pool)
+    if not pool then return end
+    for _, f in ipairs(pool) do
+        if f then
+            f:Hide()
+            f:SetParent(UIParent)
+            f:ClearAllPoints()
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Scan AH button
 -- ---------------------------------------------------------------------------
 -- Replaces the duplicated 80-line block that previously lived in each of

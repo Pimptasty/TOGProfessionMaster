@@ -148,6 +148,26 @@ end
 local ROW_HEIGHT = 16
 local POOL_SIZE  = 35
 
+-- Skill cap each rank-up book grants. Used to filter rank books out of
+-- the missing list when the character's skillMax is already at or above
+-- that cap — the only way the character could have raised their cap
+-- past a rank's threshold is to have consumed the book. There's no WoW
+-- API to detect "did the player use this item" so skillMax is the proxy.
+--
+-- Currently only Cooking, First Aid, and Fishing have rank-book entries
+-- in our static recipe DB (other professions advance via trainer); the
+-- map is exhaustive across all expansion ranks anyway in case future
+-- data files add more.
+local RANK_CAPS = {
+    ["Journeyman"]               = 150,
+    ["Expert"]                   = 225,
+    ["Artisan"]                  = 300,
+    ["Master"]                   = 375,
+    ["Grand Master"]             = 450,
+    ["Illustrious Grand Master"] = 525,
+    ["Zen Master"]               = 600,
+}
+
 -- Build the missing-recipe list for (charKey, profId). Returns the full
 -- unfiltered set sorted by required skill — search filtering is applied at
 -- render time via GetItemInfoInstant (which does NOT trigger an async load),
@@ -166,6 +186,12 @@ local function BuildMissingList(charKey, profId, includeTrainer)
     local profRecipes = gdb and gdb.recipes and gdb.recipes[profId]
     local specs       = gdb and gdb.specializations and gdb.specializations[charKey]
     local playerSpec  = specs and specs[profId]
+    -- skillMax for the rank-book filter below. nil/0 if the character
+    -- hasn't been scanned yet — in that case rank books still surface
+    -- (we'd rather show a spurious entry until the user opens their
+    -- profession window than hide books they actually need).
+    local skillEntry  = gdb and gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
+    local skillMax    = (skillEntry and skillEntry.skillMax) or 0
 
     local function knownByChar(recipeId)
         if not profRecipes then return false end
@@ -185,6 +211,16 @@ local function BuildMissingList(charKey, profId, includeTrainer)
             skip = true
         elseif data.teaches and data.teaches ~= spellId and knownByChar(data.teaches) then
             skip = true
+        elseif type(data.teaches) == "string" and RANK_CAPS[data.teaches] then
+            -- Rank-up book (e.g. "Expert First Aid" raises max from 150
+            -- to 225, "Artisan First Aid" from 225 to 300). The character's
+            -- skillMax is the only proxy we have for "did they consume
+            -- this book" — there's no WoW API to detect that. If their
+            -- skillMax is already at or above the rank's cap they must
+            -- have used the book to get there.
+            if skillMax >= RANK_CAPS[data.teaches] then
+                skip = true
+            end
         end
 
         if not skip then
@@ -603,12 +639,7 @@ end
 -- per refresh (WoW frames are session-lifetime and never GC'd). Pool frames
 -- get reparented onto the new ScrollFrame's content in the next FillList.
 function MissingRecipesTab:DetachPool()
-    if not self._pool then return end
-    for _, f in ipairs(self._pool) do
-        f:Hide()
-        f:SetParent(UIParent)
-        f:ClearAllPoints()
-    end
+    addon.GUI.DetachPool(self._pool)
     self._scroll = nil
     self._list   = nil
 end

@@ -406,6 +406,15 @@ function BrowserTab:Draw(container)
         slSection:SetFullWidth(true)
         slSection.noAutoHeight = true
         slSection:SetHeight(slCount * ROW_HEIGHT + 40)
+        -- OnRelease: detach our pooled raw row frames from the InlineGroup
+        -- before AceGUI recycles it into another addon. Without this our
+        -- pool frames stay parented to the recycled widget and visibly
+        -- bleed into the other addon's UI (the bug the user hit on
+        -- TBC / Anniversary). Mirrors the recipe-scroll's DestroyPool
+        -- OnRelease pattern below at line ~464.
+        slSection:SetCallback("OnRelease", function()
+            self:DetachShoppingListPool()
+        end)
         container:AddChild(slSection)
         self._slSection = slSection
         self:FillShoppingListSection(slSection)
@@ -1120,9 +1129,12 @@ end
 
 function BrowserTab:DestroyPool()
     if self._pool then
+        addon.GUI.DetachPool(self._pool)
+        -- Also nil the OnMouseDown/OnEnter/OnLeave scripts on each row
+        -- (the recipe-row pool uses raw script handlers for click + hover,
+        -- not AceGUI callbacks; explicit nil here matches the intent of
+        -- DetachPool — make these frames inert until next acquire).
         for _, f in ipairs(self._pool) do
-            f:Hide()
-            f:SetParent(UIParent)
             f:SetScript("OnMouseDown", nil)
             f:SetScript("OnEnter",     nil)
             f:SetScript("OnLeave",     nil)
@@ -1132,6 +1144,27 @@ function BrowserTab:DestroyPool()
     end
     self._scroll             = nil
     self._bankRefreshPending = nil
+end
+
+--- Detach the shopping-list pooled rows from their AceGUI InlineGroup
+--- parent before the InlineGroup gets recycled. Called from the
+--- InlineGroup's OnRelease callback wired up in Draw().
+---
+--- Without this, the pooled frames in self._slPool / self._slReagentPool
+--- remain SetParent()'d to the InlineGroup's content frame; when AceGUI
+--- pools the InlineGroup and another addon acquires it, our rows show
+--- up in the other addon's UI. Same problem the recipe-scroll's
+--- DestroyPool above prevents for the main recipe list, and the same
+--- problem MissingRecipesTab:DetachPool prevents for the missing-
+--- recipes list.
+---
+--- Re-parents to UIParent (a globally-rooted frame the pool can sit
+--- under harmlessly) and clears all anchors. Frames stay alive in the
+--- pool tables for the next FillShoppingListSection — Re-parented again
+--- when that runs (line 533/534).
+function BrowserTab:DetachShoppingListPool()
+    addon.GUI.DetachPool(self._slPool)
+    addon.GUI.DetachPool(self._slReagentPool)
 end
 
 -- ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # TOG Profession Master Changelog
 
-## [v0.3.2] (2026-05-04) - Multi-version TOC sync + shopping-list widget bleed fix + rank-book filter
+## [v0.3.3] (2026-05-04) - Shopping-list widget bleed fix + rank-book filter + addon.GUI.DetachPool helper
 
 ### Bug Fixes
 
@@ -11,6 +11,12 @@
 ### Improvements
 
 - **Consolidated pool-detach into one shared helper** — the same Hide + `SetParent(UIParent)` + `ClearAllPoints` loop was duplicated in three places (`BrowserTab:DestroyPool` for the recipe scroll, the new `BrowserTab:DetachShoppingListPool`, and `MissingRecipesTab:DetachPool`). Extracted to `addon.GUI.DetachPool(pool)` in [GUI/SharedWidgets.lua](GUI/SharedWidgets.lua). All three call sites now route through the shared function so the next pool we add only requires a one-line OnRelease wiring instead of inventing the cleanup loop again. New CLAUDE.md rule documents the pattern: any tab that parents raw `CreateFrame` rows to an AceGUI widget's content frame MUST register `addon.GUI.DetachPool(pool)` on the parent widget's `OnRelease`. Location: [GUI/SharedWidgets.lua](GUI/SharedWidgets.lua), [CLAUDE.md](CLAUDE.md).
+
+---
+
+## [v0.3.2] (2026-05-04) - Multi-version TOC sync (hotfix)
+
+### Bug Fixes
 
 - **Lua error on opening the Profession Browser on TBC / Wrath / Cata / MoP clients** (`attempt to index field 'GUI' (a nil value)` at [GUI/BrowserTab.lua:316](GUI/BrowserTab.lua)) — `TOGProfessionMaster_TBC.toc`, `_Wrath.toc`, `_Cata.toc`, and `_Mists.toc` had been frozen at the v0.2.7 file list and never picked up the v0.3.0 additions. Missing entries on every non-Vanilla TOC: 22 `Data/Recipes/*.lua` + `Data/Sources/*.lua` data files, `Modules/AHScanner.lua`, `GUI/SharedWidgets.lua`, and `GUI/MissingRecipesTab.lua`. Without `SharedWidgets.lua` loading, `addon.GUI` was never created, and BrowserTab's call to `addon.GUI.AttachTooltip(...)` blew up the tab. Synced all four non-Vanilla TOCs to match the Vanilla TOC's file list. Locations: [TOGProfessionMaster_TBC.toc](TOGProfessionMaster_TBC.toc), [TOGProfessionMaster_Wrath.toc](TOGProfessionMaster_Wrath.toc), [TOGProfessionMaster_Cata.toc](TOGProfessionMaster_Cata.toc), [TOGProfessionMaster_Mists.toc](TOGProfessionMaster_Mists.toc).
 

@@ -1,5 +1,13 @@
 # TOG Profession Master Changelog
 
+## [v0.3.2] (TBD) - Multi-version TOC sync + guildless-state fixes
+
+### Bug Fixes
+
+- **Lua error on opening the Profession Browser on TBC / Wrath / Cata / MoP clients** (`attempt to index field 'GUI' (a nil value)` at [GUI/BrowserTab.lua:316](GUI/BrowserTab.lua)) — `TOGProfessionMaster_TBC.toc`, `_Wrath.toc`, `_Cata.toc`, and `_Mists.toc` had been frozen at the v0.2.7 file list and never picked up the v0.3.0 additions. Missing entries on every non-Vanilla TOC: 22 `Data/Recipes/*.lua` + `Data/Sources/*.lua` data files, `Modules/AHScanner.lua`, `GUI/SharedWidgets.lua`, and `GUI/MissingRecipesTab.lua`. Without `SharedWidgets.lua` loading, `addon.GUI` was never created, and BrowserTab's call to `addon.GUI.AttachTooltip(...)` blew up the tab. Synced all four non-Vanilla TOCs to match the Vanilla TOC's file list. Locations: [TOGProfessionMaster_TBC.toc](TOGProfessionMaster_TBC.toc), [TOGProfessionMaster_Wrath.toc](TOGProfessionMaster_Wrath.toc), [TOGProfessionMaster_Cata.toc](TOGProfessionMaster_Cata.toc), [TOGProfessionMaster_Mists.toc](TOGProfessionMaster_Mists.toc).
+
+---
+
 ## [v0.3.1] (2026-05-03) - Version-aware profession dropdowns + de-duplicated profession lookup + offline-peer chat spam fix
 
 ### Bug Fixes

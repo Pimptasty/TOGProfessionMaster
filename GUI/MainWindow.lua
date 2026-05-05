@@ -193,6 +193,16 @@ function MainWindow:Open(tabKey)
         -- Browser's last user-chosen size is already persisted by the
         -- OnSizeChanged hook above, so no special-case capture needed
         -- on close.
+        --
+        -- Detach the help "i" icon BEFORE releasing the AceGUI Frame:
+        -- helpIcon is a raw CreateFrame parented to f.frame, and
+        -- AceGUI:Release returns f.frame to its pool with whatever
+        -- child frames we attached — so the next addon that
+        -- AceGUI:Create("Frame")s inherits our "i" icon and its
+        -- tooltip handlers. Same helper as the row-pool detaches in
+        -- BrowserTab / MissingRecipesTab.
+        addon.GUI.DetachPool(self._helpIcon)
+        self._helpIcon = nil
         self.frame = nil
         self.tabs  = nil
         _escProxy:Hide()
@@ -209,6 +219,7 @@ function MainWindow:Open(tabKey)
 
     -- Help "i" icon
     local helpIcon = CreateFrame("Frame", nil, f.frame)
+    self._helpIcon = helpIcon
     helpIcon:SetSize(24, 24)
     helpIcon:SetPoint("BOTTOMRIGHT", f.frame, "BOTTOMRIGHT", -133, 15)
     helpIcon:EnableMouse(true)

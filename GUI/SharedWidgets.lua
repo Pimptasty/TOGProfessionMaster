@@ -26,13 +26,29 @@ addon.GUI = addon.GUI or {}
 -- single point of truth for that cleanup so we never have to do it inline
 -- again.
 --
--- Usage: from inside any AceGUI widget's OnRelease callback,
---   addon.GUI.DetachPool(self._myPool)
--- Frames stay alive in the pool table for the next attach (raw frames are
--- session-lifetime and never GC'd), they're just safely orphaned for now.
-function addon.GUI.DetachPool(pool)
-    if not pool then return end
-    for _, f in ipairs(pool) do
+-- Usage: from inside any AceGUI widget's OnRelease / OnClose callback,
+--   addon.GUI.DetachPool(self._myPool)   -- array of pooled raw frames
+--   addon.GUI.DetachPool(self._helpIcon) -- single raw frame (e.g. a one-off
+--                                          decoration parented to f.frame)
+-- Frames stay alive for the next attach (raw frames are session-lifetime
+-- and never GC'd), they're just safely orphaned for now.
+--
+-- The single-frame form covers cases like MainWindow's help "i" icon —
+-- one CreateFrame parented to the AceGUI Frame, no pool needed, but the
+-- same Hide + UIParent + ClearAllPoints cleanup is required so the icon
+-- doesn't bleed into the next addon that AceGUI:Create("Frame")s.
+function addon.GUI.DetachPool(poolOrFrame)
+    if not poolOrFrame then return end
+    -- Single-frame form: detect by presence of :Hide. Frames are tables in
+    -- the WoW API but they have a Hide method; arrays of frames are bare
+    -- Lua tables with no such method.
+    if type(poolOrFrame.Hide) == "function" then
+        poolOrFrame:Hide()
+        poolOrFrame:SetParent(UIParent)
+        poolOrFrame:ClearAllPoints()
+        return
+    end
+    for _, f in ipairs(poolOrFrame) do
         if f then
             f:Hide()
             f:SetParent(UIParent)

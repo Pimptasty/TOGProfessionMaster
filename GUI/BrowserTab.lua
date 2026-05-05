@@ -265,11 +265,8 @@ function BrowserTab:Draw(container)
     container:SetLayout("List")
 
     -- Clean up a raw headerBar left over from a previous Draw() or tab switch.
-    if self._headerBar then
-        self._headerBar:Hide()
-        self._headerBar:SetParent(UIParent)
-        self._headerBar = nil
-    end
+    addon.GUI.DetachPool(self._headerBar)
+    self._headerBar = nil
 
     self._slSection = nil
     local slData = Ace.db.char.shoppingList
@@ -472,16 +469,15 @@ function BrowserTab:Draw(container)
     scroll:SetFullWidth(true)
     scroll:SetCallback("OnRelease", function()
         self:DestroyPool()
-        if self._headerBar then
-            self._headerBar:Hide()
-            self._headerBar:SetParent(UIParent)
-            self._headerBar = nil
-        end
-        -- Detach the persistent detail panel from container.content
-        if self._detailOuter then
-            self._detailOuter:Hide()
-            self._detailOuter:SetParent(UIParent)
-        end
+        -- Detach raw frames parented to container.content BEFORE AceGUI
+        -- recycles the container — same one helper everywhere
+        -- (see GUI/SharedWidgets.lua : addon.GUI.DetachPool).
+        addon.GUI.DetachPool(self._headerBar)
+        self._headerBar = nil
+        -- _detailOuter is reused across Draws (lazy-created in
+        -- EnsureDetailPanel, re-parented + re-anchored next Draw at
+        -- ~line 491), so we detach but do NOT nil it.
+        addon.GUI.DetachPool(self._detailOuter)
     end)
     container:AddChild(scroll)
     self._scroll = scroll

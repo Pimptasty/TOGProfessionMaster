@@ -1,5 +1,21 @@
 # TOG Profession Master Changelog
 
+## [v0.3.4] (2026-05-05) - Help-icon widget bleed fix + DetachPool single-frame form + consolidated cleanup
+
+### Bug Fixes
+
+- **Help "i" info tooltip on the main window bleeding into other Ace3 addons** — the help icon next to the close button is a raw `CreateFrame("Frame", nil, f.frame)` parented to the AceGUI Frame's underlying frame. The `OnClose` callback released the AceGUI Frame back to its widget pool but never detached our helpIcon, so the icon — texture, mouse handlers, and tooltip body that reads "Profession Browser / Cooldowns Tracker / Missing Recipes" — stayed parented to the recycled Frame. The next addon that called `AceGUI:Create("Frame")` (any Ace3 config window, BigWigs options, etc.) acquired our Frame from the pool with the "i" icon riding on it, visibly inside their UI and serving up TOGPM's tab-help tooltip on hover. Same class of bug as v0.3.3's shopping-list widget bleed, just on a different raw frame. Fix: stash `helpIcon` on `self._helpIcon` at creation and route through the shared `addon.GUI.DetachPool` helper inside the existing `OnClose` callback, before `AceGUI:Release(_widget)`. Location: [GUI/MainWindow.lua](GUI/MainWindow.lua).
+
+- **`_detailOuter` (Browser tab's recipe detail panel) missing `ClearAllPoints` on cleanup** — the inline `OnRelease` block at the recipe-scroll widget did `:Hide()` and `:SetParent(UIParent)` on the detail panel, but not `:ClearAllPoints()`. Old anchors (`TOPRIGHT → headerBar BOTTOMRIGHT`, `BOTTOMRIGHT → container.content BOTTOMRIGHT`) lingered after the detach. If those anchor target frames were the AceGUI parents being recycled, the detail panel could carry a stale point reference into the next addon's frame layout. Now routed through `addon.GUI.DetachPool` which always does the full Hide + UIParent + ClearAllPoints triple. Location: [GUI/BrowserTab.lua](GUI/BrowserTab.lua).
+
+### Improvements
+
+- **`addon.GUI.DetachPool` now accepts a single raw frame as well as an array** — the helper introduced in v0.3.3 only handled arrays of pooled frames (via `ipairs`). For one-off raw frames parented to AceGUI widgets — like the main window's help icon, the Browser tab's `_headerBar`, and the detail panel's `_detailOuter` — call sites had to inline the same Hide + UIParent + ClearAllPoints triple instead of using the helper. Extended `addon.GUI.DetachPool(poolOrFrame)` to detect a single frame by `type(poolOrFrame.Hide) == "function"` and apply the same cleanup. Result: every raw-frame cleanup site in the codebase now flows through one function. Location: [GUI/SharedWidgets.lua](GUI/SharedWidgets.lua).
+
+- **Consolidated four inline cleanup sites in BrowserTab to use the helper** — `BrowserTab:Draw()` had a defensive `_headerBar` cleanup at the top, the recipe-scroll's `OnRelease` had another `_headerBar` cleanup plus a `_detailOuter` cleanup, all written as 4-5 line `if frame then frame:Hide() ... end` blocks. Each replaced with a single `addon.GUI.DetachPool(self._<frame>)` call. The helper handles the nil check, the right cleanup operations, and matches the surrounding `BrowserTab:DestroyPool` / `BrowserTab:DetachShoppingListPool` / `MissingRecipesTab:DetachPool` / `MainWindow OnClose` call sites — five places in the addon, one helper. Future raw-frame parented to an AceGUI widget = one-line cleanup. Location: [GUI/BrowserTab.lua](GUI/BrowserTab.lua).
+
+---
+
 ## [v0.3.3] (2026-05-04) - Shopping-list widget bleed fix + rank-book filter + addon.GUI.DetachPool helper
 
 ### Bug Fixes

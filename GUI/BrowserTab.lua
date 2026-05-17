@@ -464,9 +464,24 @@ function BrowserTab:Draw(container)
         self:DestroyPool()
     end
 
+    -- Persist scroll position across redraws so sync-triggered
+    -- GUILD_DATA_UPDATED rebuilds (every few seconds in active guilds)
+    -- don't yank the user back to the top mid-scroll. Capture the
+    -- saved value into a local BEFORE anything else: FillList below
+    -- calls FixScroll synchronously, which calls scrollbar:SetValue(0)
+    -- on the recycled widget; if the scrollbar's previous value was
+    -- non-zero that fires the default OnValueChanged → SetScroll(0)
+    -- → writes scrollvalue=0 into our status table, destroying the
+    -- saved value before we can read it back.
+    self._scrollStatus = self._scrollStatus or { scrollvalue = 0 }
+    local savedScroll = self._scrollStatus.scrollvalue or 0
+    self._scrollStatus.scrollvalue = 0
+    self._scrollStatus.offset      = nil
+
     local scroll = AceGUI:Create("ScrollFrame")
     scroll:SetLayout("List")
     scroll:SetFullWidth(true)
+    scroll:SetStatusTable(self._scrollStatus)
     scroll:SetCallback("OnRelease", function()
         self:DestroyPool()
         -- Detach raw frames parented to container.content BEFORE AceGUI
@@ -510,6 +525,18 @@ function BrowserTab:Draw(container)
     AnchorScrollToFill()
 
     self:FillList()
+
+    -- Restore captured scroll position now that content height is set.
+    -- FillList wrote scroll.content height and ran FixScroll above, so
+    -- SetScroll(saved) can derive the correct offset; UpdateVirtualRows
+    -- then re-positions the pool rows to the restored offset.
+    if savedScroll > 0 and scroll.SetScroll then
+        scroll:SetScroll(savedScroll)
+        if scroll.scrollbar and scroll.scrollbar.SetValue then
+            scroll.scrollbar:SetValue(savedScroll)
+        end
+        self:UpdateVirtualRows()
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -935,6 +962,16 @@ function BrowserTab:RefreshList()
         for _, f in ipairs(self._pool) do f:Hide() end
     end
     self._recipes = nil
+    -- Filter/search change: user expects to see the top of the new
+    -- result set, not whatever offset the previous list was scrolled to.
+    if self._scrollStatus then
+        self._scrollStatus.scrollvalue = 0
+        self._scrollStatus.offset      = 0
+    end
+    if scroll.SetScroll then scroll:SetScroll(0) end
+    if scroll.scrollbar and scroll.scrollbar.SetValue then
+        scroll.scrollbar:SetValue(0)
+    end
     scroll:ReleaseChildren()
     self:FillList()
 end

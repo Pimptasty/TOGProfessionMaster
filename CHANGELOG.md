@@ -1,5 +1,13 @@
 # TOG Profession Master Changelog
 
+## [v0.3.5] (2026-05-17) - Browser tab scroll position persists across guild syncs
+
+### Bug Fixes
+
+- **Profession Browser recipe list snapped back to the top every few seconds while scrolling** — in any active guild, peers broadcast sync deltas every few seconds; each `SYNC_RECV` fires `GUILD_DATA_UPDATED`, which `MainWindow:QueueRefresh` debounces into a `MainWindow:Refresh` call that does `tabs:ReleaseChildren()` and re-runs `BrowserTab:Draw()`. The freshly-acquired AceGUI `ScrollFrame` widget always starts at scroll value 0 (its `OnAcquire` does `SetScroll(0)`), so the user got yanked back to the top mid-scroll on every sync. `CooldownsTab` solved this in an earlier release with a persistent `_scrollStatus` table re-attached via `SetStatusTable` on each Draw ([GUI/CooldownsTab.lua:991](GUI/CooldownsTab.lua)), but `BrowserTab` never got the same treatment. Fix applies the same persistent-status pattern, with one extra wrinkle: `BrowserTab:FillList` calls `scroll:FixScroll()` synchronously, and `FixScroll` calls `scrollbar:SetValue(0)` on the recycled widget — if the scrollbar's residual value from a previous use was non-zero, that fires the default `OnValueChanged` → `SetScroll(0)` → writes `scrollvalue=0` into our status table, destroying the saved position before the restore code can read it. So the saved scroll value is now captured into a local at the top of `BrowserTab:Draw()` BEFORE the scroll widget is created (and before any `FixScroll` clobber can happen), then restored via `SetScroll(saved)` + `UpdateVirtualRows()` after `FillList` completes and content height is set. `RefreshList` (profession dropdown + search-box changes) explicitly resets to scroll position 0 — a filter change should always show the top of the new result set, not whatever offset the previous list was scrolled to. Location: [GUI/BrowserTab.lua](GUI/BrowserTab.lua).
+
+---
+
 ## [v0.3.4] (2026-05-05) - Help-icon widget bleed fix + DetachPool single-frame form + consolidated cleanup
 
 ### Bug Fixes

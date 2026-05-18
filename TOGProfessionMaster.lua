@@ -114,6 +114,15 @@ local SETTINGS_DEFAULTS = {
         crafterAlert              = true,
         crafterAlertSuppressAV    = false,
         crafterAlertSuppressLogin = true,
+        -- Cooldown-ready alerts: when ON, ping + chat-print as soon as a
+        -- "!"-armed cooldown expires on any of your characters. The
+        -- "suppress in instances" sibling defaults ON so raids / dungeons /
+        -- BGs stay quiet. The reminder interval (in minutes) re-fires the
+        -- alert every N minutes while the cooldown is still ready and the
+        -- user hasn't crafted yet — 0 means "fire only once per ready
+        -- cycle." Range guard 0..1440 (24h) enforced in Settings.lua.
+        cooldownAlertSuppressProtected = true,
+        cooldownAlertReminderMinutes   = 0,
     },
     char = {
         -- Shopping list: [spellId] = { quantity = N }
@@ -124,6 +133,16 @@ local SETTINGS_DEFAULTS = {
 
         -- Shopping list alert flags: [spellId] = true
         shoppingAlerts  = {},
+
+        -- Cooldown-ready alert flags. Keyed by alertKey (built by the
+        -- CooldownAlerts module). Each entry is a metadata table:
+        --   { charKey, label, groupKind, spellId }
+        -- groupKind is "transmute", "group:<groupKey>", or nil for a
+        -- single-spell row. spellId is only meaningful when groupKind is nil
+        -- — for groups the module re-derives the effective expiry by walking
+        -- data.transmutes / data.groupBySpell, so adding new transmute spells
+        -- post-toggle still works.
+        cooldownAlerts  = {},
 
         -- Cached personal bank counts: [itemId] = count.  Refreshed on
         -- BANKFRAME_CLOSED (mirrors TOGBankClassic's pattern of scanning

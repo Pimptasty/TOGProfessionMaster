@@ -47,6 +47,7 @@ Modules\HashManager.lua
 Modules\ReagentWatch.lua
 Modules\SyncLog.lua
 Modules\AHScanner.lua
+Modules\CooldownAlerts.lua
 GUI\MinimapButton.lua
 GUI\MainWindow.lua
 GUI\SharedWidgets.lua

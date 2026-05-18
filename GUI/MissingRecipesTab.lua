@@ -832,16 +832,35 @@ function MissingRecipesTab:FillList()
 
     -- Virtual-scroll container. The AceGUI ScrollFrame manages the scrollbar
     -- and clipping; the raw pool inside scroll.content does the actual row
-    -- rendering. OnRelease detaches the pool when the tab is switched away.
-    local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetLayout("List")
-    scroll:SetFullWidth(true)
-    scroll:SetFullHeight(true)
-    scroll:SetCallback("OnRelease", function()
-        self:DetachPool()
-    end)
+    -- rendering. Shared PersistentScroll helper captures the saved scroll
+    -- position so sync-triggered Refresh / RefreshList rebuilds don't yank
+    -- the user back to the top mid-scroll (matches the BrowserTab and
+    -- CooldownsTab fixes from v0.3.5).
+    local scroll, savedScroll = addon.GUI.PersistentScroll.Acquire(self, {
+        layout     = "List",
+        fullWidth  = true,
+        fullHeight = true,
+        onRelease  = function() self:DetachPool() end,
+    })
     section:AddChild(scroll)
     self._scroll = scroll
+
+    -- Virtual-scroll trick (matches BrowserTab:FillList): install a no-op
+    -- LayoutFinished on the scroll instance so AceGUI's class default
+    -- doesn't overwrite our manual content.height. Required because
+    -- FixScroll calls DoLayout on every scrollbar visibility transition
+    -- (AceGUIContainer-ScrollFrame.lua:108/118), and DoLayout fires the
+    -- "List" layout function which calls scroll.LayoutFinished(_, _, 0)
+    -- when scroll.children is empty (Missing parents raw frames to
+    -- scroll.content directly, so AceGUI sees no children). The class
+    -- default would then set content:SetHeight(0 or 20) — collapsing
+    -- our virtual list to 0 px and hiding every row. Pre-v0.4.0 this
+    -- silently worked because BrowserTab's no-op override leaked through
+    -- the shared AceGUI ScrollFrame pool; Missing was free-riding on
+    -- it. PersistentScroll.Acquire now restores the class default on
+    -- every acquire (so Cooldowns' AceGUI-children auto-size works
+    -- correctly), so Missing has to install its own no-op explicitly.
+    scroll.LayoutFinished = function() end
 
     -- Tell the AceGUI ScrollFrame how tall the virtual content is so the
     -- scrollbar sizes correctly. Then build (or reuse) the pool and slot
@@ -865,6 +884,14 @@ function MissingRecipesTab:FillList()
             self:UpdateVirtualRows()
         end)
     end
+
+    -- Restore saved scroll position now that content height + scrollbar
+    -- are wired up. afterFn re-positions the raw-frame pool to the
+    -- restored offset (without it, the scrollbar shows the right value
+    -- but the rows underneath stay anchored to row 0).
+    addon.GUI.PersistentScroll.Restore(scroll, savedScroll, function()
+        self:UpdateVirtualRows()
+    end)
 
     -- Apply scroll anchor now that self._scroll and self._headerFrame are set.
     -- AceGUI will also re-fire container.LayoutFinished as part of section's

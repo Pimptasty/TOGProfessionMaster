@@ -113,6 +113,61 @@ local OPTIONS = {
             set   = function(_, val) Ace.db.profile.crafterAlertSuppressLogin = val end,
         },
 
+        cooldownAlertSuppressProtected = {
+            name  = L["SettingsCooldownAlertSuppressProtected"],
+            desc  = L["SettingsCooldownAlertSuppressProtectedDesc"],
+            type  = "toggle",
+            order = 19,
+            get   = function() return Ace.db.profile.cooldownAlertSuppressProtected end,
+            set   = function(_, val) Ace.db.profile.cooldownAlertSuppressProtected = val end,
+        },
+
+        cooldownAlertReminderMinutes = {
+            name  = L["SettingsCooldownReminderInterval"],
+            desc  = L["SettingsCooldownReminderIntervalDesc"],
+            type  = "input",
+            order = 19.5,
+            -- Stored value is an integer; display layer shows it as a string
+            -- and renders 0 as empty so "off" looks like an empty field
+            -- (avoids the visual "0" that users tend to interpret as a
+            -- placeholder rather than a real setting).
+            get   = function()
+                local m = tonumber(Ace.db.profile.cooldownAlertReminderMinutes) or 0
+                if m <= 0 then return "" end
+                return tostring(m)
+            end,
+            -- Validate-first / set-second: validate runs on Enter and gates
+            -- the set call, so any bad input never reaches the saved
+            -- variable. Both functions share the same "empty | off | 0..1440"
+            -- parse so the rules can't drift.
+            validate = function(_, val)
+                local trimmed = strtrim(val or "")
+                if trimmed == "" or trimmed:lower() == "off" then return true end
+                local n = tonumber(trimmed)
+                if not n or n ~= math.floor(n) then
+                    return L["SettingsCooldownReminderInvalid"]
+                end
+                if n < 0 or n > 1440 then
+                    return L["SettingsCooldownReminderInvalid"]
+                end
+                return true
+            end,
+            set   = function(_, val)
+                local trimmed = strtrim(val or "")
+                if trimmed == "" or trimmed:lower() == "off" then
+                    Ace.db.profile.cooldownAlertReminderMinutes = 0
+                    return
+                end
+                local n = tonumber(trimmed)
+                if n then
+                    n = math.floor(n)
+                    if n < 0     then n = 0     end
+                    if n > 1440  then n = 1440  end
+                    Ace.db.profile.cooldownAlertReminderMinutes = n
+                end
+            end,
+        },
+
         -- ---- Debug ---------------------------------------------------------
         debugHeader = {
             name  = L["SettingsDevHeader"],
@@ -166,6 +221,7 @@ local OPTIONS = {
                     gdb.factions        = {}
                     Ace.db.char.shoppingList   = {}
                     Ace.db.char.shoppingAlerts = {}
+                    Ace.db.char.cooldownAlerts = {}
                 end
                 addon:Print("All guild data purged.")
                 if addon.MainWindow then addon.MainWindow:Refresh() end

@@ -55,8 +55,10 @@ L["ReadyOnly"]              = "Ready Only"
 L["ShowAll"]                = "All"
 L["FilterColProfession"]    = "Profession"
 L["FilterColCooldown"]      = "Cooldown"
+L["FilterColView"]          = "View"
 L["FilterProfessionDesc"]   = "Filter the cooldown list to a single profession (Alchemy, Tailoring, etc.)."
 L["FilterCooldownDesc"]     = "Within the selected profession, filter to a single shared-timer cooldown (e.g. Transmute, Mooncloth)."
+L["FilterViewDesc"]         = "Switch between every guild member's cooldowns and just your own characters."
 L["AllCooldowns"]           = "All Cooldowns"
 -- Cooldown filter entry labels (one per shared-timer entry in
 -- COOLDOWN_BY_PROFESSION). Display names shown in the cooldown dropdown.
@@ -219,6 +221,11 @@ L["ShoppingAlertDisable"]              = "Disable crafter alert for this recipe"
 L["AlertCrafterOnline"]                = "|cffFFD700[TOGPM]|r %s is online — can craft: %s"
 L["AlertCrafterOnlineAlt"]             = "|cffFFD700[TOGPM]|r %s is online (alt of %s) — can craft: %s"
 
+-- Cooldown-ready alert (own characters only; toggled per row in the Cooldowns tab)
+L["CooldownAlertEnable"]               = "Enable ready alert for this cooldown"
+L["CooldownAlertDisable"]              = "Disable ready alert for this cooldown"
+L["AlertCooldownReady"]                = "|cff00ffff[TOGPM]|r Cooldown ready: %s — %s"
+
 -- Settings
 L["SettingsAlertsHeader"]              = "Crafter Alerts"
 L["SettingsCrafterAlert"]              = "Enable crafter alerts"
@@ -227,3 +234,8 @@ L["SettingsCrafterAlertSuppressAV"]    = "Suppress sound & flash"
 L["SettingsCrafterAlertSuppressAVDesc"]    = "Disable the audio and screen-flash effects (chat message still appears)."
 L["SettingsCrafterAlertSuppressLogin"]     = "Suppress alerts on login"
 L["SettingsCrafterAlertSuppressLoginDesc"] = "Don't fire alerts during the initial burst of online notifications at login or UI reload."
+L["SettingsCooldownAlertSuppressProtected"]     = "Mute alerts in instances"
+L["SettingsCooldownAlertSuppressProtectedDesc"] = "Don't ping or print cooldown-ready alerts while in a raid, dungeon, battleground, arena, or scenario. Capital cities are NOT suppressed — your transmute will still ping while you're AFK in Stormwind. Pending alerts fire the moment you leave the instance."
+L["SettingsCooldownReminderInterval"]      = "Cooldown ready reminder"
+L["SettingsCooldownReminderIntervalDesc"]  = "Re-fire each armed cooldown alert every N minutes while the cooldown stays ready (i.e. until you actually craft). Enter 0, empty, or 'off' to fire only once per ready cycle. Valid range: 1–1440 minutes (24 hours)."
+L["SettingsCooldownReminderInvalid"]       = "Enter a whole number from 0 to 1440, or 'off'."

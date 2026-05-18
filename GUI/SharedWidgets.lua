@@ -58,6 +58,162 @@ function addon.GUI.DetachPool(poolOrFrame)
 end
 
 -- ---------------------------------------------------------------------------
+-- Persistent-scroll helper
+-- ---------------------------------------------------------------------------
+-- Every tab that renders a scrollable list needs to survive sync-triggered
+-- ReleaseChildren+Draw cycles (GUILD_DATA_UPDATED fires every few seconds in
+-- an active guild) without yanking the user back to the top of the list.
+-- The fix is to persist an AceGUI status table on the tab module and
+-- re-attach it via SetStatusTable on each acquire, then restore the saved
+-- scroll value after FillRows + layout have settled.
+--
+-- Tabs come in two flavours:
+--   1. AceGUI-native scroll (CooldownsTab) — AceGUI's SetScroll() does
+--      everything; no virtual rows to update.
+--   2. Virtual-pool scroll (BrowserTab, MissingRecipesTab) — raw frame
+--      pool parented to scroll.content; restoring scroll also needs to
+--      re-position the pool rows (the tab's UpdateVirtualRows hook).
+-- Acquire/Restore handles both via the optional afterRestore callback.
+--
+-- Usage:
+--   local scroll, saved = addon.GUI.PersistentScroll.Acquire(self, {
+--       layout = "List", fullWidth = true, fullHeight = true,
+--       onRelease = function() self:DetachPool() end,
+--   })
+--   container:AddChild(scroll)
+--   self:FillRows(scroll)
+--   if scroll.DoLayout then scroll:DoLayout() end
+--   addon.GUI.PersistentScroll.Restore(scroll, saved, function()
+--       self:UpdateVirtualRows()  -- optional; virtual-pool tabs only
+--   end)
+--
+-- For "jump to top on filter change" call sites, use Reset(self, scroll).
+
+addon.GUI.PersistentScroll = addon.GUI.PersistentScroll or {}
+
+-- The class LayoutFinished is what auto-sizes scroll.content to fit its
+-- AceGUI children — without it AceGUI's FixScroll sees viewheight==0 and
+-- hides the scrollbar. AceGUI's ScrollFrame stores methods as INSTANCE
+-- fields (AceGUIContainer-ScrollFrame.lua : Constructor copies the local
+-- `methods` table directly onto each widget instance), so a previous owner
+-- like BrowserTab's virtual-scroll trick — `scroll.LayoutFinished =
+-- function() end` — survives AceGUI's release pool and follows the
+-- recycled widget into whichever tab acquires it next, breaking auto-size
+-- there too. Setting it to nil DOESN'T help either: there's no metatable
+-- fallback, so nil makes safecall(nil, ...) a silent no-op with the same
+-- end result (this was the regression in the previous "fix" — fresh
+-- widgets worked but recycled ones broke after a few tab switches).
+--
+-- The correct fix is to RESTORE the original method on every Acquire.
+-- Captured lazily on first Acquire from a freshly-pulled scroll widget;
+-- AceGUI:Release doesn't blank widget methods, so the captured reference
+-- stays valid for the lifetime of the session.
+local _ORIG_SCROLL_LAYOUT_FINISHED
+local function _CaptureOrigScrollLayoutFinished(scroll)
+    if _ORIG_SCROLL_LAYOUT_FINISHED then return end
+    -- Only capture if this looks like a fresh widget (LayoutFinished is a
+    -- function, not nil from a prior bad-fix Acquire). If a previously
+    -- damaged widget arrives first, skip — the next fresh acquire will
+    -- catch the original method.
+    if type(scroll.LayoutFinished) == "function" then
+        _ORIG_SCROLL_LAYOUT_FINISHED = scroll.LayoutFinished
+    end
+end
+
+-- Acquire a ScrollFrame with a persistent _scrollStatus attached to `tab`.
+-- Captures the saved scrollvalue into a return value BEFORE the caller's
+-- FillRows pass can fire FixScroll and clobber it (BrowserTab's bug from
+-- v0.3.5 — scrollbar:SetValue(0) during FixScroll writes scrollvalue=0
+-- into the status table via the default OnValueChanged handler).
+function addon.GUI.PersistentScroll.Acquire(tab, opts)
+    opts = opts or {}
+    tab._scrollStatus = tab._scrollStatus or { scrollvalue = 0 }
+    local saved = tab._scrollStatus.scrollvalue or 0
+
+    -- Reset BOTH fields so any synchronous FixScroll during FillRows
+    -- writes back zeroes (harmless) instead of corrupting the saved
+    -- value. offset is always recomputed from scrollvalue + the new
+    -- content height anyway, so clearing it is mandatory.
+    tab._scrollStatus.scrollvalue = 0
+    tab._scrollStatus.offset      = nil
+
+    local scroll = AceGUI:Create("ScrollFrame")
+    -- Restore the class LayoutFinished, overwriting any leftover override
+    -- from a previous owner of this pooled widget (BrowserTab installs a
+    -- no-op as part of its virtual-scroll trick — see the long comment
+    -- above _ORIG_SCROLL_LAYOUT_FINISHED). Capture from THIS acquisition
+    -- if we haven't already; otherwise assign the previously-captured
+    -- reference. When the captured reference is still nil (first-ever
+    -- acquire returned a damaged recycled widget), the assignment is a
+    -- no-op and the bad behaviour persists for THIS draw only — the
+    -- next fresh acquire will catch the original and self-heal.
+    _CaptureOrigScrollLayoutFinished(scroll)
+    if _ORIG_SCROLL_LAYOUT_FINISHED then
+        scroll.LayoutFinished = _ORIG_SCROLL_LAYOUT_FINISHED
+    end
+    scroll:SetLayout(opts.layout or "List")
+    if opts.fullWidth  ~= false then scroll:SetFullWidth(true)  end
+    if opts.fullHeight then           scroll:SetFullHeight(true) end
+    scroll:SetStatusTable(tab._scrollStatus)
+    if opts.onRelease then
+        scroll:SetCallback("OnRelease", opts.onRelease)
+    end
+    return scroll, saved
+end
+
+-- Restore the saved scroll position. Must be called AFTER FillRows has
+-- written the content height (so SetScroll can derive a correct offset).
+-- For AceGUI-native tabs, calling DoLayout before this is sufficient.
+-- For virtual-pool tabs, pass `afterFn` so UpdateVirtualRows re-anchors
+-- the pool rows to the restored offset.
+function addon.GUI.PersistentScroll.Restore(scroll, saved, afterFn)
+    if not (saved and saved > 0 and scroll and scroll.SetScroll) then return end
+    scroll:SetScroll(saved)
+    -- Some AceGUI versions don't auto-sync the scrollbar visual when
+    -- SetScroll writes the status table — explicitly nudge it so
+    -- virtual-pool tabs' scrollbars track their content position.
+    if scroll.scrollbar and scroll.scrollbar.SetValue then
+        scroll.scrollbar:SetValue(saved)
+    end
+    if afterFn then afterFn() end
+end
+
+-- Explicit "jump to top" reset for filter-change call sites. A filter
+-- change should always show the top of the new result set, not whatever
+-- offset the previous list was scrolled to.
+function addon.GUI.PersistentScroll.Reset(tab, scroll)
+    if tab._scrollStatus then
+        tab._scrollStatus.scrollvalue = 0
+        tab._scrollStatus.offset      = 0
+    end
+    if scroll and scroll.SetScroll then scroll:SetScroll(0) end
+end
+
+-- ---------------------------------------------------------------------------
+-- Dropdown-open detection
+-- ---------------------------------------------------------------------------
+-- AceGUI's Dropdown widget renders its pulldown menu as a separate Pullout
+-- frame parented to UIParent and globally named "AceGUI30Pullout<N>" (see
+-- AceGUIWidget-DropDown.lua : CreateFrame at the pullout module). Pool size
+-- grows monotonically as more dropdowns are used, so iterating until we hit
+-- a nil global covers every pullout AceGUI has ever created.
+--
+-- MainWindow:Refresh consults this before releasing the active tab's
+-- children — releasing the toolbar would tear down whichever Dropdown
+-- widget owns the open pullout, which closes it mid-interaction (the
+-- user's complaint that prompted this helper). When this returns true,
+-- the refresh re-defers until the user picks a value or clicks away.
+function addon.GUI.IsAnyDropdownPulloutOpen()
+    local i = 1
+    while true do
+        local f = _G["AceGUI30Pullout" .. i]
+        if not f then return false end
+        if f:IsShown() then return true end
+        i = i + 1
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Scan AH button
 -- ---------------------------------------------------------------------------
 -- Replaces the duplicated 80-line block that previously lived in each of

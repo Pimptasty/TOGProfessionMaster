@@ -203,25 +203,35 @@ function MainWindow:Open(tabKey)
         -- BrowserTab / MissingRecipesTab.
         addon.GUI.DetachPool(self._helpIcon)
         self._helpIcon = nil
+        -- Same detach for the settings gear — also a raw CreateFrame
+        -- parented to f.frame. Without this, the next addon that
+        -- AceGUI:Create("Frame")s inherits our gear icon riding on the
+        -- recycled Frame (same widget-bleed trap helpIcon had).
+        addon.GUI.DetachPool(self._gearIcon)
+        self._gearIcon = nil
         self.frame = nil
         self.tabs  = nil
         _escProxy:Hide()
         AceGUI:Release(_widget)
     end)
 
-    -- Shrink the default status bar right edge to create room for the help icon.
-    -- Default AceGUI statusbg goes to BOTTOMRIGHT -132; we push it to -163 so a
-    -- 24px icon fits in the gap (matching the TOGBankClassic pattern).
+    -- Shrink the default status bar right edge to create room for the help
+    -- icon AND the new settings gear icon. Strip layout, left to right:
+    --   [ status text ......(-183) ]-6-[ help 24 ]-3-[ gear 20 ]-3-[ Close 100 (-27) ]
+    -- The 24-px help icon keeps its size + tooltip behaviour; the gear is
+    -- a 20-px Button anchored to its BOTTOMRIGHT, mirroring FastGuildInvite's
+    -- bottom-row icon strip. statusbg's right edge moves from -163 to -183
+    -- to make room for the 20-px gear + 3-px gap between gear and helpIcon.
     local statusbg = f.statustext:GetParent()
     statusbg:ClearAllPoints()
     statusbg:SetPoint("BOTTOMLEFT",  f.frame, "BOTTOMLEFT",   15, 15)
-    statusbg:SetPoint("BOTTOMRIGHT", f.frame, "BOTTOMRIGHT", -163, 15)
+    statusbg:SetPoint("BOTTOMRIGHT", f.frame, "BOTTOMRIGHT", -183, 15)
 
     -- Help "i" icon
     local helpIcon = CreateFrame("Frame", nil, f.frame)
     self._helpIcon = helpIcon
     helpIcon:SetSize(24, 24)
-    helpIcon:SetPoint("BOTTOMRIGHT", f.frame, "BOTTOMRIGHT", -133, 15)
+    helpIcon:SetPoint("BOTTOMRIGHT", f.frame, "BOTTOMRIGHT", -153, 15)
     helpIcon:EnableMouse(true)
     local helpTex = helpIcon:CreateTexture(nil, "OVERLAY")
     helpTex:SetAllPoints(helpIcon)
@@ -306,6 +316,61 @@ function MainWindow:Open(tabKey)
     end)
     helpIcon:SetScript("OnLeave", function()
         GameTooltip:Hide()
+    end)
+
+    -- Settings gear icon — opens the AceConfig dialog (same target as
+    -- /togpm settings and Shift+left-click on the minimap button).
+    -- Anchored to helpIcon's BOTTOMRIGHT + (3, 2): 3-px horizontal gap to
+    -- match FastGuildInvite's bottom-row spacing, +2 y to vertically
+    -- centre a 20-tall gear against the 24-tall help icon (both bottoms
+    -- align with the AceGUI close button's centre y=27). Stashed on self
+    -- so OnClose can DetachPool it alongside the help icon — without
+    -- that, this gear would ride along when AceGUI recycles the Frame
+    -- to another addon (same widget-bleed trap helpIcon had).
+    local gearIcon = CreateFrame("Button", nil, f.frame)
+    self._gearIcon = gearIcon
+    gearIcon:SetSize(20, 20)
+    gearIcon:SetPoint("BOTTOMLEFT", helpIcon, "BOTTOMRIGHT", 3, 2)
+    gearIcon:SetNormalTexture("Interface\\Icons\\Trade_Engineering")
+    gearIcon:SetPushedTexture("Interface\\Icons\\Trade_Engineering")
+    local gearPushed = gearIcon:GetPushedTexture()
+    if gearPushed then gearPushed:SetVertexColor(0.7, 0.7, 0.7) end
+    gearIcon:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    gearIcon:SetScript("OnEnter", function(self_)
+        addon.Tooltip.Owner(self_)
+        local brandColor = addon.BrandColor or "ffFF8000"
+        GameTooltip:SetText("|c" .. brandColor .. "Settings|r", 1, 1, 1)
+        GameTooltip:AddLine("Open the TOG Profession Master settings panel " ..
+            "(|cffffd700ESC > Options > AddOns > TOG Profession Master|r). " ..
+            "Same target as |cffffd700/togpm settings|r and Shift+left-click on the minimap button.",
+            nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    gearIcon:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    gearIcon:SetScript("OnClick", function()
+        if not addon.OpenSettings then return end
+        -- Opening the Blizzard Settings panel triggers CloseSpecialWindows()
+        -- on the way in, which hides every entry in UISpecialFrames — including
+        -- our TOGPMEscProxy, whose OnHide handler closes the main window when
+        -- nothing else is on top. End result without this workaround: the main
+        -- window slams shut every time the gear is clicked.
+        --
+        -- Workaround (mirrors FGI's gear-click pattern): temporarily clear the
+        -- proxy's OnHide handler so the proxy can be hidden silently, open
+        -- settings, then restore the handler and re-show the proxy on the next
+        -- frame so ESC still closes the main window on subsequent presses.
+        local proxy = _G["TOGPMEscProxy"]
+        local origOnHide = proxy and proxy:GetScript("OnHide")
+        if proxy then proxy:SetScript("OnHide", nil) end
+
+        addon:OpenSettings()
+
+        if proxy then
+            C_Timer.After(0, function()
+                proxy:SetScript("OnHide", origOnHide)
+                if MainWindow.frame then proxy:Show() end
+            end)
+        end
     end)
 
     -- TabGroup
@@ -436,6 +501,31 @@ end
 -- ---------------------------------------------------------------------------
 
 function MainWindow:DrawTab(group, container)
+    -- Clear any container.LayoutFinished override left over from the
+    -- previously-active tab. Missing and Browser install their own
+    -- overrides (AnchorAll / AnchorScrollToFill) for custom anchoring,
+    -- and those overrides survive tab switches because the TabGroup
+    -- widget stays alive across switches — only its children get
+    -- released. Without this clear, switching Missing → Cooldowns
+    -- leaves Missing's AnchorAll on the container; it fires during
+    -- Cooldowns' layout pass, references Missing's stale widget refs,
+    -- and silently anchors a recycled-from-Missing scroll frame to
+    -- hidden/wrong frames — the scroll viewport collapses and the
+    -- scrollbar disappears.
+    --
+    -- We set this to nil (not back to the class default). TabGroup's
+    -- class LayoutFinished does `self:SetHeight((height + borderoffset
+    -- + 23))` whose OnHeightSet shrinks `content:SetHeight(height -
+    -- borderoffset - 23)` based on the partially-laid-out height —
+    -- when fired during a tab's intermediate AddChild passes (e.g.
+    -- when Missing has only its toolbar attached so far), it collapses
+    -- the content frame to ~0px and squashes everything anchored
+    -- inside. The TabGroup is sized by its parent Frame's fill anchors
+    -- anyway, so the class auto-size is redundant; nil here is correct.
+    -- Missing/Browser then re-set this to their own AnchorAll/etc. as
+    -- part of their Draw, which is fine — only the inter-tab leftover
+    -- needs to be wiped.
+    container.LayoutFinished = nil
     if group == "browser" then
         if addon.BrowserTab then
             addon.BrowserTab:Draw(container)
@@ -457,6 +547,25 @@ end
 
 function MainWindow:Refresh()
     if not self.frame or not self.tabs then return end
+
+    -- Defer the refresh while any toolbar dropdown's pullout is open.
+    -- Releasing the tab's children tears down the Dropdown widget,
+    -- which closes its pullout mid-interaction — annoying when a guild
+    -- sync arrives every few seconds and the user is mid-pick. Re-queue
+    -- and re-test on a longer cadence; the user closing the pullout
+    -- (either by picking a value or clicking elsewhere) is the natural
+    -- gating event. addon.GUI.IsAnyDropdownPulloutOpen lives in
+    -- GUI/SharedWidgets.lua and walks AceGUI's global pullout pool.
+    if addon.GUI and addon.GUI.IsAnyDropdownPulloutOpen
+       and addon.GUI.IsAnyDropdownPulloutOpen() then
+        if self._refreshTimer then self._refreshTimer:Cancel() end
+        self._refreshTimer = C_Timer.NewTimer(0.25, function()
+            self._refreshTimer = nil
+            self:Refresh()
+        end)
+        return
+    end
+
     self.tabs:ReleaseChildren()
     self:DrawTab(self.activeTab, self.tabs)
 end

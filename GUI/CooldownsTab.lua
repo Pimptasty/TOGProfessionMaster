@@ -30,6 +30,10 @@ CooldownsTab._readyOnly = false
 -- ("all" = All within that profession). Two AceGUI dropdowns on the toolbar.
 CooldownsTab._filterProf = 0
 CooldownsTab._filterCd   = "all"
+-- Scope filter: "guild" shows every guild member's cooldowns,
+-- "mine" narrows to the local player's own characters. Mirrors the
+-- Browser tab's _viewMode dropdown.
+CooldownsTab._viewMode   = "guild"
 
 -- Profession display names come from the shared addon.PROF_NAMES table
 -- in TOGProfessionMaster.lua — single source of truth for every tab.
@@ -384,7 +388,19 @@ local function BuildRows(readyOnly)
                 else
                     -- Regular single-spell cooldown row.
                     if not readyOnly or remaining <= 0 then
-                        local cdName = data.cooldowns[spellId] or GetSpellInfo(spellId) or GetItemInfo(spellId) or tostring(spellId)
+                        -- Salt Shaker stores its cooldown under the ITEM id
+                        -- (15846), which is also a valid SPELL id — namely
+                        -- "Veil of Shadow," a generic NPC ability. Without
+                        -- this special case GetSpellInfo wins the fallback
+                        -- chain and the row labels as "Veil of Shadow"
+                        -- instead of "Salt Shaker." Resolve item-based
+                        -- cooldowns through GetItemInfo first.
+                        local cdName
+                        if spellId == data.saltShakerItem then
+                            cdName = GetItemInfo(spellId) or "Salt Shaker"
+                        else
+                            cdName = data.cooldowns[spellId] or GetSpellInfo(spellId) or GetItemInfo(spellId) or tostring(spellId)
+                        end
                         local reagentItemId = data.reagents[spellId] and data.reagents[spellId].id
                         local reagentQty    = data.reagents[spellId] and data.reagents[spellId].qty or 1
                         local iconItemId    = data.iconOverrides and data.iconOverrides[spellId]
@@ -882,6 +898,24 @@ function CooldownsTab:Draw(container)
         toolbar:AddChild(cdDD)
     end
 
+    -- Scope dropdown: Guild (every guild member) vs My Characters (own alts
+    -- only). Mirrors the Browser tab's view-mode dropdown so the two tabs
+    -- behave the same way when the user wants to focus on their own
+    -- cooldowns. State is session-only (not persisted to AceDB) to match
+    -- the existing profession/cooldown filters above.
+    local viewDD = AceGUI:Create("Dropdown")
+    viewDD:SetLabel("|c" .. brand .. L["FilterColView"] .. "|r")
+    viewDD:SetWidth(140)
+    viewDD:SetList({ guild = L["ViewGuild"], mine = L["ViewMine"] },
+                   { "guild", "mine" })
+    viewDD:SetValue(self._viewMode or "guild")
+    viewDD:SetCallback("OnValueChanged", function(_w, _e, value)
+        self._viewMode = value
+        self:RedrawTable(container)
+    end)
+    addon.GUI.AttachTooltip(viewDD, L["FilterColView"], L["FilterViewDesc"])
+    toolbar:AddChild(viewDD)
+
     -- 8px spacer matching the existing toolbar gap convention.
     local sp4 = AceGUI:Create("Label"); sp4:SetWidth(8); toolbar:AddChild(sp4)
 
@@ -923,6 +957,17 @@ function CooldownsTab:Draw(container)
                                 kept[#kept + 1] = row
                             end
                         end
+                    end
+                end
+                rows = kept
+            end
+            -- Match the visible-rows scope filter so Scan AH only walks
+            -- reagents the user can actually see in the list.
+            if (self._viewMode or "guild") == "mine" then
+                local kept = {}
+                for _, row in ipairs(rows) do
+                    if addon:IsMyCharacter(row.charKey) then
+                        kept[#kept + 1] = row
                     end
                 end
                 rows = kept
@@ -978,45 +1023,22 @@ function CooldownsTab:Draw(container)
     -- ---- Scrollable rows ---------------------------------------------------
     -- Persist scroll position across redraws so sync-triggered
     -- GUILD_DATA_UPDATED rebuilds (every few seconds in active guilds)
-    -- don't yank the user back to the top mid-scroll. Use SetStatusTable
-    -- with a persistent _scrollStatus table — this is AceGUI's blessed
-    -- way and applies during AceGUI's own layout pass, so there's no
-    -- visible flash like the C_Timer.After approach had (where OnAcquire
-    -- briefly showed the scrollbar at 0 before our deferred SetScroll
-    -- restored it). The status.offset field gets cleared each Draw
-    -- because content height changes between redraws (filter toggled,
-    -- new rows arrived) and a stale offset would point at the wrong row;
-    -- AceGUI's FixScroll re-derives offset from scrollvalue + current
-    -- content/view sizes after we DoLayout below.
-    self._scrollStatus = self._scrollStatus or { scrollvalue = 0 }
-    self._scrollStatus.offset = nil  -- recomputed from scrollvalue + new content size
-
-    local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetLayout("List")
-    scroll:SetFullWidth(true)
-    scroll:SetFullHeight(true)
-    scroll:SetStatusTable(self._scrollStatus)
+    -- and filter changes don't yank the user back to the top. Shared
+    -- helper handles SetStatusTable + saved-value capture; we just have
+    -- to call Restore() after FillRows + DoLayout so SetScroll can
+    -- derive a correct offset from the now-known content height.
+    local scroll, saved = addon.GUI.PersistentScroll.Acquire(self, {
+        layout     = "List",
+        fullWidth  = true,
+        fullHeight = true,
+    })
     container:AddChild(scroll)
-    self._scroll       = scroll
-    self._container    = container
+    self._scroll    = scroll
+    self._container = container
 
     self:FillRows(scroll)
-
-    -- Force a synchronous layout pass so scroll.content's height is set
-    -- from the rows we just added BEFORE we apply scrollvalue. Without
-    -- this, the next-frame FixScroll reads a content height of 0 and
-    -- computes a wrong scrollbar position (or hides the scrollbar).
     if scroll.DoLayout then scroll:DoLayout() end
-
-    -- Apply the saved scrollvalue synchronously. SetScroll re-derives
-    -- offset from value + the now-correct content size, writes both to
-    -- the status table, and positions the content frame — all in one
-    -- atomic step within the same render frame, so the user never sees
-    -- a momentary scroll-to-top.
-    local saved = self._scrollStatus.scrollvalue
-    if saved and saved > 0 and scroll.SetScroll then
-        scroll:SetScroll(saved)
-    end
+    addon.GUI.PersistentScroll.Restore(scroll, saved)
 end
 
 function CooldownsTab:DrawHeaders(parent, container)
@@ -1090,6 +1112,21 @@ function CooldownsTab:FillRows(scroll)
                         kept[#kept + 1] = row
                     end
                 end
+            end
+        end
+        rows = kept
+    end
+
+    -- Scope filter (applied after the prof/cd filter so the two compose
+    -- naturally): "mine" keeps only rows whose charKey belongs to the
+    -- local player's account. addon:IsMyCharacter consults the account-
+    -- wide accountChars table so every own alt is recognised, not just
+    -- the currently-logged-in character.
+    if (self._viewMode or "guild") == "mine" then
+        local kept = {}
+        for _, row in ipairs(rows) do
+            if addon:IsMyCharacter(row.charKey) then
+                kept[#kept + 1] = row
             end
         end
         rows = kept
@@ -1441,6 +1478,37 @@ function CooldownsTab:DrawRow(parent, row, now)
     sf(timeLbl)
     nowrap(timeLbl)
     rowGroup:AddChild(timeLbl)
+
+    -- ── Optional "!" cooldown-ready alarm toggle (own characters only) ─────
+    -- Mirrors the Browser tab's per-recipe alert "!" button. Cyan when armed,
+    -- grey when off; clicking flips state via addon.CooldownAlerts, which
+    -- also fires an immediate ping if the cooldown is already ready (gives
+    -- the user a confirmation that the alarm is wired up). Skipped on
+    -- non-own-character rows — guildmate cooldowns are informational and
+    -- alerting on them isn't part of this feature.
+    if isYou and addon.CooldownAlerts then
+        local CA = addon.CooldownAlerts
+        local alertBtn = AceGUI:Create("InteractiveLabel")
+        local function paint(btn, armed)
+            btn:SetText(armed and "|cff00ffff!|r" or "|cff666666!|r")
+        end
+        paint(alertBtn, CA:IsArmed(row))
+        alertBtn:SetWidth(18)
+        sf(alertBtn)
+        nowrap(alertBtn)
+        alertBtn:SetCallback("OnClick", function(_widget)
+            local newState = CA:Toggle(row)
+            paint(_widget, newState)
+        end)
+        alertBtn:SetCallback("OnEnter", function(_widget)
+            addon.Tooltip.Owner(_widget.frame)
+            local enabled = CA:IsArmed(row)
+            GameTooltip:SetText(enabled and L["CooldownAlertDisable"] or L["CooldownAlertEnable"], 1, 1, 1)
+            GameTooltip:Show()
+        end)
+        alertBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+        rowGroup:AddChild(alertBtn)
+    end
 end
 
 --- Show a popup listing all individual spells inside a cooldown group.

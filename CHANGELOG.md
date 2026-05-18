@@ -1,5 +1,15 @@
 # TOG Profession Master Changelog
 
+## [v0.4.1] (2026-05-18) - MoP profession availability + MoP guild sync fixes
+
+### Bug Fixes
+
+- **Jewelcrafting and Inscription missing from profession dropdowns on MoP** — `addon.PROF_AVAILABILITY[755]` and `[773]` (the JC / Inscription availability predicates) referenced `addon.isMists`, but [Compat.lua](Compat.lua) only defines `addon.isMoP`. On a MoP client `isCata` is false and `isMists` is nil, so `IsProfessionAvailable(755 / 773)` returned false and every dropdown that filters via that helper dropped both professions. Fix: rename both references to `addon.isMoP` so the predicate matches the flag actually set at load time. Other professions were unaffected (they have no `PROF_AVAILABILITY` entry and default to always-available). Location: [TOGProfessionMaster.lua](TOGProfessionMaster.lua).
+
+- **Recipe sync between MoP peers silently blocked by broadcast debounce** — `Scanner._broadcastSeconds = 30` puts a 30s floor on `Scanner:BroadcastHashes`, intended as a guard against bursty rapid-fire `ScheduleBroadcast` calls. On TBC/Classic/Cata with larger guilds, the 10-min periodic catch-up tick at [Scanner.lua:405-409](Scanner.lua#L405-L409) reliably lands while some peer is online, so recipe hashes eventually escape. On MoP Classic with smaller guilds, peers rarely overlap during the 10-min window, and the post-scan broadcast (which is what carries newly-invalidated `recipemeta:<profId>` / `crafters:<profId>` hashes) gets suppressed for the entire 30s wall after every successful broadcast. Result: per-character cooldown sync works (those leaves are keyed by `charKey`, so each broadcaster's first login hash list carries them cleanly), but guild-wide recipe leaves never propagate between MoP peers — both sides only ever see their own scans. The v0.2.0 protocol's offer/handshake dance requires the requesting side's hash list to reach the provider so the provider can WHISPER an OFFER back; with broadcasts suppressed, the dance never starts. Fix: gate the debounce on `addon.isMoP` — 3s on MoP (enough to coalesce TRADE_SKILL_SHOW + TRADE_SKILL_UPDATE pairs beyond the 0.5s `ScheduleBroadcast` coalescer), 30s elsewhere. The `count == 0` differential check at [Scanner.lua:1287-1290](Scanner.lua#L1287-L1290) already provides content-based throttling, so a 3s floor is purely a burst guard. Location: [Scanner.lua](Scanner.lua).
+
+---
+
 ## [v0.4.0] (2026-05-18) - Cooldown-ready alerts + Cooldowns view filter + settings gear + scroll-pool / tab-pool fixes
 
 ### New Features

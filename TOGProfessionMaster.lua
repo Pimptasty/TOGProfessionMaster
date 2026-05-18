@@ -353,8 +353,8 @@ addon.PROF_NAMES = {
 -- assignment time would see nil. Calls happen at dropdown-build time
 -- where the flags are guaranteed populated.
 addon.PROF_AVAILABILITY = {
-    [755] = function() return addon.isTBC   or addon.isWrath or addon.isCata or addon.isMists end,  -- Jewelcrafting (TBC+)
-    [773] = function() return addon.isWrath or addon.isCata  or addon.isMists end,                  -- Inscription (Wrath+)
+    [755] = function() return addon.isTBC   or addon.isWrath or addon.isCata or addon.isMoP end,  -- Jewelcrafting (TBC+)
+    [773] = function() return addon.isWrath or addon.isCata  or addon.isMoP end,                  -- Inscription (Wrath+)
     [40]  = function() return addon.isVanilla or addon.isTBC end,                                   -- Poisons (made automatic in WotLK 3.1)
 }
 

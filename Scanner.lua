@@ -105,7 +105,15 @@ end
 -- Broadcast state
 Scanner._pendingBroadcast = false
 Scanner._lastBroadcastAt  = 0
-Scanner._broadcastSeconds = 30       -- hard minimum between guild broadcasts (seconds)
+-- Hard minimum between guild broadcasts (seconds). MoP-only override: with
+-- smaller MoP Classic guilds, peers rarely overlap during the 10-min periodic
+-- catch-up window, so a post-scan recipe broadcast that gets blocked by the
+-- 30s debounce never reaches anyone. The differential check below already
+-- skips no-op broadcasts via `count == 0`, so a 3s floor on MoP only protects
+-- against pathological rapid-fire ScheduleBroadcast pairs (TRADE_SKILL_SHOW +
+-- TRADE_SKILL_UPDATE at ~0.5s spacing) which the 0.5s ScheduleBroadcast
+-- coalescer already handles.
+Scanner._broadcastSeconds = addon.isMoP and 3 or 30
 
 -- DeltaSync + GuildCache LibStub handles (assigned in InitDeltaSync)
 Scanner.DS         = nil

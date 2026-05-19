@@ -1,5 +1,17 @@
 # TOG Profession Master Changelog
 
+## [v0.4.2] (2026-05-18) - Dynamic broadcast debounce + "My Characters" filter works for cross-guild and guildless alts
+
+### Bug Fixes
+
+- **"My Characters" filter on Cooldowns and Missing Recipes tabs only showed alts that were in the same guild as the currently-logged-in character** — the whole point of the filter was account-wide visibility, but both tabs only read from `addon:GetGuildDb()` (the *current* guild's bucket). An alt in a different guild had their cooldowns/skills stored in *that* guild's bucket, invisible here. An alt with no guild scanned nothing at all because the scanner early-returned on `if not addon:GetGuildKey() then return end`. Fix has three parts: (1) `addon:GetGuildDb()` now falls back to a synthetic `addon.NoGuildBucketKey = "__noguild"` bucket when the player has no guild, so guildless scans always have somewhere to write. (2) Every broadcast helper (`BroadcastHashes`, `BroadcastLeafToGuild`, `BroadcastSubhashesToGuild`) now gates explicitly on `addon:GetGuildKey()` returning a real (non-nil) value as belt-and-suspenders protection — the synthetic bucket's contents never reach the wire. (3) The Cooldowns tab in `"mine"` view walks every bucket in `addon.guildDb.global.guilds` and merges rows for own characters (latest `expiresAt` wins on duplicates from stale buckets); the transmute-group popup uses the same bucket walk. The Missing Recipes tab gets a `FindCharBucket(charKey)` helper that does the same walk so `GetCharactersWithProfessions`, `GetProfessionsForCharacter`, and `BuildMissingList` all surface cross-guild and guildless alts. Sync protocol is unchanged: only real-guild data ever crosses the wire. Location: [TOGProfessionMaster.lua](TOGProfessionMaster.lua), [Scanner.lua](Scanner.lua), [GUI/CooldownsTab.lua](GUI/CooldownsTab.lua), [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua).
+
+### Improvements
+
+- **Broadcast debounce now scales with the number of addon users in the guild** — the static 30s floor on `Scanner:BroadcastHashes` was sized for busy guilds, but it suppressed legitimate post-scan recipe broadcasts in any guild small enough that the 10-min periodic catch-up tick couldn't reliably reach an online peer (the bug v0.4.1 worked around with a MoP-only static 3s value). Replaces the MoP gate with a VersionCheck-1.0-driven recount: at `InitDeltaSync` and at the top of every 10-min tick, fires `VC:FireBatch()` and 21 seconds later (after the VC10_REQ broadcast + 8s jitter window + 12s collect period have all settled) sets `Scanner._broadcastSeconds = max(3, min(30, addonUsersOnline))`. Linear scale: a 2-person test guild gets a 3s floor so recipe hashes propagate within seconds; a 30+ active-addon-user guild keeps the original 30s ceiling to protect the GUILD channel from saturation. The new count from each tick's batch applies to the next 10-min cycle; the current cycle uses whatever the previous recount produced (steady state converges in one tick). Falls back to the 30s default until the first recount lands, and degrades to the default if VersionCheck-1.0 isn't loaded. Helper: `Scanner:ScheduleAddonUserRecount`. Location: [Scanner.lua](Scanner.lua).
+
+---
+
 ## [v0.4.1] (2026-05-18) - MoP profession availability + MoP guild sync fixes
 
 ### Bug Fixes

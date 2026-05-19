@@ -312,7 +312,37 @@ end
 -- Returns array of:
 -- { charKey, shortName, spellId, cdName, reagentItemId, expiresAt,
 --   isGroup, group, isTransmuteGroup, transmutes, transmuteReagents }
-local function BuildRows(readyOnly)
+-- When viewMode == "mine", walk every bucket in addon.guildDb.global.guilds
+-- and merge their cooldown maps (own characters only) so guildless / cross-
+-- guild alts surface in the Cooldowns tab. When viewMode is anything else,
+-- just return the current guild bucket's cooldown map. The walk is local-
+-- read-only — no network involvement.
+local function CollectCooldownsByChar(viewMode)
+    if viewMode == "mine" then
+        local merged = {}
+        for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
+            for charKey, charCds in pairs(bucket.cooldowns or {}) do
+                if addon:IsMyCharacter(charKey) then
+                    if not merged[charKey] then merged[charKey] = {} end
+                    for spellId, expiresAt in pairs(charCds) do
+                        -- Latest expiresAt wins if the same char's data appears
+                        -- in multiple buckets (e.g., stale entry left behind
+                        -- after switching guilds).
+                        local existing = merged[charKey][spellId]
+                        if not existing or expiresAt > existing then
+                            merged[charKey][spellId] = expiresAt
+                        end
+                    end
+                end
+            end
+        end
+        return merged
+    end
+    local gdb = addon:GetGuildDb()
+    return gdb and gdb.cooldowns or {}
+end
+
+local function BuildRows(readyOnly, viewMode)
     local gdb = addon:GetGuildDb()
     if not gdb then return {} end
 
@@ -338,7 +368,7 @@ local function BuildRows(readyOnly)
     -- All transmutes for one player collapse into a single "Transmute" group row.
     local transmuteGroups = {}  -- [charKey] = { spellIds={}, expiresAt }
 
-    for charKey, charCds in pairs(gdb.cooldowns) do
+    for charKey, charCds in pairs(CollectCooldownsByChar(viewMode)) do
         local shortName = charKey:match("^(.-)%-") or charKey
 
         -- Track which non-transmute group keys we've already emitted.
@@ -935,7 +965,7 @@ function CooldownsTab:Draw(container)
         tooltipDesc   = L["CooldownsScanAHDesc"],
         noItemsError  = "No reagents to scan in the current view.",
         getItems      = function()
-            local rows = BuildRows(self._readyOnly)
+            local rows = BuildRows(self._readyOnly, self._viewMode)
             local profId = self._filterProf or 0
             local cdId   = self._filterCd   or "all"
             if profId ~= 0 then
@@ -1082,7 +1112,7 @@ function CooldownsTab:RedrawTable(container)
 end
 
 function CooldownsTab:FillRows(scroll)
-    local rows = BuildRows(self._readyOnly)
+    local rows = BuildRows(self._readyOnly, self._viewMode)
 
     -- Two-level dropdown filter:
     --   profession=All        → no filter
@@ -1549,9 +1579,17 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
     for _, e in ipairs(entries) do
         if e.reagentId then hasReagents = true; break end
     end
+    -- In "mine" view a row's charKey can live in any guild bucket (including
+    -- the synthetic NoGuildBucketKey for guildless alts), not just the current
+    -- gdb. Walk every bucket and pick the one that has data for this charKey.
     local charKey = row.charKey
-    local gdb     = addon:GetGuildDb()
-    local charCds = gdb and gdb.cooldowns[charKey] or {}
+    local charCds = {}
+    for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
+        if bucket.cooldowns and bucket.cooldowns[charKey] then
+            charCds = bucket.cooldowns[charKey]
+            break
+        end
+    end
 
     local rowH   = 14
     local pad    = 6

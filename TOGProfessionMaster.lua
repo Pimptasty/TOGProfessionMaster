@@ -885,11 +885,20 @@ function addon:NormalizeGuildKey(key)
     return key  -- Already new format: "Faction-GuildName"
 end
 
+-- Synthetic guild-bucket key used when the player has no guild. Lets the
+-- scanner store own-character scans somewhere coherent so the "My Characters"
+-- view filter on the Cooldowns / Missing Recipes tabs can surface guildless
+-- alts. Local-only by construction: every broadcast helper in Scanner.lua
+-- gates on addon:GetGuildKey() returning a real (non-nil) value, so the
+-- synthetic bucket's contents never reach the wire. Connected-realm names
+-- can't contain underscores so this key cannot collide with a real guild.
+addon.NoGuildBucketKey = "__noguild"
+
 -- Return (and lazily create) the guild-scoped sub-table for the current guild.
--- Returns nil when the player is not in a guild — callers must guard.
+-- Falls back to the synthetic NoGuildBucketKey bucket when the player is not
+-- in a guild so own-character scans always have somewhere to write.
 function addon:GetGuildDb()
-    local guildKey = self:GetGuildKey()
-    if not guildKey then return nil end
+    local guildKey = self:GetGuildKey() or addon.NoGuildBucketKey
 
     local g = addon.guildDb.global.guilds
     if not g[guildKey] then

@@ -93,17 +93,37 @@ end
 -- Data helpers
 -- ---------------------------------------------------------------------------
 
+-- Find the guild bucket that holds tracked data for a charKey. The Missing
+-- Recipes tab is always own-character-focused, so we walk every bucket in
+-- addon.guildDb.global.guilds (including the synthetic NoGuildBucketKey for
+-- guildless alts and any cross-guild buckets containing other own alts) and
+-- return the first bucket whose skills table mentions this charKey. Returns
+-- nil if no bucket has scanned data for the character yet.
+local function FindCharBucket(charKey)
+    if not charKey then return nil end
+    for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
+        if bucket.skills and bucket.skills[charKey] then
+            return bucket
+        end
+    end
+    return nil
+end
+
 -- Return list of charKeys that belong to this account and have any tracked
--- profession data. The currently-logged-in toon is always included even if
--- it has not opened a trade-skill window yet.
+-- profession data, regardless of which guild bucket the data lives in. The
+-- currently-logged-in toon is always included even if it has not opened a
+-- trade-skill window yet.
 local function GetCharactersWithProfessions()
-    local gdb = addon:GetGuildDb()
     local list, seen = {}, {}
-    if gdb and gdb.skills then
-        for charKey, profMap in pairs(gdb.skills) do
-            if addon:IsMyCharacter(charKey) and profMap and next(profMap) then
-                table.insert(list, charKey)
-                seen[charKey] = true
+    for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
+        if bucket.skills then
+            for charKey, profMap in pairs(bucket.skills) do
+                if not seen[charKey]
+                   and addon:IsMyCharacter(charKey)
+                   and profMap and next(profMap) then
+                    table.insert(list, charKey)
+                    seen[charKey] = true
+                end
             end
         end
     end
@@ -125,10 +145,10 @@ end
 -- lingers in the SavedVariables shouldn't surface Inscription on a
 -- Vanilla client.
 local function GetProfessionsForCharacter(charKey)
-    local gdb = addon:GetGuildDb()
-    if not gdb or not gdb.skills or not gdb.skills[charKey] then return {} end
+    local bucket = FindCharBucket(charKey)
+    if not bucket then return {} end
     local out = {}
-    for profId in pairs(gdb.skills[charKey]) do
+    for profId in pairs(bucket.skills[charKey]) do
         if addon.recipeDB and addon.recipeDB[profId]
            and addon.IsProfessionAvailable(profId) then
             table.insert(out, profId)
@@ -179,10 +199,12 @@ local function BuildMissingList(charKey, profId, includeTrainer)
     if not recipes then return {} end
 
     -- Hoist all gdb / sources / spec lookups out of the per-recipe loop.
-    -- A single GetGuildDb() call instead of one-per-iteration makes a real
+    -- A single bucket lookup instead of one-per-iteration makes a real
     -- difference on professions like Tailoring with ~3000 recipes.
+    -- FindCharBucket walks every guild bucket so cross-guild and guildless
+    -- alts surface here, not just chars in the current guild.
     local sources     = (addon.sourceDB and addon.sourceDB[profId]) or {}
-    local gdb         = addon:GetGuildDb()
+    local gdb         = FindCharBucket(charKey) or addon:GetGuildDb()
     local profRecipes = gdb and gdb.recipes and gdb.recipes[profId]
     local specs       = gdb and gdb.specializations and gdb.specializations[charKey]
     local playerSpec  = specs and specs[profId]

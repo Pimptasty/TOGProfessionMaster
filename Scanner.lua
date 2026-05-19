@@ -105,15 +105,14 @@ end
 -- Broadcast state
 Scanner._pendingBroadcast = false
 Scanner._lastBroadcastAt  = 0
--- Hard minimum between guild broadcasts (seconds). MoP-only override: with
--- smaller MoP Classic guilds, peers rarely overlap during the 10-min periodic
--- catch-up window, so a post-scan recipe broadcast that gets blocked by the
--- 30s debounce never reaches anyone. The differential check below already
--- skips no-op broadcasts via `count == 0`, so a 3s floor on MoP only protects
--- against pathological rapid-fire ScheduleBroadcast pairs (TRADE_SKILL_SHOW +
--- TRADE_SKILL_UPDATE at ~0.5s spacing) which the 0.5s ScheduleBroadcast
--- coalescer already handles.
-Scanner._broadcastSeconds = addon.isMoP and 3 or 30
+-- Hard minimum between guild broadcasts (seconds). Dynamically sized by
+-- Scanner:ScheduleAddonUserRecount based on the number of guildmates running
+-- the addon (sourced from a VersionCheck-1.0 batch). Linear scale clamped to
+-- [3, 30]: small guilds (or solo testing) get a 3s floor so post-scan recipe
+-- hashes propagate quickly; large active guilds with many addon users keep
+-- the 30s ceiling to protect the GUILD addon-message channel from saturation.
+-- Default of 30 is in effect until the first recount lands ~21s after PEW.
+Scanner._broadcastSeconds = 30
 
 -- DeltaSync + GuildCache LibStub handles (assigned in InitDeltaSync)
 Scanner.DS         = nil
@@ -323,7 +322,38 @@ function Scanner:InitDeltaSync()
         end,
     })
 
+    -- Kick off the first VersionCheck batch so the broadcast debounce can
+    -- adapt to the number of guildmates running the addon (rather than the
+    -- static 30s floor inherited at file load). Updates Scanner._broadcastSeconds
+    -- 21 seconds after FireBatch returns; subsequent refreshes happen on the
+    -- 10-min periodic tick.
+    self:ScheduleAddonUserRecount()
+
     addon:DebugPrint("Scanner: DeltaSync initialized for", DS.namespace)
+end
+
+--- Fire a VersionCheck-1.0 batch and, 21 seconds later, set
+--- Scanner._broadcastSeconds based on how many guildmates responded.
+--- Linear scale clamped to [3, 30] so small guilds sync quickly and large
+--- guilds stay channel-courteous. No-ops when VersionCheck isn't loaded.
+function Scanner:ScheduleAddonUserRecount()
+    local VC = LibStub and LibStub("VersionCheck-1.0", true)
+    if not VC or type(VC.FireBatch) ~= "function" then
+        addon:DebugPrint("Scanner: ScheduleAddonUserRecount — VersionCheck-1.0 not available")
+        return
+    end
+    VC:FireBatch()
+    -- VC10_REQ broadcasts to guild; peers reply via whisper (VC10_RSP) with
+    -- up to 8s jitter; VC collects for 12s. 21s buffer captures every reply.
+    Ace:ScheduleTimer(function()
+        local hostEntry = VC.hosts and VC.hosts[addon.name]
+        local responses = hostEntry and hostEntry.VersionResponses or {}
+        local n = 1  -- count self
+        for _ in pairs(responses) do n = n + 1 end
+        Scanner._broadcastSeconds = math.max(3, math.min(30, n))
+        addon:DebugPrint("Scanner: broadcast debounce set to",
+            Scanner._broadcastSeconds .. "s for", n, "addon user(s) online")
+    end, 21)
 end
 
 -- ---------------------------------------------------------------------------
@@ -411,6 +441,11 @@ function Scanner:Init()
     -- presence and can't push fresher data to it.  The 10-min cadence matches
     -- TOGBank's pattern and the v0.2.0-protocol.md design.
     Ace:ScheduleRepeatingTimer(function()
+        -- Refresh the addon-user count so _broadcastSeconds tracks guild
+        -- composition changes through the day. The new count lands ~21s
+        -- after FireBatch returns and applies to the NEXT broadcast cycle;
+        -- this tick uses whatever value was set by the previous recount.
+        Scanner:ScheduleAddonUserRecount()
         Scanner._lastBroadcastHashes = nil  -- bypass differential check
         Scanner._lastBroadcastAt     = 0    -- bypass debounce
         Scanner:BroadcastHashes()
@@ -596,8 +631,12 @@ function Scanner:OnTradeSkillEvent()
         return
     end
 
+    -- Always scan into whichever bucket the player's current guild key maps
+    -- to. When guildless, addon:GetGuildDb() falls back to the synthetic
+    -- NoGuildBucketKey bucket so the data is still captured for the local
+    -- "My Characters" view. ScheduleBroadcast → BroadcastHashes guards on
+    -- addon:GetGuildKey() so no-guild data never reaches the wire.
     local charKey = addon:GetCharacterKey()
-    if not addon:GetGuildKey() then return end
     self:ScanTradeSkillInto(charKey, false)
     self:ScanCooldowns()
     self:ScheduleBroadcast()
@@ -607,7 +646,6 @@ function Scanner:OnCraftEvent()
     if UnitAffectingCombat("player") then return end
 
     local charKey = addon:GetCharacterKey()
-    if not addon:GetGuildKey() then return end
     self:ScanCraftSkillInto(charKey)
     self:ScanCooldowns()
     self:ScheduleBroadcast()
@@ -1271,6 +1309,10 @@ end
 function Scanner:BroadcastHashes()
     local DS = self.DS
     if not DS then return end
+    -- Belt-and-suspenders: never broadcast no-guild data. addon:GetGuildDb()
+    -- now falls back to a synthetic NoGuildBucketKey bucket when guildless,
+    -- so this guard is what keeps that bucket's contents off the wire.
+    if not addon:GetGuildKey() then return end
 
     local now = GetServerTime()
     if (now - self._lastBroadcastAt) < self._broadcastSeconds then
@@ -1315,6 +1357,7 @@ end
 function Scanner:BroadcastLeafToGuild(itemKey)
     local DS = self.DS
     if not DS then return end
+    if not addon:GetGuildKey() then return end  -- never broadcast no-guild data
     local payload = self:BuildLeafPayload(itemKey)
     if not payload then
         addon:DebugPrint("Scanner: BroadcastLeafToGuild — no content for", itemKey)
@@ -1336,6 +1379,7 @@ end
 function Scanner:BroadcastSubhashesToGuild(parentItemKey)
     local DS = self.DS
     if not DS then return end
+    if not addon:GetGuildKey() then return end  -- never broadcast no-guild data
     local gdb = addon:GetGuildDb()
     if not gdb then return end
     local HM = addon.HashManager

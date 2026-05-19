@@ -938,3 +938,34 @@ end
 function addon:IsMyCharacter(charKey)
     return addon.guildDb.global.accountChars[charKey] == true
 end
+
+--- Iterate every guild bucket in addon.guildDb.global.guilds.
+-- Used by tabs to walk all stored data when the "My Characters" view needs
+-- to surface data for own alts that live in other guild buckets (or in the
+-- synthetic NoGuildBucketKey bucket for guildless alts). Local read only —
+-- no sync-protocol implications since broadcasts gate on addon:GetGuildKey()
+-- returning a real non-nil value.
+-- @param callback  function(bucket)  — invoked once per bucket
+function addon:ForEachGuildBucket(callback)
+    for _, bucket in pairs(self.guildDb.global.guilds or {}) do
+        callback(bucket)
+    end
+end
+
+--- Find the first guild bucket whose `field` sub-table has an entry for
+-- charKey. Use for cross-bucket lookups when a character's tracked data
+-- (skills, cooldowns, specializations, etc.) may live in any bucket because
+-- the character is in a different guild from the logged-in player or in no
+-- guild at all.
+-- @param charKey  string — "Name-Realm"
+-- @param field    string — bucket sub-table to inspect ("skills", "cooldowns", "specializations", ...)
+-- @return         bucket table or nil if no bucket has data for this character
+function addon:FindBucketForChar(charKey, field)
+    if not charKey or not field then return nil end
+    for _, bucket in pairs(self.guildDb.global.guilds or {}) do
+        if bucket[field] and bucket[field][charKey] then
+            return bucket
+        end
+    end
+    return nil
+end

@@ -320,7 +320,7 @@ end
 local function CollectCooldownsByChar(viewMode)
     if viewMode == "mine" then
         local merged = {}
-        for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
+        addon:ForEachGuildBucket(function(bucket)
             for charKey, charCds in pairs(bucket.cooldowns or {}) do
                 if addon:IsMyCharacter(charKey) then
                     if not merged[charKey] then merged[charKey] = {} end
@@ -335,7 +335,7 @@ local function CollectCooldownsByChar(viewMode)
                     end
                 end
             end
-        end
+        end)
         return merged
     end
     local gdb = addon:GetGuildDb()
@@ -1581,15 +1581,11 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
     end
     -- In "mine" view a row's charKey can live in any guild bucket (including
     -- the synthetic NoGuildBucketKey for guildless alts), not just the current
-    -- gdb. Walk every bucket and pick the one that has data for this charKey.
+    -- gdb. addon:FindBucketForChar walks every bucket and returns the one
+    -- holding cooldowns for this charKey.
     local charKey = row.charKey
-    local charCds = {}
-    for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
-        if bucket.cooldowns and bucket.cooldowns[charKey] then
-            charCds = bucket.cooldowns[charKey]
-            break
-        end
-    end
+    local bucket  = addon:FindBucketForChar(charKey, "cooldowns")
+    local charCds = bucket and bucket.cooldowns[charKey] or {}
 
     local rowH   = 14
     local pad    = 6

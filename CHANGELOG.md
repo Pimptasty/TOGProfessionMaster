@@ -1,5 +1,17 @@
 # TOG Profession Master Changelog
 
+## [v0.4.3] (2026-05-19) - Profession Browser "My Characters" filter walks all buckets + shared bucket-walk helpers
+
+### Bug Fixes
+
+- **"My Characters" filter on the Profession Browser tab still ignored alts outside the current guild after v0.4.2** — v0.4.2 fixed the same bug on the Cooldowns and Missing Recipes tabs but didn't carry the pattern over to the Browser. `BuildRecipeList` was still reading `gdb.recipes` from the current guild bucket only, so a recipe that an alt in Guild B (or in no guild) could craft never appeared in Main-in-Guild-A's "mine" view. No data migration is needed — the existing scans are already keyed correctly per bucket. Fix: new `CollectRecipesForView(viewMode)` helper that, in `"mine"` mode, walks every bucket in `addon.guildDb.global.guilds` and unions the per-(profId, recipeId) crafter sets across buckets. First bucket's metadata wins on duplicate recipe rows; crafters from every bucket are unioned. In `"guild"` mode and any other view mode the helper returns the current bucket's recipes table unchanged, so guild-view behavior is identical to v0.4.2. Local read only — no sync-protocol implications. Location: [GUI/BrowserTab.lua](GUI/BrowserTab.lua).
+
+### Improvements
+
+- **Shared cross-bucket walk primitives in `addon` namespace** — v0.4.2 introduced three near-identical bucket-walking helpers (`CollectCooldownsByChar` in CooldownsTab, `FindCharBucket` in MissingRecipesTab, plus an inline walk in the transmute popup) and v0.4.3 was about to add a fourth (`CollectRecipesForView` in BrowserTab). Promoted the common pattern to two reusable primitives in [TOGProfessionMaster.lua](TOGProfessionMaster.lua): `addon:ForEachGuildBucket(callback)` iterates every bucket in `addon.guildDb.global.guilds`, and `addon:FindBucketForChar(charKey, field)` returns the first bucket whose `field` sub-table contains an entry for charKey (works for any per-character sub-table — `"skills"`, `"cooldowns"`, `"specializations"`, etc.). All four call sites refactored to use them: the Browser's `CollectRecipesForView`, the Cooldowns tab's `CollectCooldownsByChar` and transmute-popup lookup, and the Missing Recipes tab's `GetCharactersWithProfessions` / `GetProfessionsForCharacter` / `BuildMissingList`. Future tabs that need the same access pattern can hit the helpers directly instead of reinventing the iteration. Location: [TOGProfessionMaster.lua](TOGProfessionMaster.lua), [GUI/BrowserTab.lua](GUI/BrowserTab.lua), [GUI/CooldownsTab.lua](GUI/CooldownsTab.lua), [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua).
+
+---
+
 ## [v0.4.2] (2026-05-18) - Dynamic broadcast debounce + "My Characters" filter works for cross-guild and guildless alts
 
 ### Bug Fixes

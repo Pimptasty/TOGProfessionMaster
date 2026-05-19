@@ -151,10 +151,47 @@ local function GetProfDropdownEntries()
     return entries
 end
 
+-- In "mine" view, walk every bucket in addon.guildDb.global.guilds and union
+-- their recipe rows so cross-guild and guildless own alts surface in the
+-- Browser. First bucket's metadata (name, icon, links, reagents) wins per
+-- (profId, recipeId); crafter sets are unioned across all buckets. In any
+-- other mode just return the current bucket's recipes table as-is. The walk
+-- is purely a local SavedVariables read — no network involvement.
+local function CollectRecipesForView(viewMode)
+    if viewMode ~= "mine" then
+        local gdb = GetGuildDb()
+        return gdb and gdb.recipes or {}
+    end
+    local merged = {}
+    addon:ForEachGuildBucket(function(bucket)
+        if not bucket.recipes then return end
+        for pid, profRecipes in pairs(bucket.recipes) do
+            if not merged[pid] then merged[pid] = {} end
+            for recipeId, rd in pairs(profRecipes) do
+                local existing = merged[pid][recipeId]
+                if not existing then
+                    existing = {}
+                    for k, v in pairs(rd) do existing[k] = v end
+                    existing.crafters = {}
+                    merged[pid][recipeId] = existing
+                end
+                if rd.crafters then
+                    for ck, v in pairs(rd.crafters) do
+                        if v then existing.crafters[ck] = true end
+                    end
+                end
+            end
+        end
+    end)
+    return merged
+end
+
 local function BuildRecipeList(profId, viewMode, searchText)
     if profId == nil then return {} end
     local gdb = GetGuildDb()
-    if not gdb or not gdb.recipes then return {} end
+    if not gdb then return {} end
+    local recipes = CollectRecipesForView(viewMode)
+    if not next(recipes) then return {} end
 
     local myKey = addon:GetCharacterKey()
     local filter = searchText and searchText:lower() or ""
@@ -245,11 +282,11 @@ local function BuildRecipeList(profId, viewMode, searchText)
     end
 
     if profId == 0 then
-        for pid, profRecipes in pairs(gdb.recipes) do
+        for pid, profRecipes in pairs(recipes) do
             processProf(pid, profRecipes)
         end
     else
-        processProf(profId, gdb.recipes[profId])
+        processProf(profId, recipes[profId])
     end
 
     table.sort(list, function(a, b) return a.name < b.name end)

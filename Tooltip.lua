@@ -97,7 +97,14 @@ local OFFLINE_COLOR = "|c" .. (addon.ColorOffline or "ff888888")
 local RESET_COLOR   = "|r"
 
 local function AppendCrafters(tooltip, itemID)
-    tooltip._togpmAppended = itemID  -- mark processed so post-hooks skip
+    -- Idempotency guard: bail if THIS item was already appended to THIS
+    -- tooltip frame. Lets multiple registration paths (modern PostCall,
+    -- legacy OnTooltipSetItem, fallback Show-hook) coexist without
+    -- double-appending. The check must be against itemID specifically —
+    -- a bare `if tooltip._togpmAppended then return end` silently swallowed
+    -- new-item hovers on modern clients where OnTooltipCleared doesn't fire.
+    if tooltip._togpmAppended == itemID then return end
+    tooltip._togpmAppended = itemID
     if IsBOP(itemID) then return end
 
     local crafters = FindCrafters(itemID)
@@ -134,21 +141,67 @@ end
 
 -- Register after PLAYER_LOGIN so SavedVariables are loaded
 Ace:RegisterEvent("PLAYER_LOGIN", function()
-    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall
-       and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item then
-        -- MoP Classic+ / Retail: single post-call fires for every item tooltip
+    -- Branch diagnostic — surface which tooltip path the client supports so
+    -- /togpm debug can confirm what was wired up. The two paths share the
+    -- AppendCrafters function; the difference is how it gets invoked.
+    local hasModern = TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall
+                  and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item
+    addon:DebugPrint("Tooltip: PLAYER_LOGIN hooking; modern path available =",
+        tostring(hasModern),
+        "TooltipDataProcessor =", tostring(TooltipDataProcessor),
+        "Enum.TooltipDataType.Item =", tostring(Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item))
+
+    if hasModern then
+        -- MoP Classic+ / Retail / modern-engine Classic flavors: single
+        -- post-call fires for every item tooltip.
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
+            addon:DebugPrint("Tooltip: modern PostCall fired, data.id =", tostring(data and data.id))
             if data and data.id then AppendCrafters(tooltip, data.id) end
         end)
+        addon:DebugPrint("Tooltip: registered modern TooltipDataProcessor handler")
     else
-        -- Vanilla / TBC / Wrath / Cata Classic: hook OnTooltipSetItem on every
-        -- item-displaying tooltip. OnTooltipCleared resets the de-dup flag.
+        -- Older Classic clients: hook OnTooltipSetItem on every item-displaying
+        -- tooltip. OnTooltipCleared resets the de-dup flag.
         local frames = { GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3 }
+        local count = 0
         for _, tt in ipairs(frames) do
             if tt then
                 tt:HookScript("OnTooltipSetItem", OnTooltipSetItem)
                 tt:HookScript("OnTooltipCleared", OnTooltipCleared)
+                count = count + 1
             end
         end
+        addon:DebugPrint("Tooltip: registered legacy OnTooltipSetItem hook on", count, "tooltip frames")
     end
+
+    -- Universal fallback: on the modern client engine, OnTooltipSetItem was
+    -- deprecated and the modern TooltipDataProcessor enum may not be exposed
+    -- on every Classic flavor (TBC Anniversary specifically appears not to fire
+    -- the modern path even though it ships TooltipDataProcessor). Hook each
+    -- tooltip frame's Show method via hooksecurefunc and use GetItem() to
+    -- recover the link — fires AFTER the tooltip has been populated, works
+    -- on every client. The _togpmAppended dedup in AppendCrafters keeps us
+    -- from doubling up when both this and a primary path fire.
+    local fallbackFrames = { GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3 }
+    local fallbackCount = 0
+    for _, tt in ipairs(fallbackFrames) do
+        if tt and tt.Show then
+            hooksecurefunc(tt, "Show", function(self)
+                local _, link = self:GetItem()
+                if not link then return end
+                local itemID = ItemIdFromLink(link)
+                if not itemID then return end
+                -- Dedup against THIS item specifically. The previous check
+                -- (`if self._togpmAppended then return end`) was buggy because
+                -- on the modern client engine, OnTooltipCleared may not fire
+                -- between tooltips — leaving the flag set from a previous item
+                -- and silently swallowing every subsequent hover.
+                if self._togpmAppended == itemID then return end
+                addon:DebugPrint("Tooltip: fallback Show-hook fired for itemID =", itemID)
+                AppendCrafters(self, itemID)
+            end)
+            fallbackCount = fallbackCount + 1
+        end
+    end
+    addon:DebugPrint("Tooltip: registered Show-hook fallback on", fallbackCount, "tooltip frames")
 end)

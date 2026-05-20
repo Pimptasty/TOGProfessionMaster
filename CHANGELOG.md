@@ -1,5 +1,15 @@
 # TOG Profession Master Changelog
 
+## [v0.4.5] (2026-05-20) - Modern Auction House API support (Cata / MoP) + TBC tooltip fix
+
+### Bug Fixes
+
+- **Crafter line missing from item tooltips on TBC Anniversary** — the tooltip-hook setup had two paths, a modern `TooltipDataProcessor.AddTooltipPostCall` path (Cata / MoP / Retail) and a legacy `OnTooltipSetItem` script path (pre-modern-engine Classic). On TBC Anniversary, the modern API doesn't behave the same way and the legacy script doesn't fire on the modern client engine, so neither path triggered. Result: hovering an item showed no `[TOGPM] crafters: ...` line. Fix: added a third universal fallback that uses `hooksecurefunc(GameTooltip, "Show", ...)` plus `GetItem()` — fires after the tooltip is fully populated, works on every Classic and Retail client. Also tightened the de-duplication: the previous check (`if tooltip._togpmAppended then return end`) was buggy because on the modern client engine, `OnTooltipCleared` may not fire between tooltips, leaving the flag set from a previous item and silently swallowing every subsequent hover. The check is now `if tooltip._togpmAppended == itemID then return end` — bails only when THIS item was already appended to THIS tooltip frame. Added `/togpm debug` instrumentation showing which tooltip path was wired up at `PLAYER_LOGIN`. Location: [Tooltip.lua](Tooltip.lua).
+
+- **Auction House integration broken on Cata Classic and MoP Classic** — our `Modules/AHScanner.lua` used only the legacy `AuctionFrame` + `QueryAuctionItems` API. Cata Classic and MoP Classic (and Retail) use the modern `C_AuctionHouse` API with `AuctionHouseFrame`, so all the `[AH]` buttons, "Scan AH" controls, and price lookups silently no-op'd on those clients. Vanilla, TBC Classic, and Wrath Classic still use the legacy path and were unaffected. Fix: feature-detect at file-load (`AH._isModernAH = C_AuctionHouse and C_AuctionHouse.SendSearchQuery ~= nil and C_AuctionHouse.MakeItemKey ~= nil`) and branch every dispatch path. `AH.IsOpen()` checks `AuctionHouseFrame:IsShown()` on modern; `AH.SearchFor(itemName)` uses `AuctionHouseFrame.SearchBar` instead of `BrowseName` + `AuctionFrameBrowse_Search`; the scan loop uses `C_AuctionHouse.SendSearchQuery(MakeItemKey(itemId), {}, false)` instead of `QueryAuctionItems`; result collection branches between `ITEM_SEARCH_RESULTS_UPDATED` (unique items) and `COMMODITY_SEARCH_RESULTS_UPDATED` (commodities — most reagents). New `AH._completeCurrentItem(listings)` helper holds the post-scan dispatch logic so both API paths converge on the same continuation. Modern AH's built-in server throttling makes the legacy `CanSendAuctionQuery()` gate irrelevant on that path, but the version-aware `_scanDelay` + Settings override carries over so users on either API can tune scan pacing. Safety timer (delay + 5s) advances the scan if no result event fires, protecting against item-cache misses on modern. Location: [Modules/AHScanner.lua](Modules/AHScanner.lua).
+
+---
+
 ## [v0.4.4] (2026-05-19) - Cross-profession sync gap + AH scan stall + Poisons removed
 
 ### Bug Fixes

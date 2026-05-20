@@ -26,6 +26,21 @@ local AH = {}
 addon.AH = AH
 
 -- ---------------------------------------------------------------------------
+-- API generation detection
+-- ---------------------------------------------------------------------------
+-- Cata Classic, MoP Classic, and Retail use the modern C_AuctionHouse API
+-- backed by AuctionHouseFrame. Vanilla / TBC Classic / Wrath Classic still
+-- use the legacy AuctionFrame + QueryAuctionItems path. Feature-detect at
+-- file-load time rather than gating on version flags — keeps the check
+-- robust if Blizzard backports the modern API to other Classic flavors.
+-- Every dispatch in this module branches on AH._isModernAH.
+AH._isModernAH = C_AuctionHouse ~= nil
+              and type(C_AuctionHouse.SendSearchQuery) == "function"
+              and type(C_AuctionHouse.MakeItemKey) == "function"
+
+addon:DebugPrint("AH: modern API path =", tostring(AH._isModernAH))
+
+-- ---------------------------------------------------------------------------
 -- Open-state tracking
 -- ---------------------------------------------------------------------------
 
@@ -59,9 +74,13 @@ end)
 
 function AH.IsOpen()
     -- Defensive: if the events haven't fired yet but the frame is visible,
-    -- still treat it as open. AuctionFrame is the legacy Classic-through-MoP
-    -- frame that all our targeted versions use.
+    -- still treat it as open. Modern clients (Cata Classic, MoP Classic,
+    -- Retail) use AuctionHouseFrame; legacy clients (Vanilla / TBC / Wrath
+    -- Classic) use AuctionFrame. Check whichever is appropriate.
     if AH._isOpen then return true end
+    if AH._isModernAH then
+        return AuctionHouseFrame and AuctionHouseFrame:IsShown() == true
+    end
     return AuctionFrame and AuctionFrame:IsShown() == true
 end
 
@@ -79,10 +98,9 @@ end
 --- the live AH frame, the user sees them and acts manually (bid / buyout /
 --- nothing). No popup, no aggregation, no automation.
 ---
---- This works on Vanilla / TBC / Wrath / Cata / MoP — they all share the
---- legacy AuctionFrame UI. Retail (8.0+) replaced this entirely with
---- C_AuctionHouse and would need a separate path; out of scope here since
---- the addon's targeted versions don't include it.
+--- Works on Vanilla, TBC, Wrath (legacy AuctionFrame UI) and on Cata Classic,
+--- MoP Classic, Retail (modern C_AuctionHouse UI via AuctionHouseFrame).
+--- Branches internally on AH._isModernAH set at module load.
 function AH.SearchFor(itemName)
     if type(itemName) ~= "string" or itemName == "" then return false end
     if not AH.IsOpen() then
@@ -90,6 +108,33 @@ function AH.SearchFor(itemName)
         return false
     end
 
+    if AH._isModernAH then
+        -- Modern UI: AuctionHouseFrame has a SearchBar with a text input.
+        -- Setting the text and firing SearchBar:OnEnterPressed() / :Search()
+        -- mimics the user typing and pressing enter. The exact method name
+        -- varies across modern client builds — try the documented variants
+        -- in order. The results will populate in the AH UI's Browse pane.
+        if AuctionHouseFrame and AuctionHouseFrame.SearchBar then
+            local sb = AuctionHouseFrame.SearchBar
+            if sb.SetSearchText then
+                sb:SetSearchText(itemName)
+            elseif sb.SearchBox and sb.SearchBox.SetText then
+                sb.SearchBox:SetText(itemName)
+            end
+            if sb.StartSearch then
+                sb:StartSearch()
+            elseif sb.OnEnterPressed then
+                sb:OnEnterPressed()
+            elseif AuctionHouseFrame.BrowseResultsFrame
+               and AuctionHouseFrame.BrowseResultsFrame.SearchBar
+               and AuctionHouseFrame.BrowseResultsFrame.SearchBar.OnEnterPressed then
+                AuctionHouseFrame.BrowseResultsFrame.SearchBar:OnEnterPressed()
+            end
+        end
+        return true
+    end
+
+    -- Legacy path follows.
     -- Switch to the Browse tab. AuctionFrameTab1 is the Browse tab; calling
     -- :Click() runs the standard tab-switch flow including show/hide of the
     -- Browse vs Bid vs Auctions panes. PanelTemplates_SetTab is the
@@ -234,6 +279,44 @@ function AH._scanNext()
         pcall(AH._opts.onProgress, AH._scannedItems, AH._totalItems, nextItem)
     end
 
+    addon:DebugPrint(("AH Scan: querying %d/%d %s (id=%d)"):format(
+        AH._scannedItems + 1, AH._totalItems, nextItem.itemName, nextItem.itemId))
+
+    if AH._isModernAH then
+        -- Modern API path (Cata Classic, MoP Classic, Retail).
+        -- C_AuctionHouse.SendSearchQuery takes an itemKey, sort table, and
+        -- separateOwnerItems flag. The itemKey is built from the itemID via
+        -- MakeItemKey. Results arrive via ITEM_SEARCH_RESULTS_UPDATED (for
+        -- unique items) or COMMODITY_SEARCH_RESULTS_UPDATED (for commodity
+        -- stackables like reagents); we listen for both. Modern AH has
+        -- built-in throttling so we don't need an equivalent of the
+        -- CanSendAuctionQuery gate that the legacy path requires.
+        if type(GetItemInfo) == "function" and not GetItemInfo(nextItem.itemId) then
+            -- Item not yet in the client cache — Blizzard's search will
+            -- return empty. Force a cache fetch and retry in 0.5s.
+            addon:DebugPrint("AH Scan: item not in cache, retrying in 0.5s")
+            table.insert(AH._queue, 1, nextItem)
+            AH._currentItem = nil
+            Ace:ScheduleTimer(function() AH._scanNext() end, 0.5)
+            return
+        end
+        local itemKey = C_AuctionHouse.MakeItemKey(nextItem.itemId)
+        AH._currentItemKey = itemKey
+        C_AuctionHouse.SendSearchQuery(itemKey, {}, false)
+        -- Safety timer: if neither event fires within scanDelay+5s, treat as
+        -- empty result and advance. Modern AH usually fires within ~1s.
+        local thisItemId = nextItem.itemId
+        Ace:ScheduleTimer(function()
+            if AH._isScanning and AH._currentItem
+               and AH._currentItem.itemId == thisItemId then
+                addon:DebugPrint("AH Scan: modern result timeout for", thisItemId, "advancing")
+                AH._completeCurrentItem({})
+            end
+        end, AH.GetEffectiveScanDelay() + 5)
+        return
+    end
+
+    -- Legacy API path (Vanilla, TBC Classic, Wrath Classic).
     -- Gate every query on Blizzard's "is the next query allowed?" check.
     -- TBC Anniversary's throttle window is variable — even after our effective
     -- scan delay between queries, the server can still reject the next one.
@@ -250,27 +333,60 @@ function AH._scanNext()
         return
     end
 
-    -- QueryAuctionItems signature on Vanilla→MoP:
+    -- QueryAuctionItems signature on Vanilla→Wrath:
     --   (name, minLevel, maxLevel, page, isUsable, qualityIndex, getAll,
     --    exactMatch, filterData)
     -- exactMatch=false (matches PS's working scanner). With exactMatch=true,
     -- some Classic builds inconsistently return empty result sets even when
     -- listings exist; we'll still match-filter results by name+itemId in
     -- the handler below, so fuzzy server matches just get discarded.
-    addon:DebugPrint(("AH Scan: querying %d/%d %s (id=%d)"):format(
-        AH._scannedItems + 1, AH._totalItems, nextItem.itemName, nextItem.itemId))
     QueryAuctionItems(nextItem.itemName, nil, nil, 0, 0, 0, false, false, false, false)
 end
 
---- Internal: collect listings from the current AUCTION_ITEM_LIST_UPDATE,
---- store them under the current item's id, then schedule the next query.
+--- Internal: store collected listings for the current item, then schedule the
+--- next query after the configured scan delay. Shared by both API paths.
+function AH._completeCurrentItem(listings)
+    if not AH._isScanning or not AH._currentItem then return end
+    local current = AH._currentItem
+    local lowestBuyout
+    for _, l in ipairs(listings) do
+        local b = l.buyoutPrice
+        if b and b > 0 and (not lowestBuyout or b < lowestBuyout) then
+            lowestBuyout = b
+        end
+    end
+
+    if current.itemId then
+        AH._results[current.itemId] = {
+            listings     = listings,
+            lowestBuyout = lowestBuyout,
+            count        = #listings,
+            scannedAt    = (GetServerTime and GetServerTime()) or time(),
+        }
+    end
+
+    AH._scannedItems   = AH._scannedItems + 1
+    AH._currentItem    = nil
+    AH._currentItemKey = nil
+
+    -- Throttle between queries dodges rate limits. Delay is version-aware
+    -- (1.5s Classic, 3.0s elsewhere by default) and user-tunable via the AH
+    -- scan delay setting. AceTimer is already loaded as part of the addon's
+    -- AceAddon mixins.
+    Ace:ScheduleTimer(function() AH._scanNext() end, AH.GetEffectiveScanDelay())
+end
+
+-- ---------------------------------------------------------------------------
+-- Legacy result collector (Vanilla, TBC Classic, Wrath Classic)
+-- ---------------------------------------------------------------------------
+
 local function onAuctionItemListUpdate()
     if not AH._isScanning or not AH._currentItem then return end
+    if AH._isModernAH then return end  -- legacy event ignored on modern clients
 
     local current = AH._currentItem
     local n = GetNumAuctionItems("list") or 0
     local listings = {}
-    local lowestBuyout
 
     -- Defensive: tostring guard against a caller passing a non-string
     -- itemName (e.g. earlier callsite that mistakenly used
@@ -303,41 +419,85 @@ local function onAuctionItemListUpdate()
                 owner       = owner,
                 itemId      = itemId,
             }
-            if buyoutPrice and buyoutPrice > 0 and (not lowestBuyout or buyoutPrice < lowestBuyout) then
-                lowestBuyout = buyoutPrice
-            end
         end
     end
 
     addon:DebugPrint(("AH Scan: %s — %d server result(s), %d matched"):format(
         current.itemName or "?", n, #listings))
-
-    if current.itemId then
-        AH._results[current.itemId] = {
-            listings     = listings,
-            lowestBuyout = lowestBuyout,
-            count        = #listings,
-            scannedAt    = (GetServerTime and GetServerTime()) or time(),
-        }
-    end
-
-    AH._scannedItems = AH._scannedItems + 1
-    AH._currentItem  = nil
-
-    -- Throttle between queries dodges the "you cannot perform that query so
-    -- often" rate limit. Delay is version-aware (1.5s on Classic Era / Anniv,
-    -- 3.0s elsewhere by default) and user-tunable via the AH scan delay
-    -- setting. Schedule via AceTimer (already loaded as part of the addon's
-    -- AceAddon mixins).
-    Ace:ScheduleTimer(function() AH._scanNext() end, AH.GetEffectiveScanDelay())
+    AH._completeCurrentItem(listings)
 end
 
-Ace:RegisterEvent("AUCTION_ITEM_LIST_UPDATE", onAuctionItemListUpdate)
+-- ---------------------------------------------------------------------------
+-- Modern result collectors (Cata Classic, MoP Classic, Retail)
+-- ---------------------------------------------------------------------------
+
+-- ITEM_SEARCH_RESULTS_UPDATED fires for non-commodity (unique) items.
+-- Payload is the itemKey. We compare itemID against the current scan target.
+local function onItemSearchResultsUpdated(itemKey)
+    if not AH._isScanning or not AH._currentItem then return end
+    if not itemKey or type(itemKey) ~= "table" then return end
+    if itemKey.itemID ~= AH._currentItem.itemId then return end  -- different item
+
+    local quantity = C_AuctionHouse.GetItemSearchResultsQuantity(itemKey) or 0
+    local listings = {}
+    for i = 1, quantity do
+        local info = C_AuctionHouse.GetItemSearchResultInfo(itemKey, i)
+        if info then
+            listings[#listings + 1] = {
+                itemName    = AH._currentItem.itemName,  -- reuse the queued name; modern API doesn't return a separate plain-text name
+                count       = info.quantity or 1,
+                buyoutPrice = info.buyoutAmount or 0,
+                bidAmount   = info.bidAmount or 0,
+                owner       = info.owners and info.owners[1] or nil,
+                itemId      = itemKey.itemID,
+            }
+        end
+    end
+    addon:DebugPrint(("AH Scan: %s — %d modern item result(s)"):format(
+        AH._currentItem.itemName or "?", quantity))
+    AH._completeCurrentItem(listings)
+end
+
+-- COMMODITY_SEARCH_RESULTS_UPDATED fires for stackable consumable items
+-- (reagents, potions, etc.). Payload is just the itemID.
+local function onCommoditySearchResultsUpdated(itemID)
+    if not AH._isScanning or not AH._currentItem then return end
+    if type(itemID) ~= "number" then return end
+    if itemID ~= AH._currentItem.itemId then return end
+
+    local quantity = C_AuctionHouse.GetCommoditySearchResultsQuantity(itemID) or 0
+    local listings = {}
+    for i = 1, quantity do
+        local info = C_AuctionHouse.GetCommoditySearchResultInfo(itemID, i)
+        if info then
+            listings[#listings + 1] = {
+                itemName    = AH._currentItem.itemName,
+                count       = info.quantity or 1,
+                buyoutPrice = info.unitPrice or 0,  -- commodities have unitPrice, not buyoutAmount
+                bidAmount   = 0,                    -- commodities are buyout-only on modern AH
+                owner       = info.owner,
+                itemId      = itemID,
+            }
+        end
+    end
+    addon:DebugPrint(("AH Scan: %s — %d modern commodity result(s)"):format(
+        AH._currentItem.itemName or "?", quantity))
+    AH._completeCurrentItem(listings)
+end
+
+-- Wire up the right event(s) for the active API generation.
+if AH._isModernAH then
+    Ace:RegisterEvent("ITEM_SEARCH_RESULTS_UPDATED",      onItemSearchResultsUpdated)
+    Ace:RegisterEvent("COMMODITY_SEARCH_RESULTS_UPDATED", onCommoditySearchResultsUpdated)
+else
+    Ace:RegisterEvent("AUCTION_ITEM_LIST_UPDATE", onAuctionItemListUpdate)
+end
 
 --- Internal: finalise scan state and fire callbacks.
 function AH._finishScan(reason)
-    AH._isScanning  = false
-    AH._currentItem = nil
+    AH._isScanning     = false
+    AH._currentItem    = nil
+    AH._currentItemKey = nil
 
     -- Summary line so the user sees at a glance whether the scan found
     -- anything. Counts items in the results map that have at least one

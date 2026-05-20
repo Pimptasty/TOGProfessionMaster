@@ -30,9 +30,8 @@ MissingRecipesTab.WINDOW_SIZE = { width = 720, height = 500, locked = true }
 -- in TOGProfessionMaster.lua (covers everything Vanilla through MoP).
 -- Per-version filtering happens via addon.IsProfessionAvailable in the
 -- dropdown build below — a profession that doesn't exist on the current
--- client (Jewelcrafting on Vanilla, Inscription on Vanilla / TBC,
--- Poisons on Wrath+) is hidden even if the character somehow has stale
--- skill data for it cached.
+-- client (Jewelcrafting on Vanilla, Inscription on Vanilla / TBC) is
+-- hidden even if the character somehow has stale skill data for it cached.
 
 -- Source key → locale key. Order here drives display order on each row.
 local SRC_LABELS = {

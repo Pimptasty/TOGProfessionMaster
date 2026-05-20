@@ -269,7 +269,14 @@ function Scanner:InitDeltaSync()
             if not gdb then return {} end
             local HM = addon.HashManager
             HM:RebuildOnFirstLoad(DS, gdb)
-            return HM:GetL0BroadcastMap(gdb)
+            local map = HM:GetL0BroadcastMap(gdb)
+            -- Pad placeholders so peers offer data for professions we have
+            -- no local content for (Engineering / BS / LW / etc. on a char
+            -- that only knows Enchanting + Tailoring etc.). Without this,
+            -- the broadcaster-driven OFFER protocol leaves those keys
+            -- silently un-synced. See HashManager:PadMissingProfessionPlaceholders.
+            HM:PadMissingProfessionPlaceholders(DS, map)
+            return map
         end,
 
         hasContent = function(itemKey)
@@ -1324,6 +1331,9 @@ function Scanner:BroadcastHashes()
     if not gdb then return end
 
     local current = addon.HashManager:GetL0BroadcastMap(gdb)
+    -- Pad placeholders so peers offer data for professions we have no
+    -- local content for. See HashManager:PadMissingProfessionPlaceholders.
+    addon.HashManager:PadMissingProfessionPlaceholders(DS, current)
     local last    = self._lastBroadcastHashes or {}
     local delta   = {}
     local count   = 0

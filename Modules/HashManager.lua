@@ -328,6 +328,41 @@ function HashManager:GetL0BroadcastMap(gdb)
     return map
 end
 
+--- Pad the broadcast L0 map with placeholder hash entries for every
+--- available crafting profession the local player has no data for. Without
+--- these placeholders the DeltaSync OFFER protocol never triggers sync for
+--- keys absent from the broadcaster's hash list — peers only offer data for
+--- keys that appear in your hashes. So a player who has Enchanting locally
+--- will sync Enchanting data from peers (mismatched hashes → offer → fetch)
+--- but will never receive Engineering / BS / LW recipes from guildmates
+--- because they have no `recipemeta:202` / `crafters:202` entry to put in
+--- their broadcast.
+---
+--- Placeholders are added only to the BROADCAST map, not to gdb.hashes —
+--- writing them to gdb.hashes would conflate "I want this" with "I have
+--- this". The placeholder hash is the stable hash of an empty table, so it
+--- always differs from a real-content hash; first peer with real data sees
+--- the mismatch and offers; we accept; we merge; on the next broadcast the
+--- real computed hash naturally replaces the placeholder.
+function HashManager:PadMissingProfessionPlaceholders(DS, map)
+    if not DS or not addon.CRAFTING_PROFS then return end
+    local placeholderHash = DS:ComputeHash({})
+    for profId in pairs(addon.CRAFTING_PROFS) do
+        local available = (not addon.IsProfessionAvailable)
+                       or addon.IsProfessionAvailable(profId)
+        if available then
+            local rmKey = "recipemeta:" .. tostring(profId)
+            local crKey = "crafters:"   .. tostring(profId)
+            if not map[rmKey] then
+                map[rmKey] = { hash = placeholderHash, updatedAt = 0 }
+            end
+            if not map[crKey] then
+                map[crKey] = { hash = placeholderHash, updatedAt = 0 }
+            end
+        end
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- Content ownership check
 -- v0.2.0: anyone with cached data for a leaf can serve it (relay).

@@ -29,7 +29,6 @@ Data\Recipes\Firstaid.lua
 Data\Recipes\Fishing.lua
 Data\Recipes\Leatherworking.lua
 Data\Recipes\Mining.lua
-Data\Recipes\Poisons.lua
 Data\Recipes\Tailoring.lua
 Data\Sources\Alchemy.lua
 Data\Sources\Blacksmithing.lua
@@ -40,7 +39,6 @@ Data\Sources\Firstaid.lua
 Data\Sources\Fishing.lua
 Data\Sources\Leatherworking.lua
 Data\Sources\Mining.lua
-Data\Sources\Poisons.lua
 Data\Sources\Tailoring.lua
 Scanner.lua
 Modules\HashManager.lua

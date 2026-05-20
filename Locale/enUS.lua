@@ -239,3 +239,8 @@ L["SettingsCooldownAlertSuppressProtectedDesc"] = "Don't ping or print cooldown-
 L["SettingsCooldownReminderInterval"]      = "Cooldown ready reminder"
 L["SettingsCooldownReminderIntervalDesc"]  = "Re-fire each armed cooldown alert every N minutes while the cooldown stays ready (i.e. until you actually craft). Enter 0, empty, or 'off' to fire only once per ready cycle. Valid range: 1–1440 minutes (24 hours)."
 L["SettingsCooldownReminderInvalid"]       = "Enter a whole number from 0 to 1440, or 'off'."
+
+L["SettingsAHHeader"]                      = "Auction House"
+L["SettingsAHScanDelay"]                   = "AH scan delay (seconds)"
+L["SettingsAHScanDelayDesc"]               = "Seconds between AH scan queries. Empty / 0 / 'off' uses the version default (1.5s on Classic Era and Anniversary; 3.0s on TBC, Wrath, Cata, MoP — those servers throttle stricter). Lower it for faster scans, raise it if scans stall. Valid range: 0.5–10 seconds."
+L["SettingsAHScanDelayInvalid"]            = "Enter a number from 0.5 to 10, or 'off'."

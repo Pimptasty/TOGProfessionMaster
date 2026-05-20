@@ -14,12 +14,16 @@
         "unpack",
         "pcall",
         "error",
+        "assert",
         "setmetatable",
         "getmetatable",
         "time",
         "date",
         "wipe",
+        "tinsert",
+        "strtrim",
         "_G",
+        "Menu",
 
         "UIParent",
         "WorldFrame",
@@ -203,7 +207,34 @@
         "SplitContainerItem",
         "PickupContainerItem",
         "GetContainerItemCooldown",
-        "GetCooldownTimestamp"
+        "GetCooldownTimestamp",
+
+        "UnitAffectingCombat",
+        "GetSpellCooldown",
+        "GetCooldownLeft",
+        "GetProfessionInfo",
+        "GetProfessions",
+        "GetItemCount",
+        "GetItemIcon",
+        "IsInInstance",
+        "CloseSpecialWindows",
+        "UIDropDownMenu_SetSelectedValue",
+        "SOUNDKIT",
+
+        "CanSendAuctionQuery",
+        "QueryAuctionItems",
+        "GetNumAuctionItems",
+        "GetAuctionItemInfo",
+        "AuctionFrame",
+        "AuctionFrameTab1",
+        "AuctionFrameBrowse_Search",
+        "BrowseName",
+        "BrowseMinLevel",
+        "BrowseMaxLevel",
+        "BrowseDropDown",
+        "BrowseSearchButton",
+        "IsUsableCheckButton",
+        "ShowOnPlayerCheckButton"
     ],
     "diagnostics.disable": [
         "need-check-nil",
@@ -212,6 +243,9 @@
         "inject-field",
         "undefined-field",
         "invisible"
+    ],
+    "diagnostics.unusedLocalExclude": [
+        "_*"
     ],
     "workspace.ignoreDir": [
         "libs"

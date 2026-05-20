@@ -1,5 +1,19 @@
 # TOG Profession Master Changelog
 
+## [v0.4.4] (2026-05-19) - Cross-profession sync gap + AH scan stall + Poisons removed
+
+### Bug Fixes
+
+- **Recipes for professions the local character doesn't have were never received from guildmates who do** — the DeltaSync OFFER protocol is broadcaster-driven: a peer only offers data for keys that appear in the broadcaster's hash list. A player who has Enchanting / Tailoring locally syncs that data fine (mismatched hashes → offer → fetch), but never receives Engineering / BS / LW recipes from guildmates who have them, because the broadcaster has no `recipemeta:202` / `crafters:202` entry to advertise. Confirmed by /togpm status on a TBC Anniv user showing 7 profession buckets locally and `catchUpCycles=5` (max retries exhausted) with zero sync events for profIds 164 / 165 / 202 across an entire debug log. Fix: new `HashManager:PadMissingProfessionPlaceholders(DS, map)` injects a placeholder hash entry (the stable hash of an empty table) for every available crafting profession the local player has no content for. Peers see the placeholder mismatch their real hash, offer, we accept, we merge — and on the next broadcast the real computed hash naturally replaces the placeholder. Placeholders live only in the broadcast map, not in `gdb.hashes`, so they don't conflate "I want this" with "I have this." Wired into both broadcast sites (`getMyHashes` in `InitDeltaSync` and `Scanner:BroadcastHashes`). Location: [Modules/HashManager.lua](Modules/HashManager.lua), [Scanner.lua](Scanner.lua).
+
+- **AH scan stalled after the first item on TBC / Wrath / Cata / MoP (Classic Era was unaffected)** — debug logs from a TBC Anniversary user showed query 1 completing instantly, query 2 firing, then no `AUCTION_ITEM_LIST_UPDATE` ever arriving for it. The 1.5s scan delay from v0.4.3 was tuned to Classic Era's looser server throttle; TBC and later servers enforce a stricter window, and the second query was being silently dropped by the rate limiter without firing a response event, stalling the scan. Three-part fix: (1) the scan delay is now version-aware — defaults to 1.5s on Classic Era / Anniversary (where it always worked) and 3.0s on TBC / Wrath / Cata / MoP (matches what other Classic AH-scan addons use as a safe default). (2) Every `QueryAuctionItems` call is gated on `CanSendAuctionQuery()` returning true — when the API says throttled we put the item back at the front of the queue and retry in 0.5s slices until it agrees. This handles the case where the default delay still isn't enough for a particular server's current throttle state. (3) New Settings entry "AH scan delay (seconds)" lets users override the version default in the range 0.5–10s — empty / 0 / "off" uses the version-appropriate default. Lets each guild dial in the right value for their server. Location: [Modules/AHScanner.lua](Modules/AHScanner.lua), [GUI/Settings.lua](GUI/Settings.lua), [TOGProfessionMaster.lua](TOGProfessionMaster.lua), [Locale/enUS.lua](Locale/enUS.lua).
+
+### Improvements
+
+- **Poisons profession removed entirely** — Poisons (skill 40) was Rogue-only and became automatic-from-trainer in Wrath 3.1, so the data was dead weight on Vanilla / TBC and irrelevant on Wrath / Cata / MoP. Removed from `addon.PROF_NAMES`, `addon.PROF_AVAILABILITY`, and `addon.CRAFTING_PROFS`; deleted `Data/Recipes/Poisons.lua` and `Data/Sources/Poisons.lua`; dropped the two Poisons load lines from all five TOC files (vanilla, `_TBC`, `_Wrath`, `_Cata`, `_Mists`); updated docstring references in Browser and Missing Recipes tabs. Location: [TOGProfessionMaster.lua](TOGProfessionMaster.lua), [GUI/BrowserTab.lua](GUI/BrowserTab.lua), [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua), all TOC files.
+
+---
+
 ## [v0.4.3] (2026-05-19) - Profession Browser "My Characters" filter walks all buckets + shared bucket-walk helpers
 
 ### Bug Fixes

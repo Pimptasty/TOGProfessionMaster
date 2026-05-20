@@ -168,6 +168,55 @@ local OPTIONS = {
             end,
         },
 
+        -- ---- Auction House -------------------------------------------------
+        ahHeader = {
+            name  = L["SettingsAHHeader"],
+            type  = "header",
+            order = 19.7,
+        },
+
+        ahScanDelay = {
+            name  = L["SettingsAHScanDelay"],
+            desc  = L["SettingsAHScanDelayDesc"],
+            type  = "input",
+            order = 19.8,
+            -- Stored as a number (seconds). Display layer shows it as a
+            -- string with one decimal; empty / 0 means "use the version
+            -- default" (1.5s on Classic Era / Anniversary, 3.0s elsewhere).
+            -- Resolved at scan time in Modules/AHScanner.lua so changes to
+            -- this setting take effect immediately on the next query.
+            get = function()
+                local n = tonumber(Ace.db.profile.ahScanDelay) or 0
+                if n <= 0 then return "" end
+                return tostring(n)
+            end,
+            validate = function(_, val)
+                local trimmed = strtrim(val or "")
+                if trimmed == "" or trimmed:lower() == "off" then return true end
+                local n = tonumber(trimmed)
+                if not n then
+                    return L["SettingsAHScanDelayInvalid"]
+                end
+                if n < 0.5 or n > 10 then
+                    return L["SettingsAHScanDelayInvalid"]
+                end
+                return true
+            end,
+            set = function(_, val)
+                local trimmed = strtrim(val or "")
+                if trimmed == "" or trimmed:lower() == "off" then
+                    Ace.db.profile.ahScanDelay = 0
+                    return
+                end
+                local n = tonumber(trimmed)
+                if n then
+                    if n < 0.5 then n = 0.5 end
+                    if n > 10  then n = 10  end
+                    Ace.db.profile.ahScanDelay = n
+                end
+            end,
+        },
+
         -- ---- Debug ---------------------------------------------------------
         debugHeader = {
             name  = L["SettingsDevHeader"],

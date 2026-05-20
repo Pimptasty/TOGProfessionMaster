@@ -123,6 +123,16 @@ local SETTINGS_DEFAULTS = {
         -- cycle." Range guard 0..1440 (24h) enforced in Settings.lua.
         cooldownAlertSuppressProtected = true,
         cooldownAlertReminderMinutes   = 0,
+
+        -- Auction House scan delay (seconds between QueryAuctionItems calls).
+        -- 0 = use the version-appropriate default (1.5s on Classic Era /
+        -- Anniversary where the server throttle is loose, 3.0s on TBC /
+        -- Wrath / Cata / MoP where it's stricter). User-tunable via Settings
+        -- so guilds on unusual server configurations can dial it up or down.
+        -- Resolved at scan time in Modules/AHScanner.lua so the version flag
+        -- (set by Compat.lua, which loads AFTER this defaults table) is
+        -- guaranteed populated before we read it.
+        ahScanDelay = 0,
     },
     char = {
         -- Shopping list: [spellId] = { quantity = N }
@@ -237,7 +247,7 @@ end
 -- Event handlers (stubs — filled in by later modules)
 -- ---------------------------------------------------------------------------
 
-function Ace:OnPlayerEnteringWorld(event, isInitialLogin, isReloadingUi)
+function Ace:OnPlayerEnteringWorld(_event, isInitialLogin, isReloadingUi)
     addon:DebugPrint("PLAYER_ENTERING_WORLD", "login:", isInitialLogin, "reload:", isReloadingUi)
 
     -- Register this character in the account-wide accountChars table.
@@ -341,7 +351,6 @@ addon.PROF_NAMES = {
     [165] = "Leatherworking",[186] = "Mining",        [197] = "Tailoring",
     [182] = "Herbalism",     [393] = "Skinning",      [755] = "Jewelcrafting",
     [773] = "Inscription",   [356] = "Fishing",       [374] = "Smelting",
-    [40]  = "Poisons",
 }
 
 -- Per-profession version availability. Each entry is a function that
@@ -355,13 +364,11 @@ addon.PROF_NAMES = {
 addon.PROF_AVAILABILITY = {
     [755] = function() return addon.isTBC   or addon.isWrath or addon.isCata or addon.isMoP end,  -- Jewelcrafting (TBC+)
     [773] = function() return addon.isWrath or addon.isCata  or addon.isMoP end,                  -- Inscription (Wrath+)
-    [40]  = function() return addon.isVanilla or addon.isTBC end,                                   -- Poisons (made automatic in WotLK 3.1)
 }
 
 --- True if this profession exists on the current WoW client version.
 -- Used by every tab's profession dropdown to hide professions that
--- aren't in the current expansion (e.g. Jewelcrafting on Vanilla,
--- Poisons on Wrath+).
+-- aren't in the current expansion (e.g. Jewelcrafting on Vanilla).
 function addon.IsProfessionAvailable(profId)
     local check = addon.PROF_AVAILABILITY[profId]
     if not check then return true end  -- default: always available
@@ -386,7 +393,6 @@ addon.CRAFTING_PROFS = {
     [197] = true,  -- Tailoring
     [755] = true,  -- Jewelcrafting (TBC+)
     [773] = true,  -- Inscription (Wrath+)
-    [40]  = true,  -- Poisons (Vanilla / TBC only)
 }
 
 function addon:OnCrafterCameOnline(charKey)

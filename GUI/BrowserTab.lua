@@ -133,7 +133,7 @@ end
 --     Fishing) and Smelting (which is a sub-skill of Mining).
 --   • addon.IsProfessionAvailable — hide professions that don't exist
 --     on this client version (Jewelcrafting on Vanilla, Inscription on
---     Vanilla / TBC, Poisons on Wrath+).
+--     Vanilla / TBC).
 local function GetProfDropdownEntries()
     local entries = { { profId = 0, name = L["AllProfessions"] } }
     local crafting = {}

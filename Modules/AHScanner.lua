@@ -151,7 +151,18 @@ AH._isScanning  = false
 AH._queue       = {}        -- queue of pending items: { {itemId, itemName}, ... }
 AH._results     = {}        -- [itemId] = { listings, lowestBuyout, count, scannedAt }
 AH._currentItem = nil       -- item currently awaiting AUCTION_ITEM_LIST_UPDATE
-AH._scanDelay   = 1.5       -- seconds between queries (rate-limit-safe)
+-- Resolve the effective scan delay at scan time. Reads the user-tunable
+-- setting from Ace.db.profile.ahScanDelay; falls back to a version-appropriate
+-- default (1.5s on Classic Era / Anniversary where the server throttle is
+-- loose, 3.0s on TBC / Wrath / Cata / MoP where it's stricter). Independent of
+-- this floor, every QueryAuctionItems call is also gated on CanSendAuctionQuery()
+-- with a 0.5s retry, so even when the floor isn't enough, the scan waits
+-- instead of dropping the query into the void.
+function AH.GetEffectiveScanDelay()
+    local override = Ace and Ace.db and Ace.db.profile and Ace.db.profile.ahScanDelay
+    if type(override) == "number" and override > 0 then return override end
+    return addon.isVanilla and 1.5 or 3.0
+end
 AH._totalItems  = 0
 AH._scannedItems = 0
 AH._opts        = nil
@@ -221,6 +232,22 @@ function AH._scanNext()
     AH._currentItem = nextItem
     if AH._opts and AH._opts.onProgress then
         pcall(AH._opts.onProgress, AH._scannedItems, AH._totalItems, nextItem)
+    end
+
+    -- Gate every query on Blizzard's "is the next query allowed?" check.
+    -- TBC Anniversary's throttle window is variable — even after our effective
+    -- scan delay between queries, the server can still reject the next one.
+    -- A rejected query fires no AUCTION_ITEM_LIST_UPDATE event, which would
+    -- silently stall the scan. Retry in 0.5s slices until the API agrees we
+    -- can send. AceTimer is already loaded as part of the addon's AceAddon
+    -- mixins.
+    if CanSendAuctionQuery and not CanSendAuctionQuery() then
+        addon:DebugPrint("AH Scan: CanSendAuctionQuery=false, retrying in 0.5s")
+        -- Put the item back at the front of the queue and re-call later.
+        table.insert(AH._queue, 1, nextItem)
+        AH._currentItem = nil
+        Ace:ScheduleTimer(function() AH._scanNext() end, 0.5)
+        return
     end
 
     -- QueryAuctionItems signature on Vanilla→MoP:
@@ -297,10 +324,12 @@ local function onAuctionItemListUpdate()
     AH._scannedItems = AH._scannedItems + 1
     AH._currentItem  = nil
 
-    -- Throttle: 1.5s between queries dodges the "you cannot perform that
-    -- query so often" rate limit. Schedule via AceTimer (already loaded as
-    -- part of the addon's AceAddon mixins).
-    Ace:ScheduleTimer(function() AH._scanNext() end, AH._scanDelay)
+    -- Throttle between queries dodges the "you cannot perform that query so
+    -- often" rate limit. Delay is version-aware (1.5s on Classic Era / Anniv,
+    -- 3.0s elsewhere by default) and user-tunable via the AH scan delay
+    -- setting. Schedule via AceTimer (already loaded as part of the addon's
+    -- AceAddon mixins).
+    Ace:ScheduleTimer(function() AH._scanNext() end, AH.GetEffectiveScanDelay())
 end
 
 Ace:RegisterEvent("AUCTION_ITEM_LIST_UPDATE", onAuctionItemListUpdate)

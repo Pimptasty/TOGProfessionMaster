@@ -1,5 +1,17 @@
 # TOG Profession Master Changelog
 
+## [v0.4.6] (2026-05-21) - MoP cross-bucket known-recipes fix + packaging cleanup
+
+### Bug Fixes
+
+- **Recipes the user already knows showing up in the "Missing" list on MoP** — `BuildMissingList` pinned its known-recipes lookup to a single guild bucket via `addon:FindBucketForChar(charKey, "skills")`, but a character's recipes can live in a different bucket than where their skills happened to be cached (e.g., skills in the synthetic `NoGuildBucketKey` from a brief no-guild moment while the latest scan landed in the current guild's bucket; or stale skill data in an old guild bucket while current scans are elsewhere). Pinning to one bucket caused recipes the player actually has to show as "missing". Fix: rewrite `knownByChar` to walk EVERY bucket in `addon.guildDb.global.guilds` and return true the moment ANY bucket has this charKey as a crafter for this recipe. Same correctness logic the Cooldowns/Browser tabs already use in their "My Characters" views. `skillMax` lookup also rewritten to walk all buckets and take the max. Location: [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua).
+
+### Improvements
+
+- **`.pkgmeta` cleanup** — added `.claude/`, `CLAUDE.md`, `.markdownlint.json`, `.markdownlintignore`, and `tools/` to the package-ignore list so dev tooling and AI-assist guidance files don't ship in the CurseForge package. Removed a redundant `*.bat` entry (already covered by `**/*.bat`).
+
+---
+
 ## [v0.4.5] (2026-05-20) - Modern Auction House API support (Cata / MoP) + TBC tooltip fix
 
 ### Bug Fixes

@@ -10,3 +10,8 @@ docs/Curseforge_Description.html
 docs/FEATURE_IMPROVEMENTS.md
 libs/CallbackHandler-1.0.lua
 libs/LibStub.lua
+
+# Python tooling caches and bulky emulator SQL dumps (dev-only inputs to
+# the one-time port script in tools/, regenerable on demand).
+tools/__pycache__/
+tools/emulator_data/

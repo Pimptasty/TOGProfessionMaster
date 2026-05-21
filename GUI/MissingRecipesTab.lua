@@ -180,28 +180,51 @@ local function BuildMissingList(charKey, profId, includeTrainer)
     local recipes = addon.recipeDB and addon.recipeDB[profId]
     if not recipes then return {} end
 
-    -- Hoist all gdb / sources / spec lookups out of the per-recipe loop.
-    -- A single bucket lookup instead of one-per-iteration makes a real
-    -- difference on professions like Tailoring with ~3000 recipes.
-    -- FindCharBucket walks every guild bucket so cross-guild and guildless
-    -- alts surface here, not just chars in the current guild.
+    -- Hoist sources / spec lookups out of the per-recipe loop.
     local sources     = (addon.sourceDB and addon.sourceDB[profId]) or {}
-    local gdb         = addon:FindBucketForChar(charKey, "skills") or addon:GetGuildDb()
-    local profRecipes = gdb and gdb.recipes and gdb.recipes[profId]
-    local specs       = gdb and gdb.specializations and gdb.specializations[charKey]
-    local playerSpec  = specs and specs[profId]
-    -- skillMax for the rank-book filter below. nil/0 if the character
-    -- hasn't been scanned yet — in that case rank books still surface
-    -- (we'd rather show a spurious entry until the user opens their
-    -- profession window than hide books they actually need).
-    local skillEntry  = gdb and gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
-    local skillMax    = (skillEntry and skillEntry.skillMax) or 0
 
+    -- knownByChar walks ALL guild buckets because a character's recipes can
+    -- live in a different bucket than where their skills happened to be
+    -- cached. The previous implementation pinned the lookup to a single
+    -- bucket via FindBucketForChar("skills"), but recipes for the same
+    -- character can be scattered across multiple buckets (e.g. skills cached
+    -- in the synthetic NoGuildBucketKey from a brief no-guild moment while
+    -- the latest scan landed in the current guild's bucket; or stale skill
+    -- data in an old guild bucket while current scans are elsewhere). Pinning
+    -- to one bucket caused recipes the player actually has to show as
+    -- "missing" because we were looking in the wrong bucket. Walk every
+    -- bucket and return true the moment ANY of them has this charKey as a
+    -- crafter for this recipe. Same correctness logic as the cross-bucket
+    -- walks the Cooldowns / Browser tabs already do in their "My Characters"
+    -- views.
     local function knownByChar(recipeId)
-        if not profRecipes then return false end
-        local rd = profRecipes[recipeId]
-        return rd and rd.crafters and rd.crafters[charKey] ~= nil
+        for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
+            local profRecipes = bucket.recipes and bucket.recipes[profId]
+            if profRecipes then
+                local rd = profRecipes[recipeId]
+                if rd and rd.crafters and rd.crafters[charKey] then
+                    return true
+                end
+            end
+        end
+        return false
     end
+
+    -- skillMax for the rank-book filter below — also walks all buckets and
+    -- takes the maximum value, for the same reason as knownByChar. The
+    -- specialisations lookup uses the bucket where the char's skills live
+    -- (specialisations are stored alongside skills by the scanner, so they
+    -- share the same bucket).
+    local skillMax = 0
+    for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
+        local se = bucket.skills and bucket.skills[charKey] and bucket.skills[charKey][profId]
+        if se and (se.skillMax or 0) > skillMax then
+            skillMax = se.skillMax
+        end
+    end
+    local skillsBucket = addon:FindBucketForChar(charKey, "skills")
+    local specs       = skillsBucket and skillsBucket.specializations and skillsBucket.specializations[charKey]
+    local playerSpec  = specs and specs[profId]
 
     local out = {}
 

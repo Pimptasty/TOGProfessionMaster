@@ -23,9 +23,13 @@ ignore:
   - .git/
   - .github/
   - .vscode/
+  - .claude/
   - docs/
+  - tools/
   - "**/*.ps1"
   - "**/*.bat"
   - "*.code-workspace"
   - ".luarc.json"
-  - "*.bat"
+  - ".markdownlint.json"
+  - ".markdownlintignore"
+  - "CLAUDE.md"

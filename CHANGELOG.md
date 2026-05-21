@@ -1,5 +1,13 @@
 # TOG Profession Master Changelog
 
+## [v0.4.7] (2026-05-21) - Gear + help-i icons bleeding into other AceGUI addons
+
+### Bug Fixes
+
+- **Help "i" icon and Settings gear icon bleeding from TOGPM into other AceGUI-based addons (TOGBankClassic, PersonalShopper, Grouper, etc.)** — both icons are raw `CreateFrame`s parented to the MainWindow's AceGUI Frame at [GUI/MainWindow.lua:214](GUI/MainWindow.lua#L214) and [GUI/MainWindow.lua:313](GUI/MainWindow.lua#L313). The `OnClose` callback at [GUI/MainWindow.lua:192](GUI/MainWindow.lua#L192) correctly called `addon.GUI.DetachPool` on both icons before `AceGUI:Release`, BUT `OnClose` only fires when the user clicks the X button. Any other exit path — the ESC key (line 119), the `/togpm` toggle slash command, or any programmatic `MainWindow:Close()` — routed through `MainWindow:Close` at line 477 which called `AceGUI:Release(self.frame)` directly without detaching. AceGUI then recycled the frame (with our icons still parented) into the next `AceGUI:Create("Frame")` caller. Fix: extracted the detach + release logic into a shared `MainWindow:_ReleaseFrame(widget)` helper that both the `OnClose` callback and `Close()` now route through, so the icons are `Hide()` + `SetParent(UIParent)` + `ClearAllPoints` regardless of which close path the user takes. The DetachPool helper itself was correct (no change to [GUI/SharedWidgets.lua](GUI/SharedWidgets.lua)) — the bug was that one of the two close paths skipped it entirely. Location: [GUI/MainWindow.lua](GUI/MainWindow.lua).
+
+---
+
 ## [v0.4.6] (2026-05-21) - MoP cross-bucket known-recipes fix + packaging cleanup
 
 ### Bug Fixes

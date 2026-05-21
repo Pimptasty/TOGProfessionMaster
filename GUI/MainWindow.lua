@@ -192,27 +192,10 @@ function MainWindow:Open(tabKey)
     f:SetCallback("OnClose", function(_widget)
         -- Browser's last user-chosen size is already persisted by the
         -- OnSizeChanged hook above, so no special-case capture needed
-        -- on close.
-        --
-        -- Detach the help "i" icon BEFORE releasing the AceGUI Frame:
-        -- helpIcon is a raw CreateFrame parented to f.frame, and
-        -- AceGUI:Release returns f.frame to its pool with whatever
-        -- child frames we attached — so the next addon that
-        -- AceGUI:Create("Frame")s inherits our "i" icon and its
-        -- tooltip handlers. Same helper as the row-pool detaches in
-        -- BrowserTab / MissingRecipesTab.
-        addon.GUI.DetachPool(self._helpIcon)
-        self._helpIcon = nil
-        -- Same detach for the settings gear — also a raw CreateFrame
-        -- parented to f.frame. Without this, the next addon that
-        -- AceGUI:Create("Frame")s inherits our gear icon riding on the
-        -- recycled Frame (same widget-bleed trap helpIcon had).
-        addon.GUI.DetachPool(self._gearIcon)
-        self._gearIcon = nil
-        self.frame = nil
-        self.tabs  = nil
-        _escProxy:Hide()
-        AceGUI:Release(_widget)
+        -- on close. All chrome-detach + Release routing lives in the
+        -- shared _ReleaseFrame helper below so the X-button path AND
+        -- the programmatic Close() path use identical cleanup.
+        self:_ReleaseFrame(_widget)
     end)
 
     -- Shrink the default status bar right edge to create room for the help
@@ -474,11 +457,29 @@ function MainWindow:ApplyTabSize(tabKey)
     self._suppressBrowserSize = false
 end
 
+--- Shared release-and-cleanup path used by BOTH OnClose (X-button) and
+--- the programmatic Close()/Toggle() path. AceGUI:Release does NOT fire
+--- OnClose, so any escape route that ends in Release (ESC key, /togpm
+--- toggle, etc.) MUST go through here or the help "i" + gear icons stay
+--- parented to f.frame and ride the recycled widget into the next
+--- AceGUI:Create("Frame") caller (TOGBank, PersonalShopper, Grouper).
+function MainWindow:_ReleaseFrame(widget)
+    -- DetachPool: Hide + reparent to UIParent + ClearAllPoints. Defined
+    -- in GUI/SharedWidgets.lua. Single-frame form, same helper used by
+    -- the row-pool detaches in BrowserTab / MissingRecipesTab.
+    addon.GUI.DetachPool(self._helpIcon)
+    self._helpIcon = nil
+    addon.GUI.DetachPool(self._gearIcon)
+    self._gearIcon = nil
+    self.frame = nil
+    self.tabs  = nil
+    _escProxy:Hide()
+    if widget then AceGUI:Release(widget) end
+end
+
 function MainWindow:Close()
     if self.frame then
-        AceGUI:Release(self.frame)
-        self.frame = nil
-        self.tabs  = nil
+        self:_ReleaseFrame(self.frame)
     end
 end
 

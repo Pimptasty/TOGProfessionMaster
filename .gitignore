@@ -12,6 +12,8 @@ libs/CallbackHandler-1.0.lua
 libs/LibStub.lua
 
 # Python tooling caches and bulky emulator SQL dumps (dev-only inputs to
-# the one-time port script in tools/, regenerable on demand).
+# the v0.5.0 data builders in tools/, regenerable on demand from
+# wago.tools + TrinityCore/AzerothCore releases).
 tools/__pycache__/
 tools/emulator_data/
+tools/wago_cache/

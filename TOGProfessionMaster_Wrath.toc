@@ -27,6 +27,8 @@ Data\Recipes\Enchanting.lua
 Data\Recipes\Engineering.lua
 Data\Recipes\Firstaid.lua
 Data\Recipes\Fishing.lua
+Data\Recipes\Inscription.lua
+Data\Recipes\Jewelcrafting.lua
 Data\Recipes\Leatherworking.lua
 Data\Recipes\Mining.lua
 Data\Recipes\Tailoring.lua
@@ -37,6 +39,8 @@ Data\Sources\Enchanting.lua
 Data\Sources\Engineering.lua
 Data\Sources\Firstaid.lua
 Data\Sources\Fishing.lua
+Data\Sources\Inscription.lua
+Data\Sources\Jewelcrafting.lua
 Data\Sources\Leatherworking.lua
 Data\Sources\Mining.lua
 Data\Sources\Tailoring.lua

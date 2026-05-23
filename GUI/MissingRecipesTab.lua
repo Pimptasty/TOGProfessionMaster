@@ -66,7 +66,12 @@ local function HasNonTrainerSource(srcEntry)
 end
 
 local function FormatSources(srcEntry, includeTrainer)
-    if not srcEntry then return "" end
+    -- No source data at all → the recipe is in the universe (wago.tools knows
+    -- about it) but no emulator we ship from catalogs where it comes from.
+    -- Surface it with an explicit "Unknown" tag so the user still sees the
+    -- recipe is missing and can look it up externally. Used heavily for
+    -- MoP-introduced recipes since we don't have a MoP emulator source yet.
+    if not srcEntry then return L["MissingSrcUnknown"] end
     local parts, seen = {}, {}
     for _, key in ipairs(SRC_ORDER) do
         if srcEntry[key] and (key ~= "trainer" or includeTrainer) then
@@ -81,6 +86,10 @@ local function FormatSources(srcEntry, includeTrainer)
             break
         end
     end
+    -- srcEntry exists but every kind in it is filtered (e.g. trainer-only
+    -- with the toggle off): fall through to "Unknown" so the row still
+    -- displays something rather than an empty cell.
+    if #parts == 0 then return L["MissingSrcUnknown"] end
     return table.concat(parts, ", ")
 end
 
@@ -183,31 +192,49 @@ local function BuildMissingList(charKey, profId, includeTrainer)
     -- Hoist sources / spec lookups out of the per-recipe loop.
     local sources     = (addon.sourceDB and addon.sourceDB[profId]) or {}
 
-    -- knownByChar walks ALL guild buckets because a character's recipes can
-    -- live in a different bucket than where their skills happened to be
-    -- cached. The previous implementation pinned the lookup to a single
-    -- bucket via FindBucketForChar("skills"), but recipes for the same
-    -- character can be scattered across multiple buckets (e.g. skills cached
-    -- in the synthetic NoGuildBucketKey from a brief no-guild moment while
-    -- the latest scan landed in the current guild's bucket; or stale skill
-    -- data in an old guild bucket while current scans are elsewhere). Pinning
-    -- to one bucket caused recipes the player actually has to show as
-    -- "missing" because we were looking in the wrong bucket. Walk every
-    -- bucket and return true the moment ANY of them has this charKey as a
-    -- crafter for this recipe. Same correctness logic as the cross-bucket
-    -- walks the Cooldowns / Browser tabs already do in their "My Characters"
-    -- views.
-    local function knownByChar(recipeId)
-        for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
-            local profRecipes = bucket.recipes and bucket.recipes[profId]
-            if profRecipes then
-                local rd = profRecipes[recipeId]
+    -- Pre-build a set of every spell-id the character is known to craft for
+    -- this profession. There are TWO independent reasons the previous
+    -- per-call lookup `bucket.recipes[profId][recipeId]` returned false for
+    -- recipes the player actually knew:
+    --
+    --   1. (v0.4.7 fix) cross-bucket scatter: a character's scanned recipes
+    --      live in whichever guild bucket was active at scan time, which
+    --      may not be the bucket their skills are cached in. We walk all
+    --      buckets here.
+    --
+    --   2. (v0.5.0 fix) keyspace mismatch: Scanner:ScanTradeSkill at
+    --      Scanner.lua:776 stores each recipe row keyed by what
+    --      ExtractTradeSkillId returns, which is the SPELL id for Enchanting
+    --      (whose recipe links carry enchant:SPELLID) but the CRAFTED ITEM
+    --      id for every other profession (whose links carry item:ITEMID for
+    --      the produced item). Meanwhile our v0.5.0 recipeDB is uniformly
+    --      keyed by recipe SPELL id (from wago.tools SkillLineAbility.Spell).
+    --      A direct `profRecipes[spellId]` lookup misses every non-Enchanting
+    --      recipe because the stored key is the item id, not the spell id.
+    --      Scanner DOES populate rd.spellId as a field on every entry (line
+    --      743 + 856 — looked up via spellNameCache during the scan), so we
+    --      index both the table KEY and the rd.spellId FIELD into one set.
+    --      Lookup against that set is O(1) and works for all professions.
+    local knownSpells = {}
+    for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
+        local profRecipes = bucket.recipes and bucket.recipes[profId]
+        if profRecipes then
+            for recipeKey, rd in pairs(profRecipes) do
                 if rd and rd.crafters and rd.crafters[charKey] then
-                    return true
+                    -- Index the table key (Enchanting hits via this path).
+                    knownSpells[recipeKey] = true
+                    -- Also index by the stored spellId field if present
+                    -- (non-Enchanting professions hit via this path because
+                    -- the table key is the crafted item id, not the spell).
+                    if rd.spellId then
+                        knownSpells[rd.spellId] = true
+                    end
                 end
             end
         end
-        return false
+    end
+    local function knownByChar(recipeId)
+        return knownSpells[recipeId] == true
     end
 
     -- skillMax for the rank-book filter below — also walks all buckets and
@@ -252,13 +279,25 @@ local function BuildMissingList(charKey, profId, includeTrainer)
 
         if not skip then
             local srcEntry = sources[spellId]
-            -- A srcEntry is required: it's the only thing that proves the
-            -- spellId corresponds to an actual obtainable recipe scroll
-            -- (PS's curated data only lists sources for things you can
-            -- actually go acquire). includeTrainer further gates whether
-            -- trainer-only entries are surfaced.
-            local hasUsableSource = srcEntry and (includeTrainer or HasNonTrainerSource(srcEntry))
-            if hasUsableSource then
+            -- v0.5.0: surface every recipe in the universe, even those without
+            -- a known source entry. Previously we filtered out anything without
+            -- a srcEntry on the assumption that the recipe wasn't actually
+            -- obtainable; v0.5.0's authoritative recipeDB makes that assumption
+            -- wrong (we know the recipe exists from Blizzard's DBC even when
+            -- no emulator catalogs the NPC). Show the row anyway with an
+            -- "Unknown" source tag (handled in FormatSources). Users still get
+            -- the value of "I'm missing this recipe" even when we can't tell
+            -- them where to get it. This is the main lever closing the
+            -- visibility gap on MoP-introduced recipes for now.
+            --
+            -- The includeTrainer toggle still hides recipes whose ONLY known
+            -- source is a trainer — those add noise to the "AH-hunting"
+            -- workflow the tab is built around (a trainer is always
+            -- available). The toggle is unchanged in scope and effect.
+            local isTrainerOnly = srcEntry and not HasNonTrainerSource(srcEntry)
+            if isTrainerOnly and not includeTrainer then
+                -- skip — trainer-only entries are hidden when the toggle is off
+            else
                 table.insert(out, {
                     spellId       = spellId,
                     teaches       = data.teaches,

@@ -1,0 +1,14339 @@
+local _, addon = ...
+
+addon.recipeDB[755] = {
+		[25229] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Jewelcrafting",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 25229,
+		},
+		[25230] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Jewelcrafting",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 25230,
+		},
+		[25255] = {
+			["difficulty"] = {
+				1,
+				10,
+				20,
+				50,
+			},
+			["name"] = "Delicate Copper Wire",
+			["reagents"] = {
+				[2840] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25255,
+		},
+		[25278] = {
+			["difficulty"] = {
+				1,
+				35,
+				70,
+				90,
+			},
+			["name"] = "Bronze Setting",
+			["reagents"] = {
+				[2841] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25278,
+		},
+		[25280] = {
+			["difficulty"] = {
+				1,
+				40,
+				80,
+				110,
+			},
+			["name"] = "Elegant Silver Ring",
+			["reagents"] = {
+				[2842] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25280,
+		},
+		[25283] = {
+			["difficulty"] = {
+				1,
+				30,
+				60,
+				90,
+			},
+			["name"] = "Inlaid Malachite Ring",
+			["reagents"] = {
+				[774] = 2,
+				[2840] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25283,
+		},
+		[25284] = {
+			["difficulty"] = {
+				1,
+				45,
+				90,
+				120,
+			},
+			["name"] = "Simple Pearl Ring",
+			["reagents"] = {
+				[2840] = 2,
+				[5498] = 1,
+				[20817] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25284,
+		},
+		[25287] = {
+			["difficulty"] = {
+				1,
+				50,
+				100,
+				130,
+			},
+			["name"] = "Gloom Band",
+			["reagents"] = {
+				[1210] = 2,
+				[20816] = 2,
+				[20817] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25287,
+		},
+		[25305] = {
+			["difficulty"] = {
+				1,
+				60,
+				120,
+				150,
+			},
+			["name"] = "Heavy Silver Ring",
+			["reagents"] = {
+				[1206] = 1,
+				[1705] = 1,
+				[2842] = 2,
+				[20817] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25305,
+		},
+		[25317] = {
+			["difficulty"] = {
+				1,
+				55,
+				110,
+				140,
+			},
+			["name"] = "Ring of Silver Might",
+			["reagents"] = {
+				[2842] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25317,
+		},
+		[25318] = {
+			["difficulty"] = {
+				1,
+				65,
+				130,
+				160,
+			},
+			["name"] = "Ring of Twilight Shadows",
+			["reagents"] = {
+				[1210] = 2,
+				[2841] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25318,
+		},
+		[25320] = {
+			["difficulty"] = {
+				1,
+				90,
+				180,
+				210,
+			},
+			["name"] = "Heavy Golden Necklace of Battle",
+			["reagents"] = {
+				[1206] = 2,
+				[3391] = 1,
+				[3577] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25320,
+		},
+		[25321] = {
+			["difficulty"] = {
+				1,
+				75,
+				150,
+				180,
+			},
+			["name"] = "Moonsoul Crown",
+			["reagents"] = {
+				[1705] = 3,
+				[2842] = 4,
+				[3827] = 2,
+				[5498] = 3,
+				[11083] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25321,
+		},
+		[25323] = {
+			["difficulty"] = {
+				1,
+				78,
+				155,
+				185,
+			},
+			["name"] = "Wicked Moonstone Ring",
+			["reagents"] = {
+				[1705] = 1,
+				[3575] = 4,
+				[3824] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25323,
+		},
+		[25339] = {
+			["difficulty"] = {
+				1,
+				70,
+				140,
+				170,
+			},
+			["name"] = "Amulet of the Moon",
+			["reagents"] = {
+				[1705] = 2,
+				[20817] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25339,
+		},
+		[25490] = {
+			["difficulty"] = {
+				1,
+				40,
+				80,
+				110,
+			},
+			["name"] = "Solid Bronze Ring",
+			["reagents"] = {
+				[2841] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25490,
+		},
+		[25493] = {
+			["difficulty"] = {
+				1,
+				15,
+				30,
+				60,
+			},
+			["name"] = "Braided Copper Ring",
+			["reagents"] = {
+				[20816] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25493,
+		},
+		[25498] = {
+			["difficulty"] = {
+				1,
+				70,
+				140,
+				170,
+			},
+			["name"] = "Barbaric Iron Collar",
+			["reagents"] = {
+				[3575] = 8,
+				[5637] = 2,
+				[20817] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25498,
+		},
+		[25610] = {
+			["difficulty"] = {
+				1,
+				75,
+				150,
+				180,
+			},
+			["name"] = "Pendant of the Agate Shield",
+			["reagents"] = {
+				[1206] = 1,
+				[20817] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25610,
+		},
+		[25612] = {
+			["difficulty"] = {
+				1,
+				78,
+				155,
+				185,
+			},
+			["name"] = "Heavy Iron Knuckles",
+			["reagents"] = {
+				[3391] = 2,
+				[3575] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25612,
+		},
+		[25613] = {
+			["difficulty"] = {
+				1,
+				83,
+				165,
+				195,
+			},
+			["name"] = "Golden Dragon Ring",
+			["reagents"] = {
+				[1529] = 1,
+				[3577] = 2,
+				[20816] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25613,
+		},
+		[25614] = {
+			["difficulty"] = {
+				1,
+				88,
+				175,
+				205,
+			},
+			["name"] = "Silver Rose Pendant",
+			["reagents"] = {
+				[1206] = 1,
+				[1529] = 1,
+				[2842] = 2,
+				[20817] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25614,
+		},
+		[25615] = {
+			["difficulty"] = {
+				1,
+				85,
+				170,
+				190,
+			},
+			["name"] = "Mithril Filigree",
+			["reagents"] = {
+				[3860] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25615,
+		},
+		[25617] = {
+			["difficulty"] = {
+				1,
+				90,
+				180,
+				210,
+			},
+			["name"] = "Blazing Citrine Ring",
+			["reagents"] = {
+				[3864] = 1,
+				[20963] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25617,
+		},
+		[25618] = {
+			["difficulty"] = {
+				1,
+				95,
+				190,
+				220,
+			},
+			["name"] = "Jade Pendant of Blasting",
+			["reagents"] = {
+				[1529] = 1,
+				[20963] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25618,
+		},
+		[25619] = {
+			["difficulty"] = {
+				1,
+				100,
+				200,
+				230,
+			},
+			["name"] = "The Jade Eye",
+			["reagents"] = {
+				[1529] = 1,
+				[7067] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25619,
+		},
+		[25620] = {
+			["difficulty"] = {
+				1,
+				100,
+				200,
+				230,
+			},
+			["name"] = "Engraved Truesilver Ring",
+			["reagents"] = {
+				[6037] = 1,
+				[20963] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25620,
+		},
+		[25621] = {
+			["difficulty"] = {
+				1,
+				105,
+				210,
+				240,
+			},
+			["name"] = "Citrine Ring of Rapid Healing",
+			["reagents"] = {
+				[3860] = 2,
+				[3864] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25621,
+		},
+		[25622] = {
+			["difficulty"] = {
+				1,
+				110,
+				220,
+				250,
+			},
+			["name"] = "Citrine Pendant of Golden Healing",
+			["reagents"] = {
+				[3577] = 2,
+				[3864] = 1,
+				[7070] = 2,
+				[20817] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25622,
+		},
+		[26872] = {
+			["difficulty"] = {
+				1,
+				113,
+				225,
+				255,
+			},
+			["name"] = "Figurine - Jade Owl",
+			["reagents"] = {
+				[1529] = 4,
+				[6037] = 2,
+				[11137] = 4,
+				[20963] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26872,
+		},
+		[26873] = {
+			["difficulty"] = {
+				1,
+				113,
+				225,
+				255,
+			},
+			["name"] = "Figurine - Golden Hare",
+			["reagents"] = {
+				[3577] = 6,
+				[3864] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26873,
+		},
+		[26874] = {
+			["difficulty"] = {
+				1,
+				118,
+				235,
+				265,
+			},
+			["name"] = "Aquamarine Signet",
+			["reagents"] = {
+				[7909] = 3,
+				[52188] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26874,
+		},
+		[26875] = {
+			["difficulty"] = {
+				1,
+				120,
+				240,
+				270,
+			},
+			["name"] = "Figurine - Black Pearl Panther",
+			["reagents"] = {
+				[7971] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26875,
+		},
+		[26876] = {
+			["difficulty"] = {
+				1,
+				123,
+				245,
+				275,
+			},
+			["name"] = "Aquamarine Pendant of the Warrior",
+			["reagents"] = {
+				[7909] = 1,
+				[20963] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26876,
+		},
+		[26878] = {
+			["difficulty"] = {
+				1,
+				125,
+				250,
+				280,
+			},
+			["name"] = "Ruby Crown of Restoration",
+			["reagents"] = {
+				[6037] = 4,
+				[6149] = 4,
+				[7910] = 2,
+				[7971] = 2,
+				[21752] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26878,
+		},
+		[26880] = {
+			["difficulty"] = {
+				1,
+				118,
+				235,
+				255,
+			},
+			["name"] = "Thorium Setting",
+			["reagents"] = {
+				[12359] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26880,
+		},
+		[26881] = {
+			["difficulty"] = {
+				1,
+				125,
+				250,
+				280,
+			},
+			["name"] = "Figurine - Truesilver Crab",
+			["reagents"] = {
+				[6037] = 4,
+				[7075] = 2,
+				[7079] = 2,
+				[7909] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26881,
+		},
+		[26882] = {
+			["difficulty"] = {
+				1,
+				130,
+				260,
+				290,
+			},
+			["name"] = "Figurine - Truesilver Boar",
+			["reagents"] = {
+				[6037] = 4,
+				[7077] = 2,
+				[7081] = 2,
+				[7910] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26882,
+		},
+		[26883] = {
+			["difficulty"] = {
+				1,
+				130,
+				260,
+				290,
+			},
+			["name"] = "Ruby Pendant of Fire",
+			["reagents"] = {
+				[7910] = 1,
+				[21752] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26883,
+		},
+		[26885] = {
+			["difficulty"] = {
+				1,
+				133,
+				265,
+				295,
+			},
+			["name"] = "Truesilver Healing Ring",
+			["reagents"] = {
+				[6037] = 2,
+				[10286] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26885,
+		},
+		[26887] = {
+			["difficulty"] = {
+				1,
+				135,
+				270,
+				300,
+			},
+			["name"] = "The Aquamarine Ward",
+			["reagents"] = {
+				[7909] = 1,
+				[21752] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26887,
+		},
+		[26896] = {
+			["difficulty"] = {
+				1,
+				138,
+				275,
+				305,
+			},
+			["name"] = "Gem Studded Band",
+			["reagents"] = {
+				[3864] = 2,
+				[6037] = 2,
+				[7909] = 2,
+				[21752] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26896,
+		},
+		[26897] = {
+			["difficulty"] = {
+				1,
+				138,
+				275,
+				305,
+			},
+			["name"] = "Opal Necklace of Impact",
+			["reagents"] = {
+				[6037] = 4,
+				[11178] = 2,
+				[12799] = 2,
+				[20963] = 2,
+				[21752] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26897,
+		},
+		[26900] = {
+			["difficulty"] = {
+				1,
+				140,
+				280,
+				300,
+			},
+			["name"] = "Figurine - Ruby Serpent",
+			["reagents"] = {
+				[6037] = 2,
+				[7078] = 2,
+				[7910] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26900,
+		},
+		[26902] = {
+			["difficulty"] = {
+				1,
+				140,
+				280,
+				300,
+			},
+			["name"] = "Simple Opal Ring",
+			["reagents"] = {
+				[12799] = 1,
+				[21752] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26902,
+		},
+		[26903] = {
+			["difficulty"] = {
+				1,
+				143,
+				285,
+				305,
+			},
+			["name"] = "Sapphire Signet",
+			["reagents"] = {
+				[6037] = 2,
+				[12361] = 4,
+				[21752] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26903,
+		},
+		[26906] = {
+			["difficulty"] = {
+				1,
+				143,
+				285,
+				305,
+			},
+			["name"] = "Emerald Crown of Destruction",
+			["reagents"] = {
+				[12359] = 2,
+				[12360] = 2,
+				[12361] = 2,
+				[12364] = 2,
+				[12799] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26906,
+		},
+		[26907] = {
+			["difficulty"] = {
+				1,
+				145,
+				290,
+				310,
+			},
+			["name"] = "Onslaught Ring",
+			["reagents"] = {
+				[7076] = 1,
+				[12804] = 1,
+				[21752] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26907,
+		},
+		[26908] = {
+			["difficulty"] = {
+				1,
+				145,
+				290,
+				310,
+			},
+			["name"] = "Sapphire Pendant of Winter Night",
+			["reagents"] = {
+				[12361] = 1,
+				[12808] = 1,
+				[21752] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26908,
+		},
+		[26909] = {
+			["difficulty"] = {
+				1,
+				148,
+				295,
+				315,
+			},
+			["name"] = "Figurine - Emerald Owl",
+			["reagents"] = {
+				[12359] = 2,
+				[12360] = 2,
+				[12364] = 2,
+				[12804] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26909,
+		},
+		[26910] = {
+			["difficulty"] = {
+				1,
+				148,
+				295,
+				315,
+			},
+			["name"] = "Ring of Bitter Shadows",
+			["reagents"] = {
+				[12363] = 1,
+				[12662] = 1,
+				[12808] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26910,
+		},
+		[26911] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				320,
+			},
+			["name"] = "Living Emerald Pendant",
+			["reagents"] = {
+				[12364] = 2,
+				[12803] = 4,
+				[12804] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26911,
+		},
+		[26912] = {
+			["difficulty"] = {
+				1,
+				155,
+				310,
+				330,
+			},
+			["name"] = "Figurine - Black Diamond Crab",
+			["reagents"] = {
+				[11754] = 4,
+				[12359] = 4,
+				[12360] = 2,
+				[12800] = 2,
+				[18335] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26912,
+		},
+		[26914] = {
+			["difficulty"] = {
+				1,
+				155,
+				310,
+				330,
+			},
+			["name"] = "Figurine - Dark Iron Scorpid",
+			["reagents"] = {
+				[7910] = 2,
+				[11371] = 4,
+				[12360] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26914,
+		},
+		[26915] = {
+			["difficulty"] = {
+				1,
+				158,
+				315,
+				335,
+			},
+			["name"] = "Necklace of the Diamond Tower",
+			["reagents"] = {
+				[12360] = 2,
+				[12800] = 2,
+				[21752] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26915,
+		},
+		[26916] = {
+			["difficulty"] = {
+				1,
+				160,
+				320,
+				340,
+			},
+			["name"] = "Band of Natural Fire",
+			["reagents"] = {
+				[7078] = 4,
+				[12803] = 4,
+				[21929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26916,
+		},
+		[26918] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				345,
+			},
+			["name"] = "Arcanite Sword Pendant",
+			["reagents"] = {
+				[7076] = 4,
+				[7082] = 4,
+				[12360] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26918,
+		},
+		[26920] = {
+			["difficulty"] = {
+				1,
+				168,
+				335,
+				355,
+			},
+			["name"] = "Blood Crown",
+			["reagents"] = {
+				[7910] = 4,
+				[11382] = 2,
+				[12359] = 8,
+				[12938] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26920,
+		},
+		[26925] = {
+			["difficulty"] = {
+				1,
+				15,
+				30,
+				60,
+			},
+			["name"] = "Woven Copper Ring",
+			["reagents"] = {
+				[2840] = 1,
+				[20816] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26925,
+		},
+		[26926] = {
+			["difficulty"] = {
+				1,
+				18,
+				35,
+				65,
+			},
+			["name"] = "Heavy Copper Ring",
+			["reagents"] = {
+				[2840] = 4,
+				[20816] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26926,
+		},
+		[26927] = {
+			["difficulty"] = {
+				1,
+				40,
+				80,
+				110,
+			},
+			["name"] = "Thick Bronze Necklace",
+			["reagents"] = {
+				[1210] = 1,
+				[2841] = 2,
+				[20816] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26927,
+		},
+		[26928] = {
+			["difficulty"] = {
+				1,
+				30,
+				60,
+				90,
+			},
+			["name"] = "Ornate Tigerseye Necklace",
+			["reagents"] = {
+				[818] = 2,
+				[2840] = 2,
+				[20816] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 26928,
+		},
+		[28894] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Jewelcrafting",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 28894,
+		},
+		[28895] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Jewelcrafting",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 28895,
+		},
+		[28897] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Jewelcrafting",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 28897,
+		},
+		[28903] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				340,
+			},
+			["name"] = "Brilliant Blood Garnet",
+			["reagents"] = {
+				[23077] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28903,
+		},
+		[28905] = {
+			["difficulty"] = {
+				1,
+				153,
+				305,
+				345,
+			},
+			["name"] = "Bold Blood Garnet",
+			["reagents"] = {
+				[23077] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28905,
+		},
+		[28906] = {
+			["difficulty"] = {
+				1,
+				158,
+				315,
+				355,
+			},
+			["name"] = "Runed Blood Garnet",
+			["reagents"] = {
+				[23077] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28906,
+		},
+		[28907] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				355,
+			},
+			["name"] = "Delicate Blood Garnet",
+			["reagents"] = {
+				[23077] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28907,
+		},
+		[28910] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				340,
+			},
+			["name"] = "Inscribed Flame Spessarite",
+			["reagents"] = {
+				[21929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28910,
+		},
+		[28912] = {
+			["difficulty"] = {
+				1,
+				153,
+				305,
+				345,
+			},
+			["name"] = "Reckless Flame Spessarite",
+			["reagents"] = {
+				[21929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28912,
+		},
+		[28914] = {
+			["difficulty"] = {
+				1,
+				158,
+				315,
+				355,
+			},
+			["name"] = "Glinting Shadow Draenite",
+			["reagents"] = {
+				[23107] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28914,
+		},
+		[28915] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				355,
+			},
+			["name"] = "Potent Flame Spessarite",
+			["reagents"] = {
+				[21929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28915,
+		},
+		[28916] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				340,
+			},
+			["name"] = "Radiant Deep Peridot",
+			["reagents"] = {
+				[23079] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28916,
+		},
+		[28917] = {
+			["difficulty"] = {
+				1,
+				153,
+				305,
+				345,
+			},
+			["name"] = "Jagged Deep Peridot",
+			["reagents"] = {
+				[23079] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28917,
+		},
+		[28918] = {
+			["difficulty"] = {
+				1,
+				158,
+				315,
+				355,
+			},
+			["name"] = "Regal Deep Peridot",
+			["reagents"] = {
+				[23079] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28918,
+		},
+		[28924] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				355,
+			},
+			["name"] = "Dazzling Deep Peridot",
+			["reagents"] = {
+				[23079] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28924,
+		},
+		[28925] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				340,
+			},
+			["name"] = "Timeless Shadow Draenite",
+			["reagents"] = {
+				[23107] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28925,
+		},
+		[28927] = {
+			["difficulty"] = {
+				1,
+				153,
+				305,
+				345,
+			},
+			["name"] = "Purified Shadow Draenite",
+			["reagents"] = {
+				[23107] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28927,
+		},
+		[28933] = {
+			["difficulty"] = {
+				1,
+				158,
+				315,
+				355,
+			},
+			["name"] = "Shifting Shadow Draenite",
+			["reagents"] = {
+				[23107] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28933,
+		},
+		[28936] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				355,
+			},
+			["name"] = "Sovereign Shadow Draenite",
+			["reagents"] = {
+				[23107] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28936,
+		},
+		[28938] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				340,
+			},
+			["name"] = "Brilliant Golden Draenite",
+			["reagents"] = {
+				[23112] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28938,
+		},
+		[28944] = {
+			["difficulty"] = {
+				1,
+				153,
+				305,
+				345,
+			},
+			["name"] = "Smooth Golden Draenite",
+			["reagents"] = {
+				[23112] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28944,
+		},
+		[28947] = {
+			["difficulty"] = {
+				1,
+				158,
+				315,
+				355,
+			},
+			["name"] = "Subtle Golden Draenite",
+			["reagents"] = {
+				[23112] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28947,
+		},
+		[28948] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				355,
+			},
+			["name"] = "Rigid Azure Moonstone",
+			["reagents"] = {
+				[23117] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28948,
+		},
+		[28950] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				340,
+			},
+			["name"] = "Solid Azure Moonstone",
+			["reagents"] = {
+				[23117] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28950,
+		},
+		[28953] = {
+			["difficulty"] = {
+				1,
+				153,
+				305,
+				345,
+			},
+			["name"] = "Sparkling Azure Moonstone",
+			["reagents"] = {
+				[23117] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28953,
+		},
+		[28955] = {
+			["difficulty"] = {
+				1,
+				158,
+				315,
+				355,
+			},
+			["name"] = "Stormy Azure Moonstone",
+			["reagents"] = {
+				[23117] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28955,
+		},
+		[28957] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				355,
+			},
+			["name"] = "Lustrous Azure Moonstone",
+			["reagents"] = {
+				[23117] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28957,
+		},
+		[31048] = {
+			["difficulty"] = {
+				1,
+				160,
+				320,
+				340,
+			},
+			["name"] = "Fel Iron Blood Ring",
+			["reagents"] = {
+				[23077] = 2,
+				[23445] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31048,
+		},
+		[31049] = {
+			["difficulty"] = {
+				1,
+				160,
+				320,
+				350,
+			},
+			["name"] = "Golden Draenite Ring",
+			["reagents"] = {
+				[23112] = 2,
+				[23445] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31049,
+		},
+		[31050] = {
+			["difficulty"] = {
+				1,
+				165,
+				330,
+				350,
+			},
+			["name"] = "Azure Moonstone Ring",
+			["reagents"] = {
+				[23079] = 1,
+				[23117] = 2,
+				[23445] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31050,
+		},
+		[31051] = {
+			["difficulty"] = {
+				1,
+				173,
+				345,
+				365,
+			},
+			["name"] = "Thick Adamantite Necklace",
+			["reagents"] = {
+				[23446] = 2,
+				[31079] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31051,
+		},
+		[31052] = {
+			["difficulty"] = {
+				1,
+				173,
+				345,
+				365,
+			},
+			["name"] = "Heavy Adamantite Ring",
+			["reagents"] = {
+				[23446] = 1,
+				[31079] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31052,
+		},
+		[31053] = {
+			["difficulty"] = {
+				1,
+				180,
+				360,
+				380,
+			},
+			["name"] = "Khorium Band of Shadows",
+			["reagents"] = {
+				[22456] = 3,
+				[23449] = 2,
+				[31079] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31053,
+		},
+		[31054] = {
+			["difficulty"] = {
+				1,
+				183,
+				365,
+				380,
+			},
+			["name"] = "Khorium Band of Frost",
+			["reagents"] = {
+				[21885] = 3,
+				[23449] = 2,
+				[31079] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31054,
+		},
+		[31055] = {
+			["difficulty"] = {
+				1,
+				183,
+				365,
+				380,
+			},
+			["name"] = "Khorium Inferno Band",
+			["reagents"] = {
+				[21884] = 3,
+				[23449] = 2,
+				[31079] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31055,
+		},
+		[31056] = {
+			["difficulty"] = {
+				1,
+				185,
+				370,
+				380,
+			},
+			["name"] = "Khorium Band of Leaves",
+			["reagents"] = {
+				[21886] = 3,
+				[23449] = 2,
+				[31079] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31056,
+		},
+		[31057] = {
+			["difficulty"] = {
+				1,
+				185,
+				370,
+				380,
+			},
+			["name"] = "Arcane Khorium Band",
+			["reagents"] = {
+				[22457] = 3,
+				[23449] = 2,
+				[31079] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31057,
+		},
+		[31058] = {
+			["difficulty"] = {
+				1,
+				178,
+				355,
+				375,
+			},
+			["name"] = "Heavy Felsteel Ring",
+			["reagents"] = {
+				[23448] = 2,
+				[31079] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31058,
+		},
+		[31060] = {
+			["difficulty"] = {
+				1,
+				183,
+				365,
+				385,
+			},
+			["name"] = "Delicate Eternium Ring",
+			["reagents"] = {
+				[23447] = 1,
+				[31079] = 5,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31060,
+		},
+		[31061] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Blazing Eternium Band",
+			["reagents"] = {
+				[21884] = 4,
+				[23447] = 2,
+				[31079] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31061,
+		},
+		[31062] = {
+			["difficulty"] = {
+				1,
+				185,
+				370,
+				380,
+			},
+			["name"] = "Pendant of Frozen Flame",
+			["reagents"] = {
+				[21884] = 4,
+				[21885] = 6,
+				[23448] = 2,
+				[31079] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31062,
+		},
+		[31063] = {
+			["difficulty"] = {
+				1,
+				185,
+				370,
+				380,
+			},
+			["name"] = "Pendant of Thawing",
+			["reagents"] = {
+				[21884] = 6,
+				[21885] = 4,
+				[23448] = 2,
+				[31079] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31063,
+		},
+		[31064] = {
+			["difficulty"] = {
+				1,
+				185,
+				370,
+				380,
+			},
+			["name"] = "Pendant of Withering",
+			["reagents"] = {
+				[21886] = 4,
+				[22456] = 6,
+				[23448] = 2,
+				[31079] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31064,
+		},
+		[31065] = {
+			["difficulty"] = {
+				1,
+				185,
+				370,
+				380,
+			},
+			["name"] = "Pendant of Shadow's End",
+			["reagents"] = {
+				[21886] = 6,
+				[22456] = 4,
+				[23448] = 2,
+				[31079] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31065,
+		},
+		[31066] = {
+			["difficulty"] = {
+				1,
+				185,
+				370,
+				380,
+			},
+			["name"] = "Pendant of the Null Rune",
+			["reagents"] = {
+				[22457] = 8,
+				[23448] = 2,
+				[31079] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31066,
+		},
+		[31067] = {
+			["difficulty"] = {
+				1,
+				183,
+				365,
+				385,
+			},
+			["name"] = "Thick Felsteel Necklace",
+			["reagents"] = {
+				[23448] = 2,
+				[31079] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31067,
+		},
+		[31068] = {
+			["difficulty"] = {
+				1,
+				183,
+				365,
+				385,
+			},
+			["name"] = "Living Ruby Pendant",
+			["reagents"] = {
+				[23436] = 1,
+				[23449] = 4,
+				[31079] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31068,
+		},
+		[31070] = {
+			["difficulty"] = {
+				1,
+				185,
+				370,
+				385,
+			},
+			["name"] = "Braided Eternium Chain",
+			["reagents"] = {
+				[23447] = 2,
+				[31079] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31070,
+		},
+		[31071] = {
+			["difficulty"] = {
+				1,
+				185,
+				370,
+				380,
+			},
+			["name"] = "Eye of the Night",
+			["reagents"] = {
+				[23441] = 1,
+				[23573] = 2,
+				[31079] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31071,
+		},
+		[31072] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Embrace of the Dawn",
+			["reagents"] = {
+				[23112] = 2,
+				[23447] = 2,
+				[31079] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31072,
+		},
+		[31076] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Chain of the Twilight Owl",
+			["reagents"] = {
+				[23117] = 2,
+				[23449] = 2,
+				[31079] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31076,
+		},
+		[31077] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Coronet of Verdant Flame",
+			["reagents"] = {
+				[21886] = 20,
+				[23437] = 2,
+				[23449] = 20,
+				[31079] = 5,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31077,
+		},
+		[31078] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Circlet of Arcane Might",
+			["reagents"] = {
+				[22457] = 20,
+				[23438] = 2,
+				[23448] = 20,
+				[31079] = 5,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31078,
+		},
+		[31079] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Figurine - Felsteel Boar",
+			["reagents"] = {
+				[22452] = 4,
+				[23077] = 2,
+				[23448] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31079,
+		},
+		[31080] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Figurine - Dawnstone Crab",
+			["reagents"] = {
+				[23112] = 4,
+				[23440] = 2,
+				[23449] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31080,
+		},
+		[31081] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Figurine - Living Ruby Serpent",
+			["reagents"] = {
+				[21884] = 4,
+				[23436] = 2,
+				[23448] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31081,
+		},
+		[31082] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Figurine - Talasite Owl",
+			["reagents"] = {
+				[22457] = 4,
+				[23437] = 2,
+				[23447] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31082,
+		},
+		[31083] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Figurine - Nightseye Panther",
+			["reagents"] = {
+				[22456] = 2,
+				[23441] = 2,
+				[23573] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31083,
+		},
+		[31084] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Bold Living Ruby",
+			["reagents"] = {
+				[23436] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31084,
+		},
+		[31085] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Delicate Living Ruby",
+			["reagents"] = {
+				[23436] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31085,
+		},
+		[31087] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Teardrop Living Ruby",
+			["reagents"] = {
+				[23436] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31087,
+		},
+		[31088] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Brilliant Living Ruby",
+			["reagents"] = {
+				[23436] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31088,
+		},
+		[31089] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Bright Living Ruby",
+			["reagents"] = {
+				[23436] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31089,
+		},
+		[31090] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Subtle Dawnstone",
+			["reagents"] = {
+				[23440] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31090,
+		},
+		[31091] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Flashing Living Ruby",
+			["reagents"] = {
+				[23436] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31091,
+		},
+		[31092] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Solid Star of Elune",
+			["reagents"] = {
+				[23438] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31092,
+		},
+		[31094] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Lustrous Star of Elune",
+			["reagents"] = {
+				[23438] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31094,
+		},
+		[31095] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Stormy Star of Elune",
+			["reagents"] = {
+				[23438] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31095,
+		},
+		[31096] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Brilliant Dawnstone",
+			["reagents"] = {
+				[23440] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31096,
+		},
+		[31097] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Smooth Dawnstone",
+			["reagents"] = {
+				[23440] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31097,
+		},
+		[31098] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Rigid Star of Elune",
+			["reagents"] = {
+				[23438] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31098,
+		},
+		[31099] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Gleaming Dawnstone",
+			["reagents"] = {
+				[23440] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31099,
+		},
+		[31100] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Thick Dawnstone",
+			["reagents"] = {
+				[23440] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31100,
+		},
+		[31101] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Mystic Dawnstone",
+			["reagents"] = {
+				[23440] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31101,
+		},
+		[31102] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Sovereign Nightseye",
+			["reagents"] = {
+				[23441] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31102,
+		},
+		[31103] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Shifting Nightseye",
+			["reagents"] = {
+				[23441] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31103,
+		},
+		[31104] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Timeless Nightseye",
+			["reagents"] = {
+				[23441] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31104,
+		},
+		[31105] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Royal Nightseye",
+			["reagents"] = {
+				[23441] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31105,
+		},
+		[31106] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Inscribed Noble Topaz",
+			["reagents"] = {
+				[23439] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31106,
+		},
+		[31107] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Potent Noble Topaz",
+			["reagents"] = {
+				[23439] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31107,
+		},
+		[31108] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Reckless Noble Topaz",
+			["reagents"] = {
+				[23439] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31108,
+		},
+		[31109] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Glinting Nightseye",
+			["reagents"] = {
+				[23441] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31109,
+		},
+		[31110] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Enduring Talasite",
+			["reagents"] = {
+				[23437] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31110,
+		},
+		[31111] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Radiant Talasite",
+			["reagents"] = {
+				[23437] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31111,
+		},
+		[31112] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Purified Nightseye",
+			["reagents"] = {
+				[23441] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31112,
+		},
+		[31113] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Jagged Talasite",
+			["reagents"] = {
+				[23437] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31113,
+		},
+		[31149] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Sparkling Star of Elune",
+			["reagents"] = {
+				[23438] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 31149,
+		},
+		[31252] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Prospecting",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 31252,
+		},
+		[32178] = {
+			["difficulty"] = {
+				1,
+				25,
+				50,
+				80,
+			},
+			["name"] = "Malachite Pendant",
+			["reagents"] = {
+				[774] = 1,
+				[20816] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32178,
+		},
+		[32179] = {
+			["difficulty"] = {
+				1,
+				25,
+				50,
+				80,
+			},
+			["name"] = "Tigerseye Band",
+			["reagents"] = {
+				[818] = 1,
+				[20816] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32179,
+		},
+		[32259] = {
+			["difficulty"] = {
+				1,
+				15,
+				30,
+				50,
+			},
+			["name"] = "Rough Stone Statue",
+			["reagents"] = {
+				[2835] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32259,
+		},
+		[32801] = {
+			["difficulty"] = {
+				1,
+				35,
+				70,
+				90,
+			},
+			["name"] = "Coarse Stone Statue",
+			["reagents"] = {
+				[2836] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32801,
+		},
+		[32807] = {
+			["difficulty"] = {
+				1,
+				60,
+				120,
+				140,
+			},
+			["name"] = "Heavy Stone Statue",
+			["reagents"] = {
+				[2838] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32807,
+		},
+		[32808] = {
+			["difficulty"] = {
+				1,
+				88,
+				175,
+				195,
+			},
+			["name"] = "Solid Stone Statue",
+			["reagents"] = {
+				[7912] = 10,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32808,
+		},
+		[32809] = {
+			["difficulty"] = {
+				1,
+				113,
+				225,
+				245,
+			},
+			["name"] = "Dense Stone Statue",
+			["reagents"] = {
+				[12365] = 10,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32809,
+		},
+		[32810] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				320,
+			},
+			["name"] = "Primal Stone Statue",
+			["reagents"] = {
+				[22452] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32810,
+		},
+		[32866] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Powerful Earthstorm Diamond",
+			["reagents"] = {
+				[25867] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32866,
+		},
+		[32867] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Bracing Earthstorm Diamond",
+			["reagents"] = {
+				[25867] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32867,
+		},
+		[32868] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Tenacious Earthstorm Diamond",
+			["reagents"] = {
+				[25867] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32868,
+		},
+		[32869] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Brutal Earthstorm Diamond",
+			["reagents"] = {
+				[25867] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32869,
+		},
+		[32870] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Insightful Earthstorm Diamond",
+			["reagents"] = {
+				[25867] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32870,
+		},
+		[32871] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Destructive Skyfire Diamond",
+			["reagents"] = {
+				[25868] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32871,
+		},
+		[32872] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Mystical Skyfire Diamond",
+			["reagents"] = {
+				[25868] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32872,
+		},
+		[32873] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Swift Skyfire Diamond",
+			["reagents"] = {
+				[25868] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32873,
+		},
+		[32874] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Enigmatic Skyfire Diamond",
+			["reagents"] = {
+				[25868] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 32874,
+		},
+		[34069] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				355,
+			},
+			["name"] = "Smooth Golden Draenite",
+			["reagents"] = {
+				[23112] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 34069,
+		},
+		[34590] = {
+			["difficulty"] = {
+				1,
+				153,
+				305,
+				345,
+			},
+			["name"] = "Delicate Blood Garnet",
+			["reagents"] = {
+				[23077] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 34590,
+		},
+		[34955] = {
+			["difficulty"] = {
+				1,
+				95,
+				190,
+				210,
+			},
+			["name"] = "Golden Ring of Power",
+			["reagents"] = {
+				[1529] = 1,
+				[1705] = 1,
+				[3577] = 4,
+				[3864] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 34955,
+		},
+		[34959] = {
+			["difficulty"] = {
+				1,
+				105,
+				210,
+				230,
+			},
+			["name"] = "Truesilver Commander's Ring",
+			["reagents"] = {
+				[3864] = 2,
+				[6037] = 3,
+				[7910] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 34959,
+		},
+		[34960] = {
+			["difficulty"] = {
+				1,
+				145,
+				290,
+				310,
+			},
+			["name"] = "Glowing Thorium Band",
+			["reagents"] = {
+				[12800] = 2,
+				[21752] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 34960,
+		},
+		[34961] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				320,
+			},
+			["name"] = "Emerald Lion Ring",
+			["reagents"] = {
+				[12364] = 2,
+				[21752] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 34961,
+		},
+		[36523] = {
+			["difficulty"] = {
+				1,
+				53,
+				105,
+				135,
+			},
+			["name"] = "Brilliant Necklace",
+			["reagents"] = {
+				[1206] = 1,
+				[2841] = 4,
+				[20817] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 36523,
+		},
+		[36524] = {
+			["difficulty"] = {
+				1,
+				68,
+				135,
+				165,
+			},
+			["name"] = "Heavy Jade Ring",
+			["reagents"] = {
+				[1529] = 1,
+				[3575] = 2,
+				[20817] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 36524,
+		},
+		[36525] = {
+			["difficulty"] = {
+				1,
+				128,
+				255,
+				285,
+			},
+			["name"] = "Red Ring of Destruction",
+			["reagents"] = {
+				[7910] = 1,
+				[21752] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 36525,
+		},
+		[36526] = {
+			["difficulty"] = {
+				1,
+				143,
+				285,
+				305,
+			},
+			["name"] = "Diamond Focus Ring",
+			["reagents"] = {
+				[12800] = 1,
+				[21752] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 36526,
+		},
+		[37818] = {
+			["difficulty"] = {
+				1,
+				48,
+				95,
+				125,
+			},
+			["name"] = "Bronze Band of Force",
+			["reagents"] = {
+				[774] = 3,
+				[818] = 3,
+				[1210] = 2,
+				[2841] = 2,
+				[20817] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 37818,
+		},
+		[37855] = {
+			["difficulty"] = {
+				1,
+				185,
+				370,
+				380,
+			},
+			["name"] = "Ring of Arcane Shielding",
+			["reagents"] = {
+				[22457] = 8,
+				[23447] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 37855,
+		},
+		[38068] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				345,
+			},
+			["name"] = "Mercurial Adamantite",
+			["reagents"] = {
+				[22452] = 1,
+				[24243] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 38068,
+		},
+		[38175] = {
+			["difficulty"] = {
+				1,
+				55,
+				110,
+				140,
+			},
+			["name"] = "Bronze Torc",
+			["reagents"] = {
+				[1705] = 1,
+				[2841] = 6,
+				[20817] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 38175,
+		},
+		[38503] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "The Frozen Eye",
+			["reagents"] = {
+				[21884] = 6,
+				[21885] = 6,
+				[23449] = 2,
+				[31079] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 38503,
+		},
+		[38504] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "The Natural Ward",
+			["reagents"] = {
+				[21886] = 6,
+				[22456] = 6,
+				[23448] = 2,
+				[31079] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 38504,
+		},
+		[39451] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				355,
+			},
+			["name"] = "Great Golden Draenite",
+			["reagents"] = {
+				[23112] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39451,
+		},
+		[39452] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Great Dawnstone",
+			["reagents"] = {
+				[23440] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39452,
+		},
+		[39455] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				355,
+			},
+			["name"] = "Balanced Shadow Draenite",
+			["reagents"] = {
+				[23107] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39455,
+		},
+		[39458] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				355,
+			},
+			["name"] = "Infused Shadow Draenite",
+			["reagents"] = {
+				[23107] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39458,
+		},
+		[39462] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Infused Nightseye",
+			["reagents"] = {
+				[23441] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39462,
+		},
+		[39463] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Balanced Nightseye",
+			["reagents"] = {
+				[23441] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39463,
+		},
+		[39466] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				355,
+			},
+			["name"] = "Veiled Shadow Draenite",
+			["reagents"] = {
+				[23107] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39466,
+		},
+		[39467] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				355,
+			},
+			["name"] = "Deadly Flame Spessarite",
+			["reagents"] = {
+				[21929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39467,
+		},
+		[39470] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Veiled Nightseye",
+			["reagents"] = {
+				[23441] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39470,
+		},
+		[39471] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Deadly Noble Topaz",
+			["reagents"] = {
+				[23439] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39471,
+		},
+		[39705] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Bold Crimson Spinel",
+			["reagents"] = {
+				[32227] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39705,
+		},
+		[39706] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Delicate Crimson Spinel",
+			["reagents"] = {
+				[32227] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39706,
+		},
+		[39710] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Teardrop Crimson Spinel",
+			["reagents"] = {
+				[32227] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39710,
+		},
+		[39711] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Brilliant Crimson Spinel",
+			["reagents"] = {
+				[32227] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39711,
+		},
+		[39712] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Bright Crimson Spinel",
+			["reagents"] = {
+				[32227] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39712,
+		},
+		[39713] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Subtle Lionseye",
+			["reagents"] = {
+				[32229] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39713,
+		},
+		[39714] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Flashing Crimson Spinel",
+			["reagents"] = {
+				[32227] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39714,
+		},
+		[39715] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Solid Empyrean Sapphire",
+			["reagents"] = {
+				[32228] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39715,
+		},
+		[39716] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Sparkling Empyrean Sapphire",
+			["reagents"] = {
+				[32228] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39716,
+		},
+		[39717] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Lustrous Empyrean Sapphire",
+			["reagents"] = {
+				[32228] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39717,
+		},
+		[39718] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Stormy Empyrean Sapphire",
+			["reagents"] = {
+				[32228] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39718,
+		},
+		[39719] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Brilliant Lionseye",
+			["reagents"] = {
+				[32229] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39719,
+		},
+		[39720] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Smooth Lionseye",
+			["reagents"] = {
+				[32229] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39720,
+		},
+		[39721] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Rigid Empyrean Sapphire",
+			["reagents"] = {
+				[32228] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39721,
+		},
+		[39722] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Gleaming Lionseye",
+			["reagents"] = {
+				[32229] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39722,
+		},
+		[39723] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Thick Lionseye",
+			["reagents"] = {
+				[32229] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39723,
+		},
+		[39724] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Mystic Lionseye",
+			["reagents"] = {
+				[32229] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39724,
+		},
+		[39725] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Great Lionseye",
+			["reagents"] = {
+				[32229] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39725,
+		},
+		[39727] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Sovereign Shadowsong Amethyst",
+			["reagents"] = {
+				[32230] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39727,
+		},
+		[39728] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Shifting Shadowsong Amethyst",
+			["reagents"] = {
+				[32230] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39728,
+		},
+		[39729] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Balanced Shadowsong Amethyst",
+			["reagents"] = {
+				[32230] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39729,
+		},
+		[39730] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Infused Shadowsong Amethyst",
+			["reagents"] = {
+				[32230] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39730,
+		},
+		[39731] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Timeless Shadowsong Amethyst",
+			["reagents"] = {
+				[32230] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39731,
+		},
+		[39732] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Royal Shadowsong Amethyst",
+			["reagents"] = {
+				[32230] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39732,
+		},
+		[39733] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Inscribed Pyrestone",
+			["reagents"] = {
+				[32231] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39733,
+		},
+		[39734] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Potent Pyrestone",
+			["reagents"] = {
+				[32231] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39734,
+		},
+		[39735] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Luminous Pyrestone",
+			["reagents"] = {
+				[32231] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39735,
+		},
+		[39736] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Glinting Shadowsong Amethyst",
+			["reagents"] = {
+				[32230] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39736,
+		},
+		[39737] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Veiled Shadowsong Amethyst",
+			["reagents"] = {
+				[32230] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39737,
+		},
+		[39738] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Deadly Pyrestone",
+			["reagents"] = {
+				[32231] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39738,
+		},
+		[39739] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Regal Seaspray Emerald",
+			["reagents"] = {
+				[32249] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39739,
+		},
+		[39740] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Radiant Seaspray Emerald",
+			["reagents"] = {
+				[32249] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39740,
+		},
+		[39741] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Purified Shadowsong Amethyst",
+			["reagents"] = {
+				[32230] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39741,
+		},
+		[39742] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Jagged Seaspray Emerald",
+			["reagents"] = {
+				[32249] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39742,
+		},
+		[39961] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Relentless Earthstorm Diamond",
+			["reagents"] = {
+				[25867] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39961,
+		},
+		[39963] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Thundering Skyfire Diamond",
+			["reagents"] = {
+				[25868] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 39963,
+		},
+		[40514] = {
+			["difficulty"] = {
+				1,
+				170,
+				340,
+				370,
+			},
+			["name"] = "Necklace of the Deep",
+			["reagents"] = {
+				[22578] = 3,
+				[24478] = 10,
+				[24479] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 40514,
+		},
+		[41414] = {
+			["difficulty"] = {
+				1,
+				168,
+				335,
+				355,
+			},
+			["name"] = "Brilliant Pearl Band",
+			["reagents"] = {
+				[23447] = 2,
+				[24478] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 41414,
+		},
+		[41415] = {
+			["difficulty"] = {
+				1,
+				170,
+				340,
+				360,
+			},
+			["name"] = "The Black Pearl",
+			["reagents"] = {
+				[24479] = 1,
+				[31079] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 41415,
+		},
+		[41418] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Crown of the Sea Witch",
+			["reagents"] = {
+				[23449] = 12,
+				[24478] = 20,
+				[24479] = 3,
+				[31079] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 41418,
+		},
+		[41420] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				340,
+			},
+			["name"] = "Purified Jaggal Pearl",
+			["reagents"] = {
+				[24478] = 1,
+				[27860] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 41420,
+		},
+		[41429] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Purified Shadow Pearl",
+			["reagents"] = {
+				[24479] = 1,
+				[27860] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 41429,
+		},
+		[42558] = {
+			["difficulty"] = {
+				1,
+				183,
+				365,
+				375,
+			},
+			["name"] = "Don Julio's Heart",
+			["reagents"] = {
+				[23436] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 42558,
+		},
+		[42588] = {
+			["difficulty"] = {
+				1,
+				183,
+				365,
+				375,
+			},
+			["name"] = "Kailee's Rose",
+			["reagents"] = {
+				[23436] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 42588,
+		},
+		[42589] = {
+			["difficulty"] = {
+				1,
+				183,
+				365,
+				375,
+			},
+			["name"] = "Crimson Sun",
+			["reagents"] = {
+				[23436] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 42589,
+		},
+		[42590] = {
+			["difficulty"] = {
+				1,
+				183,
+				365,
+				375,
+			},
+			["name"] = "Falling Star",
+			["reagents"] = {
+				[23438] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 42590,
+		},
+		[42591] = {
+			["difficulty"] = {
+				1,
+				183,
+				365,
+				375,
+			},
+			["name"] = "Stone of Blades",
+			["reagents"] = {
+				[23440] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 42591,
+		},
+		[42592] = {
+			["difficulty"] = {
+				1,
+				183,
+				365,
+				375,
+			},
+			["name"] = "Blood of Amber",
+			["reagents"] = {
+				[23440] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 42592,
+		},
+		[42593] = {
+			["difficulty"] = {
+				1,
+				183,
+				365,
+				375,
+			},
+			["name"] = "Facet of Eternity",
+			["reagents"] = {
+				[23440] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 42593,
+		},
+		[43493] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Steady Talasite",
+			["reagents"] = {
+				[23437] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 43493,
+		},
+		[44794] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Chaotic Skyfire Diamond",
+			["reagents"] = {
+				[25868] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 44794,
+		},
+		[46122] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Loop of Forged Power",
+			["reagents"] = {
+				[23571] = 4,
+				[31079] = 12,
+				[34664] = 5,
+				[35128] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46122,
+		},
+		[46123] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Ring of Flowing Life",
+			["reagents"] = {
+				[21886] = 20,
+				[31079] = 12,
+				[34664] = 5,
+				[35128] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46123,
+		},
+		[46124] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Hard Khorium Band",
+			["reagents"] = {
+				[22451] = 20,
+				[31079] = 12,
+				[34664] = 5,
+				[35128] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46124,
+		},
+		[46125] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Pendant of Sunfire",
+			["reagents"] = {
+				[31079] = 12,
+				[32227] = 3,
+				[32228] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46125,
+		},
+		[46126] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Amulet of Flowing Life",
+			["reagents"] = {
+				[31079] = 6,
+				[32249] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46126,
+		},
+		[46127] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Hard Khorium Choker",
+			["reagents"] = {
+				[23572] = 9,
+				[35128] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46127,
+		},
+		[46403] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Quick Dawnstone",
+			["reagents"] = {
+				[23440] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46403,
+		},
+		[46404] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Reckless Noble Topaz",
+			["reagents"] = {
+				[23439] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46404,
+		},
+		[46405] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Forceful Talasite",
+			["reagents"] = {
+				[23437] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46405,
+		},
+		[46597] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Eternal Earthstorm Diamond",
+			["reagents"] = {
+				[25867] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46597,
+		},
+		[46601] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				380,
+			},
+			["name"] = "Ember Skyfire Diamond",
+			["reagents"] = {
+				[25868] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46601,
+		},
+		[46775] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Figurine - Empyrean Tortoise",
+			["reagents"] = {
+				[23440] = 6,
+				[23449] = 8,
+				[32228] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46775,
+		},
+		[46776] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Figurine - Khorium Boar",
+			["reagents"] = {
+				[22452] = 8,
+				[23449] = 8,
+				[32231] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46776,
+		},
+		[46777] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Figurine - Crimson Serpent",
+			["reagents"] = {
+				[21884] = 8,
+				[23447] = 8,
+				[32227] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46777,
+		},
+		[46778] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Figurine - Shadowsong Panther",
+			["reagents"] = {
+				[22456] = 8,
+				[23573] = 4,
+				[32230] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46778,
+		},
+		[46779] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Figurine - Seaspray Albatross",
+			["reagents"] = {
+				[22457] = 8,
+				[23447] = 8,
+				[32249] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46779,
+		},
+		[46803] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Regal Talasite",
+			["reagents"] = {
+				[23437] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46803,
+		},
+		[47053] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Forceful Seaspray Emerald",
+			["reagents"] = {
+				[32249] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 47053,
+		},
+		[47054] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Steady Seaspray Emerald",
+			["reagents"] = {
+				[32249] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 47054,
+		},
+		[47055] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Reckless Pyrestone",
+			["reagents"] = {
+				[32231] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 47055,
+		},
+		[47056] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Quick Lionseye",
+			["reagents"] = {
+				[32229] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 47056,
+		},
+		[47280] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Brilliant Glass",
+			["reagents"] = {
+				[21929] = 3,
+				[23077] = 3,
+				[23079] = 3,
+				[23107] = 3,
+				[23112] = 3,
+				[23117] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 47280,
+		},
+		[48789] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Purified Shadowsong Amethyst",
+			["reagents"] = {
+				[32230] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 48789,
+		},
+		[51311] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Jewelcrafting",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 51311,
+		},
+		[53830] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Bold Scarlet Ruby",
+			["reagents"] = {
+				[36918] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53830,
+		},
+		[53831] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Bold Bloodstone",
+			["reagents"] = {
+				[36917] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53831,
+		},
+		[53832] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Delicate Bloodstone",
+			["reagents"] = {
+				[36917] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53832,
+		},
+		[53834] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Runed Bloodstone",
+			["reagents"] = {
+				[36917] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53834,
+		},
+		[53835] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Bright Bloodstone",
+			["reagents"] = {
+				[36917] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53835,
+		},
+		[53843] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Subtle Sun Crystal",
+			["reagents"] = {
+				[36920] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53843,
+		},
+		[53844] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Flashing Bloodstone",
+			["reagents"] = {
+				[36917] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53844,
+		},
+		[53845] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Smooth Sun Crystal",
+			["reagents"] = {
+				[36920] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53845,
+		},
+		[53852] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Brilliant Bloodstone",
+			["reagents"] = {
+				[36917] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53852,
+		},
+		[53853] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Smooth Sun Crystal",
+			["reagents"] = {
+				[36920] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53853,
+		},
+		[53854] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Rigid Chalcedony",
+			["reagents"] = {
+				[36923] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53854,
+		},
+		[53855] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Thick Sun Crystal",
+			["reagents"] = {
+				[36920] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53855,
+		},
+		[53856] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Quick Sun Crystal",
+			["reagents"] = {
+				[36920] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53856,
+		},
+		[53857] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Mystic Sun Crystal",
+			["reagents"] = {
+				[36920] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53857,
+		},
+		[53859] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Sovereign Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53859,
+		},
+		[53860] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Shifting Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53860,
+		},
+		[53861] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Glinting Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53861,
+		},
+		[53862] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Glowing Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53862,
+		},
+		[53863] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Purified Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53863,
+		},
+		[53864] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Royal Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53864,
+		},
+		[53865] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Mysterious Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53865,
+		},
+		[53866] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Balanced Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53866,
+		},
+		[53867] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Infused Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53867,
+		},
+		[53868] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Regal Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53868,
+		},
+		[53869] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Defender's Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53869,
+		},
+		[53870] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Jagged Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53870,
+		},
+		[53871] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Guardian's Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53871,
+		},
+		[53872] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Inscribed Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53872,
+		},
+		[53873] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Etched Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53873,
+		},
+		[53874] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Champion's Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53874,
+		},
+		[53875] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Resplendent Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53875,
+		},
+		[53876] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Fierce Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53876,
+		},
+		[53877] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Deadly Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53877,
+		},
+		[53878] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Glinting Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53878,
+		},
+		[53879] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Lucent Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53879,
+		},
+		[53880] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Deft Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53880,
+		},
+		[53881] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Luminous Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53881,
+		},
+		[53882] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Potent Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53882,
+		},
+		[53883] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Veiled Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53883,
+		},
+		[53884] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Willful Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53884,
+		},
+		[53885] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Reckless Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53885,
+		},
+		[53886] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Wicked Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53886,
+		},
+		[53887] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Pristine Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53887,
+		},
+		[53888] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Empowered Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53888,
+		},
+		[53889] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Stark Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53889,
+		},
+		[53890] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Stalwart Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53890,
+		},
+		[53891] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Stalwart Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53891,
+		},
+		[53892] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Accurate Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53892,
+		},
+		[53893] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Resolute Huge Citrine",
+			["reagents"] = {
+				[36929] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53893,
+		},
+		[53894] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Timeless Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53894,
+		},
+		[53916] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Jagged Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53916,
+		},
+		[53917] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Nimble Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53917,
+		},
+		[53918] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Regal Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53918,
+		},
+		[53919] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Steady Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53919,
+		},
+		[53920] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Forceful Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53920,
+		},
+		[53921] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Purified Shadow Crystal",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53921,
+		},
+		[53922] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Misty Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53922,
+		},
+		[53923] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Lightning Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53923,
+		},
+		[53924] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Turbid Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53924,
+		},
+		[53925] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Energized Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53925,
+		},
+		[53926] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Dazzling Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53926,
+		},
+		[53927] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Sundered Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53927,
+		},
+		[53928] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Lambent Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53928,
+		},
+		[53929] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Opaque Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53929,
+		},
+		[53930] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Energized Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53930,
+		},
+		[53931] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Radiant Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53931,
+		},
+		[53932] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Radiant Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53932,
+		},
+		[53933] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Shattered Dark Jade",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53933,
+		},
+		[53934] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Solid Chalcedony",
+			["reagents"] = {
+				[36923] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53934,
+		},
+		[53940] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Sparkling Chalcedony",
+			["reagents"] = {
+				[36923] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53940,
+		},
+		[53941] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Sparkling Chalcedony",
+			["reagents"] = {
+				[36923] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53941,
+		},
+		[53943] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Stormy Chalcedony",
+			["reagents"] = {
+				[36923] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53943,
+		},
+		[53945] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Delicate Scarlet Ruby",
+			["reagents"] = {
+				[36918] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53945,
+		},
+		[53946] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Brilliant Scarlet Ruby",
+			["reagents"] = {
+				[36918] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53946,
+		},
+		[53947] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Bright Scarlet Ruby",
+			["reagents"] = {
+				[36918] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53947,
+		},
+		[53948] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Subtle Autumn's Glow",
+			["reagents"] = {
+				[36921] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53948,
+		},
+		[53949] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Flashing Scarlet Ruby",
+			["reagents"] = {
+				[36918] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53949,
+		},
+		[53950] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Fractured Scarlet Ruby",
+			["reagents"] = {
+				[36918] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53950,
+		},
+		[53951] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Precise Scarlet Ruby",
+			["reagents"] = {
+				[36918] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53951,
+		},
+		[53952] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Solid Sky Sapphire",
+			["reagents"] = {
+				[36924] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53952,
+		},
+		[53953] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Sparkling Sky Sapphire",
+			["reagents"] = {
+				[36924] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53953,
+		},
+		[53954] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Sparkling Sky Sapphire",
+			["reagents"] = {
+				[36924] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53954,
+		},
+		[53955] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Stormy Sky Sapphire",
+			["reagents"] = {
+				[36924] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53955,
+		},
+		[53956] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Brilliant Autumn's Glow",
+			["reagents"] = {
+				[36921] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53956,
+		},
+		[53957] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Smooth Autumn's Glow",
+			["reagents"] = {
+				[36921] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53957,
+		},
+		[53958] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Rigid Sky Sapphire",
+			["reagents"] = {
+				[36924] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53958,
+		},
+		[53959] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Thick Autumn's Glow",
+			["reagents"] = {
+				[36921] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53959,
+		},
+		[53960] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Mystic Autumn's Glow",
+			["reagents"] = {
+				[36921] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53960,
+		},
+		[53961] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Quick Autumn's Glow",
+			["reagents"] = {
+				[36921] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53961,
+		},
+		[53962] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Sovereign Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53962,
+		},
+		[53963] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Shifting Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53963,
+		},
+		[53964] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Tenuous Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53964,
+		},
+		[53965] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Timeless Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53965,
+		},
+		[53966] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Purified Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53966,
+		},
+		[53967] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Royal Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53967,
+		},
+		[53968] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Mysterious Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53968,
+		},
+		[53969] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Balanced Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53969,
+		},
+		[53970] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Infused Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53970,
+		},
+		[53971] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Regal Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53971,
+		},
+		[53972] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Defender's Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53972,
+		},
+		[53973] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Puissant Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53973,
+		},
+		[53974] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Guardian's Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53974,
+		},
+		[53975] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Inscribed Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53975,
+		},
+		[53976] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Etched Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53976,
+		},
+		[53977] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Champion's Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53977,
+		},
+		[53978] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Resplendent Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53978,
+		},
+		[53979] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Deadly Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53979,
+		},
+		[53980] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Glinting Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53980,
+		},
+		[53981] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Lucent Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53981,
+		},
+		[53982] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Deft Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53982,
+		},
+		[53983] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Luminous Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53983,
+		},
+		[53984] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Potent Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53984,
+		},
+		[53985] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Veiled Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53985,
+		},
+		[53986] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Willful Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53986,
+		},
+		[53987] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Reckless Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53987,
+		},
+		[53988] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Deadly Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53988,
+		},
+		[53989] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Pristine Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53989,
+		},
+		[53990] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Empowered Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53990,
+		},
+		[53991] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Deft Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53991,
+		},
+		[53992] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Stalwart Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53992,
+		},
+		[53993] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Stalwart Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53993,
+		},
+		[53994] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Accurate Twilight Opal",
+			["reagents"] = {
+				[36927] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53994,
+		},
+		[53995] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Timeless Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53995,
+		},
+		[53996] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Jagged Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53996,
+		},
+		[53997] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Nimble Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53997,
+		},
+		[53998] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Regal Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53998,
+		},
+		[54000] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Steady Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54000,
+		},
+		[54001] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Forceful Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54001,
+		},
+		[54002] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Seer's Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54002,
+		},
+		[54003] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Misty Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54003,
+		},
+		[54004] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Shining Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54004,
+		},
+		[54005] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Turbid Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54005,
+		},
+		[54006] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Intricate Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54006,
+		},
+		[54007] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Dazzling Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54007,
+		},
+		[54008] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Sundered Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54008,
+		},
+		[54009] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Lightning Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54009,
+		},
+		[54010] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Opaque Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54010,
+		},
+		[54011] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Energized Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54011,
+		},
+		[54012] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Radiant Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54012,
+		},
+		[54013] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Tense Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54013,
+		},
+		[54014] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Shattered Forest Emerald",
+			["reagents"] = {
+				[36933] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54014,
+		},
+		[54017] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				415,
+			},
+			["name"] = "Precise Bloodstone",
+			["reagents"] = {
+				[36917] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54017,
+		},
+		[54019] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Fierce Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54019,
+		},
+		[54023] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Resolute Monarch Topaz",
+			["reagents"] = {
+				[36930] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 54023,
+		},
+		[55384] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Shielded Skyflare Diamond",
+			["reagents"] = {
+				[41266] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55384,
+		},
+		[55386] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Tireless Skyflare Diamond",
+			["reagents"] = {
+				[41266] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55386,
+		},
+		[55387] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Forlorn Skyflare Diamond",
+			["reagents"] = {
+				[41266] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55387,
+		},
+		[55388] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Impassive Skyflare Diamond",
+			["reagents"] = {
+				[41266] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55388,
+		},
+		[55389] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Chaotic Skyflare Diamond",
+			["reagents"] = {
+				[41266] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55389,
+		},
+		[55390] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Destructive Skyflare Diamond",
+			["reagents"] = {
+				[41266] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55390,
+		},
+		[55392] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Ember Skyflare Diamond",
+			["reagents"] = {
+				[41266] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55392,
+		},
+		[55393] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Enigmatic Skyflare Diamond",
+			["reagents"] = {
+				[41266] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55393,
+		},
+		[55394] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Swift Skyflare Diamond",
+			["reagents"] = {
+				[41266] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55394,
+		},
+		[55395] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Thundering Skyflare Diamond",
+			["reagents"] = {
+				[41266] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55395,
+		},
+		[55396] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Insightful Earthsiege Diamond",
+			["reagents"] = {
+				[41334] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55396,
+		},
+		[55397] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Bracing Earthsiege Diamond",
+			["reagents"] = {
+				[41334] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55397,
+		},
+		[55398] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Eternal Earthsiege Diamond",
+			["reagents"] = {
+				[41334] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55398,
+		},
+		[55399] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Powerful Earthsiege Diamond",
+			["reagents"] = {
+				[41334] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55399,
+		},
+		[55400] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Relentless Earthsiege Diamond",
+			["reagents"] = {
+				[41334] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55400,
+		},
+		[55401] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Austere Earthsiege Diamond",
+			["reagents"] = {
+				[41334] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55401,
+		},
+		[55402] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Persistent Earthsiege Diamond",
+			["reagents"] = {
+				[41334] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55402,
+		},
+		[55403] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Trenchant Earthsiege Diamond",
+			["reagents"] = {
+				[41334] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55403,
+		},
+		[55404] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Invigorating Earthsiege Diamond",
+			["reagents"] = {
+				[41334] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55404,
+		},
+		[55405] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Beaming Earthsiege Diamond",
+			["reagents"] = {
+				[41334] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55405,
+		},
+		[55407] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Revitalizing Skyflare Diamond",
+			["reagents"] = {
+				[41266] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 55407,
+		},
+		[55534] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Gem Perfection",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 55534,
+		},
+		[56049] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Bold Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56049,
+		},
+		[56052] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Delicate Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56052,
+		},
+		[56053] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Brilliant Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56053,
+		},
+		[56054] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Bright Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56054,
+		},
+		[56055] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Subtle Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56055,
+		},
+		[56056] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Flashing Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56056,
+		},
+		[56074] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Brilliant Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56074,
+		},
+		[56076] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Fractured Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56076,
+		},
+		[56077] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Lustrous Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56077,
+		},
+		[56079] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Mystic Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56079,
+		},
+		[56081] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Precise Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56081,
+		},
+		[56083] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Quick Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56083,
+		},
+		[56084] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Rigid Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56084,
+		},
+		[56085] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Smooth Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56085,
+		},
+		[56086] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Solid Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56086,
+		},
+		[56087] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Sparkling Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56087,
+		},
+		[56088] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Stormy Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56088,
+		},
+		[56089] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				440,
+			},
+			["name"] = "Thick Dragon's Eye",
+			["reagents"] = {
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56089,
+		},
+		[56193] = {
+			["difficulty"] = {
+				1,
+				190,
+				380,
+				420,
+			},
+			["name"] = "Bloodstone Band",
+			["reagents"] = {
+				[36917] = 1,
+				[37701] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56193,
+		},
+		[56194] = {
+			["difficulty"] = {
+				1,
+				190,
+				380,
+				420,
+			},
+			["name"] = "Sun Rock Ring",
+			["reagents"] = {
+				[36920] = 1,
+				[37701] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56194,
+		},
+		[56195] = {
+			["difficulty"] = {
+				1,
+				200,
+				400,
+				420,
+			},
+			["name"] = "Jade Dagger Pendant",
+			["reagents"] = {
+				[35624] = 1,
+				[36929] = 2,
+				[36932] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56195,
+		},
+		[56196] = {
+			["difficulty"] = {
+				1,
+				200,
+				400,
+				420,
+			},
+			["name"] = "Blood Sun Necklace",
+			["reagents"] = {
+				[35624] = 1,
+				[36917] = 1,
+				[36920] = 2,
+				[36923] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56196,
+		},
+		[56197] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Dream Signet",
+			["reagents"] = {
+				[34052] = 1,
+				[36933] = 1,
+				[41163] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56197,
+		},
+		[56199] = {
+			["difficulty"] = {
+				1,
+				215,
+				430,
+				450,
+			},
+			["name"] = "Figurine - Ruby Hare",
+			["reagents"] = {
+				[36918] = 2,
+				[36921] = 1,
+				[41163] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56199,
+		},
+		[56201] = {
+			["difficulty"] = {
+				1,
+				215,
+				430,
+				450,
+			},
+			["name"] = "Figurine - Twilight Serpent",
+			["reagents"] = {
+				[36927] = 2,
+				[36930] = 1,
+				[41163] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56201,
+		},
+		[56202] = {
+			["difficulty"] = {
+				1,
+				215,
+				430,
+				450,
+			},
+			["name"] = "Figurine - Sapphire Owl",
+			["reagents"] = {
+				[36924] = 2,
+				[36933] = 1,
+				[41163] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56202,
+		},
+		[56203] = {
+			["difficulty"] = {
+				1,
+				215,
+				430,
+				450,
+			},
+			["name"] = "Figurine - Emerald Boar",
+			["reagents"] = {
+				[36918] = 1,
+				[36933] = 2,
+				[41163] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56203,
+		},
+		[56205] = {
+			["difficulty"] = {
+				1,
+				180,
+				360,
+				380,
+			},
+			["name"] = "Dark Jade Focusing Lens",
+			["reagents"] = {
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56205,
+		},
+		[56206] = {
+			["difficulty"] = {
+				1,
+				185,
+				370,
+				390,
+			},
+			["name"] = "Shadow Crystal Focusing Lens",
+			["reagents"] = {
+				[36926] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56206,
+		},
+		[56208] = {
+			["difficulty"] = {
+				1,
+				190,
+				380,
+				400,
+			},
+			["name"] = "Shadow Jade Focusing Lens",
+			["reagents"] = {
+				[36926] = 1,
+				[36932] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56208,
+		},
+		[56496] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				460,
+			},
+			["name"] = "Titanium Impact Band",
+			["reagents"] = {
+				[35627] = 4,
+				[36860] = 4,
+				[41163] = 2,
+				[42225] = 4,
+				[43102] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56496,
+		},
+		[56497] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				460,
+			},
+			["name"] = "Titanium Earthguard Ring",
+			["reagents"] = {
+				[35624] = 4,
+				[35625] = 4,
+				[41163] = 2,
+				[42225] = 4,
+				[43102] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56497,
+		},
+		[56498] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				460,
+			},
+			["name"] = "Titanium Spellshock Ring",
+			["reagents"] = {
+				[35622] = 4,
+				[35623] = 4,
+				[41163] = 2,
+				[42225] = 4,
+				[43102] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56498,
+		},
+		[56499] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				460,
+			},
+			["name"] = "Titanium Impact Choker",
+			["reagents"] = {
+				[35623] = 6,
+				[36860] = 6,
+				[41163] = 2,
+				[42225] = 4,
+				[43102] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56499,
+		},
+		[56500] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				460,
+			},
+			["name"] = "Titanium Earthguard Chain",
+			["reagents"] = {
+				[35624] = 6,
+				[35625] = 6,
+				[41163] = 2,
+				[42225] = 4,
+				[43102] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56500,
+		},
+		[56501] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				460,
+			},
+			["name"] = "Titanium Spellshock Necklace",
+			["reagents"] = {
+				[35622] = 6,
+				[35627] = 6,
+				[41163] = 2,
+				[42225] = 4,
+				[43102] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56501,
+		},
+		[56530] = {
+			["difficulty"] = {
+				1,
+				190,
+				380,
+				420,
+			},
+			["name"] = "Enchanted Pearl",
+			["reagents"] = {
+				[34054] = 1,
+				[36783] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56530,
+		},
+		[56531] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				440,
+			},
+			["name"] = "Enchanted Tear",
+			["reagents"] = {
+				[34054] = 4,
+				[36784] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 56531,
+		},
+		[58141] = {
+			["difficulty"] = {
+				1,
+				190,
+				380,
+				420,
+			},
+			["name"] = "Crystal Citrine Necklace",
+			["reagents"] = {
+				[36929] = 1,
+				[37701] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58141,
+		},
+		[58142] = {
+			["difficulty"] = {
+				1,
+				190,
+				380,
+				420,
+			},
+			["name"] = "Crystal Chalcedony Amulet",
+			["reagents"] = {
+				[36923] = 1,
+				[37701] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58142,
+		},
+		[58143] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				420,
+			},
+			["name"] = "Earthshadow Ring",
+			["reagents"] = {
+				[35624] = 1,
+				[36926] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58143,
+		},
+		[58144] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				420,
+			},
+			["name"] = "Jade Ring of Slaying",
+			["reagents"] = {
+				[35624] = 1,
+				[36932] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58144,
+		},
+		[58145] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				430,
+			},
+			["name"] = "Stoneguard Band",
+			["reagents"] = {
+				[35624] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58145,
+		},
+		[58146] = {
+			["difficulty"] = {
+				1,
+				205,
+				410,
+				430,
+			},
+			["name"] = "Shadowmight Ring",
+			["reagents"] = {
+				[35624] = 1,
+				[35627] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58146,
+		},
+		[58147] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Ring of Earthen Might",
+			["reagents"] = {
+				[35624] = 2,
+				[41163] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58147,
+		},
+		[58148] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Ring of Scarlet Shadows",
+			["reagents"] = {
+				[35627] = 3,
+				[36918] = 1,
+				[41163] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58148,
+		},
+		[58149] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Windfire Band",
+			["reagents"] = {
+				[35623] = 1,
+				[36860] = 2,
+				[41163] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58149,
+		},
+		[58150] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Ring of Northern Tears",
+			["reagents"] = {
+				[35622] = 1,
+				[36783] = 4,
+				[41163] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58150,
+		},
+		[58492] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Savage Titanium Ring",
+			["reagents"] = {
+				[36860] = 4,
+				[41163] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58492,
+		},
+		[58507] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Savage Titanium Band",
+			["reagents"] = {
+				[36860] = 4,
+				[41163] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58507,
+		},
+		[58954] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Titanium Frostguard Ring",
+			["reagents"] = {
+				[35622] = 3,
+				[36860] = 3,
+				[41163] = 2,
+				[43102] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58954,
+		},
+		[59759] = {
+			["difficulty"] = {
+				1,
+				215,
+				430,
+				450,
+			},
+			["name"] = "Figurine - Monarch Crab",
+			["reagents"] = {
+				[36930] = 2,
+				[36933] = 1,
+				[41163] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 59759,
+		},
+		[62242] = {
+			["difficulty"] = {
+				1,
+				223,
+				445,
+				470,
+			},
+			["name"] = "Icy Prism",
+			["reagents"] = {
+				[36923] = 1,
+				[36926] = 1,
+				[36932] = 1,
+				[43102] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 62242,
+		},
+		[62941] = {
+			["difficulty"] = {
+				1,
+				155,
+				310,
+				320,
+			},
+			["name"] = "Prismatic Black Diamond",
+			["reagents"] = {
+				[11754] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 62941,
+		},
+		[63743] = {
+			["difficulty"] = {
+				1,
+				105,
+				210,
+				230,
+			},
+			["name"] = "Amulet of Truesight",
+			["reagents"] = {
+				[6037] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 63743,
+		},
+		[64725] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Emerald Choker",
+			["reagents"] = {
+				[36933] = 3,
+				[41163] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 64725,
+		},
+		[64726] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Sky Sapphire Amulet",
+			["reagents"] = {
+				[36924] = 2,
+				[41163] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 64726,
+		},
+		[64727] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Runed Mana Band",
+			["reagents"] = {
+				[36927] = 2,
+				[41163] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 64727,
+		},
+		[64728] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				460,
+			},
+			["name"] = "Scarlet Signet",
+			["reagents"] = {
+				[36918] = 1,
+				[41163] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 64728,
+		},
+		[66338] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Regal Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66338,
+		},
+		[66428] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Steady Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66428,
+		},
+		[66429] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Nimble Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66429,
+		},
+		[66430] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Dazzling Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66430,
+		},
+		[66431] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Jagged Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66431,
+		},
+		[66432] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Timeless Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66432,
+		},
+		[66433] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Seer's Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66433,
+		},
+		[66434] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Forceful Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66434,
+		},
+		[66435] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Misty Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66435,
+		},
+		[66436] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Sundered Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66436,
+		},
+		[66437] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Shining Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66437,
+		},
+		[66438] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Tense Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66438,
+		},
+		[66439] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Lightning Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66439,
+		},
+		[66440] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Intricate Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66440,
+		},
+		[66441] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Radiant Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66441,
+		},
+		[66442] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Energized Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66442,
+		},
+		[66443] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Shattered Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66443,
+		},
+		[66444] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Opaque Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66444,
+		},
+		[66445] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Turbid Eye of Zul",
+			["reagents"] = {
+				[36934] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66445,
+		},
+		[66446] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Brilliant Cardinal Ruby",
+			["reagents"] = {
+				[36919] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66446,
+		},
+		[66447] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Bold Cardinal Ruby",
+			["reagents"] = {
+				[36919] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66447,
+		},
+		[66448] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Delicate Cardinal Ruby",
+			["reagents"] = {
+				[36919] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66448,
+		},
+		[66449] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Bright Cardinal Ruby",
+			["reagents"] = {
+				[36919] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66449,
+		},
+		[66450] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Precise Cardinal Ruby",
+			["reagents"] = {
+				[36919] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66450,
+		},
+		[66451] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Fractured Cardinal Ruby",
+			["reagents"] = {
+				[36919] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66451,
+		},
+		[66452] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Subtle King's Amber",
+			["reagents"] = {
+				[36922] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66452,
+		},
+		[66453] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Flashing Cardinal Ruby",
+			["reagents"] = {
+				[36919] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66453,
+		},
+		[66497] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Solid Majestic Zircon",
+			["reagents"] = {
+				[36925] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66497,
+		},
+		[66498] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Sparkling Majestic Zircon",
+			["reagents"] = {
+				[36925] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66498,
+		},
+		[66499] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Stormy Majestic Zircon",
+			["reagents"] = {
+				[36925] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66499,
+		},
+		[66500] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Lustrous Majestic Zircon",
+			["reagents"] = {
+				[36925] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66500,
+		},
+		[66501] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Rigid Majestic Zircon",
+			["reagents"] = {
+				[36925] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66501,
+		},
+		[66502] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Smooth King's Amber",
+			["reagents"] = {
+				[36922] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66502,
+		},
+		[66503] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Brilliant King's Amber",
+			["reagents"] = {
+				[36922] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66503,
+		},
+		[66504] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Thick King's Amber",
+			["reagents"] = {
+				[36922] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66504,
+		},
+		[66505] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Mystic King's Amber",
+			["reagents"] = {
+				[36922] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66505,
+		},
+		[66506] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Quick King's Amber",
+			["reagents"] = {
+				[36922] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66506,
+		},
+		[66553] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Balanced Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66553,
+		},
+		[66554] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Sovereign Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66554,
+		},
+		[66555] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Glowing Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66555,
+		},
+		[66556] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Purified Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66556,
+		},
+		[66557] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Shifting Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66557,
+		},
+		[66558] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Royal Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66558,
+		},
+		[66559] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Regal Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66559,
+		},
+		[66560] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Defender's Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66560,
+		},
+		[66561] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Guardian's Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66561,
+		},
+		[66562] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Mysterious Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66562,
+		},
+		[66563] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Puissant Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66563,
+		},
+		[66564] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Infused Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66564,
+		},
+		[66565] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Tenuous Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66565,
+		},
+		[66566] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Luminous Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66566,
+		},
+		[66567] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Inscribed Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66567,
+		},
+		[66568] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Deadly Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66568,
+		},
+		[66569] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Potent Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66569,
+		},
+		[66570] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Veiled Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66570,
+		},
+		[66571] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Willful Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66571,
+		},
+		[66572] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Etched Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66572,
+		},
+		[66573] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Glinting Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66573,
+		},
+		[66574] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Reckless Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66574,
+		},
+		[66575] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Glinting Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66575,
+		},
+		[66576] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Accurate Dreadstone",
+			["reagents"] = {
+				[36928] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66576,
+		},
+		[66577] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Wicked Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66577,
+		},
+		[66578] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Glimmering Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66578,
+		},
+		[66579] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Champion's Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66579,
+		},
+		[66580] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Empowered Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66580,
+		},
+		[66581] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Stalwart Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66581,
+		},
+		[66582] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Resplendent Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66582,
+		},
+		[66583] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Fierce Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66583,
+		},
+		[66584] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Deft Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66584,
+		},
+		[66585] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Lucent Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66585,
+		},
+		[66586] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Resolute Ametrine",
+			["reagents"] = {
+				[36931] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66586,
+		},
+		[66587] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 66587,
+		},
+		[68253] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				465,
+			},
+			["name"] = "Nightmare Tear",
+			["reagents"] = {
+				[34054] = 5,
+				[42225] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 68253,
+		},
+		[73222] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Bold Carnelian",
+			["reagents"] = {
+				[52177] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73222,
+		},
+		[73223] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Delicate Carnelian",
+			["reagents"] = {
+				[52177] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73223,
+		},
+		[73224] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Flashing Carnelian",
+			["reagents"] = {
+				[52177] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73224,
+		},
+		[73225] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Brilliant Carnelian",
+			["reagents"] = {
+				[52177] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73225,
+		},
+		[73226] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Precise Carnelian",
+			["reagents"] = {
+				[52177] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73226,
+		},
+		[73227] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Solid Zephyrite",
+			["reagents"] = {
+				[52178] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73227,
+		},
+		[73228] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Sparkling Zephyrite",
+			["reagents"] = {
+				[52178] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73228,
+		},
+		[73229] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Stormy Zephyrite",
+			["reagents"] = {
+				[52178] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73229,
+		},
+		[73230] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Rigid Zephyrite",
+			["reagents"] = {
+				[52178] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73230,
+		},
+		[73231] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Subtle Alicite",
+			["reagents"] = {
+				[52179] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73231,
+		},
+		[73232] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Smooth Alicite",
+			["reagents"] = {
+				[52179] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73232,
+		},
+		[73233] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Mystic Alicite",
+			["reagents"] = {
+				[52179] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73233,
+		},
+		[73234] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Quick Alicite",
+			["reagents"] = {
+				[52179] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73234,
+		},
+		[73239] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Fractured Alicite",
+			["reagents"] = {
+				[52179] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73239,
+		},
+		[73240] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Sovereign Nightstone",
+			["reagents"] = {
+				[52180] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73240,
+		},
+		[73241] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Shifting Nightstone",
+			["reagents"] = {
+				[52180] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73241,
+		},
+		[73242] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Defender's Nightstone",
+			["reagents"] = {
+				[52180] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73242,
+		},
+		[73243] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Timeless Nightstone",
+			["reagents"] = {
+				[52180] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73243,
+		},
+		[73244] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Guardian's Nightstone",
+			["reagents"] = {
+				[52180] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73244,
+		},
+		[73245] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Purified Nightstone",
+			["reagents"] = {
+				[52180] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73245,
+		},
+		[73246] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Etched Nightstone",
+			["reagents"] = {
+				[52180] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73246,
+		},
+		[73247] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Glinting Nightstone",
+			["reagents"] = {
+				[52180] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73247,
+		},
+		[73248] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Retaliating Nightstone",
+			["reagents"] = {
+				[52180] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73248,
+		},
+		[73249] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Veiled Nightstone",
+			["reagents"] = {
+				[52180] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73249,
+		},
+		[73250] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Accurate Nightstone",
+			["reagents"] = {
+				[52180] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73250,
+		},
+		[73258] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Polished Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73258,
+		},
+		[73259] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Resolute Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73259,
+		},
+		[73260] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Inscribed Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73260,
+		},
+		[73262] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Deadly Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73262,
+		},
+		[73263] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Potent Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73263,
+		},
+		[73264] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Fierce Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73264,
+		},
+		[73265] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Deft Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73265,
+		},
+		[73266] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Reckless Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73266,
+		},
+		[73267] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Skillful Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73267,
+		},
+		[73268] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Adept Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73268,
+		},
+		[73269] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Fine Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73269,
+		},
+		[73270] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Artful Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73270,
+		},
+		[73271] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Keen Hessonite",
+			["reagents"] = {
+				[52181] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73271,
+		},
+		[73272] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Regal Jasper",
+			["reagents"] = {
+				[52182] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73272,
+		},
+		[73273] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Nimble Jasper",
+			["reagents"] = {
+				[52182] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73273,
+		},
+		[73274] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Jagged Jasper",
+			["reagents"] = {
+				[52182] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73274,
+		},
+		[73275] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Piercing Jasper",
+			["reagents"] = {
+				[52182] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73275,
+		},
+		[73276] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Steady Jasper",
+			["reagents"] = {
+				[52182] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73276,
+		},
+		[73277] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Forceful Jasper",
+			["reagents"] = {
+				[52182] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73277,
+		},
+		[73278] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Lightning Jasper",
+			["reagents"] = {
+				[52182] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73278,
+		},
+		[73279] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Puissant Jasper",
+			["reagents"] = {
+				[52182] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73279,
+		},
+		[73280] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Zen Jasper",
+			["reagents"] = {
+				[52182] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73280,
+		},
+		[73281] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Sensei's Jasper",
+			["reagents"] = {
+				[52182] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73281,
+		},
+		[73318] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Jewelcrafting",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 73318,
+		},
+		[73335] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Bold Inferno Ruby",
+			["reagents"] = {
+				[52190] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73335,
+		},
+		[73336] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Delicate Inferno Ruby",
+			["reagents"] = {
+				[52190] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73336,
+		},
+		[73337] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Flashing Inferno Ruby",
+			["reagents"] = {
+				[52190] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73337,
+		},
+		[73338] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Brilliant Inferno Ruby",
+			["reagents"] = {
+				[52190] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73338,
+		},
+		[73339] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Precise Inferno Ruby",
+			["reagents"] = {
+				[52190] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73339,
+		},
+		[73340] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Solid Ocean Sapphire",
+			["reagents"] = {
+				[52191] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73340,
+		},
+		[73341] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Sparkling Ocean Sapphire",
+			["reagents"] = {
+				[52191] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73341,
+		},
+		[73343] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Stormy Ocean Sapphire",
+			["reagents"] = {
+				[52191] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73343,
+		},
+		[73344] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Rigid Ocean Sapphire",
+			["reagents"] = {
+				[52191] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73344,
+		},
+		[73345] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Subtle Amberjewel",
+			["reagents"] = {
+				[52195] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73345,
+		},
+		[73346] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Smooth Amberjewel",
+			["reagents"] = {
+				[52195] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73346,
+		},
+		[73347] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Mystic Amberjewel",
+			["reagents"] = {
+				[52195] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73347,
+		},
+		[73348] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Quick Amberjewel",
+			["reagents"] = {
+				[52195] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73348,
+		},
+		[73349] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Fractured Amberjewel",
+			["reagents"] = {
+				[52195] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73349,
+		},
+		[73350] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Sovereign Demonseye",
+			["reagents"] = {
+				[52194] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73350,
+		},
+		[73351] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Shifting Demonseye",
+			["reagents"] = {
+				[52194] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73351,
+		},
+		[73352] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Defender's Demonseye",
+			["reagents"] = {
+				[52194] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73352,
+		},
+		[73353] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Timeless Demonseye",
+			["reagents"] = {
+				[52194] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73353,
+		},
+		[73354] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Guardian's Demonseye",
+			["reagents"] = {
+				[52194] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73354,
+		},
+		[73355] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Purified Demonseye",
+			["reagents"] = {
+				[52194] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73355,
+		},
+		[73356] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Etched Demonseye",
+			["reagents"] = {
+				[52194] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73356,
+		},
+		[73357] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Glinting Demonseye",
+			["reagents"] = {
+				[52194] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73357,
+		},
+		[73358] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Retaliating Demonseye",
+			["reagents"] = {
+				[52194] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73358,
+		},
+		[73359] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Veiled Demonseye",
+			["reagents"] = {
+				[52194] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73359,
+		},
+		[73360] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Accurate Demonseye",
+			["reagents"] = {
+				[52194] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73360,
+		},
+		[73361] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Polished Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73361,
+		},
+		[73362] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Resolute Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73362,
+		},
+		[73364] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Inscribed Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73364,
+		},
+		[73365] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Deadly Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73365,
+		},
+		[73366] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Potent Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73366,
+		},
+		[73367] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Fierce Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73367,
+		},
+		[73368] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Deft Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73368,
+		},
+		[73369] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Reckless Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73369,
+		},
+		[73370] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Skillful Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73370,
+		},
+		[73371] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Adept Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73371,
+		},
+		[73372] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Fine Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73372,
+		},
+		[73373] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Artful Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73373,
+		},
+		[73374] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Keen Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73374,
+		},
+		[73375] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Regal Dream Emerald",
+			["reagents"] = {
+				[52192] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73375,
+		},
+		[73376] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Nimble Dream Emerald",
+			["reagents"] = {
+				[52192] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73376,
+		},
+		[73377] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Jagged Dream Emerald",
+			["reagents"] = {
+				[52192] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73377,
+		},
+		[73378] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Piercing Dream Emerald",
+			["reagents"] = {
+				[52192] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73378,
+		},
+		[73379] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Steady Dream Emerald",
+			["reagents"] = {
+				[52192] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73379,
+		},
+		[73380] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Forceful Dream Emerald",
+			["reagents"] = {
+				[52192] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73380,
+		},
+		[73381] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Lightning Dream Emerald",
+			["reagents"] = {
+				[52192] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73381,
+		},
+		[73382] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Puissant Dream Emerald",
+			["reagents"] = {
+				[52192] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73382,
+		},
+		[73383] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Zen Dream Emerald",
+			["reagents"] = {
+				[52192] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73383,
+		},
+		[73384] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Sensei's Dream Emerald",
+			["reagents"] = {
+				[52192] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73384,
+		},
+		[73396] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Bold Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73396,
+		},
+		[73397] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Delicate Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73397,
+		},
+		[73398] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Flashing Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73398,
+		},
+		[73399] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Brilliant Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73399,
+		},
+		[73400] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Precise Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73400,
+		},
+		[73401] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Solid Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73401,
+		},
+		[73402] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Sparkling Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73402,
+		},
+		[73403] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Stormy Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73403,
+		},
+		[73404] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Rigid Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73404,
+		},
+		[73405] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Subtle Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73405,
+		},
+		[73406] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Smooth Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73406,
+		},
+		[73407] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Mystic Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73407,
+		},
+		[73408] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Quick Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73408,
+		},
+		[73409] = {
+			["difficulty"] = {
+				1,
+				253,
+				505,
+				510,
+			},
+			["name"] = "Fractured Chimera's Eye",
+			["reagents"] = {
+				[52196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73409,
+		},
+		[73464] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Fleet Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73464,
+		},
+		[73465] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Chaotic Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73465,
+		},
+		[73466] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Bracing Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73466,
+		},
+		[73467] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Eternal Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73467,
+		},
+		[73468] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Austere Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73468,
+		},
+		[73469] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Effulgent Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73469,
+		},
+		[73470] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Ember Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73470,
+		},
+		[73471] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Revitalizing Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73471,
+		},
+		[73472] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Destructive Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73472,
+		},
+		[73473] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Powerful Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73473,
+		},
+		[73474] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Enigmatic Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73474,
+		},
+		[73475] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Impassive Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73475,
+		},
+		[73476] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Forlorn Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73476,
+		},
+		[73478] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Fire Prism",
+			["reagents"] = {
+				[52177] = 3,
+				[52178] = 3,
+				[52179] = 3,
+				[52180] = 3,
+				[52181] = 3,
+				[52182] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73478,
+		},
+		[73494] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Jasper Ring",
+			["reagents"] = {
+				[52182] = 1,
+				[52188] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73494,
+		},
+		[73495] = {
+			["difficulty"] = {
+				1,
+				243,
+				485,
+				505,
+			},
+			["name"] = "Hessonite Band",
+			["reagents"] = {
+				[52181] = 2,
+				[52188] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73495,
+		},
+		[73496] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				485,
+			},
+			["name"] = "Alicite Pendant",
+			["reagents"] = {
+				[52179] = 2,
+				[52188] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73496,
+		},
+		[73497] = {
+			["difficulty"] = {
+				1,
+				248,
+				495,
+				515,
+			},
+			["name"] = "Nightstone Choker",
+			["reagents"] = {
+				[52180] = 2,
+				[52188] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73497,
+		},
+		[73498] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Band of Blades",
+			["reagents"] = {
+				[52186] = 4,
+				[52194] = 4,
+				[52196] = 4,
+				[52328] = 75,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73498,
+		},
+		[73502] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Ring of Warring Elements",
+			["reagents"] = {
+				[52186] = 4,
+				[52193] = 4,
+				[52196] = 4,
+				[52325] = 75,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73502,
+		},
+		[73503] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Elementium Moebius Band",
+			["reagents"] = {
+				[52186] = 4,
+				[52192] = 4,
+				[52196] = 4,
+				[52329] = 75,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73503,
+		},
+		[73504] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Entwined Elementium Choker",
+			["reagents"] = {
+				[52186] = 4,
+				[52195] = 4,
+				[52196] = 4,
+				[52326] = 75,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73504,
+		},
+		[73505] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Eye of Many Deaths",
+			["reagents"] = {
+				[52186] = 4,
+				[52190] = 4,
+				[52196] = 4,
+				[52325] = 75,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73505,
+		},
+		[73506] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Elementium Guardian",
+			["reagents"] = {
+				[52186] = 4,
+				[52191] = 4,
+				[52196] = 4,
+				[52327] = 75,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73506,
+		},
+		[73520] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Elementium Destroyer's Ring",
+			["reagents"] = {
+				[52186] = 4,
+				[52194] = 4,
+				[52196] = 4,
+				[52328] = 75,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73520,
+		},
+		[73521] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Brazen Elementium Medallion",
+			["reagents"] = {
+				[52186] = 4,
+				[52195] = 4,
+				[52196] = 4,
+				[52326] = 75,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73521,
+		},
+		[73620] = {
+			["difficulty"] = {
+				1,
+				235,
+				470,
+				480,
+			},
+			["name"] = "Carnelian Spikes",
+			["reagents"] = {
+				[52177] = 3,
+				[52188] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73620,
+		},
+		[73621] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				510,
+			},
+			["name"] = "The Perforator",
+			["reagents"] = {
+				[52190] = 1,
+				[52191] = 1,
+				[52192] = 1,
+				[52193] = 1,
+				[52194] = 1,
+				[52195] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73621,
+		},
+		[73622] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				465,
+			},
+			["name"] = "Stardust",
+			["reagents"] = {
+				[52180] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73622,
+		},
+		[73623] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Rhinestone Sunglasses",
+			["reagents"] = {
+				[52192] = 2,
+				[52196] = 2,
+				[52555] = 8,
+				[58480] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73623,
+		},
+		[73625] = {
+			["difficulty"] = {
+				1,
+				240,
+				480,
+				500,
+			},
+			["name"] = "Jeweler's Ruby Monocle",
+			["reagents"] = {
+				[52186] = 2,
+				[52190] = 3,
+				[52325] = 50,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73625,
+		},
+		[73626] = {
+			["difficulty"] = {
+				1,
+				243,
+				485,
+				505,
+			},
+			["name"] = "Jeweler's Sapphire Monocle",
+			["reagents"] = {
+				[52186] = 2,
+				[52191] = 3,
+				[52326] = 50,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73626,
+		},
+		[73627] = {
+			["difficulty"] = {
+				1,
+				245,
+				490,
+				510,
+			},
+			["name"] = "Jeweler's Amber Monocle",
+			["reagents"] = {
+				[52186] = 2,
+				[52195] = 3,
+				[52329] = 50,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 73627,
+		},
+		[95754] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Willful Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 95754,
+		},
+		[95755] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Lucent Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 95755,
+		},
+		[95756] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Resplendent Ember Topaz",
+			["reagents"] = {
+				[52193] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 95756,
+		},
+		[96226] = {
+			["difficulty"] = {
+				1,
+				250,
+				500,
+				515,
+			},
+			["name"] = "Vivid Dream Emerald",
+			["reagents"] = {
+				[52192] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 96226,
+		},
+		[96255] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Agile Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 96255,
+		},
+		[96256] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Reverberating Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 96256,
+		},
+		[96257] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Burning Shadowspirit Diamond",
+			["reagents"] = {
+				[52303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 96257,
+		},
+		[98921] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Punisher's Band",
+			["reagents"] = {
+				[52186] = 4,
+				[52195] = 4,
+				[52196] = 4,
+				[52327] = 75,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 98921,
+		},
+		[99539] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Vicious Sapphire Ring",
+			["reagents"] = {
+				[52188] = 1,
+				[52191] = 4,
+				[52328] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 99539,
+		},
+		[99540] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Vicious Amberjewel Band",
+			["reagents"] = {
+				[52188] = 1,
+				[52195] = 4,
+				[52326] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 99540,
+		},
+		[99541] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Vicious Ruby Signet",
+			["reagents"] = {
+				[52188] = 1,
+				[52190] = 4,
+				[52327] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 99541,
+		},
+		[99542] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Vicious Sapphire Necklace",
+			["reagents"] = {
+				[52188] = 1,
+				[52191] = 5,
+				[52325] = 4,
+				[52328] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 99542,
+		},
+		[99543] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Vicious Amberjewel Pendant",
+			["reagents"] = {
+				[52188] = 1,
+				[52195] = 5,
+				[52326] = 8,
+				[52329] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 99543,
+		},
+		[99544] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Vicious Ruby Choker",
+			["reagents"] = {
+				[52188] = 1,
+				[52190] = 5,
+				[52326] = 6,
+				[52327] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 99544,
+		},
+		[101735] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Rigid Deepholm Iolite",
+			["reagents"] = {
+				[71807] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101735,
+		},
+		[101740] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Stormy Deepholm Iolite",
+			["reagents"] = {
+				[71807] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101740,
+		},
+		[101741] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Sparkling Deepholm Iolite",
+			["reagents"] = {
+				[71807] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101741,
+		},
+		[101742] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Solid Deepholm Iolite",
+			["reagents"] = {
+				[71807] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101742,
+		},
+		[101743] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Misty Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101743,
+		},
+		[101744] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Piercing Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101744,
+		},
+		[101745] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Lightning Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101745,
+		},
+		[101746] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Sensei's Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101746,
+		},
+		[101747] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Infused Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101747,
+		},
+		[101748] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Zen Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101748,
+		},
+		[101749] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Balanced Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101749,
+		},
+		[101750] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Vivid Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101750,
+		},
+		[101751] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Turbid Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101751,
+		},
+		[101752] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Radiant Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101752,
+		},
+		[101753] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Shattered Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101753,
+		},
+		[101754] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Energized Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101754,
+		},
+		[101755] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Jagged Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101755,
+		},
+		[101756] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Regal Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101756,
+		},
+		[101757] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Forceful Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101757,
+		},
+		[101758] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Nimble Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101758,
+		},
+		[101759] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Puissant Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101759,
+		},
+		[101760] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Steady Elven Peridot",
+			["reagents"] = {
+				[71810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101760,
+		},
+		[101761] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Deadly Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101761,
+		},
+		[101762] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Crafty Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101762,
+		},
+		[101763] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Potent Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101763,
+		},
+		[101764] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Inscribed Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101764,
+		},
+		[101765] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Polished Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101765,
+		},
+		[101766] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Resolute Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101766,
+		},
+		[101767] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Stalwart Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101767,
+		},
+		[101768] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Champion's Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101768,
+		},
+		[101769] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Deft Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101769,
+		},
+		[101770] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Wicked Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101770,
+		},
+		[101771] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Reckless Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101771,
+		},
+		[101772] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Fierce Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101772,
+		},
+		[101773] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Adept Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101773,
+		},
+		[101774] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Keen Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101774,
+		},
+		[101775] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Artful Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101775,
+		},
+		[101776] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Fine Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101776,
+		},
+		[101777] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Skillful Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101777,
+		},
+		[101778] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Lucent Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101778,
+		},
+		[101779] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Tenuous Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101779,
+		},
+		[101780] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Willful Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101780,
+		},
+		[101781] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Splendid Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101781,
+		},
+		[101782] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Resplendent Lava Coral",
+			["reagents"] = {
+				[71808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101782,
+		},
+		[101783] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Glinting Shadow Spinel",
+			["reagents"] = {
+				[71809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101783,
+		},
+		[101784] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Accurate Shadow Spinel",
+			["reagents"] = {
+				[71809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101784,
+		},
+		[101785] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Veiled Shadow Spinel",
+			["reagents"] = {
+				[71809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101785,
+		},
+		[101786] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Retaliating Shadow Spinel",
+			["reagents"] = {
+				[71809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101786,
+		},
+		[101787] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Etched Shadow Spinel",
+			["reagents"] = {
+				[71809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101787,
+		},
+		[101788] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Mysterious Shadow Spinel",
+			["reagents"] = {
+				[71809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101788,
+		},
+		[101789] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Purified Shadow Spinel",
+			["reagents"] = {
+				[71809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101789,
+		},
+		[101790] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Shifting Shadow Spinel",
+			["reagents"] = {
+				[71809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101790,
+		},
+		[101791] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Guardian's Shadow Spinel",
+			["reagents"] = {
+				[71809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101791,
+		},
+		[101792] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Timeless Shadow Spinel",
+			["reagents"] = {
+				[71809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101792,
+		},
+		[101793] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Defender's Shadow Spinel",
+			["reagents"] = {
+				[71809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101793,
+		},
+		[101794] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Sovereign Shadow Spinel",
+			["reagents"] = {
+				[71809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101794,
+		},
+		[101795] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Delicate Queen's Garnet",
+			["reagents"] = {
+				[71805] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101795,
+		},
+		[101796] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Precise Queen's Garnet",
+			["reagents"] = {
+				[71805] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101796,
+		},
+		[101797] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Brilliant Queen's Garnet",
+			["reagents"] = {
+				[71805] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101797,
+		},
+		[101798] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Flashing Queen's Garnet",
+			["reagents"] = {
+				[71805] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101798,
+		},
+		[101799] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Bold Queen's Garnet",
+			["reagents"] = {
+				[71805] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101799,
+		},
+		[101800] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Smooth Lightstone",
+			["reagents"] = {
+				[71806] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101800,
+		},
+		[101801] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Subtle Lightstone",
+			["reagents"] = {
+				[71806] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101801,
+		},
+		[101802] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Quick Lightstone",
+			["reagents"] = {
+				[71806] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101802,
+		},
+		[101803] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Fractured Lightstone",
+			["reagents"] = {
+				[71806] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101803,
+		},
+		[101804] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Mystic Lightstone",
+			["reagents"] = {
+				[71806] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 101804,
+		},
+		[106947] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Rigid River's Heart",
+			["reagents"] = {
+				[76138] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106947,
+		},
+		[106948] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Stormy River's Heart",
+			["reagents"] = {
+				[76138] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106948,
+		},
+		[106949] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Sparkling River's Heart",
+			["reagents"] = {
+				[76138] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106949,
+		},
+		[106950] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Solid River's Heart",
+			["reagents"] = {
+				[76138] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106950,
+		},
+		[106953] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Misty Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106953,
+		},
+		[106954] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Piercing Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106954,
+		},
+		[106955] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Lightning Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106955,
+		},
+		[106956] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Sensei's Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106956,
+		},
+		[106957] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Effulgent Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106957,
+		},
+		[106958] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Zen Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106958,
+		},
+		[106960] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Balanced Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106960,
+		},
+		[106961] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Vivid Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106961,
+		},
+		[106962] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Turbid Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 106962,
+		},
+		[107598] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Balanced Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107598,
+		},
+		[107599] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Effulgent Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107599,
+		},
+		[107600] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Energized Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107600,
+		},
+		[107601] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Forceful Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107601,
+		},
+		[107602] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Jagged Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107602,
+		},
+		[107604] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Lightning Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107604,
+		},
+		[107605] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Misty Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107605,
+		},
+		[107606] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Nimble Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107606,
+		},
+		[107607] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Piercing Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107607,
+		},
+		[107608] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Puissant Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107608,
+		},
+		[107609] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Radiant Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107609,
+		},
+		[107610] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Regal Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107610,
+		},
+		[107611] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Sensei's Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107611,
+		},
+		[107612] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Shattered Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107612,
+		},
+		[107613] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Steady Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107613,
+		},
+		[107614] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Turbid Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107614,
+		},
+		[107615] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Vivid Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107615,
+		},
+		[107616] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Zen Alexandrite",
+			["reagents"] = {
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107616,
+		},
+		[107617] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Rigid Lapis Lazuli",
+			["reagents"] = {
+				[76133] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107617,
+		},
+		[107619] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Solid Lapis Lazuli",
+			["reagents"] = {
+				[76133] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107619,
+		},
+		[107620] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Sparkling Lapis Lazuli",
+			["reagents"] = {
+				[76133] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107620,
+		},
+		[107621] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Stormy Lapis Lazuli",
+			["reagents"] = {
+				[76133] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107621,
+		},
+		[107622] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Bold Pandarian Garnet",
+			["reagents"] = {
+				[76136] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107622,
+		},
+		[107623] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Brilliant Pandarian Garnet",
+			["reagents"] = {
+				[76136] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107623,
+		},
+		[107624] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Delicate Pandarian Garnet",
+			["reagents"] = {
+				[76136] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107624,
+		},
+		[107625] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Flashing Pandarian Garnet",
+			["reagents"] = {
+				[76136] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107625,
+		},
+		[107626] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Precise Pandarian Garnet",
+			["reagents"] = {
+				[76136] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107626,
+		},
+		[107627] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Accurate Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107627,
+		},
+		[107628] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Defender's Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107628,
+		},
+		[107630] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Etched Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107630,
+		},
+		[107631] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Glinting Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107631,
+		},
+		[107632] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Guardian's Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107632,
+		},
+		[107633] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Mysterious Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107633,
+		},
+		[107634] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Purified Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107634,
+		},
+		[107635] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Retaliating Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107635,
+		},
+		[107636] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Shifting Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107636,
+		},
+		[107637] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Sovereign Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107637,
+		},
+		[107638] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Timeless Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107638,
+		},
+		[107639] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Veiled Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107639,
+		},
+		[107640] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Fractured Sunstone",
+			["reagents"] = {
+				[76134] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107640,
+		},
+		[107641] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Mystic Sunstone",
+			["reagents"] = {
+				[76134] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107641,
+		},
+		[107642] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Quick Sunstone",
+			["reagents"] = {
+				[76134] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107642,
+		},
+		[107643] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Smooth Sunstone",
+			["reagents"] = {
+				[76134] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107643,
+		},
+		[107644] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Subtle Sunstone",
+			["reagents"] = {
+				[76134] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107644,
+		},
+		[107645] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Adept Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107645,
+		},
+		[107646] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Artful Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107646,
+		},
+		[107647] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Champion's Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107647,
+		},
+		[107648] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Crafty Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107648,
+		},
+		[107649] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Deadly Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107649,
+		},
+		[107650] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Deft Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107650,
+		},
+		[107651] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Fierce Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107651,
+		},
+		[107652] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Fine Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107652,
+		},
+		[107653] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Inscribed Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107653,
+		},
+		[107654] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Keen Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107654,
+		},
+		[107655] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Lucent Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107655,
+		},
+		[107656] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Polished Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107656,
+		},
+		[107657] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Potent Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107657,
+		},
+		[107658] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Reckless Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107658,
+		},
+		[107659] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Resolute Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107659,
+		},
+		[107660] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Resplendent Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107660,
+		},
+		[107661] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Skillful Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107661,
+		},
+		[107662] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Splendid Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107662,
+		},
+		[107663] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Stalwart Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107663,
+		},
+		[107665] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Tenuous Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107665,
+		},
+		[107666] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Wicked Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107666,
+		},
+		[107667] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Willful Tiger Opal",
+			["reagents"] = {
+				[76130] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107667,
+		},
+		[107693] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Accurate Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107693,
+		},
+		[107694] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Defender's Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107694,
+		},
+		[107695] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Etched Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107695,
+		},
+		[107696] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Glinting Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107696,
+		},
+		[107697] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Guardian's Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107697,
+		},
+		[107698] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Mysterious Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107698,
+		},
+		[107699] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Purified Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107699,
+		},
+		[107700] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Retaliating Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107700,
+		},
+		[107701] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Shifting Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107701,
+		},
+		[107702] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Sovereign Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107702,
+		},
+		[107703] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Timeless Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107703,
+		},
+		[107704] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Veiled Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107704,
+		},
+		[107705] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Bold Primordial Ruby",
+			["reagents"] = {
+				[76131] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107705,
+		},
+		[107706] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Brilliant Primordial Ruby",
+			["reagents"] = {
+				[76131] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107706,
+		},
+		[107707] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Delicate Primordial Ruby",
+			["reagents"] = {
+				[76131] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107707,
+		},
+		[107708] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Flashing Primordial Ruby",
+			["reagents"] = {
+				[76131] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107708,
+		},
+		[107709] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Precise Primordial Ruby",
+			["reagents"] = {
+				[76131] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107709,
+		},
+		[107710] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Fractured Sun's Radiance",
+			["reagents"] = {
+				[76142] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107710,
+		},
+		[107711] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Mystic Sun's Radiance",
+			["reagents"] = {
+				[76142] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107711,
+		},
+		[107712] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Quick Sun's Radiance",
+			["reagents"] = {
+				[76142] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107712,
+		},
+		[107713] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Smooth Sun's Radiance",
+			["reagents"] = {
+				[76142] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107713,
+		},
+		[107714] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Subtle Sun's Radiance",
+			["reagents"] = {
+				[76142] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107714,
+		},
+		[107715] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Adept Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107715,
+		},
+		[107716] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Artful Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107716,
+		},
+		[107717] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Champion's Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107717,
+		},
+		[107718] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Crafty Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107718,
+		},
+		[107719] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Deadly Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107719,
+		},
+		[107720] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Deft Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107720,
+		},
+		[107721] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Fierce Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107721,
+		},
+		[107722] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Fine Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107722,
+		},
+		[107723] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Inscribed Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107723,
+		},
+		[107724] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Keen Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107724,
+		},
+		[107725] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Lucent Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107725,
+		},
+		[107726] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Polished Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107726,
+		},
+		[107727] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Potent Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107727,
+		},
+		[107728] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Reckless Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107728,
+		},
+		[107729] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Resolute Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107729,
+		},
+		[107730] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Resplendent Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107730,
+		},
+		[107731] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Skillful Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107731,
+		},
+		[107732] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Splendid Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107732,
+		},
+		[107733] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Stalwart Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107733,
+		},
+		[107734] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Tenuous Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107734,
+		},
+		[107735] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Wicked Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107735,
+		},
+		[107736] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Willful Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107736,
+		},
+		[107737] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Energized Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107737,
+		},
+		[107738] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Forceful Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107738,
+		},
+		[107739] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Jagged Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107739,
+		},
+		[107740] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Nimble Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107740,
+		},
+		[107742] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Puissant Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107742,
+		},
+		[107743] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Radiant Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107743,
+		},
+		[107744] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Regal Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107744,
+		},
+		[107745] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Shattered Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107745,
+		},
+		[107746] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Steady Wild Jade",
+			["reagents"] = {
+				[76139] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107746,
+		},
+		[107753] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Agile Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107753,
+		},
+		[107754] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Austere Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107754,
+		},
+		[107756] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Burning Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107756,
+		},
+		[107757] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Destructive Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107757,
+		},
+		[107758] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Effulgent Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107758,
+		},
+		[107759] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Ember Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107759,
+		},
+		[107760] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Enigmatic Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107760,
+		},
+		[107762] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Eternal Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107762,
+		},
+		[107763] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Fleet Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107763,
+		},
+		[107764] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Forlorn Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107764,
+		},
+		[107765] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Impassive Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107765,
+		},
+		[107766] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Powerful Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107766,
+		},
+		[107767] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Reverberating Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107767,
+		},
+		[107768] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Revitalizing Primal Diamond",
+			["reagents"] = {
+				[76132] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 107768,
+		},
+		[110420] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Jewelcrafting",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 110420,
+		},
+		[110955] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				600,
+			},
+			["name"] = "Release Spirit",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 110955,
+		},
+		[120045] = {
+			["difficulty"] = {
+				1,
+				308,
+				615,
+				615,
+			},
+			["name"] = "Jeweled Onyx Panther",
+			["reagents"] = {
+				[83087] = 1,
+				[83088] = 1,
+				[83089] = 1,
+				[83090] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 120045,
+		},
+		[121841] = {
+			["difficulty"] = {
+				1,
+				308,
+				615,
+				615,
+			},
+			["name"] = "Ruby Panther",
+			["reagents"] = {
+				[72104] = 4,
+				[76131] = 20,
+				[76734] = 2,
+				[83092] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 121841,
+		},
+		[121842] = {
+			["difficulty"] = {
+				1,
+				308,
+				615,
+				615,
+			},
+			["name"] = "Sapphire Panther",
+			["reagents"] = {
+				[72104] = 4,
+				[76138] = 20,
+				[76734] = 2,
+				[83092] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 121842,
+		},
+		[121843] = {
+			["difficulty"] = {
+				1,
+				308,
+				615,
+				615,
+			},
+			["name"] = "Sunstone Panther",
+			["reagents"] = {
+				[72104] = 4,
+				[76142] = 20,
+				[76734] = 2,
+				[83092] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 121843,
+		},
+		[121844] = {
+			["difficulty"] = {
+				1,
+				308,
+				615,
+				615,
+			},
+			["name"] = "Jade Panther",
+			["reagents"] = {
+				[72104] = 4,
+				[76139] = 20,
+				[76734] = 2,
+				[83092] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 121844,
+		},
+		[122661] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Ornate Band",
+			["reagents"] = {
+				[52188] = 1,
+				[76130] = 1,
+				[76133] = 1,
+				[76134] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122661,
+		},
+		[122662] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Shadowfire Necklace",
+			["reagents"] = {
+				[52188] = 1,
+				[76135] = 1,
+				[76136] = 1,
+				[76137] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122662,
+		},
+		[122663] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Scrying Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122663,
+		},
+		[122664] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				610,
+			},
+			["name"] = "Heart of the Earth",
+			["reagents"] = {
+				[52188] = 1,
+				[76139] = 2,
+				[76734] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122664,
+		},
+		[122665] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				610,
+			},
+			["name"] = "Roguestone Shadowband",
+			["reagents"] = {
+				[52188] = 1,
+				[76135] = 6,
+				[76734] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122665,
+		},
+		[122666] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				610,
+			},
+			["name"] = "Lord's Signet",
+			["reagents"] = {
+				[52188] = 1,
+				[76131] = 2,
+				[76734] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122666,
+		},
+		[122667] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				610,
+			},
+			["name"] = "Lionsfall Ring",
+			["reagents"] = {
+				[52188] = 1,
+				[76142] = 2,
+				[76734] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122667,
+		},
+		[122668] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				610,
+			},
+			["name"] = "Band of Blood",
+			["reagents"] = {
+				[52188] = 1,
+				[76140] = 2,
+				[76734] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122668,
+		},
+		[122669] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				610,
+			},
+			["name"] = "Reflection of the Sea",
+			["reagents"] = {
+				[52188] = 1,
+				[76138] = 2,
+				[76734] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122669,
+		},
+		[122670] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				610,
+			},
+			["name"] = "Golembreaker Amulet",
+			["reagents"] = {
+				[52188] = 1,
+				[76136] = 6,
+				[76734] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122670,
+		},
+		[122671] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				610,
+			},
+			["name"] = "Widow Chain",
+			["reagents"] = {
+				[52188] = 1,
+				[76134] = 6,
+				[76734] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122671,
+		},
+		[122672] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				610,
+			},
+			["name"] = "Skymage Circle",
+			["reagents"] = {
+				[52188] = 1,
+				[76141] = 2,
+				[76734] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122672,
+		},
+		[122673] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				610,
+			},
+			["name"] = "Tiger Opal Pendant",
+			["reagents"] = {
+				[52188] = 1,
+				[76130] = 6,
+				[76734] = 6,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122673,
+		},
+		[122674] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Delicate Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122674,
+		},
+		[122675] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Bold Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122675,
+		},
+		[122676] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Brilliant Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122676,
+		},
+		[122677] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Sparkling Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122677,
+		},
+		[122678] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Solid Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122678,
+		},
+		[122679] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Subtle Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122679,
+		},
+		[122680] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Smooth Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122680,
+		},
+		[122681] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Rigid Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122681,
+		},
+		[122682] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Quick Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122682,
+		},
+		[122683] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Precise Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122683,
+		},
+		[122684] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Fractured Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122684,
+		},
+		[122685] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Flashing Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 122685,
+		},
+		[130655] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Tense Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 130655,
+		},
+		[130656] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Assassin's Roguestone",
+			["reagents"] = {
+				[76135] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 130656,
+		},
+		[130657] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Assassin's Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 130657,
+		},
+		[130658] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Tense Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 130658,
+		},
+		[131593] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				600,
+			},
+			["name"] = "River's Heart",
+			["reagents"] = {
+				[76138] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 131593,
+		},
+		[131686] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				600,
+			},
+			["name"] = "Primordial Ruby",
+			["reagents"] = {
+				[76131] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 131686,
+		},
+		[131688] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				600,
+			},
+			["name"] = "Wild Jade",
+			["reagents"] = {
+				[76139] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 131688,
+		},
+		[131690] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				600,
+			},
+			["name"] = "Vermilion Onyx",
+			["reagents"] = {
+				[76140] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 131690,
+		},
+		[131691] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				600,
+			},
+			["name"] = "Imperial Amethyst",
+			["reagents"] = {
+				[76141] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 131691,
+		},
+		[131695] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				600,
+			},
+			["name"] = "Sun's Radiance",
+			["reagents"] = {
+				[76142] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 131695,
+		},
+		[131759] = {
+			["difficulty"] = {
+				1,
+				303,
+				605,
+				610,
+			},
+			["name"] = "Secrets of the Stone",
+			["reagents"] = {
+				[76061] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 131759,
+		},
+		[131897] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Jade Owl",
+			["reagents"] = {
+				[76061] = 3,
+				[76139] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 131897,
+		},
+		[131898] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Sapphire Cub",
+			["reagents"] = {
+				[76061] = 3,
+				[76138] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 131898,
+		},
+		[136269] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Resplendent Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 136269,
+		},
+		[136270] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Lucent Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 136270,
+		},
+		[136272] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Willful Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 136272,
+		},
+		[136273] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Tense Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 136273,
+		},
+		[136274] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Assassin's Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 136274,
+		},
+		[136275] = {
+			["difficulty"] = {
+				1,
+				288,
+				575,
+				585,
+			},
+			["name"] = "Mysterious Serpent's Eye",
+			["reagents"] = {
+				[76734] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 136275,
+		},
+		[140050] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Serpent's Heart",
+			["reagents"] = {
+				[76734] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 140050,
+		},
+		[140060] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				605,
+			},
+			["name"] = "Primal Diamond",
+			["reagents"] = {
+				[76061] = 1,
+				[76130] = 5,
+				[76133] = 5,
+				[76134] = 5,
+				[76135] = 5,
+				[76136] = 5,
+				[76137] = 5,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 140060,
+		},
+		[1216321] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Bloodthirsty Amberjewel Pendant",
+			["reagents"] = {
+				[52188] = 1,
+				[52195] = 5,
+				[52326] = 8,
+				[52329] = 4,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 1216321,
+		},
+		[1216323] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Bloodthirsty Sapphire Ring",
+			["reagents"] = {
+				[52188] = 1,
+				[52191] = 4,
+				[52328] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 1216323,
+		},
+		[1216328] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Bloodthirsty Amberjewel Band",
+			["reagents"] = {
+				[52188] = 1,
+				[52195] = 4,
+				[52326] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 1216328,
+		},
+		[1216329] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Bloodthirsty Ruby Signet",
+			["reagents"] = {
+				[52188] = 1,
+				[52190] = 4,
+				[52327] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 1216329,
+		},
+		[1216330] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Bloodthirsty Sapphire Necklace",
+			["reagents"] = {
+				[52188] = 1,
+				[52191] = 5,
+				[52325] = 4,
+				[52328] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 1216330,
+		},
+		[1216331] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				535,
+			},
+			["name"] = "Bloodthirsty Ruby Choker",
+			["reagents"] = {
+				[52188] = 1,
+				[52190] = 5,
+				[52326] = 6,
+				[52327] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 1216331,
+		},
+	}

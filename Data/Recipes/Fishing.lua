@@ -1,12 +1,172 @@
 local _, addon = ...
 
 addon.recipeDB[356] = {
-	[16082] = {
-		teaches = "Artisan",
-		requiredSkill = 200,
-	},
-	[16083] = {
-		teaches = "Expert",
-		requiredSkill = 125,
-	},
-}
+		[7620] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 7620,
+		},
+		[7731] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 7731,
+		},
+		[7732] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 7732,
+		},
+		[7738] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing Poles",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 7738,
+		},
+		[18248] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 18248,
+		},
+		[33095] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 33095,
+		},
+		[43308] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Find Fish",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 43308,
+		},
+		[51294] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 51294,
+		},
+		[62734] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 62734,
+		},
+		[88868] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 88868,
+		},
+		[110410] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 110410,
+		},
+		[131474] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 131474,
+		},
+		[131476] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 131476,
+		},
+		[131490] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Fishing",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 131490,
+		},
+	}

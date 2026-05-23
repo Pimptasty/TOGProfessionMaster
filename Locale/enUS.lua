@@ -164,6 +164,7 @@ L["MissingSrcFishing"]          = "Fishing"
 L["MissingSrcContainer"]        = "Container"
 L["MissingSrcTrainer"]          = "Trainer"
 L["MissingSrcOther"]            = "Other"
+L["MissingSrcUnknown"]          = "Unknown"
 
 -- ---------------------------------------------------------------------------
 -- Settings

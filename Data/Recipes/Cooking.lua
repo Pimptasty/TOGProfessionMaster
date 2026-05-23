@@ -1,904 +1,3743 @@
 local _, addon = ...
 
 addon.recipeDB[185] = {
-	[728] = {
-		difficulty = {
-			75,
-			115,
-			135,
-			155,
-		},
-		teaches = 733,
-		requiredSkill = 75,
-	},
-	[2679] = {
-		difficulty = {
-			0,
-			45,
-			65,
-			85,
-		},
-		teaches = 2679,
-		requiredSkill = 45,
-	},
-	[2680] = {
-		difficulty = {
-			10,
-			50,
-			70,
-			90,
-		},
-		teaches = 2680,
-		requiredSkill = 10,
-	},
-	[2681] = {
-		difficulty = {
-			0,
-			45,
-			65,
-			85,
-		},
-		teaches = 2681,
-		requiredSkill = 45,
-	},
-	[2683] = {
-		difficulty = {
-			75,
-			115,
-			135,
-			155,
-		},
-		teaches = 2683,
-		requiredSkill = 75,
-	},
-	[2684] = {
-		difficulty = {
-			50,
-			90,
-			110,
-			130,
-		},
-		teaches = 2684,
-		requiredSkill = 50,
-	},
-	[2687] = {
-		difficulty = {
-			80,
-			120,
-			140,
-			160,
-		},
-		teaches = 2687,
-		requiredSkill = 80,
-	},
-	[2697] = {
-		difficulty = {
-			50,
-			90,
-			110,
-			130,
-		},
-		teaches = 724,
-		requiredSkill = 50,
-	},
-	[2698] = {
-		difficulty = {
-			85,
-			125,
-			145,
-			165,
-		},
-		teaches = 2682,
-		requiredSkill = 85,
-	},
-	[2699] = {
-		difficulty = {
-			100,
-			135,
-			155,
-			175,
-		},
-		teaches = 1082,
-		requiredSkill = 100,
-	},
-	[2700] = {
-		difficulty = {
-			110,
-			130,
-			150,
-			170,
-		},
-		teaches = 2685,
-		requiredSkill = 110,
-	},
-	[2701] = {
-		difficulty = {
-			100,
-			140,
-			160,
-			180,
-		},
-		teaches = 1017,
-		requiredSkill = 100,
-	},
-	[2889] = {
-		difficulty = {
-			25,
-			60,
-			80,
-			100,
-		},
-		faction = "Alliance",
-		teaches = 2888,
-		requiredSkill = 25,
-	},
-	[3678] = {
-		difficulty = {
-			80,
-			120,
-			140,
-			160,
-		},
-		teaches = 3662,
-		requiredSkill = 80,
-	},
-	[3679] = {
-		difficulty = {
-			60,
-			100,
-			120,
-			140,
-		},
-		teaches = 3220,
-		requiredSkill = 60,
-	},
-	[3680] = {
-		difficulty = {
-			90,
-			130,
-			150,
-			170,
-		},
-		teaches = 3663,
-		requiredSkill = 90,
-	},
-	[3681] = {
-		difficulty = {
-			120,
-			160,
-			180,
-			200,
-		},
-		teaches = 3664,
-		requiredSkill = 120,
-	},
-	[3682] = {
-		difficulty = {
-			130,
-			170,
-			190,
-			210,
-		},
-		teaches = 3665,
-		requiredSkill = 130,
-	},
-	[3683] = {
-		difficulty = {
-			110,
-			150,
-			170,
-			190,
-		},
-		teaches = 3666,
-		requiredSkill = 110,
-	},
-	[3734] = {
-		difficulty = {
-			110,
-			150,
-			170,
-			190,
-		},
-		teaches = 3726,
-		requiredSkill = 110,
-	},
-	[3735] = {
-		difficulty = {
-			125,
-			175,
-			195,
-			215,
-		},
-		teaches = 3727,
-		requiredSkill = 125,
-	},
-	[3736] = {
-		difficulty = {
-			150,
-			190,
-			210,
-			230,
-		},
-		teaches = 3728,
-		requiredSkill = 150,
-	},
-	[3737] = {
-		difficulty = {
-			175,
-			215,
-			235,
-			255,
-		},
-		teaches = 3729,
-		requiredSkill = 175,
-	},
-	[4609] = {
-		difficulty = {
-			175,
-			215,
-			235,
-			255,
-		},
-		teaches = 4457,
-		requiredSkill = 175,
-	},
-	[5482] = {
-		difficulty = {
-			10,
-			50,
-			70,
-			90,
-		},
-		teaches = 5472,
-		requiredSkill = 10,
-	},
-	[5483] = {
-		difficulty = {
-			20,
-			60,
-			80,
-			100,
-		},
-		faction = "Horde",
-		teaches = 5473,
-		requiredSkill = 20,
-	},
-	[5484] = {
-		difficulty = {
-			35,
-			75,
-			95,
-			115,
-		},
-		teaches = 5474,
-		requiredSkill = 35,
-	},
-	[5485] = {
-		difficulty = {
-			50,
-			90,
-			110,
-			130,
-		},
-		teaches = 5476,
-		requiredSkill = 50,
-	},
-	[5486] = {
-		difficulty = {
-			50,
-			90,
-			110,
-			130,
-		},
-		teaches = 5477,
-		requiredSkill = 50,
-	},
-	[5487] = {
-		difficulty = {
-			90,
-			130,
-			150,
-			170,
-		},
-		teaches = 5478,
-		requiredSkill = 90,
-	},
-	[5488] = {
-		difficulty = {
-			100,
-			140,
-			160,
-			180,
-		},
-		teaches = 5479,
-		requiredSkill = 100,
-	},
-	[5489] = {
-		difficulty = {
-			110,
-			150,
-			170,
-			190,
-		},
-		teaches = 5480,
-		requiredSkill = 110,
-	},
-	[5525] = {
-		difficulty = {
-			50,
-			90,
-			110,
-			130,
-		},
-		teaches = 5525,
-		requiredSkill = 50,
-	},
-	[5527] = {
-		difficulty = {
-			125,
-			165,
-			185,
-			205,
-		},
-		teaches = 5527,
-		requiredSkill = 125,
-	},
-	[5528] = {
-		difficulty = {
-			90,
-			130,
-			150,
-			170,
-		},
-		teaches = 5526,
-		requiredSkill = 90,
-	},
-	[6039] = {
-		difficulty = {
-			175,
-			215,
-			235,
-			255,
-		},
-		teaches = 6038,
-		requiredSkill = 175,
-	},
-	[6325] = {
-		difficulty = {
-			1,
-			45,
-			65,
-			85,
-		},
-		teaches = 6290,
-		requiredSkill = 1,
-	},
-	[6326] = {
-		difficulty = {
-			1,
-			45,
-			65,
-			85,
-		},
-		teaches = 787,
-		requiredSkill = 1,
-	},
-	[6328] = {
-		difficulty = {
-			50,
-			90,
-			110,
-			130,
-		},
-		teaches = 4592,
-		requiredSkill = 50,
-	},
-	[6329] = {
-		difficulty = {
-			50,
-			90,
-			110,
-			130,
-		},
-		teaches = 6316,
-		requiredSkill = 50,
-	},
-	[6330] = {
-		difficulty = {
-			100,
-			140,
-			160,
-			180,
-		},
-		teaches = 4593,
-		requiredSkill = 100,
-	},
-	[6368] = {
-		difficulty = {
-			50,
-			90,
-			110,
-			130,
-		},
-		teaches = 5095,
-		requiredSkill = 50,
-	},
-	[6369] = {
-		difficulty = {
-			175,
-			190,
-			210,
-			230,
-		},
-		teaches = 4594,
-		requiredSkill = 175,
-	},
-	[6661] = {
-		difficulty = {
-			85,
-			125,
-			145,
-			165,
-		},
-		teaches = 6657,
-		requiredSkill = 85,
-	},
-	[6888] = {
-		difficulty = {
-			1,
-			45,
-			65,
-			85,
-		},
-		teaches = 6888,
-		requiredSkill = 1,
-	},
-	[6892] = {
-		difficulty = {
-			40,
-			80,
-			100,
-			120,
-		},
-		teaches = 6890,
-		requiredSkill = 40,
-	},
-	[10841] = {
-		difficulty = {
-			175,
-			215,
-			235,
-			255,
-		},
-		teaches = 10841,
-		requiredSkill = 175,
-	},
-	[12226] = {
-		difficulty = {
-			1,
-			45,
-			65,
-			85,
-		},
-		teaches = 12224,
-		requiredSkill = 1,
-	},
-	[12227] = {
-		difficulty = {
-			125,
-			165,
-			185,
-			205,
-		},
-		teaches = 12209,
-		requiredSkill = 125,
-	},
-	[12228] = {
-		difficulty = {
-			175,
-			215,
-			235,
-			255,
-		},
-		teaches = 12210,
-		requiredSkill = 175,
-	},
-	[12229] = {
-		difficulty = {
-			175,
-			215,
-			235,
-			255,
-		},
-		teaches = 13851,
-		requiredSkill = 175,
-	},
-	[12231] = {
-		difficulty = {
-			175,
-			215,
-			235,
-			255,
-		},
-		teaches = 12212,
-		requiredSkill = 175,
-	},
-	[12232] = {
-		difficulty = {
-			175,
-			215,
-			235,
-			255,
-		},
-		teaches = 12213,
-		requiredSkill = 175,
-	},
-	[12233] = {
-		difficulty = {
-			175,
-			215,
-			235,
-			255,
-		},
-		teaches = 12214,
-		requiredSkill = 175,
-	},
-	[12239] = {
-		difficulty = {
-			200,
-			240,
-			260,
-			280,
-		},
-		teaches = 12217,
-		requiredSkill = 200,
-	},
-	[12240] = {
-		difficulty = {
-			200,
-			240,
-			260,
-			280,
-		},
-		teaches = 12215,
-		requiredSkill = 200,
-	},
-	[13939] = {
-		difficulty = {
-			225,
-			265,
-			285,
-			305,
-		},
-		teaches = 6887,
-		requiredSkill = 225,
-	},
-	[13940] = {
-		difficulty = {
-			225,
-			265,
-			285,
-			305,
-		},
-		teaches = 13927,
-		requiredSkill = 225,
-	},
-	[13941] = {
-		difficulty = {
-			225,
-			265,
-			285,
-			305,
-		},
-		teaches = 13930,
-		requiredSkill = 225,
-	},
-	[13942] = {
-		difficulty = {
-			240,
-			280,
-			300,
-			320,
-		},
-		teaches = 13928,
-		requiredSkill = 240,
-	},
-	[13943] = {
-		difficulty = {
-			240,
-			280,
-			300,
-			320,
-		},
-		teaches = 13929,
-		requiredSkill = 240,
-	},
-	[13945] = {
-		difficulty = {
-			250,
-			290,
-			310,
-			330,
-		},
-		teaches = 13931,
-		requiredSkill = 250,
-	},
-	[13946] = {
-		difficulty = {
-			250,
-			290,
-			310,
-			330,
-		},
-		teaches = 13932,
-		requiredSkill = 250,
-	},
-	[13947] = {
-		difficulty = {
-			275,
-			315,
-			335,
-			355,
-		},
-		teaches = 13933,
-		requiredSkill = 275,
-	},
-	[13948] = {
-		difficulty = {
-			275,
-			315,
-			335,
-			355,
-		},
-		teaches = 13934,
-		requiredSkill = 275,
-	},
-	[13949] = {
-		difficulty = {
-			275,
-			315,
-			335,
-			355,
-		},
-		teaches = 13935,
-		requiredSkill = 275,
-	},
-	[16072] = {
-		teaches = "Expert",
-		requiredSkill = 125,
-	},
-	[16073] = {
-		teaches = "Artisan",
-		requiredSkill = 200,
-	},
-	[16110] = {
-		difficulty = {
-			225,
-			265,
-			285,
-			305,
-		},
-		teaches = 12218,
-		requiredSkill = 225,
-	},
-	[16111] = {
-		difficulty = {
-			225,
-			265,
-			285,
-			305,
-		},
-		teaches = 12216,
-		requiredSkill = 225,
-	},
-	[16767] = {
-		difficulty = {
-			225,
-			265,
-			285,
-			305,
-		},
-		teaches = 16766,
-		requiredSkill = 225,
-	},
-	[17062] = {
-		difficulty = {
-			175,
-			215,
-			235,
-			255,
-		},
-		teaches = 8364,
-		requiredSkill = 175,
-	},
-	[17200] = {
-		difficulty = {
-			1,
-			45,
-			65,
-			85,
-		},
-		teaches = 17197,
-		requiredSkill = 1,
-	},
-	[17201] = {
-		difficulty = {
-			35,
-			75,
-			95,
-			115,
-		},
-		teaches = 17198,
-		requiredSkill = 35,
-	},
-	[17222] = {
-		difficulty = {
-			200,
-			240,
-			260,
-			280,
-		},
-		teaches = 17222,
-		requiredSkill = 200,
-	},
-	[18046] = {
-		difficulty = {
-			225,
-			265,
-			285,
-			305,
-		},
-		teaches = 18045,
-		requiredSkill = 225,
-	},
-	[18160] = {
-		classes = {
-			"ROGUE",
-		},
-		difficulty = {
-			60,
-			100,
-			120,
-			140,
-		},
-		teaches = 7676,
-		requiredSkill = 60,
-	},
-	[18267] = {
-		difficulty = {
-			275,
-			315,
-			335,
-			355,
-		},
-		teaches = 18254,
-		requiredSkill = 275,
-	},
-	[20075] = {
-		difficulty = {
-			150,
-			160,
-			180,
-			200,
-		},
-		teaches = 20074,
-		requiredSkill = 150,
-	},
-	[20452] = {
-		difficulty = {
-			285,
-			325,
-			345,
-			365,
-		},
-		teaches = 20452,
-		requiredSkill = 285,
-	},
-	[21025] = {
-		difficulty = {
-			300,
-			325,
-			345,
-			365,
-		},
-		teaches = 21023,
-		requiredSkill = 300,
-	},
-	[21099] = {
-		difficulty = {
-			80,
-			120,
-			140,
-			160,
-		},
-		teaches = 21072,
-		requiredSkill = 80,
-	},
-	[21219] = {
-		difficulty = {
-			175,
-			215,
-			235,
-			255,
-		},
-		teaches = 21217,
-		requiredSkill = 175,
-	},
-	[232437] = {
-		difficulty = {
-			0,
-			325,
-			345,
-			365,
-		},
-		teaches = 232436,
-		season = "SoD",
-		requiredSkill = 300,
-	},
-	[232443] = {
-		difficulty = {
-			0,
-			325,
-			345,
-			365,
-		},
-		teaches = 232438,
-		season = "SoD",
-		requiredSkill = 300,
-	},
-	[238637] = {
-		difficulty = {
-			0,
-			280,
-			290,
-			300,
-		},
-		teaches = 238637,
-		season = "SoD",
-		requiredSkill = 280,
-	},
-	[238638] = {
-		difficulty = {
-			0,
-			280,
-			290,
-			300,
-		},
-		teaches = 238638,
-		season = "SoD",
-		requiredSkill = 280,
-	},
-	[238639] = {
-		difficulty = {
-			0,
-			280,
-			290,
-			300,
-		},
-		teaches = 238639,
-		season = "SoD",
-		requiredSkill = 280,
-	},
-	[238641] = {
-		difficulty = {
-			0,
-			290,
-			300,
-			310,
-		},
-		teaches = 238641,
-		season = "SoD",
-		requiredSkill = 290,
-	},
-	[238642] = {
-		difficulty = {
-			0,
-			290,
-			300,
-			310,
-		},
-		teaches = 238642,
-		season = "SoD",
-		requiredSkill = 290,
-	},
-}
+		[818] = {
+			["difficulty"] = {
+				1,
+				13,
+				25,
+				75,
+			},
+			["name"] = "Cooking Fire",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 818,
+		},
+		[2538] = {
+			["difficulty"] = {
+				1,
+				23,
+				45,
+				85,
+			},
+			["name"] = "Charred Wolf Meat",
+			["reagents"] = {
+				[2672] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 2538,
+		},
+		[2539] = {
+			["difficulty"] = {
+				30,
+				40,
+				50,
+				90,
+			},
+			["name"] = "Spiced Wolf Meat",
+			["reagents"] = {
+				[2672] = 1,
+			},
+			["requiredSkill"] = 30,
+			["teaches"] = 2539,
+		},
+		[2540] = {
+			["difficulty"] = {
+				1,
+				23,
+				45,
+				85,
+			},
+			["name"] = "Roasted Boar Meat",
+			["reagents"] = {
+				[769] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 2540,
+		},
+		[2541] = {
+			["difficulty"] = {
+				65,
+				77,
+				90,
+				130,
+			},
+			["name"] = "Coyote Steak",
+			["reagents"] = {
+				[2673] = 1,
+			},
+			["requiredSkill"] = 65,
+			["teaches"] = 2541,
+		},
+		[2542] = {
+			["difficulty"] = {
+				65,
+				77,
+				90,
+				130,
+			},
+			["name"] = "Goretusk Liver Pie",
+			["reagents"] = {
+				[723] = 1,
+			},
+			["requiredSkill"] = 65,
+			["teaches"] = 2542,
+		},
+		[2543] = {
+			["difficulty"] = {
+				75,
+				95,
+				115,
+				155,
+			},
+			["name"] = "Westfall Stew",
+			["reagents"] = {
+				[159] = 1,
+				[769] = 1,
+			},
+			["requiredSkill"] = 75,
+			["teaches"] = 2543,
+		},
+		[2544] = {
+			["difficulty"] = {
+				75,
+				95,
+				115,
+				155,
+			},
+			["name"] = "Crab Cake",
+			["reagents"] = {
+				[2674] = 1,
+			},
+			["requiredSkill"] = 75,
+			["teaches"] = 2544,
+		},
+		[2545] = {
+			["difficulty"] = {
+				85,
+				105,
+				125,
+				165,
+			},
+			["name"] = "Cooked Crab Claw",
+			["reagents"] = {
+				[2675] = 1,
+			},
+			["requiredSkill"] = 85,
+			["teaches"] = 2545,
+		},
+		[2546] = {
+			["difficulty"] = {
+				110,
+				115,
+				120,
+				160,
+			},
+			["name"] = "Dry Pork Ribs",
+			["reagents"] = {
+				[2677] = 1,
+			},
+			["requiredSkill"] = 110,
+			["teaches"] = 2546,
+		},
+		[2547] = {
+			["difficulty"] = {
+				125,
+				130,
+				135,
+				175,
+			},
+			["name"] = "Redridge Goulash",
+			["reagents"] = {
+				[1080] = 1,
+			},
+			["requiredSkill"] = 125,
+			["teaches"] = 2547,
+		},
+		[2548] = {
+			["difficulty"] = {
+				135,
+				135,
+				130,
+				170,
+			},
+			["name"] = "Succulent Pork Ribs",
+			["reagents"] = {
+				[2677] = 2,
+			},
+			["requiredSkill"] = 135,
+			["teaches"] = 2548,
+		},
+		[2549] = {
+			["difficulty"] = {
+				135,
+				137,
+				140,
+				180,
+			},
+			["name"] = "Seasoned Wolf Kabob",
+			["reagents"] = {
+				[1015] = 2,
+			},
+			["requiredSkill"] = 135,
+			["teaches"] = 2549,
+		},
+		[2550] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Cooking",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 2550,
+		},
+		[2795] = {
+			["difficulty"] = {
+				40,
+				50,
+				60,
+				100,
+			},
+			["name"] = "Beer Basted Boar Ribs",
+			["reagents"] = {
+				[2886] = 1,
+			},
+			["requiredSkill"] = 40,
+			["teaches"] = 2795,
+		},
+		[3102] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Cooking",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 3102,
+		},
+		[3370] = {
+			["difficulty"] = {
+				1,
+				60,
+				120,
+				160,
+			},
+			["name"] = "Crocolisk Steak",
+			["reagents"] = {
+				[2924] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 3370,
+		},
+		[3371] = {
+			["difficulty"] = {
+				1,
+				50,
+				100,
+				140,
+			},
+			["name"] = "Blood Sausage",
+			["reagents"] = {
+				[3173] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 3371,
+		},
+		[3372] = {
+			["difficulty"] = {
+				1,
+				65,
+				130,
+				170,
+			},
+			["name"] = "Murloc Fin Soup",
+			["reagents"] = {
+				[1468] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 3372,
+		},
+		[3373] = {
+			["difficulty"] = {
+				1,
+				80,
+				160,
+				200,
+			},
+			["name"] = "Crocolisk Gumbo",
+			["reagents"] = {
+				[3667] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 3373,
+		},
+		[3376] = {
+			["difficulty"] = {
+				1,
+				85,
+				170,
+				210,
+			},
+			["name"] = "Curiously Tasty Omelet",
+			["reagents"] = {
+				[3685] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 3376,
+		},
+		[3377] = {
+			["difficulty"] = {
+				1,
+				75,
+				150,
+				190,
+			},
+			["name"] = "Gooey Spider Cake",
+			["reagents"] = {
+				[2251] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 3377,
+		},
+		[3397] = {
+			["difficulty"] = {
+				1,
+				75,
+				150,
+				190,
+			},
+			["name"] = "Big Bear Steak",
+			["reagents"] = {
+				[3730] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 3397,
+		},
+		[3398] = {
+			["difficulty"] = {
+				1,
+				88,
+				175,
+				215,
+			},
+			["name"] = "Hot Lion Chops",
+			["reagents"] = {
+				[3731] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 3398,
+		},
+		[3399] = {
+			["difficulty"] = {
+				1,
+				95,
+				190,
+				230,
+			},
+			["name"] = "Tasty Lion Steak",
+			["reagents"] = {
+				[3731] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 3399,
+		},
+		[3400] = {
+			["difficulty"] = {
+				1,
+				108,
+				215,
+				255,
+			},
+			["name"] = "Soothing Turtle Bisque",
+			["reagents"] = {
+				[3712] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 3400,
+		},
+		[3413] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Cooking",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 3413,
+		},
+		[4094] = {
+			["difficulty"] = {
+				1,
+				108,
+				215,
+				255,
+			},
+			["name"] = "Barbecued Buzzard Wing",
+			["reagents"] = {
+				[3404] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 4094,
+		},
+		[6412] = {
+			["difficulty"] = {
+				1,
+				25,
+				50,
+				90,
+			},
+			["name"] = "Kaldorei Spider Kabob",
+			["reagents"] = {
+				[5465] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 6412,
+		},
+		[6413] = {
+			["difficulty"] = {
+				1,
+				30,
+				60,
+				100,
+			},
+			["name"] = "Scorpid Surprise",
+			["reagents"] = {
+				[5466] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 6413,
+		},
+		[6414] = {
+			["difficulty"] = {
+				1,
+				38,
+				75,
+				115,
+			},
+			["name"] = "Roasted Kodo Meat",
+			["reagents"] = {
+				[5467] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 6414,
+		},
+		[6415] = {
+			["difficulty"] = {
+				1,
+				45,
+				90,
+				130,
+			},
+			["name"] = "Fillet of Frenzy",
+			["reagents"] = {
+				[5468] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 6415,
+		},
+		[6416] = {
+			["difficulty"] = {
+				1,
+				45,
+				90,
+				130,
+			},
+			["name"] = "Strider Stew",
+			["reagents"] = {
+				[5469] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 6416,
+		},
+		[6417] = {
+			["difficulty"] = {
+				1,
+				65,
+				130,
+				170,
+			},
+			["name"] = "Dig Rat Stew",
+			["reagents"] = {
+				[5051] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 6417,
+		},
+		[6418] = {
+			["difficulty"] = {
+				1,
+				70,
+				140,
+				180,
+			},
+			["name"] = "Crispy Lizard Tail",
+			["reagents"] = {
+				[5470] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 6418,
+		},
+		[6419] = {
+			["difficulty"] = {
+				1,
+				75,
+				150,
+				190,
+			},
+			["name"] = "Lean Venison",
+			["reagents"] = {
+				[5471] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 6419,
+		},
+		[6499] = {
+			["difficulty"] = {
+				1,
+				45,
+				90,
+				130,
+			},
+			["name"] = "Boiled Clams",
+			["reagents"] = {
+				[159] = 1,
+				[5503] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 6499,
+		},
+		[6500] = {
+			["difficulty"] = {
+				1,
+				83,
+				165,
+				205,
+			},
+			["name"] = "Goblin Deviled Clams",
+			["reagents"] = {
+				[5504] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 6500,
+		},
+		[6501] = {
+			["difficulty"] = {
+				1,
+				65,
+				130,
+				170,
+			},
+			["name"] = "Clam Chowder",
+			["reagents"] = {
+				[1179] = 1,
+				[5503] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 6501,
+		},
+		[7213] = {
+			["difficulty"] = {
+				1,
+				108,
+				215,
+				255,
+			},
+			["name"] = "Giant Clam Scorcho",
+			["reagents"] = {
+				[4655] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 7213,
+		},
+		[7751] = {
+			["difficulty"] = {
+				1,
+				23,
+				45,
+				85,
+			},
+			["name"] = "Brilliant Smallfish",
+			["reagents"] = {
+				[6291] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 7751,
+		},
+		[7752] = {
+			["difficulty"] = {
+				1,
+				23,
+				45,
+				85,
+			},
+			["name"] = "Slitherskin Mackerel",
+			["reagents"] = {
+				[6303] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 7752,
+		},
+		[7753] = {
+			["difficulty"] = {
+				1,
+				45,
+				90,
+				130,
+			},
+			["name"] = "Longjaw Mud Snapper",
+			["reagents"] = {
+				[6289] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 7753,
+		},
+		[7754] = {
+			["difficulty"] = {
+				1,
+				45,
+				90,
+				130,
+			},
+			["name"] = "Loch Frenzy Delight",
+			["reagents"] = {
+				[6317] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 7754,
+		},
+		[7755] = {
+			["difficulty"] = {
+				1,
+				70,
+				140,
+				180,
+			},
+			["name"] = "Bristle Whisker Catfish",
+			["reagents"] = {
+				[6308] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 7755,
+		},
+		[7827] = {
+			["difficulty"] = {
+				1,
+				45,
+				90,
+				130,
+			},
+			["name"] = "Rainbow Fin Albacore",
+			["reagents"] = {
+				[6361] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 7827,
+		},
+		[7828] = {
+			["difficulty"] = {
+				1,
+				95,
+				190,
+				230,
+			},
+			["name"] = "Rockscale Cod",
+			["reagents"] = {
+				[6362] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 7828,
+		},
+		[8238] = {
+			["difficulty"] = {
+				1,
+				63,
+				125,
+				165,
+			},
+			["name"] = "Savory Deviate Delight",
+			["reagents"] = {
+				[6522] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 8238,
+		},
+		[8604] = {
+			["difficulty"] = {
+				1,
+				23,
+				45,
+				85,
+			},
+			["name"] = "Herb Baked Egg",
+			["reagents"] = {
+				[6889] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 8604,
+		},
+		[8607] = {
+			["difficulty"] = {
+				1,
+				40,
+				80,
+				120,
+			},
+			["name"] = "Smoked Bear Meat",
+			["reagents"] = {
+				[3173] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 8607,
+		},
+		[9513] = {
+			["difficulty"] = {
+				1,
+				50,
+				100,
+				140,
+			},
+			["name"] = "Thistle Tea",
+			["reagents"] = {
+				[159] = 1,
+				[2452] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 9513,
+		},
+		[13028] = {
+			["difficulty"] = {
+				1,
+				88,
+				175,
+				205,
+			},
+			["name"] = "Goldthorn Tea",
+			["reagents"] = {
+				[159] = 1,
+				[3821] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 13028,
+		},
+		[15853] = {
+			["difficulty"] = {
+				1,
+				83,
+				165,
+				205,
+			},
+			["name"] = "Lean Wolf Steak",
+			["reagents"] = {
+				[1015] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 15853,
+		},
+		[15855] = {
+			["difficulty"] = {
+				1,
+				108,
+				215,
+				255,
+			},
+			["name"] = "Roast Raptor",
+			["reagents"] = {
+				[12184] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 15855,
+		},
+		[15856] = {
+			["difficulty"] = {
+				1,
+				108,
+				215,
+				255,
+			},
+			["name"] = "Hot Wolf Ribs",
+			["reagents"] = {
+				[12203] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 15856,
+		},
+		[15861] = {
+			["difficulty"] = {
+				1,
+				108,
+				215,
+				255,
+			},
+			["name"] = "Jungle Stew",
+			["reagents"] = {
+				[159] = 1,
+				[12202] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 15861,
+		},
+		[15863] = {
+			["difficulty"] = {
+				1,
+				108,
+				215,
+				255,
+			},
+			["name"] = "Carrion Surprise",
+			["reagents"] = {
+				[12037] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 15863,
+		},
+		[15865] = {
+			["difficulty"] = {
+				1,
+				108,
+				215,
+				255,
+			},
+			["name"] = "Mystery Stew",
+			["reagents"] = {
+				[2596] = 1,
+				[12037] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 15865,
+		},
+		[15906] = {
+			["difficulty"] = {
+				1,
+				113,
+				225,
+				250,
+			},
+			["name"] = "Dragonbreath Chili",
+			["reagents"] = {
+				[4402] = 1,
+				[12037] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 15906,
+		},
+		[15910] = {
+			["difficulty"] = {
+				1,
+				113,
+				225,
+				250,
+			},
+			["name"] = "Heavy Kodo Stew",
+			["reagents"] = {
+				[12204] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 15910,
+		},
+		[15915] = {
+			["difficulty"] = {
+				1,
+				125,
+				250,
+				275,
+			},
+			["name"] = "Spiced Chili Crab",
+			["reagents"] = {
+				[12206] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 15915,
+		},
+		[15933] = {
+			["difficulty"] = {
+				1,
+				125,
+				250,
+				275,
+			},
+			["name"] = "Monster Omelet",
+			["reagents"] = {
+				[12207] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 15933,
+		},
+		[15935] = {
+			["difficulty"] = {
+				1,
+				23,
+				45,
+				85,
+			},
+			["name"] = "Crispy Bat Wing",
+			["reagents"] = {
+				[12223] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 15935,
+		},
+		[18238] = {
+			["difficulty"] = {
+				1,
+				125,
+				250,
+				275,
+			},
+			["name"] = "Spotted Yellowtail",
+			["reagents"] = {
+				[4603] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 18238,
+		},
+		[18239] = {
+			["difficulty"] = {
+				1,
+				125,
+				250,
+				275,
+			},
+			["name"] = "Cooked Glossy Mightfish",
+			["reagents"] = {
+				[13754] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 18239,
+		},
+		[18240] = {
+			["difficulty"] = {
+				1,
+				133,
+				265,
+				290,
+			},
+			["name"] = "Grilled Squid",
+			["reagents"] = {
+				[13755] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 18240,
+		},
+		[18241] = {
+			["difficulty"] = {
+				1,
+				125,
+				250,
+				275,
+			},
+			["name"] = "Filet of Redgill",
+			["reagents"] = {
+				[13758] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 18241,
+		},
+		[18242] = {
+			["difficulty"] = {
+				1,
+				133,
+				265,
+				290,
+			},
+			["name"] = "Hot Smoked Bass",
+			["reagents"] = {
+				[13756] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 18242,
+		},
+		[18243] = {
+			["difficulty"] = {
+				1,
+				138,
+				275,
+				295,
+			},
+			["name"] = "Nightfin Soup",
+			["reagents"] = {
+				[159] = 1,
+				[13759] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 18243,
+		},
+		[18244] = {
+			["difficulty"] = {
+				1,
+				138,
+				275,
+				295,
+			},
+			["name"] = "Poached Sunscale Salmon",
+			["reagents"] = {
+				[13760] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 18244,
+		},
+		[18245] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				325,
+			},
+			["name"] = "Lobster Stew",
+			["reagents"] = {
+				[159] = 1,
+				[13888] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 18245,
+		},
+		[18246] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				325,
+			},
+			["name"] = "Mightfish Steak",
+			["reagents"] = {
+				[13893] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 18246,
+		},
+		[18247] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				325,
+			},
+			["name"] = "Baked Salmon",
+			["reagents"] = {
+				[13889] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 18247,
+		},
+		[18260] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Cooking",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 18260,
+		},
+		[20626] = {
+			["difficulty"] = {
+				1,
+				125,
+				250,
+				275,
+			},
+			["name"] = "Undermine Clam Chowder",
+			["reagents"] = {
+				[7974] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 20626,
+		},
+		[20916] = {
+			["difficulty"] = {
+				1,
+				108,
+				215,
+				255,
+			},
+			["name"] = "Mithril Head Trout",
+			["reagents"] = {
+				[8365] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 20916,
+		},
+		[21143] = {
+			["difficulty"] = {
+				1,
+				23,
+				45,
+				85,
+			},
+			["name"] = "Gingerbread Cookie",
+			["reagents"] = {
+				[6889] = 1,
+				[17194] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 21143,
+		},
+		[21144] = {
+			["difficulty"] = {
+				1,
+				38,
+				75,
+				115,
+			},
+			["name"] = "Winter Veil Egg Nog",
+			["reagents"] = {
+				[1179] = 1,
+				[6889] = 1,
+				[17194] = 1,
+				[17196] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 21144,
+		},
+		[21175] = {
+			["difficulty"] = {
+				1,
+				113,
+				225,
+				250,
+			},
+			["name"] = "Spider Sausage",
+			["reagents"] = {
+				[12205] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 21175,
+		},
+		[22480] = {
+			["difficulty"] = {
+				1,
+				125,
+				250,
+				275,
+			},
+			["name"] = "Tender Wolf Steak",
+			["reagents"] = {
+				[12208] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 22480,
+		},
+		[22761] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				325,
+			},
+			["name"] = "Runn Tum Tuber Surprise",
+			["reagents"] = {
+				[18255] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 22761,
+		},
+		[24418] = {
+			["difficulty"] = {
+				1,
+				80,
+				160,
+				200,
+			},
+			["name"] = "Heavy Crocolisk Stew",
+			["reagents"] = {
+				[3667] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 24418,
+		},
+		[24801] = {
+			["difficulty"] = {
+				1,
+				155,
+				310,
+				335,
+			},
+			["name"] = "Smoked Desert Dumplings",
+			["reagents"] = {
+				[20424] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 24801,
+		},
+		[25659] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				350,
+			},
+			["name"] = "Dirge's Kickin' Chimaerok Chops",
+			["reagents"] = {
+				[8150] = 1,
+				[9061] = 1,
+				[21024] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25659,
+		},
+		[25704] = {
+			["difficulty"] = {
+				1,
+				60,
+				120,
+				160,
+			},
+			["name"] = "Smoked Sagefish",
+			["reagents"] = {
+				[21071] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25704,
+		},
+		[25954] = {
+			["difficulty"] = {
+				1,
+				108,
+				215,
+				255,
+			},
+			["name"] = "Sagefish Delight",
+			["reagents"] = {
+				[21153] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 25954,
+		},
+		[28267] = {
+			["difficulty"] = {
+				1,
+				50,
+				100,
+				140,
+			},
+			["name"] = "Crunchy Spider Surprise",
+			["reagents"] = {
+				[22644] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 28267,
+		},
+		[30047] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				365,
+			},
+			["name"] = "Crystal Throat Lozenge",
+			["reagents"] = {
+				[8150] = 1,
+				[23567] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 30047,
+		},
+		[33276] = {
+			["difficulty"] = {
+				1,
+				23,
+				45,
+				85,
+			},
+			["name"] = "Lynx Steak",
+			["reagents"] = {
+				[27668] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33276,
+		},
+		[33277] = {
+			["difficulty"] = {
+				1,
+				23,
+				45,
+				85,
+			},
+			["name"] = "Roasted Moongraze Tenderloin",
+			["reagents"] = {
+				[23676] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33277,
+		},
+		[33278] = {
+			["difficulty"] = {
+				1,
+				45,
+				90,
+				130,
+			},
+			["name"] = "Bat Bites",
+			["reagents"] = {
+				[27669] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33278,
+		},
+		[33279] = {
+			["difficulty"] = {
+				1,
+				160,
+				320,
+				340,
+			},
+			["name"] = "Buzzard Bites",
+			["reagents"] = {
+				[27671] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33279,
+		},
+		[33284] = {
+			["difficulty"] = {
+				1,
+				160,
+				320,
+				340,
+			},
+			["name"] = "Ravager Dog",
+			["reagents"] = {
+				[27674] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33284,
+		},
+		[33285] = {
+			["difficulty"] = {
+				1,
+				165,
+				330,
+				350,
+			},
+			["name"] = "Sporeling Snack",
+			["reagents"] = {
+				[27676] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33285,
+		},
+		[33286] = {
+			["difficulty"] = {
+				1,
+				168,
+				335,
+				355,
+			},
+			["name"] = "Blackened Basilisk",
+			["reagents"] = {
+				[27677] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33286,
+		},
+		[33287] = {
+			["difficulty"] = {
+				1,
+				173,
+				345,
+				365,
+			},
+			["name"] = "Roasted Clefthoof",
+			["reagents"] = {
+				[27678] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33287,
+		},
+		[33288] = {
+			["difficulty"] = {
+				1,
+				173,
+				345,
+				365,
+			},
+			["name"] = "Warp Burger",
+			["reagents"] = {
+				[27681] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33288,
+		},
+		[33289] = {
+			["difficulty"] = {
+				1,
+				173,
+				345,
+				365,
+			},
+			["name"] = "Talbuk Steak",
+			["reagents"] = {
+				[27682] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33289,
+		},
+		[33290] = {
+			["difficulty"] = {
+				1,
+				160,
+				320,
+				340,
+			},
+			["name"] = "Blackened Trout",
+			["reagents"] = {
+				[27422] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33290,
+		},
+		[33291] = {
+			["difficulty"] = {
+				1,
+				160,
+				320,
+				340,
+			},
+			["name"] = "Feltail Delight",
+			["reagents"] = {
+				[27425] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33291,
+		},
+		[33292] = {
+			["difficulty"] = {
+				1,
+				165,
+				330,
+				350,
+			},
+			["name"] = "Blackened Sporefish",
+			["reagents"] = {
+				[27429] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33292,
+		},
+		[33293] = {
+			["difficulty"] = {
+				1,
+				170,
+				340,
+				360,
+			},
+			["name"] = "Grilled Mudfish",
+			["reagents"] = {
+				[27435] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33293,
+		},
+		[33294] = {
+			["difficulty"] = {
+				1,
+				170,
+				340,
+				360,
+			},
+			["name"] = "Poached Bluefish",
+			["reagents"] = {
+				[27437] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33294,
+		},
+		[33295] = {
+			["difficulty"] = {
+				1,
+				173,
+				345,
+				365,
+			},
+			["name"] = "Golden Fish Sticks",
+			["reagents"] = {
+				[27438] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33295,
+		},
+		[33296] = {
+			["difficulty"] = {
+				1,
+				185,
+				370,
+				380,
+			},
+			["name"] = "Spicy Crawdad",
+			["reagents"] = {
+				[27439] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 33296,
+		},
+		[33359] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Cooking",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 33359,
+		},
+		[36210] = {
+			["difficulty"] = {
+				1,
+				160,
+				320,
+				340,
+			},
+			["name"] = "Clam Bar",
+			["reagents"] = {
+				[24477] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 36210,
+		},
+		[37836] = {
+			["difficulty"] = {
+				1,
+				15,
+				30,
+				40,
+			},
+			["name"] = "Spice Bread",
+			["reagents"] = {
+				[2678] = 1,
+				[30817] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 37836,
+		},
+		[38867] = {
+			["difficulty"] = {
+				1,
+				178,
+				355,
+				375,
+			},
+			["name"] = "Mok'Nathal Shortribs",
+			["reagents"] = {
+				[31670] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 38867,
+		},
+		[38868] = {
+			["difficulty"] = {
+				1,
+				178,
+				355,
+				375,
+			},
+			["name"] = "Crunchy Serpent",
+			["reagents"] = {
+				[31671] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 38868,
+		},
+		[42296] = {
+			["difficulty"] = {
+				1,
+				168,
+				335,
+				355,
+			},
+			["name"] = "Stewed Trout",
+			["reagents"] = {
+				[27422] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 42296,
+		},
+		[42302] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Fisherman's Feast",
+			["reagents"] = {
+				[27515] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 42302,
+		},
+		[42305] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				385,
+			},
+			["name"] = "Hot Buttered Trout",
+			["reagents"] = {
+				[27516] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 42305,
+		},
+		[43707] = {
+			["difficulty"] = {
+				1,
+				168,
+				335,
+				355,
+			},
+			["name"] = "Skullfish Soup",
+			["reagents"] = {
+				[33824] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 43707,
+		},
+		[43758] = {
+			["difficulty"] = {
+				1,
+				160,
+				320,
+				340,
+			},
+			["name"] = "Stormchops",
+			["reagents"] = {
+				[13757] = 1,
+				[27678] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 43758,
+		},
+		[43761] = {
+			["difficulty"] = {
+				1,
+				160,
+				320,
+				340,
+			},
+			["name"] = "Broiled Bloodfin",
+			["reagents"] = {
+				[33823] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 43761,
+		},
+		[43765] = {
+			["difficulty"] = {
+				1,
+				168,
+				335,
+				355,
+			},
+			["name"] = "Spicy Hot Talbuk",
+			["reagents"] = {
+				[27682] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 43765,
+		},
+		[43772] = {
+			["difficulty"] = {
+				1,
+				173,
+				345,
+				365,
+			},
+			["name"] = "Kibler's Bits",
+			["reagents"] = {
+				[27671] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 43772,
+		},
+		[43779] = {
+			["difficulty"] = {
+				1,
+				25,
+				50,
+				75,
+			},
+			["name"] = "Delicious Chocolate Cake",
+			["reagents"] = {
+				[785] = 3,
+				[1179] = 4,
+				[2593] = 1,
+				[2678] = 4,
+				[6889] = 8,
+				[30817] = 8,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 43779,
+		},
+		[45022] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				325,
+			},
+			["name"] = "Hot Apple Cider",
+			["reagents"] = {
+				[17194] = 1,
+				[17196] = 1,
+				[34412] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45022,
+		},
+		[45549] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				415,
+			},
+			["name"] = "Mammoth Meal",
+			["reagents"] = {
+				[34736] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45549,
+		},
+		[45550] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				415,
+			},
+			["name"] = "Shoveltusk Steak",
+			["reagents"] = {
+				[43009] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45550,
+		},
+		[45551] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				415,
+			},
+			["name"] = "Worm Delight",
+			["reagents"] = {
+				[43010] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45551,
+		},
+		[45552] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				415,
+			},
+			["name"] = "Roasted Worg",
+			["reagents"] = {
+				[43011] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45552,
+		},
+		[45553] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				415,
+			},
+			["name"] = "Rhino Dogs",
+			["reagents"] = {
+				[43012] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45553,
+		},
+		[45554] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				425,
+			},
+			["name"] = "Great Feast",
+			["reagents"] = {
+				[34736] = 1,
+				[43009] = 1,
+				[43010] = 1,
+				[43013] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45554,
+		},
+		[45555] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Mega Mammoth Meal",
+			["reagents"] = {
+				[34736] = 2,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45555,
+		},
+		[45556] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Tender Shoveltusk Steak",
+			["reagents"] = {
+				[43007] = 1,
+				[43009] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45556,
+		},
+		[45557] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Spiced Worm Burger",
+			["reagents"] = {
+				[43007] = 1,
+				[43010] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45557,
+		},
+		[45558] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Very Burnt Worg",
+			["reagents"] = {
+				[43007] = 1,
+				[43011] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45558,
+		},
+		[45559] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Mighty Rhino Dogs",
+			["reagents"] = {
+				[43007] = 1,
+				[43012] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45559,
+		},
+		[45560] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Smoked Rockfin",
+			["reagents"] = {
+				[41803] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45560,
+		},
+		[45561] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Grilled Bonescale",
+			["reagents"] = {
+				[41808] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45561,
+		},
+		[45562] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Sauteed Goby",
+			["reagents"] = {
+				[41812] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45562,
+		},
+		[45563] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				415,
+			},
+			["name"] = "Grilled Sculpin",
+			["reagents"] = {
+				[41806] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45563,
+		},
+		[45564] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				415,
+			},
+			["name"] = "Smoked Salmon",
+			["reagents"] = {
+				[41809] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45564,
+		},
+		[45565] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				415,
+			},
+			["name"] = "Poached Nettlefish",
+			["reagents"] = {
+				[41813] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45565,
+		},
+		[45566] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				415,
+			},
+			["name"] = "Pickled Fangtooth",
+			["reagents"] = {
+				[41810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45566,
+		},
+		[45567] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Poached Northern Sculpin",
+			["reagents"] = {
+				[41806] = 1,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45567,
+		},
+		[45568] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Firecracker Salmon",
+			["reagents"] = {
+				[41809] = 1,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45568,
+		},
+		[45569] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				415,
+			},
+			["name"] = "Baked Manta Ray",
+			["reagents"] = {
+				[41802] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45569,
+		},
+		[45570] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Imperial Manta Steak",
+			["reagents"] = {
+				[41802] = 1,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45570,
+		},
+		[45571] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Spicy Blue Nettlefish",
+			["reagents"] = {
+				[41813] = 1,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45571,
+		},
+		[45695] = {
+			["difficulty"] = {
+				1,
+				50,
+				100,
+				110,
+			},
+			["name"] = "Captain Rumsey's Lager",
+			["reagents"] = {
+				[2594] = 1,
+				[2596] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 45695,
+		},
+		[46684] = {
+			["difficulty"] = {
+				1,
+				138,
+				275,
+				295,
+			},
+			["name"] = "Charred Bear Kabobs",
+			["reagents"] = {
+				[35562] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46684,
+		},
+		[46688] = {
+			["difficulty"] = {
+				1,
+				138,
+				275,
+				295,
+			},
+			["name"] = "Juicy Bear Burger",
+			["reagents"] = {
+				[35562] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 46688,
+		},
+		[51296] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Cooking",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 51296,
+		},
+		[53056] = {
+			["difficulty"] = {
+				1,
+				188,
+				375,
+				400,
+			},
+			["name"] = "Kungaloosh",
+			["reagents"] = {
+				[35948] = 1,
+				[35949] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 53056,
+		},
+		[57421] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				380,
+			},
+			["name"] = "Northern Stew",
+			["reagents"] = {
+				[43013] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57421,
+		},
+		[57423] = {
+			["difficulty"] = {
+				1,
+				228,
+				455,
+				465,
+			},
+			["name"] = "Fish Feast",
+			["reagents"] = {
+				[41806] = 2,
+				[41809] = 2,
+				[41813] = 2,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57423,
+		},
+		[57433] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Spicy Fried Herring",
+			["reagents"] = {
+				[41810] = 1,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57433,
+		},
+		[57434] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Rhinolicious Wormsteak",
+			["reagents"] = {
+				[43007] = 1,
+				[43010] = 1,
+				[43012] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57434,
+		},
+		[57435] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Critter Bites",
+			["reagents"] = {
+				[43007] = 1,
+				[43013] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57435,
+		},
+		[57436] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Hearty Rhino",
+			["reagents"] = {
+				[43007] = 1,
+				[43012] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57436,
+		},
+		[57437] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Snapper Extreme",
+			["reagents"] = {
+				[41808] = 3,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57437,
+		},
+		[57438] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Blackened Worg Steak",
+			["reagents"] = {
+				[43007] = 1,
+				[43011] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57438,
+		},
+		[57439] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Cuttlesteak",
+			["reagents"] = {
+				[41801] = 1,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57439,
+		},
+		[57440] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Spiced Mammoth Treats",
+			["reagents"] = {
+				[34736] = 1,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57440,
+		},
+		[57441] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Blackened Dragonfin",
+			["reagents"] = {
+				[41807] = 1,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57441,
+		},
+		[57442] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Dragonfin Filet",
+			["reagents"] = {
+				[41807] = 1,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57442,
+		},
+		[57443] = {
+			["difficulty"] = {
+				1,
+				213,
+				425,
+				475,
+			},
+			["name"] = "Tracker Snacks",
+			["reagents"] = {
+				[43007] = 1,
+				[43009] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 57443,
+		},
+		[58065] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				415,
+			},
+			["name"] = "Dalaran Clam Chowder",
+			["reagents"] = {
+				[36782] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58065,
+		},
+		[58512] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				365,
+			},
+			["name"] = "Tasty Cupcake",
+			["reagents"] = {
+				[30817] = 2,
+				[43501] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58512,
+		},
+		[58521] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				365,
+			},
+			["name"] = "Last Week's Mammoth",
+			["reagents"] = {
+				[34736] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58521,
+		},
+		[58523] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				365,
+			},
+			["name"] = "Bad Clams",
+			["reagents"] = {
+				[22577] = 1,
+				[36782] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58523,
+		},
+		[58525] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				365,
+			},
+			["name"] = "Haunted Herring",
+			["reagents"] = {
+				[12808] = 1,
+				[41810] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58525,
+		},
+		[58527] = {
+			["difficulty"] = {
+				1,
+				218,
+				435,
+				475,
+			},
+			["name"] = "Gigantic Feast",
+			["reagents"] = {
+				[34736] = 2,
+				[41800] = 2,
+				[41803] = 2,
+				[43007] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58527,
+		},
+		[58528] = {
+			["difficulty"] = {
+				1,
+				218,
+				435,
+				475,
+			},
+			["name"] = "Small Feast",
+			["reagents"] = {
+				[41809] = 2,
+				[41813] = 2,
+				[43007] = 1,
+				[43012] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 58528,
+		},
+		[62044] = {
+			["difficulty"] = {
+				1,
+				75,
+				150,
+				175,
+			},
+			["name"] = "Pumpkin Pie",
+			["reagents"] = {
+				[44853] = 1,
+				[46784] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 62044,
+		},
+		[62045] = {
+			["difficulty"] = {
+				1,
+				203,
+				405,
+				430,
+			},
+			["name"] = "Slow-Roasted Turkey",
+			["reagents"] = {
+				[44834] = 1,
+				[44835] = 1,
+				[44853] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 62045,
+		},
+		[62049] = {
+			["difficulty"] = {
+				1,
+				105,
+				210,
+				235,
+			},
+			["name"] = "Cranberry Chutney",
+			["reagents"] = {
+				[44853] = 1,
+				[44854] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 62049,
+		},
+		[62050] = {
+			["difficulty"] = {
+				1,
+				45,
+				90,
+				115,
+			},
+			["name"] = "Spice Bread Stuffing",
+			["reagents"] = {
+				[30816] = 1,
+				[44835] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 62050,
+		},
+		[62051] = {
+			["difficulty"] = {
+				1,
+				135,
+				270,
+				295,
+			},
+			["name"] = "Candied Sweet Potato",
+			["reagents"] = {
+				[44835] = 1,
+				[44853] = 1,
+				[44855] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 62051,
+		},
+		[62350] = {
+			["difficulty"] = {
+				1,
+				175,
+				350,
+				460,
+			},
+			["name"] = "Worg Tartare",
+			["reagents"] = {
+				[43007] = 1,
+				[43011] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 62350,
+		},
+		[64054] = {
+			["difficulty"] = {
+				1,
+				125,
+				250,
+				300,
+			},
+			["name"] = "Clamlette Magnifique",
+			["reagents"] = {
+				[7974] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 64054,
+		},
+		[64358] = {
+			["difficulty"] = {
+				1,
+				200,
+				400,
+				425,
+			},
+			["name"] = "Black Jelly",
+			["reagents"] = {
+				[41805] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 64358,
+		},
+		[65454] = {
+			["difficulty"] = {
+				1,
+				15,
+				30,
+				40,
+			},
+			["name"] = "Bread of the Dead",
+			["reagents"] = {
+				[1179] = 1,
+				[30817] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 65454,
+		},
+		[66034] = {
+			["difficulty"] = {
+				1,
+				135,
+				270,
+				295,
+			},
+			["name"] = "Candied Sweet Potato",
+			["reagents"] = {
+				[44835] = 1,
+				[44853] = 1,
+				[46797] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66034,
+		},
+		[66035] = {
+			["difficulty"] = {
+				1,
+				105,
+				210,
+				235,
+			},
+			["name"] = "Cranberry Chutney",
+			["reagents"] = {
+				[44853] = 1,
+				[46793] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66035,
+		},
+		[66036] = {
+			["difficulty"] = {
+				1,
+				75,
+				150,
+				175,
+			},
+			["name"] = "Pumpkin Pie",
+			["reagents"] = {
+				[44853] = 1,
+				[46796] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66036,
+		},
+		[66037] = {
+			["difficulty"] = {
+				1,
+				203,
+				405,
+				430,
+			},
+			["name"] = "Slow-Roasted Turkey",
+			["reagents"] = {
+				[44834] = 1,
+				[44835] = 1,
+				[44853] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66037,
+		},
+		[66038] = {
+			["difficulty"] = {
+				1,
+				45,
+				90,
+				115,
+			},
+			["name"] = "Spice Bread Stuffing",
+			["reagents"] = {
+				[30816] = 1,
+				[44835] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 66038,
+		},
+		[88003] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Baked Rockfish",
+			["reagents"] = {
+				[53071] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88003,
+		},
+		[88004] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Basilisk Liverdog",
+			["reagents"] = {
+				[62783] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88004,
+		},
+		[88005] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Beer-Basted Crocolisk",
+			["reagents"] = {
+				[62784] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88005,
+		},
+		[88006] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				465,
+			},
+			["name"] = "Blackened Surprise",
+			["reagents"] = {
+				[62778] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88006,
+		},
+		[88011] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Broiled Dragon Feast",
+			["reagents"] = {
+				[62782] = 3,
+				[62785] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88011,
+		},
+		[88012] = {
+			["difficulty"] = {
+				1,
+				233,
+				465,
+				490,
+			},
+			["name"] = "Broiled Mountain Trout",
+			["reagents"] = {
+				[53063] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88012,
+		},
+		[88013] = {
+			["difficulty"] = {
+				1,
+				255,
+				510,
+				515,
+			},
+			["name"] = "Chocolate Cookie",
+			["reagents"] = {
+				[30817] = 1,
+				[62786] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88013,
+		},
+		[88014] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Crocolisk Au Gratin",
+			["reagents"] = {
+				[62784] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88014,
+		},
+		[88015] = {
+			["difficulty"] = {
+				1,
+				215,
+				430,
+				440,
+			},
+			["name"] = "Darkbrew Lager",
+			["reagents"] = {
+				[2595] = 1,
+				[2596] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88015,
+		},
+		[88016] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Delicious Sagefish Tail",
+			["reagents"] = {
+				[53072] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88016,
+		},
+		[88017] = {
+			["difficulty"] = {
+				1,
+				220,
+				440,
+				470,
+			},
+			["name"] = "Feathered Lure",
+			["reagents"] = {
+				[62785] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88017,
+		},
+		[88018] = {
+			["difficulty"] = {
+				1,
+				245,
+				490,
+				510,
+			},
+			["name"] = "Fish Fry",
+			["reagents"] = {
+				[53062] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88018,
+		},
+		[88019] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Fortune Cookie",
+			["reagents"] = {
+				[30817] = 1,
+				[60838] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88019,
+		},
+		[88020] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Grilled Dragon",
+			["reagents"] = {
+				[62782] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88020,
+		},
+		[88021] = {
+			["difficulty"] = {
+				1,
+				245,
+				490,
+				505,
+			},
+			["name"] = "Hearty Seafood Soup",
+			["reagents"] = {
+				[62791] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88021,
+		},
+		[88022] = {
+			["difficulty"] = {
+				1,
+				228,
+				455,
+				465,
+			},
+			["name"] = "Highland Spirits",
+			["reagents"] = {
+				[159] = 1,
+				[58265] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88022,
+		},
+		[88024] = {
+			["difficulty"] = {
+				1,
+				233,
+				465,
+				490,
+			},
+			["name"] = "Lavascale Fillet",
+			["reagents"] = {
+				[53068] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88024,
+		},
+		[88025] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Lavascale Minestrone",
+			["reagents"] = {
+				[53068] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88025,
+		},
+		[88028] = {
+			["difficulty"] = {
+				1,
+				233,
+				465,
+				490,
+			},
+			["name"] = "Lightly Fried Lurker",
+			["reagents"] = {
+				[53067] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88028,
+		},
+		[88030] = {
+			["difficulty"] = {
+				1,
+				233,
+				465,
+				490,
+			},
+			["name"] = "Lurker Lunch",
+			["reagents"] = {
+				[53067] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88030,
+		},
+		[88031] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Mushroom Sauce Mudfish",
+			["reagents"] = {
+				[53066] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88031,
+		},
+		[88033] = {
+			["difficulty"] = {
+				1,
+				245,
+				490,
+				505,
+			},
+			["name"] = "Pickled Guppy",
+			["reagents"] = {
+				[53064] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88033,
+		},
+		[88034] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Blackbelly Sushi",
+			["reagents"] = {
+				[53066] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88034,
+		},
+		[88035] = {
+			["difficulty"] = {
+				1,
+				233,
+				465,
+				490,
+			},
+			["name"] = "Salted Eye",
+			["reagents"] = {
+				[62780] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88035,
+		},
+		[88036] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "Seafood Magnifique Feast",
+			["reagents"] = {
+				[53064] = 2,
+				[53068] = 2,
+				[53070] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88036,
+		},
+		[88037] = {
+			["difficulty"] = {
+				1,
+				233,
+				465,
+				490,
+			},
+			["name"] = "Seasoned Crab",
+			["reagents"] = {
+				[62779] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88037,
+		},
+		[88039] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Severed Sagefish Head",
+			["reagents"] = {
+				[53072] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88039,
+		},
+		[88042] = {
+			["difficulty"] = {
+				1,
+				258,
+				515,
+				525,
+			},
+			["name"] = "Skewered Eel",
+			["reagents"] = {
+				[53070] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88042,
+		},
+		[88044] = {
+			["difficulty"] = {
+				1,
+				263,
+				525,
+				525,
+			},
+			["name"] = "South Island Iced Tea",
+			["reagents"] = {
+				[159] = 1,
+				[58278] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88044,
+		},
+		[88045] = {
+			["difficulty"] = {
+				1,
+				228,
+				455,
+				465,
+			},
+			["name"] = "Starfire Espresso",
+			["reagents"] = {
+				[159] = 1,
+				[62786] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88045,
+		},
+		[88046] = {
+			["difficulty"] = {
+				1,
+				245,
+				490,
+				505,
+			},
+			["name"] = "Tender Baked Turtle",
+			["reagents"] = {
+				[62781] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88046,
+		},
+		[88047] = {
+			["difficulty"] = {
+				1,
+				233,
+				465,
+				490,
+			},
+			["name"] = "Whitecrest Gumbo",
+			["reagents"] = {
+				[62791] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 88047,
+		},
+		[88053] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Cooking",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 88053,
+		},
+		[93741] = {
+			["difficulty"] = {
+				1,
+				40,
+				80,
+				120,
+			},
+			["name"] = "Venison Jerky",
+			["reagents"] = {
+				[67229] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 93741,
+		},
+		[96133] = {
+			["difficulty"] = {
+				1,
+				245,
+				490,
+				510,
+			},
+			["name"] = "Scalding Murglesnout",
+			["reagents"] = {
+				[53069] = 3,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 96133,
+		},
+		[104237] = {
+			["difficulty"] = {
+				1,
+				150,
+				300,
+				305,
+			},
+			["name"] = "Golden Carp Consomme",
+			["reagents"] = {
+				[74866] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 104237,
+		},
+		[104297] = {
+			["difficulty"] = {
+				1,
+				165,
+				330,
+				335,
+			},
+			["name"] = "Fish Cake",
+			["reagents"] = {
+				[74866] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 104297,
+		},
+		[104381] = {
+			["difficulty"] = {
+				1,
+				1,
+				0,
+				0,
+			},
+			["name"] = "Cooking",
+			["reagents"] = {},
+			["requiredSkill"] = 1,
+			["teaches"] = 104381,
+		},
+		[105190] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				600,
+			},
+			["name"] = "Pandaren Banquet",
+			["reagents"] = {
+				[74833] = 10,
+				[74849] = 50,
+				[74853] = 1,
+				[74863] = 10,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 105190,
+		},
+		[105194] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				600,
+			},
+			["name"] = "Great Pandaren Banquet",
+			["reagents"] = {
+				[74833] = 20,
+				[74849] = 100,
+				[74853] = 1,
+				[74863] = 20,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 105194,
+		},
+		[124029] = {
+			["difficulty"] = {
+				1,
+				265,
+				530,
+				530,
+			},
+			["name"] = "Viseclaw Soup",
+			["reagents"] = {
+				[85506] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124029,
+		},
+		[124032] = {
+			["difficulty"] = {
+				1,
+				265,
+				530,
+				530,
+			},
+			["name"] = "Krasarang Fritters",
+			["reagents"] = {
+				[74865] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124032,
+		},
+		[124223] = {
+			["difficulty"] = {
+				1,
+				75,
+				150,
+				155,
+			},
+			["name"] = "Pounded Rice Cake",
+			["reagents"] = {
+				[74851] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124223,
+		},
+		[124224] = {
+			["difficulty"] = {
+				1,
+				90,
+				180,
+				185,
+			},
+			["name"] = "Yak Cheese Curds",
+			["reagents"] = {
+				[74852] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124224,
+		},
+		[124225] = {
+			["difficulty"] = {
+				1,
+				45,
+				90,
+				95,
+			},
+			["name"] = "Toasted Fish Jerky",
+			["reagents"] = {
+				[74866] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124225,
+		},
+		[124226] = {
+			["difficulty"] = {
+				1,
+				105,
+				210,
+				215,
+			},
+			["name"] = "Dried Peaches",
+			["reagents"] = {
+				[74660] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124226,
+		},
+		[124227] = {
+			["difficulty"] = {
+				1,
+				60,
+				120,
+				125,
+			},
+			["name"] = "Dried Needle Mushrooms",
+			["reagents"] = {
+				[85583] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124227,
+		},
+		[124228] = {
+			["difficulty"] = {
+				1,
+				120,
+				240,
+				245,
+			},
+			["name"] = "Boiled Silkworm Pupa",
+			["reagents"] = {
+				[85584] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124228,
+		},
+		[124229] = {
+			["difficulty"] = {
+				1,
+				195,
+				390,
+				395,
+			},
+			["name"] = "Red Bean Bun",
+			["reagents"] = {
+				[85585] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124229,
+		},
+		[124230] = {
+			["difficulty"] = {
+				1,
+				248,
+				495,
+				500,
+			},
+			["name"] = "Tangy Yogurt",
+			["reagents"] = {
+				[74660] = 1,
+				[74852] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124230,
+		},
+		[124231] = {
+			["difficulty"] = {
+				1,
+				225,
+				450,
+				455,
+			},
+			["name"] = "Green Curry Fish",
+			["reagents"] = {
+				[74851] = 1,
+				[74866] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124231,
+		},
+		[124232] = {
+			["difficulty"] = {
+				1,
+				240,
+				480,
+				485,
+			},
+			["name"] = "Peach Pie",
+			["reagents"] = {
+				[74660] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124232,
+		},
+		[124233] = {
+			["difficulty"] = {
+				1,
+				180,
+				360,
+				365,
+			},
+			["name"] = "Blanched Needle Mushrooms",
+			["reagents"] = {
+				[85583] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124233,
+		},
+		[124234] = {
+			["difficulty"] = {
+				1,
+				210,
+				420,
+				425,
+			},
+			["name"] = "Skewered Peanut Chicken",
+			["reagents"] = {
+				[74659] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 124234,
+		},
+		[125067] = {
+			["difficulty"] = {
+				1,
+				30,
+				60,
+				65,
+			},
+			["name"] = "Perfectly Cooked Instant Noodles",
+			["reagents"] = {
+				[74854] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 125067,
+		},
+		[125078] = {
+			["difficulty"] = {
+				1,
+				135,
+				270,
+				275,
+			},
+			["name"] = "Roasted Barley Tea",
+			["reagents"] = {
+				[74832] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 125078,
+		},
+		[125080] = {
+			["difficulty"] = {
+				1,
+				255,
+				510,
+				515,
+			},
+			["name"] = "Pearl Milk Tea",
+			["reagents"] = {
+				[74852] = 2,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 125080,
+		},
+		[125117] = {
+			["difficulty"] = {
+				1,
+				15,
+				30,
+				35,
+			},
+			["name"] = "Sliced Peaches",
+			["reagents"] = {
+				[74660] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 125117,
+		},
+		[125120] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				600,
+			},
+			["name"] = "Spicy Salmon",
+			["reagents"] = {
+				[74846] = 25,
+				[74848] = 25,
+				[74851] = 1,
+				[74859] = 5,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 125120,
+		},
+		[125121] = {
+			["difficulty"] = {
+				1,
+				260,
+				520,
+				525,
+			},
+			["name"] = "Wildfowl Ginseng Soup",
+			["reagents"] = {
+				[74839] = 1,
+				[74845] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 125121,
+		},
+		[125122] = {
+			["difficulty"] = {
+				1,
+				265,
+				530,
+				530,
+			},
+			["name"] = "Rice Pudding",
+			["reagents"] = {
+				[74851] = 1,
+				[74852] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 125122,
+		},
+		[125123] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				600,
+			},
+			["name"] = "Spicy Vegetable Chips",
+			["reagents"] = {
+				[74841] = 25,
+				[74847] = 25,
+				[74849] = 25,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 125123,
+		},
+		[145038] = {
+			["difficulty"] = {
+				1,
+				303,
+				605,
+				605,
+			},
+			["name"] = "Noodle Cart Kit",
+			["reagents"] = {
+				[74642] = 5,
+				[74643] = 5,
+				[74644] = 5,
+				[74651] = 5,
+				[74654] = 5,
+				[75026] = 5,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 145038,
+		},
+		[145061] = {
+			["difficulty"] = {
+				1,
+				304,
+				607,
+				607,
+			},
+			["name"] = "Deluxe Noodle Cart Kit",
+			["reagents"] = {
+				[74645] = 5,
+				[74647] = 5,
+				[74649] = 5,
+				[74652] = 5,
+				[74655] = 5,
+				[75037] = 5,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 145061,
+		},
+		[145062] = {
+			["difficulty"] = {
+				1,
+				306,
+				611,
+				611,
+			},
+			["name"] = "Pandaren Treasure Noodle Cart Kit",
+			["reagents"] = {
+				[74646] = 5,
+				[74648] = 5,
+				[74650] = 5,
+				[74653] = 5,
+				[74656] = 5,
+				[75038] = 5,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 145062,
+		},
+		[145167] = {
+			["difficulty"] = {
+				1,
+				303,
+				606,
+				606,
+			},
+			["name"] = "Grand Noodle Cart Kit",
+			["reagents"] = {
+				[74642] = 10,
+				[74643] = 10,
+				[74644] = 10,
+				[74651] = 10,
+				[74654] = 10,
+				[75026] = 10,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 145167,
+		},
+		[145170] = {
+			["difficulty"] = {
+				1,
+				305,
+				610,
+				610,
+			},
+			["name"] = "Grand Deluxe Noodle Cart Kit",
+			["reagents"] = {
+				[74645] = 10,
+				[74647] = 10,
+				[74649] = 10,
+				[74652] = 10,
+				[74655] = 10,
+				[75037] = 10,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 145170,
+		},
+		[145197] = {
+			["difficulty"] = {
+				1,
+				306,
+				612,
+				612,
+			},
+			["name"] = "Grand Pandaren Treasure Noodle Cart Kit",
+			["reagents"] = {
+				[74646] = 10,
+				[74648] = 10,
+				[74650] = 10,
+				[74653] = 10,
+				[74656] = 10,
+				[75038] = 10,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 145197,
+		},
+		[145308] = {
+			["difficulty"] = {
+				1,
+				300,
+				600,
+				600,
+			},
+			["name"] = "Mango Ice",
+			["reagents"] = {
+				[102540] = 5,
+				[102541] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 145308,
+		},
+		[470359] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				365,
+			},
+			["name"] = "Darkclaw Bisque",
+			["reagents"] = {
+				[13888] = 1,
+				[227813] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 470359,
+		},
+		[470370] = {
+			["difficulty"] = {
+				1,
+				163,
+				325,
+				365,
+			},
+			["name"] = "Smoked Redgill",
+			["reagents"] = {
+				[13758] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 470370,
+		},
+		[1225758] = {
+			["difficulty"] = {
+				1,
+				130,
+				260,
+				280,
+			},
+			["name"] = "Prowler Steak",
+			["reagents"] = {
+				[12202] = 2,
+				[239016] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 1225758,
+		},
+		[1225759] = {
+			["difficulty"] = {
+				1,
+				130,
+				260,
+				280,
+			},
+			["name"] = "Filet o' Flank",
+			["reagents"] = {
+				[12203] = 2,
+				[239016] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 1225759,
+		},
+		[1225760] = {
+			["difficulty"] = {
+				1,
+				130,
+				260,
+				280,
+			},
+			["name"] = "Sunrise Omelette",
+			["reagents"] = {
+				[12207] = 2,
+				[239016] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 1225760,
+		},
+		[1225762] = {
+			["difficulty"] = {
+				1,
+				145,
+				290,
+				310,
+			},
+			["name"] = "Specklefin Feast",
+			["reagents"] = {
+				[4603] = 12,
+				[6362] = 3,
+				[12184] = 4,
+				[239017] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 1225762,
+		},
+		[1225763] = {
+			["difficulty"] = {
+				1,
+				145,
+				290,
+				310,
+			},
+			["name"] = "Grand Lobster Banquet",
+			["reagents"] = {
+				[3404] = 3,
+				[3712] = 4,
+				[13888] = 12,
+				[239017] = 1,
+			},
+			["requiredSkill"] = 1,
+			["teaches"] = 1225763,
+		},
+	}

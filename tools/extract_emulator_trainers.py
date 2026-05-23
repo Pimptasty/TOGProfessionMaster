@@ -44,14 +44,25 @@ CACHE_DIR  = SCRIPT_DIR / "emulator_data"
 
 # Source descriptors. Each entry knows its expansion, files to fetch, and
 # which parser layout applies.
+_AC_BASE = "https://raw.githubusercontent.com/azerothcore/azerothcore-wotlk/master/data/sql/base/db_world"
+
 SOURCES = [
     {
         "name":      "azerothcore_wrath",
         "expansion": "wrath",
         "layout":    "normalized",
         "files": {
-            "creature_default_trainer": "https://raw.githubusercontent.com/azerothcore/azerothcore-wotlk/master/data/sql/base/db_world/creature_default_trainer.sql",
-            "trainer_spell":            "https://raw.githubusercontent.com/azerothcore/azerothcore-wotlk/master/data/sql/base/db_world/trainer_spell.sql",
+            # Trainer tables (Phase A — trainer-only, original use of this script)
+            "creature_default_trainer": f"{_AC_BASE}/creature_default_trainer.sql",
+            "trainer_spell":            f"{_AC_BASE}/trainer_spell.sql",
+            # Phase B additions: source data for vendor / drop / quest / GO
+            "npc_vendor":               f"{_AC_BASE}/npc_vendor.sql",
+            "creature_loot_template":   f"{_AC_BASE}/creature_loot_template.sql",
+            "gameobject_loot_template": f"{_AC_BASE}/gameobject_loot_template.sql",
+            "item_loot_template":       f"{_AC_BASE}/item_loot_template.sql",
+            "reference_loot_template":  f"{_AC_BASE}/reference_loot_template.sql",
+            "quest_template":           f"{_AC_BASE}/quest_template.sql",
+            "creature_template":        f"{_AC_BASE}/creature_template.sql",
         },
     },
     {
@@ -129,22 +140,38 @@ def ensure_files(source: dict, refresh: bool = False) -> dict:
     return out
 
 
+# All TrinityCore Cata world DB tables we want for the source-DB build (Phase
+# B of v0.5.0). Trainer tables stay in here for the original trainer-only
+# extraction path; vendor / loot / quest tables join recipe items back to
+# their source NPCs / quests / containers.
+TRINITY_CATA_TABLES = (
+    "creature_trainer",
+    "trainer_spell",
+    "npc_vendor",
+    "creature_loot_template",
+    "gameobject_loot_template",
+    "item_loot_template",       # container-style loot (clams, lockboxes)
+    "reference_loot_template",
+    "quest_template",
+    "creature_template",
+)
+
+
 def _prepare_trinity_cata(refresh: bool = False) -> None:
     """Download TrinityCore's Cata TDB 7z, extract the full world.sql, then
-    stream-extract only the creature_trainer and trainer_spell tables into
-    smaller cached files. Idempotent: returns early when the extracted
-    tables already exist.
+    stream-extract each table in TRINITY_CATA_TABLES into its own smaller
+    cached file. Idempotent: returns early when every requested table is
+    already extracted (so adding a new table to the tuple above auto-runs the
+    extraction on the next call, without re-downloading).
     """
     import py7zr
     import re
 
-    targets = {"creature_trainer", "trainer_spell"}
-    out_paths = {
-        "creature_trainer": CACHE_DIR / "trinity_cata_creature_trainer.sql",
-        "trainer_spell":    CACHE_DIR / "trinity_cata_trainer_spell.sql",
-    }
+    targets = set(TRINITY_CATA_TABLES)
+    out_paths = {t: CACHE_DIR / f"trinity_cata_{t}.sql" for t in targets}
     if all(p.exists() for p in out_paths.values()) and not refresh:
-        print(f"  [trinitycore_cata] tables already extracted, skipping prep", file=sys.stderr)
+        print(f"  [trinitycore_cata] all {len(targets)} tables already extracted, skipping prep",
+              file=sys.stderr)
         return
 
     tdb_url = ("https://github.com/TrinityCore/TrinityCore/releases/download/"
@@ -161,8 +188,8 @@ def _prepare_trinity_cata(refresh: bool = False) -> None:
         print(f"  [trinitycore_cata] extracted: {sql_path.stat().st_size:,} bytes",
               file=sys.stderr)
 
-    print(f"  [trinitycore_cata] streaming for creature_trainer + trainer_spell INSERTs",
-          file=sys.stderr)
+    print(f"  [trinitycore_cata] streaming for {len(targets)} table INSERTs: "
+          f"{sorted(targets)}", file=sys.stderr)
     buffers = {t: [] for t in targets}
     current = None
     insert_re = re.compile(r"INSERT INTO `(\w+)`")
@@ -177,8 +204,8 @@ def _prepare_trinity_cata(refresh: bool = False) -> None:
                 current = None
     for tbl, lines in buffers.items():
         out_paths[tbl].write_text("".join(lines), encoding="utf-8")
-        print(f"  [trinitycore_cata]   {tbl}: {sum(len(l) for l in lines):,} bytes",
-              file=sys.stderr)
+        print(f"  [trinitycore_cata]   {tbl}: {sum(len(l) for l in lines):,} bytes "
+              f"({len(lines):,} lines)", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------
@@ -191,20 +218,78 @@ def parse_insert_rows(sql_path: pathlib.Path):
 
     Values are returned as raw strings (`'foo'`, `123`, `NULL`, `0.5`).
     Caller is responsible for coercing to types. Handles multi-line VALUES
-    lists (each tuple on its own line is common in mysqldump output) and
-    multiple INSERT statements per file."""
+    lists (each tuple on its own line is common in mysqldump output),
+    multiple INSERT statements per file, AND tuples containing quoted
+    strings with embedded parentheses (common in quest_template /
+    creature_template — descriptions like `"$N (level X)"` would otherwise
+    confuse a simple `\\([^()]*\\)` outer split).
+
+    Also handles semicolons inside quoted strings — the previous regex
+    `[^;]*?...;` would terminate a multi-tuple INSERT early if any quoted
+    quest description contained a `;`. We now walk the file char-by-char,
+    state-machine style: locate `VALUES`, then scan for top-level `()`
+    tuples while tracking quote state for both `(`/`)`/`;`.
+    """
     text = sql_path.read_text(encoding="utf-8", errors="replace")
-    # Each INSERT INTO ... VALUES is greedy-grabbed up to the terminating
-    # semicolon. The body between VALUES and `;` is then split into tuples.
-    for match in re.finditer(r"INSERT\s+INTO\s+`[^`]+`[^;]*?VALUES\s*(.+?);", text,
-                             flags=re.DOTALL | re.IGNORECASE):
-        body = match.group(1)
-        # Split into (...) tuples. mysqldump emits one tuple per line but we
-        # tolerate any whitespace between them. The regex matches a parenthesis-
-        # balanced block at one nesting level (no nested parens in INSERT VALUES).
-        for tup in re.finditer(r"\(([^()]*)\)", body):
-            cols = _split_csv(tup.group(1))
-            yield cols
+    insert_re = re.compile(r"INSERT\s+INTO\s+`[^`]+`[^;\(]*VALUES\s*", re.IGNORECASE)
+    pos = 0
+    while True:
+        m = insert_re.search(text, pos)
+        if not m:
+            return
+        i = m.end()
+        # Walk tuple-by-tuple from the position right after `VALUES`. We finish
+        # the statement when we hit an unquoted `;`.
+        n = len(text)
+        while i < n:
+            # Skip whitespace + commas between tuples
+            while i < n and text[i] in " \t\r\n,":
+                i += 1
+            if i >= n or text[i] == ";":
+                i += 1  # consume the trailing semicolon
+                break
+            if text[i] != "(":
+                # malformed — bail out of this statement
+                break
+            # Walk the tuple body, tracking quoted-string state, until we
+            # find the matching `)`. Strings use single quotes; doubled
+            # `''` is the escaped-quote convention.
+            depth = 1
+            j = i + 1
+            in_str = False
+            tuple_start = j
+            while j < n and depth > 0:
+                c = text[j]
+                if in_str:
+                    if c == "'" and j + 1 < n and text[j + 1] == "'":
+                        j += 2
+                        continue
+                    if c == "\\" and j + 1 < n:
+                        # backslash-escape — skip the next char (mysqldump
+                        # uses this for embedded quotes, newlines, etc.)
+                        j += 2
+                        continue
+                    if c == "'":
+                        in_str = False
+                    j += 1
+                    continue
+                if c == "'":
+                    in_str = True
+                    j += 1
+                    continue
+                if c == "(":
+                    depth += 1
+                elif c == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                j += 1
+            if depth != 0:
+                # Unbalanced — malformed input, give up on this statement.
+                break
+            yield _split_csv(text[tuple_start:j])
+            i = j + 1
+        pos = i
 
 
 def _split_csv(row_body: str):

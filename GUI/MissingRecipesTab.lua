@@ -300,6 +300,7 @@ local function BuildMissingList(charKey, profId, includeTrainer)
             else
                 table.insert(out, {
                     spellId       = spellId,
+                    itemId        = data.itemId,  -- recipe-scroll item id (nil for trainer-only)
                     teaches       = data.teaches,
                     requiredSkill = data.requiredSkill or 0,
                     sources       = srcEntry,
@@ -480,12 +481,17 @@ function MissingRecipesTab:Draw(container)
             -- GetItemInfo (not GetItemInfoInstant — its first return is the
             -- itemID number not the name) gives us the string name. Items
             -- not yet in the WoW cache get skipped silently; the user can
-            -- re-scan after scrolling has populated more entries.
+            -- re-scan after scrolling has populated more entries. Trainer-
+            -- only recipes (entry.itemId == nil) have no scroll item and
+            -- can't be auctioned, so we skip them here.
             local items = {}
             for _, entry in ipairs(self._list or {}) do
-                local name = GetItemInfo and GetItemInfo(entry.spellId)
-                if type(name) == "string" and name ~= "" then
-                    items[#items + 1] = { itemId = entry.spellId, itemName = name }
+                local iid = entry.itemId
+                if iid then
+                    local name = GetItemInfo and GetItemInfo(iid)
+                    if type(name) == "string" and name ~= "" then
+                        items[#items + 1] = { itemId = iid, itemName = name }
+                    end
                 end
             end
             return items
@@ -677,18 +683,37 @@ function MissingRecipesTab:BuildPool(parent)
         f.ahBtn = ahBtn
 
         -- Row-level mouse handling for hover tooltip + shift-click chat link.
+        -- Item-id path renders the recipe-scroll tooltip (reagents, prof
+        -- requirement). For trainer-only recipes (no scroll item exists),
+        -- fall back to the spell tooltip so the row still has SOMETHING on
+        -- hover instead of nothing — and so we never pass nil into
+        -- SetItemByID (Blizzard silently sets an empty tooltip, but
+        -- addons that hook SetItemByID such as LoonBestInSlot then crash
+        -- on the empty state).
         f:SetScript("OnEnter", function()
-            if not f._itemId then return end
+            if not (f._itemId or f._spellId) then return end
             addon.Tooltip.Owner(f)
-            GameTooltip:SetItemByID(f._itemId)
+            if f._itemId then
+                GameTooltip:SetItemByID(f._itemId)
+            elseif GameTooltip.SetSpellByID then
+                GameTooltip:SetSpellByID(f._spellId)
+            else
+                local name = GetSpellInfo and GetSpellInfo(f._spellId) or ("spell:" .. tostring(f._spellId))
+                GameTooltip:SetText(name, 1, 1, 1, 1, true)
+            end
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine(L["MissingRowTooltipShift"], 0.7, 0.7, 0.7, true)
             GameTooltip:Show()
         end)
         f:SetScript("OnLeave", function() GameTooltip:Hide() end)
         f:SetScript("OnMouseDown", function(_, button)
-            if button ~= "LeftButton" or not IsShiftKeyDown() or not f._itemId then return end
-            local _, link = GetItemInfo(f._itemId)
+            if button ~= "LeftButton" or not IsShiftKeyDown() then return end
+            local link
+            if f._itemId then
+                _, link = GetItemInfo(f._itemId)
+            elseif f._spellId and GetSpellLink then
+                link = GetSpellLink(f._spellId)
+            end
             if link and ChatEdit_GetActiveWindow then
                 local editBox = ChatEdit_GetActiveWindow()
                 if editBox then editBox:Insert(link) end
@@ -727,19 +752,41 @@ function MissingRecipesTab:UpdateVirtualRows()
         local listIdx = firstIdx + i
         local entry   = list[listIdx]
         if entry then
-            local itemId = entry.spellId
+            -- v0.5.0 keyed recipeDB by spell id; the row's entry.itemId is the
+            -- recipe-scroll item that teaches the spell (when one exists —
+            -- trainer-taught recipes have no scroll item). Use entry.itemId
+            -- for any item-id API call (GameTooltip:SetItemByID, GetItemInfo,
+            -- GetItemIcon, GetItemQualityColor). When nil, fall back to
+            -- spell-based display via GetSpellInfo. Never pass the spell id
+            -- to item APIs — silently sets an empty tooltip and (worse)
+            -- breaks downstream addons like LoonBestInSlot that hook
+            -- SetItemByID and then crash on the empty result.
+            local itemId = entry.itemId
             f._itemId = itemId
+            f._spellId = entry.spellId
 
-            -- Lazy item-name resolution. GetItemInfo returns nil for items
-            -- not yet in the WoW cache and triggers an async load; the
-            -- GET_ITEM_INFO_RECEIVED handler at the bottom of the file
-            -- debounces a RefreshList so placeholders fill in once items
-            -- finish loading. Bounded to POOL_SIZE rows so the cache-miss
-            -- volume is small and well-behaved.
-            local itemName, itemLink, itemQuality = GetItemInfo(itemId)
-            local displayName = itemName or ("|cffaaaaaa#" .. itemId .. " (loading\226\128\166)|r")
-
-            f.icon:SetTexture((GetItemIcon and GetItemIcon(itemId)) or 134400)
+            local displayName, itemName, itemLink, itemQuality
+            if itemId then
+                -- Lazy item-name resolution. GetItemInfo returns nil for
+                -- items not yet in the WoW cache and triggers an async
+                -- load; the GET_ITEM_INFO_RECEIVED handler debounces a
+                -- RefreshList so placeholders fill in once items finish
+                -- loading. Bounded to POOL_SIZE rows so the cache-miss
+                -- volume stays small.
+                itemName, itemLink, itemQuality = GetItemInfo(itemId)
+                displayName = itemName or ("|cffaaaaaa#" .. itemId .. " (loading\226\128\166)|r")
+                f.icon:SetTexture((GetItemIcon and GetItemIcon(itemId)) or 134400)
+            else
+                -- Trainer-only recipe with no scroll item. Fall back to the
+                -- spell's name + icon. No item link / quality colour
+                -- available — recipes are uncoloured in this branch.
+                local spellName = (GetSpellInfo and GetSpellInfo(entry.spellId))
+                                  or (entry.name)
+                                  or ("|cffaaaaaaspell:" .. entry.spellId .. "|r")
+                displayName = spellName
+                local spellIcon = GetSpellTexture and GetSpellTexture(entry.spellId)
+                f.icon:SetTexture(spellIcon or 134400)
+            end
 
             local color = itemLink and itemLink:match("|c(%x%x%x%x%x%x%x%x)|H")
             if not color and itemQuality then
@@ -757,7 +804,8 @@ function MissingRecipesTab:UpdateVirtualRows()
             -- this recipe scroll. Click opens the request dialog with the
             -- scroll's name + link. Bank stock is queried fresh per row each
             -- pool refresh — cheap (single table walk in addon.Bank.GetStock).
-            if addon.Bank and addon.Bank.GetStock(itemId) > 0 then
+            -- Trainer-only recipes (itemId == nil) have no scroll to bank.
+            if itemId and addon.Bank and addon.Bank.GetStock(itemId) > 0 then
                 local rowItemId   = itemId
                 local rowItemName = itemName or ("Item #" .. itemId)
                 local rowItemLink = itemLink
@@ -775,8 +823,9 @@ function MissingRecipesTab:UpdateVirtualRows()
             -- so the user can bid/buy from the standard Blizzard UI. The
             -- button stays visible after the scan even if the user clicks
             -- another tab; AH.SearchFor handles "AH closed" gracefully with
-            -- a chat message so a stale-results click is harmless.
-            local listings = addon.AH and addon.AH.GetListingsFor(itemId)
+            -- a chat message so a stale-results click is harmless. Trainer-
+            -- only recipes (itemId == nil) have no scroll to find on the AH.
+            local listings = itemId and addon.AH and addon.AH.GetListingsFor(itemId)
             if listings and (listings.count or 0) > 0 and itemName then
                 local rowItemName = itemName
                 f.ahBtn:SetScript("OnClick", function()
@@ -836,7 +885,14 @@ function MissingRecipesTab:FillList()
     if filter ~= "" then
         list = {}
         for _, entry in ipairs(fullList) do
-            local name = GetItemInfo and GetItemInfo(entry.spellId)
+            -- Search both the recipe-scroll item name (when one exists) AND
+            -- the spell name as a fallback. The OR keeps trainer-only
+            -- recipes searchable by their spell name even though they have
+            -- no scroll item; lets the user find e.g. "Brown Linen Vest"
+            -- regardless of whether the recipe is taught by a pattern or
+            -- only by a trainer.
+            local name = (entry.itemId and GetItemInfo and GetItemInfo(entry.itemId))
+                         or (GetSpellInfo and GetSpellInfo(entry.spellId))
             if type(name) == "string" and name:lower():find(filter, 1, true) then
                 list[#list + 1] = entry
             end

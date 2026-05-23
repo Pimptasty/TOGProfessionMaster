@@ -44,6 +44,7 @@ addon.recipeDB[333] = {
 				70,
 				110,
 			},
+			["itemId"] = 38679,
 			["name"] = "Enchant Bracer - Minor Health",
 			["reagents"] = {
 				[10940] = 1,
@@ -58,6 +59,7 @@ addon.recipeDB[333] = {
 				70,
 				110,
 			},
+			["itemId"] = 38766,
 			["name"] = "Enchant Chest - Minor Health",
 			["reagents"] = {
 				[10940] = 1,
@@ -88,6 +90,7 @@ addon.recipeDB[333] = {
 				90,
 				130,
 			},
+			["itemId"] = 38767,
 			["name"] = "Enchant Chest - Minor Absorption",
 			["reagents"] = {
 				[10938] = 1,
@@ -103,6 +106,7 @@ addon.recipeDB[333] = {
 				80,
 				120,
 			},
+			["itemId"] = 38768,
 			["name"] = "Enchant Bracer - Minor Dodge",
 			["reagents"] = {
 				[10938] = 1,
@@ -118,6 +122,7 @@ addon.recipeDB[333] = {
 				80,
 				120,
 			},
+			["itemId"] = 6342,
 			["name"] = "Enchant Chest - Minor Mana",
 			["reagents"] = {
 				[10938] = 1,
@@ -132,6 +137,7 @@ addon.recipeDB[333] = {
 				95,
 				135,
 			},
+			["itemId"] = 38770,
 			["name"] = "Enchant Cloak - Minor Resistance",
 			["reagents"] = {
 				[10938] = 2,
@@ -147,6 +153,7 @@ addon.recipeDB[333] = {
 				100,
 				140,
 			},
+			["itemId"] = 38771,
 			["name"] = "Enchant Bracer - Minor Stamina",
 			["reagents"] = {
 				[10940] = 3,
@@ -161,6 +168,7 @@ addon.recipeDB[333] = {
 				130,
 				170,
 			},
+			["itemId"] = 38772,
 			["name"] = "Enchant 2H Weapon - Minor Impact",
 			["reagents"] = {
 				[10940] = 4,
@@ -176,6 +184,7 @@ addon.recipeDB[333] = {
 				105,
 				145,
 			},
+			["itemId"] = 38773,
 			["name"] = "Enchant Chest - Lesser Health",
 			["reagents"] = {
 				[10938] = 2,
@@ -191,6 +200,7 @@ addon.recipeDB[333] = {
 				105,
 				145,
 			},
+			["itemId"] = 6344,
 			["name"] = "Enchant Bracer - Minor Spirit",
 			["reagents"] = {
 				[10938] = 2,
@@ -205,6 +215,7 @@ addon.recipeDB[333] = {
 				110,
 				150,
 			},
+			["itemId"] = 6345,
 			["name"] = "Enchant Cloak - Minor Protection",
 			["reagents"] = {
 				[10939] = 1,
@@ -220,6 +231,7 @@ addon.recipeDB[333] = {
 				115,
 				155,
 			},
+			["itemId"] = 6346,
 			["name"] = "Enchant Chest - Lesser Mana",
 			["reagents"] = {
 				[10938] = 1,
@@ -235,6 +247,7 @@ addon.recipeDB[333] = {
 				115,
 				155,
 			},
+			["itemId"] = 38777,
 			["name"] = "Enchant Bracer - Minor Agility",
 			["reagents"] = {
 				[10939] = 1,
@@ -250,6 +263,7 @@ addon.recipeDB[333] = {
 				115,
 				155,
 			},
+			["itemId"] = 6347,
 			["name"] = "Enchant Bracer - Minor Strength",
 			["reagents"] = {
 				[10940] = 5,
@@ -264,6 +278,7 @@ addon.recipeDB[333] = {
 				120,
 				160,
 			},
+			["itemId"] = 6348,
 			["name"] = "Enchant Weapon - Minor Beastslayer",
 			["reagents"] = {
 				[10939] = 2,
@@ -279,6 +294,7 @@ addon.recipeDB[333] = {
 				120,
 				160,
 			},
+			["itemId"] = 38780,
 			["name"] = "Enchant Weapon - Minor Striking",
 			["reagents"] = {
 				[10939] = 1,
@@ -295,6 +311,7 @@ addon.recipeDB[333] = {
 				130,
 				170,
 			},
+			["itemId"] = 6349,
 			["name"] = "Enchant 2H Weapon - Lesser Intellect",
 			["reagents"] = {
 				[10939] = 3,
@@ -326,6 +343,7 @@ addon.recipeDB[333] = {
 				145,
 				185,
 			},
+			["itemId"] = 38782,
 			["name"] = "Enchant Chest - Health",
 			["reagents"] = {
 				[10940] = 4,
@@ -341,6 +359,7 @@ addon.recipeDB[333] = {
 				145,
 				185,
 			},
+			["itemId"] = 6375,
 			["name"] = "Enchant Bracer - Lesser Spirit",
 			["reagents"] = {
 				[10998] = 2,
@@ -355,6 +374,7 @@ addon.recipeDB[333] = {
 				150,
 				190,
 			},
+			["itemId"] = 38784,
 			["name"] = "Enchant Cloak - Lesser Fire Resistance",
 			["reagents"] = {
 				[6371] = 1,
@@ -370,6 +390,7 @@ addon.recipeDB[333] = {
 				150,
 				190,
 			},
+			["itemId"] = 6376,
 			["name"] = "Enchant Boots - Minor Stamina",
 			["reagents"] = {
 				[10940] = 8,
@@ -384,6 +405,7 @@ addon.recipeDB[333] = {
 				150,
 				190,
 			},
+			["itemId"] = 6377,
 			["name"] = "Enchant Boots - Minor Agility",
 			["reagents"] = {
 				[10940] = 6,
@@ -411,6 +433,7 @@ addon.recipeDB[333] = {
 				130,
 				170,
 			},
+			["itemId"] = 38787,
 			["name"] = "Enchant Shield - Minor Stamina",
 			["reagents"] = {
 				[10940] = 2,
@@ -426,6 +449,7 @@ addon.recipeDB[333] = {
 				135,
 				175,
 			},
+			["itemId"] = 11038,
 			["name"] = "Enchant 2H Weapon - Lesser Spirit",
 			["reagents"] = {
 				[10940] = 6,
@@ -441,6 +465,7 @@ addon.recipeDB[333] = {
 				135,
 				175,
 			},
+			["itemId"] = 11039,
 			["name"] = "Enchant Cloak - Minor Agility",
 			["reagents"] = {
 				[10998] = 1,
@@ -455,6 +480,7 @@ addon.recipeDB[333] = {
 				140,
 				180,
 			},
+			["itemId"] = 38790,
 			["name"] = "Enchant Cloak - Lesser Protection",
 			["reagents"] = {
 				[10940] = 6,
@@ -470,6 +496,7 @@ addon.recipeDB[333] = {
 				140,
 				180,
 			},
+			["itemId"] = 11081,
 			["name"] = "Enchant Shield - Lesser Protection",
 			["reagents"] = {
 				[10940] = 1,
@@ -486,6 +513,7 @@ addon.recipeDB[333] = {
 				155,
 				195,
 			},
+			["itemId"] = 38792,
 			["name"] = "Enchant Shield - Lesser Spirit",
 			["reagents"] = {
 				[10940] = 4,
@@ -501,6 +529,7 @@ addon.recipeDB[333] = {
 				155,
 				195,
 			},
+			["itemId"] = 38793,
 			["name"] = "Enchant Bracer - Lesser Stamina",
 			["reagents"] = {
 				[11083] = 2,
@@ -515,6 +544,7 @@ addon.recipeDB[333] = {
 				165,
 				205,
 			},
+			["itemId"] = 38794,
 			["name"] = "Enchant Weapon - Lesser Striking",
 			["reagents"] = {
 				[11083] = 2,
@@ -530,6 +560,7 @@ addon.recipeDB[333] = {
 				160,
 				200,
 			},
+			["itemId"] = 11098,
 			["name"] = "Enchant Cloak - Lesser Shadow Resistance",
 			["reagents"] = {
 				[6048] = 1,
@@ -545,6 +576,7 @@ addon.recipeDB[333] = {
 				170,
 				210,
 			},
+			["itemId"] = 38796,
 			["name"] = "Enchant 2H Weapon - Lesser Impact",
 			["reagents"] = {
 				[11083] = 3,
@@ -560,6 +592,7 @@ addon.recipeDB[333] = {
 				165,
 				205,
 			},
+			["itemId"] = 11101,
 			["name"] = "Enchant Bracer - Lesser Strength",
 			["reagents"] = {
 				[11083] = 2,
@@ -574,6 +607,7 @@ addon.recipeDB[333] = {
 				165,
 				205,
 			},
+			["itemId"] = 38798,
 			["name"] = "Enchant Chest - Lesser Absorption",
 			["reagents"] = {
 				[10940] = 2,
@@ -590,6 +624,7 @@ addon.recipeDB[333] = {
 				170,
 				210,
 			},
+			["itemId"] = 38799,
 			["name"] = "Enchant Chest - Mana",
 			["reagents"] = {
 				[10998] = 2,
@@ -605,6 +640,7 @@ addon.recipeDB[333] = {
 				170,
 				210,
 			},
+			["itemId"] = 11150,
 			["name"] = "Enchant Gloves - Mining",
 			["reagents"] = {
 				[2772] = 3,
@@ -620,6 +656,7 @@ addon.recipeDB[333] = {
 				170,
 				210,
 			},
+			["itemId"] = 11151,
 			["name"] = "Enchant Gloves - Herbalism",
 			["reagents"] = {
 				[3356] = 3,
@@ -635,6 +672,7 @@ addon.recipeDB[333] = {
 				170,
 				210,
 			},
+			["itemId"] = 11152,
 			["name"] = "Enchant Gloves - Fishing",
 			["reagents"] = {
 				[6370] = 3,
@@ -650,6 +688,7 @@ addon.recipeDB[333] = {
 				175,
 				215,
 			},
+			["itemId"] = 38803,
 			["name"] = "Enchant Bracer - Lesser Intellect",
 			["reagents"] = {
 				[11082] = 2,
@@ -664,6 +703,7 @@ addon.recipeDB[333] = {
 				175,
 				215,
 			},
+			["itemId"] = 38804,
 			["name"] = "Enchant Chest - Minor Stats",
 			["reagents"] = {
 				[11082] = 1,
@@ -698,6 +738,7 @@ addon.recipeDB[333] = {
 				175,
 				215,
 			},
+			["itemId"] = 38805,
 			["name"] = "Enchant Shield - Lesser Stamina",
 			["reagents"] = {
 				[11083] = 1,
@@ -713,6 +754,7 @@ addon.recipeDB[333] = {
 				175,
 				215,
 			},
+			["itemId"] = 38806,
 			["name"] = "Enchant Cloak - Defense",
 			["reagents"] = {
 				[11083] = 3,
@@ -728,6 +770,7 @@ addon.recipeDB[333] = {
 				180,
 				220,
 			},
+			["itemId"] = 38807,
 			["name"] = "Enchant Boots - Lesser Agility",
 			["reagents"] = {
 				[11083] = 1,
@@ -743,6 +786,7 @@ addon.recipeDB[333] = {
 				180,
 				220,
 			},
+			["itemId"] = 38808,
 			["name"] = "Enchant Chest - Greater Health",
 			["reagents"] = {
 				[11083] = 3,
@@ -757,6 +801,7 @@ addon.recipeDB[333] = {
 				185,
 				225,
 			},
+			["itemId"] = 38809,
 			["name"] = "Enchant Bracer - Spirit",
 			["reagents"] = {
 				[11134] = 1,
@@ -771,6 +816,7 @@ addon.recipeDB[333] = {
 				190,
 				230,
 			},
+			["itemId"] = 38810,
 			["name"] = "Enchant Boots - Lesser Stamina",
 			["reagents"] = {
 				[11083] = 4,
@@ -785,6 +831,7 @@ addon.recipeDB[333] = {
 				190,
 				230,
 			},
+			["itemId"] = 11163,
 			["name"] = "Enchant Bracer - Lesser Dodge",
 			["reagents"] = {
 				[11083] = 2,
@@ -800,6 +847,7 @@ addon.recipeDB[333] = {
 				190,
 				230,
 			},
+			["itemId"] = 38812,
 			["name"] = "Enchant Bracer - Stamina",
 			["reagents"] = {
 				[11083] = 6,
@@ -814,6 +862,7 @@ addon.recipeDB[333] = {
 				195,
 				235,
 			},
+			["itemId"] = 11164,
 			["name"] = "Enchant Weapon - Lesser Beastslayer",
 			["reagents"] = {
 				[5637] = 2,
@@ -830,6 +879,7 @@ addon.recipeDB[333] = {
 				195,
 				235,
 			},
+			["itemId"] = 11165,
 			["name"] = "Enchant Weapon - Lesser Elemental Slayer",
 			["reagents"] = {
 				[7067] = 1,
@@ -846,6 +896,7 @@ addon.recipeDB[333] = {
 				195,
 				235,
 			},
+			["itemId"] = 38815,
 			["name"] = "Enchant Cloak - Fire Resistance",
 			["reagents"] = {
 				[7068] = 1,
@@ -861,6 +912,7 @@ addon.recipeDB[333] = {
 				200,
 				240,
 			},
+			["itemId"] = 38816,
 			["name"] = "Enchant Shield - Spirit",
 			["reagents"] = {
 				[11135] = 1,
@@ -876,6 +928,7 @@ addon.recipeDB[333] = {
 				200,
 				240,
 			},
+			["itemId"] = 38817,
 			["name"] = "Enchant Bracer - Strength",
 			["reagents"] = {
 				[11137] = 1,
@@ -890,6 +943,7 @@ addon.recipeDB[333] = {
 				205,
 				245,
 			},
+			["itemId"] = 38818,
 			["name"] = "Enchant Chest - Greater Mana",
 			["reagents"] = {
 				[11135] = 1,
@@ -904,6 +958,7 @@ addon.recipeDB[333] = {
 				210,
 				250,
 			},
+			["itemId"] = 11167,
 			["name"] = "Enchant Boots - Lesser Spirit",
 			["reagents"] = {
 				[11134] = 2,
@@ -919,6 +974,7 @@ addon.recipeDB[333] = {
 				215,
 				255,
 			},
+			["itemId"] = 11168,
 			["name"] = "Enchant Shield - Lesser Parry",
 			["reagents"] = {
 				[11135] = 2,
@@ -935,6 +991,7 @@ addon.recipeDB[333] = {
 				215,
 				255,
 			},
+			["itemId"] = 38821,
 			["name"] = "Enchant Weapon - Striking",
 			["reagents"] = {
 				[11135] = 2,
@@ -950,6 +1007,7 @@ addon.recipeDB[333] = {
 				220,
 				260,
 			},
+			["itemId"] = 38822,
 			["name"] = "Enchant 2H Weapon - Impact",
 			["reagents"] = {
 				[11137] = 4,
@@ -965,6 +1023,7 @@ addon.recipeDB[333] = {
 				220,
 				260,
 			},
+			["itemId"] = 11166,
 			["name"] = "Enchant Gloves - Skinning",
 			["reagents"] = {
 				[7392] = 3,
@@ -980,6 +1039,7 @@ addon.recipeDB[333] = {
 				220,
 				260,
 			},
+			["itemId"] = 38824,
 			["name"] = "Enchant Chest - Lesser Stats",
 			["reagents"] = {
 				[11135] = 2,
@@ -1014,6 +1074,7 @@ addon.recipeDB[333] = {
 				225,
 				265,
 			},
+			["itemId"] = 38825,
 			["name"] = "Enchant Cloak - Greater Defense",
 			["reagents"] = {
 				[11137] = 3,
@@ -1028,6 +1089,7 @@ addon.recipeDB[333] = {
 				225,
 				265,
 			},
+			["itemId"] = 38826,
 			["name"] = "Enchant Cloak - Resistance",
 			["reagents"] = {
 				[11174] = 1,
@@ -1042,6 +1104,7 @@ addon.recipeDB[333] = {
 				230,
 				270,
 			},
+			["itemId"] = 38827,
 			["name"] = "Enchant Gloves - Agility",
 			["reagents"] = {
 				[11137] = 1,
@@ -1057,6 +1120,7 @@ addon.recipeDB[333] = {
 				230,
 				270,
 			},
+			["itemId"] = 11202,
 			["name"] = "Enchant Shield - Stamina",
 			["reagents"] = {
 				[11137] = 5,
@@ -1071,6 +1135,7 @@ addon.recipeDB[333] = {
 				230,
 				270,
 			},
+			["itemId"] = 38829,
 			["name"] = "Enchant Bracer - Intellect",
 			["reagents"] = {
 				[11174] = 2,
@@ -1085,6 +1150,7 @@ addon.recipeDB[333] = {
 				235,
 				275,
 			},
+			["itemId"] = 38830,
 			["name"] = "Enchant Boots - Stamina",
 			["reagents"] = {
 				[11137] = 5,
@@ -1099,6 +1165,7 @@ addon.recipeDB[333] = {
 				235,
 				275,
 			},
+			["itemId"] = 11203,
 			["name"] = "Enchant Gloves - Advanced Mining",
 			["reagents"] = {
 				[6037] = 3,
@@ -1114,6 +1181,7 @@ addon.recipeDB[333] = {
 				240,
 				280,
 			},
+			["itemId"] = 11204,
 			["name"] = "Enchant Bracer - Greater Spirit",
 			["reagents"] = {
 				[11137] = 1,
@@ -1129,6 +1197,7 @@ addon.recipeDB[333] = {
 				240,
 				280,
 			},
+			["itemId"] = 38833,
 			["name"] = "Enchant Chest - Superior Health",
 			["reagents"] = {
 				[11137] = 6,
@@ -1143,6 +1212,7 @@ addon.recipeDB[333] = {
 				245,
 				285,
 			},
+			["itemId"] = 11205,
 			["name"] = "Enchant Gloves - Advanced Herbalism",
 			["reagents"] = {
 				[8838] = 3,
@@ -1158,6 +1228,7 @@ addon.recipeDB[333] = {
 				245,
 				285,
 			},
+			["itemId"] = 11206,
 			["name"] = "Enchant Cloak - Lesser Agility",
 			["reagents"] = {
 				[11174] = 2,
@@ -1172,6 +1243,7 @@ addon.recipeDB[333] = {
 				245,
 				285,
 			},
+			["itemId"] = 38836,
 			["name"] = "Enchant Gloves - Strength",
 			["reagents"] = {
 				[11137] = 3,
@@ -1187,6 +1259,7 @@ addon.recipeDB[333] = {
 				245,
 				285,
 			},
+			["itemId"] = 38837,
 			["name"] = "Enchant Boots - Minor Speed",
 			["reagents"] = {
 				[7909] = 1,
@@ -1203,6 +1276,7 @@ addon.recipeDB[333] = {
 				285,
 				325,
 			},
+			["itemId"] = 11207,
 			["name"] = "Enchant Weapon - Fiery Weapon",
 			["reagents"] = {
 				[7078] = 1,
@@ -1218,6 +1292,7 @@ addon.recipeDB[333] = {
 				250,
 				290,
 			},
+			["itemId"] = 38839,
 			["name"] = "Enchant Shield - Greater Spirit",
 			["reagents"] = {
 				[11175] = 1,
@@ -1233,6 +1308,7 @@ addon.recipeDB[333] = {
 				250,
 				290,
 			},
+			["itemId"] = 11208,
 			["name"] = "Enchant Weapon - Demonslaying",
 			["reagents"] = {
 				[9224] = 1,
@@ -1249,6 +1325,7 @@ addon.recipeDB[333] = {
 				250,
 				290,
 			},
+			["itemId"] = 38841,
 			["name"] = "Enchant Chest - Superior Mana",
 			["reagents"] = {
 				[11174] = 2,
@@ -1276,6 +1353,7 @@ addon.recipeDB[333] = {
 				255,
 				295,
 			},
+			["itemId"] = 11223,
 			["name"] = "Enchant Bracer - Dodge",
 			["reagents"] = {
 				[11175] = 1,
@@ -1291,6 +1369,7 @@ addon.recipeDB[333] = {
 				255,
 				295,
 			},
+			["itemId"] = 11224,
 			["name"] = "Enchant Shield - Frost Resistance",
 			["reagents"] = {
 				[3829] = 1,
@@ -1306,6 +1385,7 @@ addon.recipeDB[333] = {
 				255,
 				295,
 			},
+			["itemId"] = 38844,
 			["name"] = "Enchant Boots - Agility",
 			["reagents"] = {
 				[11175] = 2,
@@ -1320,6 +1400,7 @@ addon.recipeDB[333] = {
 				260,
 				300,
 			},
+			["itemId"] = 38845,
 			["name"] = "Enchant 2H Weapon - Greater Impact",
 			["reagents"] = {
 				[11176] = 2,
@@ -1335,6 +1416,7 @@ addon.recipeDB[333] = {
 				260,
 				300,
 			},
+			["itemId"] = 38846,
 			["name"] = "Enchant Bracer - Greater Strength",
 			["reagents"] = {
 				[11175] = 1,
@@ -1350,6 +1432,7 @@ addon.recipeDB[333] = {
 				265,
 				305,
 			},
+			["itemId"] = 38847,
 			["name"] = "Enchant Chest - Stats",
 			["reagents"] = {
 				[11175] = 2,
@@ -1366,6 +1449,7 @@ addon.recipeDB[333] = {
 				265,
 				305,
 			},
+			["itemId"] = 38848,
 			["name"] = "Enchant Weapon - Greater Striking",
 			["reagents"] = {
 				[11175] = 2,
@@ -1381,6 +1465,7 @@ addon.recipeDB[333] = {
 				265,
 				305,
 			},
+			["itemId"] = 11225,
 			["name"] = "Enchant Bracer - Greater Stamina",
 			["reagents"] = {
 				[11176] = 5,
@@ -1395,6 +1480,7 @@ addon.recipeDB[333] = {
 				270,
 				310,
 			},
+			["itemId"] = 11226,
 			["name"] = "Enchant Gloves - Riding Skill",
 			["reagents"] = {
 				[11176] = 3,
@@ -1410,6 +1496,7 @@ addon.recipeDB[333] = {
 				270,
 				310,
 			},
+			["itemId"] = 38851,
 			["name"] = "Enchant Gloves - Minor Haste",
 			["reagents"] = {
 				[8153] = 2,
@@ -1487,6 +1574,7 @@ addon.recipeDB[333] = {
 				285,
 				325,
 			},
+			["itemId"] = 11813,
 			["name"] = "Smoking Heart of the Mountain",
 			["reagents"] = {
 				[7078] = 3,
@@ -1532,6 +1620,7 @@ addon.recipeDB[333] = {
 				275,
 				315,
 			},
+			["itemId"] = 16214,
 			["name"] = "Enchant Bracer - Greater Intellect",
 			["reagents"] = {
 				[16202] = 3,
@@ -1546,6 +1635,7 @@ addon.recipeDB[333] = {
 				290,
 				330,
 			},
+			["itemId"] = 16218,
 			["name"] = "Enchant Bracer - Superior Spirit",
 			["reagents"] = {
 				[11176] = 4,
@@ -1561,6 +1651,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 16246,
 			["name"] = "Enchant Bracer - Superior Strength",
 			["reagents"] = {
 				[16203] = 2,
@@ -1576,6 +1667,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 16251,
 			["name"] = "Enchant Bracer - Superior Stamina",
 			["reagents"] = {
 				[16204] = 10,
@@ -1590,6 +1682,7 @@ addon.recipeDB[333] = {
 				290,
 				330,
 			},
+			["itemId"] = 16219,
 			["name"] = "Enchant Gloves - Greater Agility",
 			["reagents"] = {
 				[16202] = 2,
@@ -1605,6 +1698,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 16244,
 			["name"] = "Enchant Gloves - Greater Strength",
 			["reagents"] = {
 				[16202] = 4,
@@ -1620,6 +1714,7 @@ addon.recipeDB[333] = {
 				285,
 				325,
 			},
+			["itemId"] = 16216,
 			["name"] = "Enchant Cloak - Greater Resistance",
 			["reagents"] = {
 				[7075] = 1,
@@ -1638,6 +1733,7 @@ addon.recipeDB[333] = {
 				300,
 				335,
 			},
+			["itemId"] = 16224,
 			["name"] = "Enchant Cloak - Superior Defense",
 			["reagents"] = {
 				[16204] = 8,
@@ -1652,6 +1748,7 @@ addon.recipeDB[333] = {
 				300,
 				340,
 			},
+			["itemId"] = 16222,
 			["name"] = "Enchant Shield - Vitality",
 			["reagents"] = {
 				[16203] = 1,
@@ -1667,6 +1764,7 @@ addon.recipeDB[333] = {
 				285,
 				325,
 			},
+			["itemId"] = 16217,
 			["name"] = "Enchant Shield - Greater Stamina",
 			["reagents"] = {
 				[11176] = 5,
@@ -1681,6 +1779,7 @@ addon.recipeDB[333] = {
 				280,
 				320,
 			},
+			["itemId"] = 16215,
 			["name"] = "Enchant Boots - Greater Stamina",
 			["reagents"] = {
 				[11176] = 5,
@@ -1695,6 +1794,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 16245,
 			["name"] = "Enchant Boots - Greater Agility",
 			["reagents"] = {
 				[8153] = 2,
@@ -1710,6 +1810,7 @@ addon.recipeDB[333] = {
 				295,
 				335,
 			},
+			["itemId"] = 16220,
 			["name"] = "Enchant Boots - Spirit",
 			["reagents"] = {
 				[16203] = 2,
@@ -1724,6 +1825,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 16253,
 			["name"] = "Enchant Chest - Greater Stats",
 			["reagents"] = {
 				[14344] = 2,
@@ -1739,6 +1841,7 @@ addon.recipeDB[333] = {
 				295,
 				335,
 			},
+			["itemId"] = 16221,
 			["name"] = "Enchant Chest - Major Health",
 			["reagents"] = {
 				[14343] = 2,
@@ -1753,6 +1856,7 @@ addon.recipeDB[333] = {
 				305,
 				340,
 			},
+			["itemId"] = 16242,
 			["name"] = "Enchant Chest - Major Mana",
 			["reagents"] = {
 				[16204] = 8,
@@ -1767,6 +1871,7 @@ addon.recipeDB[333] = {
 				300,
 				335,
 			},
+			["itemId"] = 16223,
 			["name"] = "Enchant Weapon - Icy Chill",
 			["reagents"] = {
 				[7080] = 1,
@@ -1784,6 +1889,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 16247,
 			["name"] = "Enchant 2H Weapon - Superior Impact",
 			["reagents"] = {
 				[14344] = 4,
@@ -1799,6 +1905,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 16250,
 			["name"] = "Enchant Weapon - Superior Striking",
 			["reagents"] = {
 				[14344] = 2,
@@ -1814,6 +1921,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 16254,
 			["name"] = "Enchant Weapon - Lifestealing",
 			["reagents"] = {
 				[12803] = 4,
@@ -1830,6 +1938,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 16248,
 			["name"] = "Enchant Weapon - Unholy Weapon",
 			["reagents"] = {
 				[12808] = 4,
@@ -1845,6 +1954,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 16252,
 			["name"] = "Enchant Weapon - Crusader",
 			["reagents"] = {
 				[12811] = 2,
@@ -1860,6 +1970,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 16255,
 			["name"] = "Enchant 2H Weapon - Major Spirit",
 			["reagents"] = {
 				[14344] = 2,
@@ -1875,6 +1986,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 16249,
 			["name"] = "Enchant 2H Weapon - Major Intellect",
 			["reagents"] = {
 				[14344] = 2,
@@ -1890,6 +2002,7 @@ addon.recipeDB[333] = {
 				305,
 				340,
 			},
+			["itemId"] = 16243,
 			["name"] = "Runed Arcanite Rod",
 			["reagents"] = {
 				[11145] = 1,
@@ -1908,6 +2021,7 @@ addon.recipeDB[333] = {
 				210,
 				250,
 			},
+			["itemId"] = 17725,
 			["name"] = "Enchant Weapon - Winter's Might",
 			["reagents"] = {
 				[3819] = 2,
@@ -1941,6 +2055,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 18259,
 			["name"] = "Enchant Weapon - Spellpower",
 			["reagents"] = {
 				[13926] = 2,
@@ -1957,6 +2072,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 18260,
 			["name"] = "Enchant Weapon - Healing Power",
 			["reagents"] = {
 				[7080] = 4,
@@ -1973,6 +2089,7 @@ addon.recipeDB[333] = {
 				305,
 				340,
 			},
+			["itemId"] = 19444,
 			["name"] = "Enchant Weapon - Strength",
 			["reagents"] = {
 				[7076] = 4,
@@ -1988,6 +2105,7 @@ addon.recipeDB[333] = {
 				305,
 				340,
 			},
+			["itemId"] = 19445,
 			["name"] = "Enchant Weapon - Agility",
 			["reagents"] = {
 				[7082] = 4,
@@ -2003,6 +2121,7 @@ addon.recipeDB[333] = {
 				305,
 				340,
 			},
+			["itemId"] = 19446,
 			["name"] = "Enchant Bracer - Mana Regeneration",
 			["reagents"] = {
 				[7080] = 2,
@@ -2019,6 +2138,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 19447,
 			["name"] = "Enchant Bracer - Healing Power",
 			["reagents"] = {
 				[14344] = 2,
@@ -2035,6 +2155,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 19448,
 			["name"] = "Enchant Weapon - Mighty Spirit",
 			["reagents"] = {
 				[14344] = 6,
@@ -2051,6 +2172,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 19449,
 			["name"] = "Enchant Weapon - Mighty Intellect",
 			["reagents"] = {
 				[14344] = 6,
@@ -2067,6 +2189,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 20726,
 			["name"] = "Enchant Gloves - Threat",
 			["reagents"] = {
 				[21886] = 8,
@@ -2083,6 +2206,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 20727,
 			["name"] = "Enchant Gloves - Shadow Power",
 			["reagents"] = {
 				[12808] = 6,
@@ -2099,6 +2223,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 20728,
 			["name"] = "Enchant Gloves - Frost Power",
 			["reagents"] = {
 				[7080] = 4,
@@ -2115,6 +2240,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 20729,
 			["name"] = "Enchant Gloves - Fire Power",
 			["reagents"] = {
 				[7078] = 4,
@@ -2131,6 +2257,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 20730,
 			["name"] = "Enchant Gloves - Healing Power",
 			["reagents"] = {
 				[12811] = 1,
@@ -2147,6 +2274,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 20731,
 			["name"] = "Enchant Gloves - Superior Agility",
 			["reagents"] = {
 				[22446] = 3,
@@ -2163,6 +2291,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 20732,
 			["name"] = "Enchant Cloak - Greater Fire Resistance",
 			["reagents"] = {
 				[7078] = 4,
@@ -2179,6 +2308,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 20733,
 			["name"] = "Enchant Cloak - Greater Nature Resistance",
 			["reagents"] = {
 				[12803] = 4,
@@ -2195,6 +2325,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 20734,
 			["name"] = "Enchant Cloak - Stealth",
 			["reagents"] = {
 				[22446] = 3,
@@ -2211,6 +2342,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 20735,
 			["name"] = "Enchant Cloak - Subtlety",
 			["reagents"] = {
 				[22446] = 2,
@@ -2227,6 +2359,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 20736,
 			["name"] = "Enchant Cloak - Dodge",
 			["reagents"] = {
 				[22446] = 3,
@@ -2243,6 +2376,7 @@ addon.recipeDB[333] = {
 				55,
 				75,
 			},
+			["itemId"] = 20758,
 			["name"] = "Minor Wizard Oil",
 			["reagents"] = {
 				[3371] = 1,
@@ -2258,6 +2392,7 @@ addon.recipeDB[333] = {
 				160,
 				180,
 			},
+			["itemId"] = 20752,
 			["name"] = "Minor Mana Oil",
 			["reagents"] = {
 				[3371] = 1,
@@ -2273,6 +2408,7 @@ addon.recipeDB[333] = {
 				210,
 				230,
 			},
+			["itemId"] = 20753,
 			["name"] = "Lesser Wizard Oil",
 			["reagents"] = {
 				[3371] = 1,
@@ -2288,6 +2424,7 @@ addon.recipeDB[333] = {
 				260,
 				280,
 			},
+			["itemId"] = 20754,
 			["name"] = "Lesser Mana Oil",
 			["reagents"] = {
 				[3371] = 1,
@@ -2304,6 +2441,7 @@ addon.recipeDB[333] = {
 				285,
 				305,
 			},
+			["itemId"] = 20755,
 			["name"] = "Wizard Oil",
 			["reagents"] = {
 				[3371] = 1,
@@ -2320,6 +2458,7 @@ addon.recipeDB[333] = {
 				310,
 				330,
 			},
+			["itemId"] = 20756,
 			["name"] = "Brilliant Wizard Oil",
 			["reagents"] = {
 				[3371] = 1,
@@ -2336,6 +2475,7 @@ addon.recipeDB[333] = {
 				310,
 				330,
 			},
+			["itemId"] = 20757,
 			["name"] = "Brilliant Mana Oil",
 			["reagents"] = {
 				[3371] = 1,
@@ -2352,6 +2492,7 @@ addon.recipeDB[333] = {
 				305,
 				340,
 			},
+			["itemId"] = 22392,
 			["name"] = "Enchant 2H Weapon - Agility",
 			["reagents"] = {
 				[7082] = 4,
@@ -2367,6 +2508,7 @@ addon.recipeDB[333] = {
 				315,
 				345,
 			},
+			["itemId"] = 35420,
 			["name"] = "Enchant Bracer - Brawn",
 			["reagents"] = {
 				[22445] = 6,
@@ -2381,6 +2523,7 @@ addon.recipeDB[333] = {
 				325,
 				355,
 			},
+			["itemId"] = 35426,
 			["name"] = "Enchant Bracer - Stats",
 			["reagents"] = {
 				[22445] = 6,
@@ -2396,6 +2539,7 @@ addon.recipeDB[333] = {
 				330,
 				360,
 			},
+			["itemId"] = 22530,
 			["name"] = "Enchant Bracer - Greater Dodge",
 			["reagents"] = {
 				[22445] = 10,
@@ -2411,6 +2555,7 @@ addon.recipeDB[333] = {
 				335,
 				365,
 			},
+			["itemId"] = 22531,
 			["name"] = "Enchant Bracer - Superior Healing",
 			["reagents"] = {
 				[21886] = 4,
@@ -2426,6 +2571,7 @@ addon.recipeDB[333] = {
 				345,
 				375,
 			},
+			["itemId"] = 22532,
 			["name"] = "Enchant Bracer - Restore Mana Prime",
 			["reagents"] = {
 				[22446] = 8,
@@ -2440,6 +2586,7 @@ addon.recipeDB[333] = {
 				370,
 				380,
 			},
+			["itemId"] = 22533,
 			["name"] = "Enchant Bracer - Fortitude",
 			["reagents"] = {
 				[22445] = 20,
@@ -2456,6 +2603,7 @@ addon.recipeDB[333] = {
 				370,
 				400,
 			},
+			["itemId"] = 22534,
 			["name"] = "Enchant Bracer - Spellpower",
 			["reagents"] = {
 				[21884] = 6,
@@ -2472,6 +2620,7 @@ addon.recipeDB[333] = {
 				370,
 				385,
 			},
+			["itemId"] = 22535,
 			["name"] = "Enchant Ring - Striking",
 			["reagents"] = {
 				[22445] = 6,
@@ -2487,6 +2636,7 @@ addon.recipeDB[333] = {
 				370,
 				385,
 			},
+			["itemId"] = 22536,
 			["name"] = "Enchant Ring - Minor Intellect",
 			["reagents"] = {
 				[22446] = 1,
@@ -2501,6 +2651,7 @@ addon.recipeDB[333] = {
 				380,
 				390,
 			},
+			["itemId"] = 22537,
 			["name"] = "Enchant Ring - Healing Power",
 			["reagents"] = {
 				[22445] = 5,
@@ -2517,6 +2668,7 @@ addon.recipeDB[333] = {
 				380,
 				390,
 			},
+			["itemId"] = 22538,
 			["name"] = "Enchant Ring - Stats",
 			["reagents"] = {
 				[22449] = 2,
@@ -2532,6 +2684,7 @@ addon.recipeDB[333] = {
 				320,
 				350,
 			},
+			["itemId"] = 38904,
 			["name"] = "Enchant Shield - Lesser Dodge",
 			["reagents"] = {
 				[22445] = 6,
@@ -2547,6 +2700,7 @@ addon.recipeDB[333] = {
 				335,
 				365,
 			},
+			["itemId"] = 22539,
 			["name"] = "Enchant Shield - Intellect",
 			["reagents"] = {
 				[22446] = 4,
@@ -2561,6 +2715,7 @@ addon.recipeDB[333] = {
 				350,
 				380,
 			},
+			["itemId"] = 22540,
 			["name"] = "Enchant Shield - Parry",
 			["reagents"] = {
 				[22445] = 12,
@@ -2577,6 +2732,7 @@ addon.recipeDB[333] = {
 				370,
 				385,
 			},
+			["itemId"] = 22541,
 			["name"] = "Enchant Shield - Resistance",
 			["reagents"] = {
 				[22449] = 2,
@@ -2595,6 +2751,7 @@ addon.recipeDB[333] = {
 				315,
 				345,
 			},
+			["itemId"] = 22542,
 			["name"] = "Enchant Boots - Vitality",
 			["reagents"] = {
 				[13444] = 4,
@@ -2611,6 +2768,7 @@ addon.recipeDB[333] = {
 				330,
 				360,
 			},
+			["itemId"] = 22543,
 			["name"] = "Enchant Boots - Fortitude",
 			["reagents"] = {
 				[22445] = 12,
@@ -2625,6 +2783,7 @@ addon.recipeDB[333] = {
 				350,
 				380,
 			},
+			["itemId"] = 22544,
 			["name"] = "Enchant Boots - Dexterity",
 			["reagents"] = {
 				[22445] = 8,
@@ -2640,6 +2799,7 @@ addon.recipeDB[333] = {
 				380,
 				390,
 			},
+			["itemId"] = 22545,
 			["name"] = "Enchant Boots - Surefooted",
 			["reagents"] = {
 				[22449] = 4,
@@ -2655,6 +2815,7 @@ addon.recipeDB[333] = {
 				325,
 				355,
 			},
+			["itemId"] = 35428,
 			["name"] = "Enchant Chest - Exceptional Health",
 			["reagents"] = {
 				[13446] = 4,
@@ -2671,6 +2832,7 @@ addon.recipeDB[333] = {
 				375,
 				385,
 			},
+			["itemId"] = 22546,
 			["name"] = "Enchant Chest - Exceptional Mana",
 			["reagents"] = {
 				[34054] = 3,
@@ -2685,6 +2847,7 @@ addon.recipeDB[333] = {
 				355,
 				380,
 			},
+			["itemId"] = 22547,
 			["name"] = "Enchant Chest - Exceptional Stats",
 			["reagents"] = {
 				[22445] = 4,
@@ -2701,6 +2864,7 @@ addon.recipeDB[333] = {
 				320,
 				350,
 			},
+			["itemId"] = 35437,
 			["name"] = "Enchant Cloak - Major Armor",
 			["reagents"] = {
 				[22445] = 8,
@@ -2715,6 +2879,7 @@ addon.recipeDB[333] = {
 				340,
 				370,
 			},
+			["itemId"] = 22548,
 			["name"] = "Enchant Cloak - Major Resistance",
 			["reagents"] = {
 				[21884] = 4,
@@ -2733,6 +2898,7 @@ addon.recipeDB[333] = {
 				350,
 				380,
 			},
+			["itemId"] = 22552,
 			["name"] = "Enchant Weapon - Major Striking",
 			["reagents"] = {
 				[22445] = 6,
@@ -2749,6 +2915,7 @@ addon.recipeDB[333] = {
 				350,
 				380,
 			},
+			["itemId"] = 22551,
 			["name"] = "Enchant Weapon - Major Intellect",
 			["reagents"] = {
 				[22446] = 10,
@@ -2764,6 +2931,7 @@ addon.recipeDB[333] = {
 				370,
 				380,
 			},
+			["itemId"] = 22554,
 			["name"] = "Enchant 2H Weapon - Savagery",
 			["reagents"] = {
 				[22445] = 40,
@@ -2779,6 +2947,7 @@ addon.recipeDB[333] = {
 				370,
 				380,
 			},
+			["itemId"] = 22553,
 			["name"] = "Enchant Weapon - Potency",
 			["reagents"] = {
 				[22445] = 20,
@@ -2795,6 +2964,7 @@ addon.recipeDB[333] = {
 				370,
 				380,
 			},
+			["itemId"] = 22555,
 			["name"] = "Enchant Weapon - Major Spellpower",
 			["reagents"] = {
 				[22446] = 8,
@@ -2810,6 +2980,7 @@ addon.recipeDB[333] = {
 				370,
 				385,
 			},
+			["itemId"] = 22556,
 			["name"] = "Enchant 2H Weapon - Major Agility",
 			["reagents"] = {
 				[22445] = 20,
@@ -2826,6 +2997,7 @@ addon.recipeDB[333] = {
 				390,
 				390,
 			},
+			["itemId"] = 22560,
 			["name"] = "Enchant Weapon - Sunfire",
 			["reagents"] = {
 				[21884] = 6,
@@ -2844,6 +3016,7 @@ addon.recipeDB[333] = {
 				380,
 				390,
 			},
+			["itemId"] = 22561,
 			["name"] = "Enchant Weapon - Soulfrost",
 			["reagents"] = {
 				[21885] = 6,
@@ -2862,6 +3035,7 @@ addon.recipeDB[333] = {
 				380,
 				390,
 			},
+			["itemId"] = 22559,
 			["name"] = "Enchant Weapon - Mongoose",
 			["reagents"] = {
 				[22445] = 40,
@@ -2879,6 +3053,7 @@ addon.recipeDB[333] = {
 				370,
 				385,
 			},
+			["itemId"] = 22558,
 			["name"] = "Enchant Weapon - Spellsurge",
 			["reagents"] = {
 				[22445] = 20,
@@ -2895,6 +3070,7 @@ addon.recipeDB[333] = {
 				370,
 				385,
 			},
+			["itemId"] = 22557,
 			["name"] = "Enchant Weapon - Battlemaster",
 			["reagents"] = {
 				[21885] = 2,
@@ -2911,6 +3087,7 @@ addon.recipeDB[333] = {
 				310,
 				330,
 			},
+			["itemId"] = 22562,
 			["name"] = "Superior Mana Oil",
 			["reagents"] = {
 				[3371] = 1,
@@ -2927,6 +3104,7 @@ addon.recipeDB[333] = {
 				340,
 				360,
 			},
+			["itemId"] = 22563,
 			["name"] = "Superior Wizard Oil",
 			["reagents"] = {
 				[3371] = 1,
@@ -2943,6 +3121,7 @@ addon.recipeDB[333] = {
 				335,
 				355,
 			},
+			["itemId"] = 22564,
 			["name"] = "Arcane Dust",
 			["reagents"] = {
 				[12363] = 1,
@@ -2957,6 +3136,7 @@ addon.recipeDB[333] = {
 				5,
 				10,
 			},
+			["itemId"] = 22565,
 			["name"] = "Large Prismatic Shard",
 			["reagents"] = {
 				[22448] = 3,
@@ -3028,6 +3208,7 @@ addon.recipeDB[333] = {
 				370,
 				380,
 			},
+			["itemId"] = 25848,
 			["name"] = "Runed Adamantite Rod",
 			["reagents"] = {
 				[22446] = 8,
@@ -3046,6 +3227,7 @@ addon.recipeDB[333] = {
 				370,
 				385,
 			},
+			["itemId"] = 25849,
 			["name"] = "Runed Eternium Rod",
 			["reagents"] = {
 				[22445] = 6,
@@ -3063,6 +3245,7 @@ addon.recipeDB[333] = {
 				330,
 				360,
 			},
+			["itemId"] = 35431,
 			["name"] = "Enchant Chest - Major Spirit",
 			["reagents"] = {
 				[22446] = 2,
@@ -3077,6 +3260,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 38929,
 			["name"] = "Enchant Chest - Restore Mana Prime",
 			["reagents"] = {
 				[22445] = 2,
@@ -3092,6 +3276,7 @@ addon.recipeDB[333] = {
 				355,
 				380,
 			},
+			["itemId"] = 28270,
 			["name"] = "Enchant Chest - Major Resilience",
 			["reagents"] = {
 				[22445] = 10,
@@ -3107,6 +3292,7 @@ addon.recipeDB[333] = {
 				315,
 				345,
 			},
+			["itemId"] = 35439,
 			["name"] = "Enchant Gloves - Blasting",
 			["reagents"] = {
 				[22445] = 4,
@@ -3122,6 +3308,7 @@ addon.recipeDB[333] = {
 				370,
 				385,
 			},
+			["itemId"] = 28271,
 			["name"] = "Enchant Gloves - Precise Strikes",
 			["reagents"] = {
 				[22445] = 2,
@@ -3138,6 +3325,7 @@ addon.recipeDB[333] = {
 				350,
 				380,
 			},
+			["itemId"] = 35442,
 			["name"] = "Enchant Gloves - Major Strength",
 			["reagents"] = {
 				[22445] = 12,
@@ -3153,6 +3341,7 @@ addon.recipeDB[333] = {
 				320,
 				350,
 			},
+			["itemId"] = 35438,
 			["name"] = "Enchant Gloves - Assault",
 			["reagents"] = {
 				[22445] = 8,
@@ -3167,6 +3356,7 @@ addon.recipeDB[333] = {
 				370,
 				385,
 			},
+			["itemId"] = 28272,
 			["name"] = "Enchant Gloves - Major Spellpower",
 			["reagents"] = {
 				[22446] = 6,
@@ -3183,6 +3373,7 @@ addon.recipeDB[333] = {
 				370,
 				380,
 			},
+			["itemId"] = 28273,
 			["name"] = "Enchant Gloves - Major Healing",
 			["reagents"] = {
 				[21886] = 6,
@@ -3199,6 +3390,7 @@ addon.recipeDB[333] = {
 				315,
 				345,
 			},
+			["itemId"] = 35423,
 			["name"] = "Enchant Bracer - Major Intellect",
 			["reagents"] = {
 				[22447] = 3,
@@ -3213,6 +3405,7 @@ addon.recipeDB[333] = {
 				310,
 				340,
 			},
+			["itemId"] = 38938,
 			["name"] = "Enchant Bracer - Lesser Assault",
 			["reagents"] = {
 				[22445] = 6,
@@ -3227,6 +3420,7 @@ addon.recipeDB[333] = {
 				335,
 				365,
 			},
+			["itemId"] = 28274,
 			["name"] = "Enchant Cloak - PvP Power",
 			["reagents"] = {
 				[22445] = 6,
@@ -3243,6 +3437,7 @@ addon.recipeDB[333] = {
 				320,
 				350,
 			},
+			["itemId"] = 35432,
 			["name"] = "Enchant Cloak - Greater Agility",
 			["reagents"] = {
 				[22445] = 4,
@@ -3259,6 +3454,7 @@ addon.recipeDB[333] = {
 				370,
 				380,
 			},
+			["itemId"] = 28276,
 			["name"] = "Enchant Cloak - Greater Arcane Resistance",
 			["reagents"] = {
 				[22449] = 4,
@@ -3274,6 +3470,7 @@ addon.recipeDB[333] = {
 				370,
 				380,
 			},
+			["itemId"] = 28277,
 			["name"] = "Enchant Cloak - Greater Shadow Resistance",
 			["reagents"] = {
 				[22449] = 4,
@@ -3289,6 +3486,7 @@ addon.recipeDB[333] = {
 				370,
 				385,
 			},
+			["itemId"] = 28279,
 			["name"] = "Enchant Boots - Cat's Swiftness",
 			["reagents"] = {
 				[22449] = 8,
@@ -3304,6 +3502,7 @@ addon.recipeDB[333] = {
 				370,
 				385,
 			},
+			["itemId"] = 28280,
 			["name"] = "Enchant Boots - Boar's Speed",
 			["reagents"] = {
 				[22449] = 8,
@@ -3319,6 +3518,7 @@ addon.recipeDB[333] = {
 				335,
 				365,
 			},
+			["itemId"] = 28282,
 			["name"] = "Enchant Shield - Major Stamina",
 			["reagents"] = {
 				[22445] = 15,
@@ -3333,6 +3533,7 @@ addon.recipeDB[333] = {
 				370,
 				380,
 			},
+			["itemId"] = 28281,
 			["name"] = "Enchant Weapon - Major Healing",
 			["reagents"] = {
 				[21885] = 8,
@@ -3377,6 +3578,7 @@ addon.recipeDB[333] = {
 				360,
 				375,
 			},
+			["itemId"] = 33165,
 			["name"] = "Enchant Weapon - Greater Agility",
 			["reagents"] = {
 				[22445] = 8,
@@ -3394,6 +3596,7 @@ addon.recipeDB[333] = {
 				380,
 				390,
 			},
+			["itemId"] = 33307,
 			["name"] = "Enchant Weapon - Executioner",
 			["reagents"] = {
 				[22445] = 30,
@@ -3412,6 +3615,7 @@ addon.recipeDB[333] = {
 				340,
 				370,
 			},
+			["itemId"] = 38949,
 			["name"] = "Enchant Shield - Resilience",
 			["reagents"] = {
 				[22447] = 4,
@@ -3427,6 +3631,7 @@ addon.recipeDB[333] = {
 				415,
 				435,
 			},
+			["itemId"] = 37332,
 			["name"] = "Enchant Cloak - Superior Frost Resistance",
 			["reagents"] = {
 				[34054] = 6,
@@ -3443,6 +3648,7 @@ addon.recipeDB[333] = {
 				415,
 				435,
 			},
+			["itemId"] = 38951,
 			["name"] = "Enchant Gloves - Expertise",
 			["reagents"] = {
 				[34054] = 12,
@@ -3457,6 +3663,7 @@ addon.recipeDB[333] = {
 				425,
 				440,
 			},
+			["itemId"] = 38953,
 			["name"] = "Enchant Gloves - Precision",
 			["reagents"] = {
 				[34055] = 4,
@@ -3471,6 +3678,7 @@ addon.recipeDB[333] = {
 				430,
 				450,
 			},
+			["itemId"] = 38954,
 			["name"] = "Enchant Shield - Dodge",
 			["reagents"] = {
 				[34054] = 6,
@@ -3486,6 +3694,7 @@ addon.recipeDB[333] = {
 				405,
 				425,
 			},
+			["itemId"] = 38955,
 			["name"] = "Enchant Chest - Mighty Health",
 			["reagents"] = {
 				[34055] = 3,
@@ -3500,6 +3709,7 @@ addon.recipeDB[333] = {
 				415,
 				435,
 			},
+			["itemId"] = 37333,
 			["name"] = "Enchant Cloak - Superior Nature Resistance",
 			["reagents"] = {
 				[34054] = 15,
@@ -3516,6 +3726,7 @@ addon.recipeDB[333] = {
 				405,
 				425,
 			},
+			["itemId"] = 37335,
 			["name"] = "Enchant Cloak - Superior Agility",
 			["reagents"] = {
 				[34054] = 9,
@@ -3530,6 +3741,7 @@ addon.recipeDB[333] = {
 				390,
 				400,
 			},
+			["itemId"] = 38960,
 			["name"] = "Enchant Gloves - Gatherer",
 			["reagents"] = {
 				[34055] = 1,
@@ -3544,6 +3756,7 @@ addon.recipeDB[333] = {
 				425,
 				440,
 			},
+			["itemId"] = 38961,
 			["name"] = "Enchant Boots - Greater Spirit",
 			["reagents"] = {
 				[34054] = 8,
@@ -3559,6 +3772,7 @@ addon.recipeDB[333] = {
 				430,
 				450,
 			},
+			["itemId"] = 38962,
 			["name"] = "Enchant Chest - Greater Mana Restoration",
 			["reagents"] = {
 				[34054] = 4,
@@ -3574,6 +3788,7 @@ addon.recipeDB[333] = {
 				425,
 				440,
 			},
+			["itemId"] = 37329,
 			["name"] = "Enchant Weapon - Exceptional Spirit",
 			["reagents"] = {
 				[34052] = 4,
@@ -3589,6 +3804,7 @@ addon.recipeDB[333] = {
 				405,
 				425,
 			},
+			["itemId"] = 37345,
 			["name"] = "Enchant Gloves - Greater Assault",
 			["reagents"] = {
 				[34054] = 6,
@@ -3604,6 +3820,7 @@ addon.recipeDB[333] = {
 				435,
 				455,
 			},
+			["itemId"] = 37344,
 			["name"] = "Enchant Weapon - Icebreaker",
 			["reagents"] = {
 				[34052] = 4,
@@ -3619,6 +3836,7 @@ addon.recipeDB[333] = {
 				400,
 				410,
 			},
+			["itemId"] = 38966,
 			["name"] = "Enchant Boots - Greater Fortitude",
 			["reagents"] = {
 				[34054] = 3,
@@ -3634,6 +3852,7 @@ addon.recipeDB[333] = {
 				425,
 				445,
 			},
+			["itemId"] = 38967,
 			["name"] = "Enchant Gloves - Major Agility",
 			["reagents"] = {
 				[34052] = 1,
@@ -3649,6 +3868,7 @@ addon.recipeDB[333] = {
 				385,
 				400,
 			},
+			["itemId"] = 38968,
 			["name"] = "Enchant Bracer - Exceptional Intellect",
 			["reagents"] = {
 				[34054] = 10,
@@ -3663,6 +3883,7 @@ addon.recipeDB[333] = {
 				415,
 				435,
 			},
+			["itemId"] = 37331,
 			["name"] = "Enchant Cloak - Superior Fire Resistance",
 			["reagents"] = {
 				[34055] = 4,
@@ -3678,6 +3899,7 @@ addon.recipeDB[333] = {
 				440,
 				460,
 			},
+			["itemId"] = 44484,
 			["name"] = "Enchant Bracer - Greater Assault",
 			["reagents"] = {
 				[34054] = 24,
@@ -3693,6 +3915,7 @@ addon.recipeDB[333] = {
 				435,
 				455,
 			},
+			["itemId"] = 38972,
 			["name"] = "Enchant Weapon - Lifeward",
 			["reagents"] = {
 				[34052] = 1,
@@ -3708,6 +3931,7 @@ addon.recipeDB[333] = {
 				395,
 				410,
 			},
+			["itemId"] = 38973,
 			["name"] = "Enchant Cloak - Minor Power",
 			["reagents"] = {
 				[34054] = 15,
@@ -3722,6 +3946,7 @@ addon.recipeDB[333] = {
 				415,
 				435,
 			},
+			["itemId"] = 38974,
 			["name"] = "Enchant Boots - Greater Vitality",
 			["reagents"] = {
 				[34054] = 4,
@@ -3737,6 +3962,7 @@ addon.recipeDB[333] = {
 				435,
 				455,
 			},
+			["itemId"] = 37340,
 			["name"] = "Enchant Chest - Exceptional Resilience",
 			["reagents"] = {
 				[34052] = 2,
@@ -3752,6 +3978,7 @@ addon.recipeDB[333] = {
 				425,
 				445,
 			},
+			["itemId"] = 37341,
 			["name"] = "Enchant Boots - Superior Agility",
 			["reagents"] = {
 				[34054] = 6,
@@ -3767,6 +3994,7 @@ addon.recipeDB[333] = {
 				415,
 				435,
 			},
+			["itemId"] = 37334,
 			["name"] = "Enchant Cloak - Superior Shadow Resistance",
 			["reagents"] = {
 				[34054] = 8,
@@ -3783,6 +4011,7 @@ addon.recipeDB[333] = {
 				445,
 				465,
 			},
+			["itemId"] = 37347,
 			["name"] = "Enchant Cloak - Superior Dodge",
 			["reagents"] = {
 				[34052] = 2,
@@ -3799,6 +4028,7 @@ addon.recipeDB[333] = {
 				375,
 				385,
 			},
+			["itemId"] = 38979,
 			["name"] = "Enchant Gloves - Exceptional Spellpower",
 			["reagents"] = {
 				[34054] = 2,
@@ -3814,6 +4044,7 @@ addon.recipeDB[333] = {
 				430,
 				450,
 			},
+			["itemId"] = 37326,
 			["name"] = "Enchant Bracer - Major Spirit",
 			["reagents"] = {
 				[34054] = 4,
@@ -3829,6 +4060,7 @@ addon.recipeDB[333] = {
 				440,
 				460,
 			},
+			["itemId"] = 37327,
 			["name"] = "Enchant 2H Weapon - Scourgebane",
 			["reagents"] = {
 				[34052] = 6,
@@ -3844,6 +4076,7 @@ addon.recipeDB[333] = {
 				415,
 				435,
 			},
+			["itemId"] = 37330,
 			["name"] = "Enchant Cloak - Superior Arcane Resistance",
 			["reagents"] = {
 				[34054] = 20,
@@ -3859,6 +4092,7 @@ addon.recipeDB[333] = {
 				425,
 				445,
 			},
+			["itemId"] = 37346,
 			["name"] = "Enchant Bracer - Expertise",
 			["reagents"] = {
 				[34054] = 12,
@@ -3874,6 +4108,7 @@ addon.recipeDB[333] = {
 				405,
 				420,
 			},
+			["itemId"] = 37342,
 			["name"] = "Enchant Gloves - Greater Blasting",
 			["reagents"] = {
 				[34052] = 1,
@@ -3889,6 +4124,7 @@ addon.recipeDB[333] = {
 				410,
 				430,
 			},
+			["itemId"] = 37337,
 			["name"] = "Enchant Bracer - Greater Stats",
 			["reagents"] = {
 				[34054] = 9,
@@ -3904,6 +4140,7 @@ addon.recipeDB[333] = {
 				440,
 				460,
 			},
+			["itemId"] = 37339,
 			["name"] = "Enchant Weapon - Giant Slayer",
 			["reagents"] = {
 				[34052] = 6,
@@ -3919,6 +4156,7 @@ addon.recipeDB[333] = {
 				380,
 				400,
 			},
+			["itemId"] = 38989,
 			["name"] = "Enchant Chest - Super Stats",
 			["reagents"] = {
 				[34056] = 3,
@@ -3933,6 +4171,7 @@ addon.recipeDB[333] = {
 				445,
 				465,
 			},
+			["itemId"] = 38990,
 			["name"] = "Enchant Gloves - Armsman",
 			["reagents"] = {
 				[34052] = 2,
@@ -3948,6 +4187,7 @@ addon.recipeDB[333] = {
 				405,
 				425,
 			},
+			["itemId"] = 38991,
 			["name"] = "Enchant Weapon - Exceptional Spellpower",
 			["reagents"] = {
 				[34054] = 10,
@@ -3963,6 +4203,7 @@ addon.recipeDB[333] = {
 				400,
 				420,
 			},
+			["itemId"] = 37338,
 			["name"] = "Enchant 2H Weapon - Greater Savagery",
 			["reagents"] = {
 				[34054] = 6,
@@ -3978,6 +4219,7 @@ addon.recipeDB[333] = {
 				450,
 				470,
 			},
+			["itemId"] = 37349,
 			["name"] = "Enchant Cloak - Shadow Armor",
 			["reagents"] = {
 				[34054] = 12,
@@ -3993,6 +4235,7 @@ addon.recipeDB[333] = {
 				425,
 				440,
 			},
+			["itemId"] = 37343,
 			["name"] = "Enchant Weapon - Exceptional Agility",
 			["reagents"] = {
 				[34052] = 4,
@@ -4008,6 +4251,7 @@ addon.recipeDB[333] = {
 				405,
 				425,
 			},
+			["itemId"] = 38997,
 			["name"] = "Enchant Bracer - Greater Spellpower",
 			["reagents"] = {
 				[34054] = 8,
@@ -4051,6 +4295,7 @@ addon.recipeDB[333] = {
 				360,
 				365,
 			},
+			["itemId"] = 34872,
 			["name"] = "Void Shatter",
 			["reagents"] = {
 				[22450] = 1,
@@ -4065,6 +4310,7 @@ addon.recipeDB[333] = {
 				350,
 				365,
 			},
+			["itemId"] = 35498,
 			["name"] = "Enchant Weapon - Deathfrost",
 			["reagents"] = {
 				[21885] = 2,
@@ -4080,6 +4326,7 @@ addon.recipeDB[333] = {
 				370,
 				400,
 			},
+			["itemId"] = 35500,
 			["name"] = "Enchant Chest - Dodge",
 			["reagents"] = {
 				[22445] = 8,
@@ -4096,6 +4343,7 @@ addon.recipeDB[333] = {
 				380,
 				390,
 			},
+			["itemId"] = 35756,
 			["name"] = "Enchant Cloak - Greater Dodge",
 			["reagents"] = {
 				[22446] = 8,
@@ -4111,6 +4359,7 @@ addon.recipeDB[333] = {
 				440,
 				460,
 			},
+			["itemId"] = 39001,
 			["name"] = "Enchant Cloak - Mighty Stamina",
 			["reagents"] = {
 				[34054] = 15,
@@ -4126,6 +4375,7 @@ addon.recipeDB[333] = {
 				410,
 				430,
 			},
+			["itemId"] = 37336,
 			["name"] = "Enchant Chest - Greater Dodge",
 			["reagents"] = {
 				[34054] = 3,
@@ -4141,6 +4391,7 @@ addon.recipeDB[333] = {
 				440,
 				460,
 			},
+			["itemId"] = 37348,
 			["name"] = "Enchant Cloak - Greater Speed",
 			["reagents"] = {
 				[34054] = 16,
@@ -4156,6 +4407,7 @@ addon.recipeDB[333] = {
 				450,
 				470,
 			},
+			["itemId"] = 39004,
 			["name"] = "Enchant Cloak - Wisdom",
 			["reagents"] = {
 				[34055] = 6,
@@ -4171,6 +4423,7 @@ addon.recipeDB[333] = {
 				435,
 				455,
 			},
+			["itemId"] = 39005,
 			["name"] = "Enchant Chest - Super Health",
 			["reagents"] = {
 				[34054] = 7,
@@ -4186,6 +4439,7 @@ addon.recipeDB[333] = {
 				450,
 				470,
 			},
+			["itemId"] = 39006,
 			["name"] = "Enchant Boots - Tuskarr's Vitality",
 			["reagents"] = {
 				[34052] = 2,
@@ -4214,6 +4468,7 @@ addon.recipeDB[333] = {
 				450,
 				470,
 			},
+			["itemId"] = 44496,
 			["name"] = "Enchant Weapon - Accuracy",
 			["reagents"] = {
 				[34052] = 4,
@@ -4231,6 +4486,7 @@ addon.recipeDB[333] = {
 				450,
 				470,
 			},
+			["itemId"] = 44492,
 			["name"] = "Enchant Weapon - Berserking",
 			["reagents"] = {
 				[34052] = 4,
@@ -4248,6 +4504,7 @@ addon.recipeDB[333] = {
 				450,
 				470,
 			},
+			["itemId"] = 43987,
 			["name"] = "Enchant Weapon - Black Magic",
 			["reagents"] = {
 				[34052] = 6,
@@ -4278,6 +4535,7 @@ addon.recipeDB[333] = {
 				385,
 				405,
 			},
+			["itemId"] = 44449,
 			["name"] = "Enchant Boots - Assault",
 			["reagents"] = {
 				[34054] = 4,
@@ -4293,6 +4551,7 @@ addon.recipeDB[333] = {
 				375,
 				385,
 			},
+			["itemId"] = 44456,
 			["name"] = "Enchant Cloak - Speed",
 			["reagents"] = {
 				[34054] = 3,
@@ -4307,6 +4566,7 @@ addon.recipeDB[333] = {
 				375,
 				385,
 			},
+			["itemId"] = 38971,
 			["name"] = "Enchant Bracer - Assault",
 			["reagents"] = {
 				[34054] = 4,
@@ -4339,6 +4599,7 @@ addon.recipeDB[333] = {
 				390,
 				410,
 			},
+			["itemId"] = 44453,
 			["name"] = "Enchant Weapon - Greater Potency",
 			["reagents"] = {
 				[34054] = 2,
@@ -4354,6 +4615,7 @@ addon.recipeDB[333] = {
 				395,
 				415,
 			},
+			["itemId"] = 38986,
 			["name"] = "Enchant Boots - Icewalker",
 			["reagents"] = {
 				[34054] = 8,
@@ -4369,6 +4631,7 @@ addon.recipeDB[333] = {
 				405,
 				425,
 			},
+			["itemId"] = 44455,
 			["name"] = "Enchant Shield - Greater Intellect",
 			["reagents"] = {
 				[34054] = 12,
@@ -4383,6 +4646,7 @@ addon.recipeDB[333] = {
 				430,
 				450,
 			},
+			["itemId"] = 44457,
 			["name"] = "Enchant Cloak - Major Agility",
 			["reagents"] = {
 				[34052] = 3,
@@ -4398,6 +4662,7 @@ addon.recipeDB[333] = {
 				435,
 				455,
 			},
+			["itemId"] = 44458,
 			["name"] = "Enchant Gloves - Crusher",
 			["reagents"] = {
 				[34054] = 15,
@@ -4412,6 +4677,7 @@ addon.recipeDB[333] = {
 				440,
 				460,
 			},
+			["itemId"] = 44463,
 			["name"] = "Enchant 2H Weapon - Massacre",
 			["reagents"] = {
 				[34054] = 40,
@@ -4428,6 +4694,7 @@ addon.recipeDB[333] = {
 				450,
 				470,
 			},
+			["itemId"] = 44465,
 			["name"] = "Enchant Chest - Powerful Stats",
 			["reagents"] = {
 				[34052] = 4,
@@ -4443,6 +4710,7 @@ addon.recipeDB[333] = {
 				445,
 				465,
 			},
+			["itemId"] = 44466,
 			["name"] = "Enchant Weapon - Superior Potency",
 			["reagents"] = {
 				[34052] = 2,
@@ -4460,6 +4728,7 @@ addon.recipeDB[333] = {
 				445,
 				465,
 			},
+			["itemId"] = 44467,
 			["name"] = "Enchant Weapon - Mighty Spellpower",
 			["reagents"] = {
 				[34052] = 6,
@@ -4476,6 +4745,7 @@ addon.recipeDB[333] = {
 				450,
 				470,
 			},
+			["itemId"] = 44469,
 			["name"] = "Enchant Boots - Greater Assault",
 			["reagents"] = {
 				[34052] = 4,
@@ -4491,6 +4761,7 @@ addon.recipeDB[333] = {
 				450,
 				470,
 			},
+			["itemId"] = 44470,
 			["name"] = "Enchant Bracer - Superior Spellpower",
 			["reagents"] = {
 				[34052] = 1,
@@ -4507,6 +4778,7 @@ addon.recipeDB[333] = {
 				460,
 				480,
 			},
+			["itemId"] = 44944,
 			["name"] = "Enchant Bracer - Major Stamina",
 			["reagents"] = {
 				[34055] = 4,
@@ -4522,6 +4794,7 @@ addon.recipeDB[333] = {
 				460,
 				480,
 			},
+			["itemId"] = 44945,
 			["name"] = "Enchant Weapon - Titanguard",
 			["reagents"] = {
 				[34052] = 4,
@@ -4537,6 +4810,7 @@ addon.recipeDB[333] = {
 				455,
 				465,
 			},
+			["itemId"] = 45056,
 			["name"] = "Enchant Staff - Greater Spellpower",
 			["reagents"] = {
 				[34052] = 6,
@@ -4553,6 +4827,7 @@ addon.recipeDB[333] = {
 				395,
 				415,
 			},
+			["itemId"] = 45060,
 			["name"] = "Enchant Staff - Spellpower",
 			["reagents"] = {
 				[34054] = 12,
@@ -4568,6 +4843,7 @@ addon.recipeDB[333] = {
 				245,
 				285,
 			},
+			["itemId"] = 45628,
 			["name"] = "Enchant Boots - Lesser Accuracy",
 			["reagents"] = {
 				[11137] = 4,
@@ -4583,6 +4859,7 @@ addon.recipeDB[333] = {
 				455,
 				465,
 			},
+			["itemId"] = 46026,
 			["name"] = "Enchant Weapon - Blade Ward",
 			["reagents"] = {
 				[34055] = 8,
@@ -4599,6 +4876,7 @@ addon.recipeDB[333] = {
 				455,
 				465,
 			},
+			["itemId"] = 46098,
 			["name"] = "Enchant Weapon - Blood Draining",
 			["reagents"] = {
 				[34054] = 40,
@@ -4629,6 +4907,7 @@ addon.recipeDB[333] = {
 				385,
 				400,
 			},
+			["itemId"] = 50406,
 			["name"] = "Enchant Gloves - Angler",
 			["reagents"] = {
 				[34054] = 1,
@@ -4644,6 +4923,7 @@ addon.recipeDB[333] = {
 				440,
 				460,
 			},
+			["itemId"] = 52687,
 			["name"] = "Enchant Gloves - Mastery",
 			["reagents"] = {
 				[52555] = 1,
@@ -4659,6 +4939,7 @@ addon.recipeDB[333] = {
 				440,
 				460,
 			},
+			["itemId"] = 52743,
 			["name"] = "Enchant Boots - Earthen Vitality",
 			["reagents"] = {
 				[52555] = 2,
@@ -4673,6 +4954,7 @@ addon.recipeDB[333] = {
 				440,
 				460,
 			},
+			["itemId"] = 52744,
 			["name"] = "Enchant Chest - Mighty Stats",
 			["reagents"] = {
 				[52718] = 2,
@@ -4687,6 +4969,7 @@ addon.recipeDB[333] = {
 				450,
 				470,
 			},
+			["itemId"] = 52745,
 			["name"] = "Enchant Cloak - Lesser Power",
 			["reagents"] = {
 				[52555] = 3,
@@ -4701,6 +4984,7 @@ addon.recipeDB[333] = {
 				450,
 				470,
 			},
+			["itemId"] = 52746,
 			["name"] = "Enchant Bracer - Speed",
 			["reagents"] = {
 				[52555] = 2,
@@ -4716,6 +5000,7 @@ addon.recipeDB[333] = {
 				460,
 				465,
 			},
+			["itemId"] = 52747,
 			["name"] = "Enchant Weapon - Mending",
 			["reagents"] = {
 				[52555] = 11,
@@ -4731,6 +5016,7 @@ addon.recipeDB[333] = {
 				460,
 				465,
 			},
+			["itemId"] = 52748,
 			["name"] = "Enchant Weapon - Avalanche",
 			["reagents"] = {
 				[52555] = 4,
@@ -4746,6 +5032,7 @@ addon.recipeDB[333] = {
 				465,
 				485,
 			},
+			["itemId"] = 52749,
 			["name"] = "Enchant Gloves - Haste",
 			["reagents"] = {
 				[52555] = 4,
@@ -4761,6 +5048,7 @@ addon.recipeDB[333] = {
 				465,
 				485,
 			},
+			["itemId"] = 52750,
 			["name"] = "Enchant Boots - Haste",
 			["reagents"] = {
 				[52555] = 2,
@@ -4776,6 +5064,7 @@ addon.recipeDB[333] = {
 				470,
 				490,
 			},
+			["itemId"] = 52751,
 			["name"] = "Enchant Chest - Stamina",
 			["reagents"] = {
 				[52555] = 5,
@@ -4791,6 +5080,7 @@ addon.recipeDB[333] = {
 				470,
 				490,
 			},
+			["itemId"] = 52752,
 			["name"] = "Enchant Bracer - Critical Strike",
 			["reagents"] = {
 				[52555] = 4,
@@ -4806,6 +5096,7 @@ addon.recipeDB[333] = {
 				475,
 				495,
 			},
+			["itemId"] = 52753,
 			["name"] = "Enchant Cloak - Intellect",
 			["reagents"] = {
 				[52555] = 6,
@@ -4820,6 +5111,7 @@ addon.recipeDB[333] = {
 				475,
 				495,
 			},
+			["itemId"] = 52754,
 			["name"] = "Enchant Shield - Protection",
 			["reagents"] = {
 				[52327] = 15,
@@ -4835,6 +5127,7 @@ addon.recipeDB[333] = {
 				480,
 				500,
 			},
+			["itemId"] = 52755,
 			["name"] = "Enchant Weapon - Elemental Slayer",
 			["reagents"] = {
 				[52555] = 7,
@@ -4851,6 +5144,7 @@ addon.recipeDB[333] = {
 				480,
 				500,
 			},
+			["itemId"] = 52756,
 			["name"] = "Enchant Gloves - Exceptional Strength",
 			["reagents"] = {
 				[52555] = 3,
@@ -4866,6 +5160,7 @@ addon.recipeDB[333] = {
 				485,
 				505,
 			},
+			["itemId"] = 52757,
 			["name"] = "Enchant Boots - Major Agility",
 			["reagents"] = {
 				[52555] = 4,
@@ -4881,6 +5176,7 @@ addon.recipeDB[333] = {
 				485,
 				505,
 			},
+			["itemId"] = 52758,
 			["name"] = "Enchant Chest - Mighty Resilience",
 			["reagents"] = {
 				[52555] = 9,
@@ -4951,6 +5247,7 @@ addon.recipeDB[333] = {
 				490,
 				510,
 			},
+			["itemId"] = 52759,
 			["name"] = "Enchant Gloves - Greater Expertise",
 			["reagents"] = {
 				[52555] = 5,
@@ -4966,6 +5263,7 @@ addon.recipeDB[333] = {
 				490,
 				510,
 			},
+			["itemId"] = 52760,
 			["name"] = "Enchant Weapon - Hurricane",
 			["reagents"] = {
 				[52328] = 6,
@@ -4981,6 +5279,7 @@ addon.recipeDB[333] = {
 				495,
 				515,
 			},
+			["itemId"] = 52761,
 			["name"] = "Enchant Weapon - Heartsong",
 			["reagents"] = {
 				[52329] = 3,
@@ -4998,6 +5297,7 @@ addon.recipeDB[333] = {
 				495,
 				515,
 			},
+			["itemId"] = 52762,
 			["name"] = "Enchant Shield - Mastery",
 			["reagents"] = {
 				[52555] = 12,
@@ -5012,6 +5312,7 @@ addon.recipeDB[333] = {
 				500,
 				520,
 			},
+			["itemId"] = 52763,
 			["name"] = "Enchant Bracer - Superior Dodge",
 			["reagents"] = {
 				[52328] = 1,
@@ -5027,6 +5328,7 @@ addon.recipeDB[333] = {
 				500,
 				520,
 			},
+			["itemId"] = 52764,
 			["name"] = "Enchant Cloak - Critical Strike",
 			["reagents"] = {
 				[52555] = 8,
@@ -5042,6 +5344,7 @@ addon.recipeDB[333] = {
 				505,
 				525,
 			},
+			["itemId"] = 52765,
 			["name"] = "Enchant Chest - Exceptional Spirit",
 			["reagents"] = {
 				[52555] = 10,
@@ -5057,6 +5360,7 @@ addon.recipeDB[333] = {
 				505,
 				525,
 			},
+			["itemId"] = 52766,
 			["name"] = "Enchant Bracer - Precision",
 			["reagents"] = {
 				[52555] = 12,
@@ -5072,6 +5376,7 @@ addon.recipeDB[333] = {
 				510,
 				530,
 			},
+			["itemId"] = 52767,
 			["name"] = "Enchant Cloak - Protection",
 			["reagents"] = {
 				[52555] = 8,
@@ -5087,6 +5392,7 @@ addon.recipeDB[333] = {
 				510,
 				530,
 			},
+			["itemId"] = 52768,
 			["name"] = "Enchant Off-Hand - Superior Intellect",
 			["reagents"] = {
 				[52555] = 6,
@@ -5102,6 +5408,7 @@ addon.recipeDB[333] = {
 				510,
 				515,
 			},
+			["itemId"] = 52769,
 			["name"] = "Enchant Boots - Precision",
 			["reagents"] = {
 				[52555] = 2,
@@ -5118,6 +5425,7 @@ addon.recipeDB[333] = {
 				515,
 				535,
 			},
+			["itemId"] = 52770,
 			["name"] = "Enchant Bracer - Exceptional Spirit",
 			["reagents"] = {
 				[52555] = 9,
@@ -5133,6 +5441,7 @@ addon.recipeDB[333] = {
 				520,
 				540,
 			},
+			["itemId"] = 52771,
 			["name"] = "Enchant Boots - Mastery",
 			["reagents"] = {
 				[52555] = 10,
@@ -5148,6 +5457,7 @@ addon.recipeDB[333] = {
 				520,
 				540,
 			},
+			["itemId"] = 52772,
 			["name"] = "Enchant Bracer - Greater Expertise",
 			["reagents"] = {
 				[52555] = 4,
@@ -5163,6 +5473,7 @@ addon.recipeDB[333] = {
 				520,
 				540,
 			},
+			["itemId"] = 52773,
 			["name"] = "Enchant Cloak - Greater Intellect",
 			["reagents"] = {
 				[52555] = 9,
@@ -5178,6 +5489,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 52733,
 			["name"] = "Enchant Weapon - Power Torrent",
 			["reagents"] = {
 				[52555] = 14,
@@ -5194,6 +5506,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 52735,
 			["name"] = "Enchant Weapon - Windwalk",
 			["reagents"] = {
 				[52719] = 4,
@@ -5210,6 +5523,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 52736,
 			["name"] = "Enchant Weapon - Landslide",
 			["reagents"] = {
 				[52555] = 6,
@@ -5227,6 +5541,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 52737,
 			["name"] = "Enchant Cloak - Greater Critical Strike",
 			["reagents"] = {
 				[52722] = 5,
@@ -5241,6 +5556,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 52738,
 			["name"] = "Enchant Bracer - Greater Critical Strike",
 			["reagents"] = {
 				[52555] = 15,
@@ -5258,6 +5574,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 52739,
 			["name"] = "Enchant Chest - Peerless Stats",
 			["reagents"] = {
 				[52721] = 3,
@@ -5273,6 +5590,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 52740,
 			["name"] = "Enchant Chest - Greater Stamina",
 			["reagents"] = {
 				[52555] = 10,
@@ -5289,6 +5607,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 52781,
 			["name"] = "Enchant Boots - Assassin's Step",
 			["reagents"] = {
 				[52555] = 5,
@@ -5306,6 +5625,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 52782,
 			["name"] = "Enchant Boots - Lavawalker",
 			["reagents"] = {
 				[52719] = 10,
@@ -5322,6 +5642,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 52783,
 			["name"] = "Enchant Gloves - Mighty Strength",
 			["reagents"] = {
 				[52555] = 4,
@@ -5338,6 +5659,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 52784,
 			["name"] = "Enchant Gloves - Greater Mastery",
 			["reagents"] = {
 				[52555] = 10,
@@ -5354,6 +5676,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 52785,
 			["name"] = "Enchant Bracer - Greater Speed",
 			["reagents"] = {
 				[52555] = 12,
@@ -5383,6 +5706,7 @@ addon.recipeDB[333] = {
 				525,
 				525,
 			},
+			["itemId"] = 65359,
 			["name"] = "Runed Elementium Rod",
 			["reagents"] = {
 				[44452] = 1,
@@ -5401,6 +5725,7 @@ addon.recipeDB[333] = {
 				525,
 				525,
 			},
+			["itemId"] = 67308,
 			["name"] = "Enchanted Lantern",
 			["reagents"] = {
 				[52555] = 8,
@@ -5417,6 +5742,7 @@ addon.recipeDB[333] = {
 				525,
 				525,
 			},
+			["itemId"] = 67312,
 			["name"] = "Magic Lamp",
 			["reagents"] = {
 				[52719] = 4,
@@ -5433,6 +5759,7 @@ addon.recipeDB[333] = {
 				480,
 				500,
 			},
+			["itemId"] = 68134,
 			["name"] = "Enchant 2H Weapon - Mighty Agility",
 			["reagents"] = {
 				[52555] = 3,
@@ -5449,6 +5776,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 68785,
 			["name"] = "Enchant Bracer - Major Strength",
 			["reagents"] = {
 				[52327] = 25,
@@ -5465,6 +5793,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 68786,
 			["name"] = "Enchant Bracer - Mighty Intellect",
 			["reagents"] = {
 				[52326] = 15,
@@ -5482,6 +5811,7 @@ addon.recipeDB[333] = {
 				525,
 				540,
 			},
+			["itemId"] = 68784,
 			["name"] = "Enchant Bracer - Agility",
 			["reagents"] = {
 				[52328] = 15,
@@ -5498,6 +5828,7 @@ addon.recipeDB[333] = {
 				555,
 				560,
 			},
+			["itemId"] = 84575,
 			["name"] = "Enchant Ring - Greater Agility",
 			["reagents"] = {
 				[74249] = 2,
@@ -5512,6 +5843,7 @@ addon.recipeDB[333] = {
 				555,
 				560,
 			},
+			["itemId"] = 84576,
 			["name"] = "Enchant Ring - Greater Intellect",
 			["reagents"] = {
 				[74249] = 2,
@@ -5526,6 +5858,7 @@ addon.recipeDB[333] = {
 				555,
 				560,
 			},
+			["itemId"] = 84577,
 			["name"] = "Enchant Ring - Greater Stamina",
 			["reagents"] = {
 				[74249] = 2,
@@ -5540,6 +5873,7 @@ addon.recipeDB[333] = {
 				555,
 				560,
 			},
+			["itemId"] = 84578,
 			["name"] = "Enchant Ring - Greater Strength",
 			["reagents"] = {
 				[74249] = 2,
@@ -5554,6 +5888,7 @@ addon.recipeDB[333] = {
 				525,
 				535,
 			},
+			["itemId"] = 74700,
 			["name"] = "Enchant Bracer - Mastery",
 			["reagents"] = {
 				[74249] = 4,
@@ -5568,6 +5903,7 @@ addon.recipeDB[333] = {
 				550,
 				600,
 			},
+			["itemId"] = 74701,
 			["name"] = "Enchant Bracer - Major Dodge",
 			["reagents"] = {
 				[74249] = 8,
@@ -5583,6 +5919,7 @@ addon.recipeDB[333] = {
 				615,
 				615,
 			},
+			["itemId"] = 74703,
 			["name"] = "Enchant Bracer - Super Intellect",
 			["reagents"] = {
 				[74248] = 3,
@@ -5597,6 +5934,7 @@ addon.recipeDB[333] = {
 				615,
 				615,
 			},
+			["itemId"] = 74704,
 			["name"] = "Enchant Bracer - Exceptional Strength",
 			["reagents"] = {
 				[74248] = 3,
@@ -5611,6 +5949,7 @@ addon.recipeDB[333] = {
 				615,
 				615,
 			},
+			["itemId"] = 74705,
 			["name"] = "Enchant Bracer - Greater Agility",
 			["reagents"] = {
 				[74248] = 3,
@@ -5625,6 +5964,7 @@ addon.recipeDB[333] = {
 				550,
 				600,
 			},
+			["itemId"] = 74706,
 			["name"] = "Enchant Chest - Super Resilience",
 			["reagents"] = {
 				[74249] = 3,
@@ -5640,6 +5980,7 @@ addon.recipeDB[333] = {
 				550,
 				600,
 			},
+			["itemId"] = 74707,
 			["name"] = "Enchant Chest - Mighty Spirit",
 			["reagents"] = {
 				[74249] = 4,
@@ -5654,6 +5995,7 @@ addon.recipeDB[333] = {
 				600,
 				605,
 			},
+			["itemId"] = 74708,
 			["name"] = "Enchant Chest - Glorious Stats",
 			["reagents"] = {
 				[74249] = 2,
@@ -5669,6 +6011,7 @@ addon.recipeDB[333] = {
 				575,
 				605,
 			},
+			["itemId"] = 74709,
 			["name"] = "Enchant Chest - Superior Stamina",
 			["reagents"] = {
 				[74249] = 4,
@@ -5684,6 +6027,7 @@ addon.recipeDB[333] = {
 				575,
 				605,
 			},
+			["itemId"] = 74710,
 			["name"] = "Enchant Cloak - Accuracy",
 			["reagents"] = {
 				[74249] = 7,
@@ -5698,6 +6042,7 @@ addon.recipeDB[333] = {
 				600,
 				605,
 			},
+			["itemId"] = 74711,
 			["name"] = "Enchant Cloak - Greater Protection",
 			["reagents"] = {
 				[74247] = 2,
@@ -5712,6 +6057,7 @@ addon.recipeDB[333] = {
 				550,
 				600,
 			},
+			["itemId"] = 74712,
 			["name"] = "Enchant Cloak - Superior Intellect",
 			["reagents"] = {
 				[74249] = 3,
@@ -5727,6 +6073,7 @@ addon.recipeDB[333] = {
 				525,
 				535,
 			},
+			["itemId"] = 74713,
 			["name"] = "Enchant Cloak - Superior Critical Strike",
 			["reagents"] = {
 				[74250] = 1,
@@ -5741,6 +6088,7 @@ addon.recipeDB[333] = {
 				575,
 				605,
 			},
+			["itemId"] = 74715,
 			["name"] = "Enchant Boots - Greater Haste",
 			["reagents"] = {
 				[74249] = 2,
@@ -5756,6 +6104,7 @@ addon.recipeDB[333] = {
 				550,
 				600,
 			},
+			["itemId"] = 74716,
 			["name"] = "Enchant Boots - Greater Precision",
 			["reagents"] = {
 				[74249] = 2,
@@ -5771,6 +6120,7 @@ addon.recipeDB[333] = {
 				575,
 				605,
 			},
+			["itemId"] = 74717,
 			["name"] = "Enchant Boots - Blurred Speed",
 			["reagents"] = {
 				[74247] = 2,
@@ -5785,6 +6135,7 @@ addon.recipeDB[333] = {
 				600,
 				605,
 			},
+			["itemId"] = 74718,
 			["name"] = "Enchant Boots - Pandaren's Step",
 			["reagents"] = {
 				[74249] = 4,
@@ -5800,6 +6151,7 @@ addon.recipeDB[333] = {
 				550,
 				600,
 			},
+			["itemId"] = 74719,
 			["name"] = "Enchant Gloves - Greater Haste",
 			["reagents"] = {
 				[74249] = 4,
@@ -5814,6 +6166,7 @@ addon.recipeDB[333] = {
 				575,
 				605,
 			},
+			["itemId"] = 74720,
 			["name"] = "Enchant Gloves - Superior Expertise",
 			["reagents"] = {
 				[74250] = 2,
@@ -5828,6 +6181,7 @@ addon.recipeDB[333] = {
 				600,
 				605,
 			},
+			["itemId"] = 74721,
 			["name"] = "Enchant Gloves - Super Strength",
 			["reagents"] = {
 				[74247] = 1,
@@ -5844,6 +6198,7 @@ addon.recipeDB[333] = {
 				600,
 				605,
 			},
+			["itemId"] = 74722,
 			["name"] = "Enchant Gloves - Superior Mastery",
 			["reagents"] = {
 				[74250] = 3,
@@ -5858,6 +6213,7 @@ addon.recipeDB[333] = {
 				575,
 				605,
 			},
+			["itemId"] = 74723,
 			["name"] = "Enchant Weapon - Windsong",
 			["reagents"] = {
 				[74247] = 1,
@@ -5873,6 +6229,7 @@ addon.recipeDB[333] = {
 				615,
 				615,
 			},
+			["itemId"] = 74724,
 			["name"] = "Enchant Weapon - Jade Spirit",
 			["reagents"] = {
 				[74248] = 10,
@@ -5888,6 +6245,7 @@ addon.recipeDB[333] = {
 				550,
 				600,
 			},
+			["itemId"] = 74725,
 			["name"] = "Enchant Weapon - Elemental Force",
 			["reagents"] = {
 				[74250] = 3,
@@ -5902,6 +6260,7 @@ addon.recipeDB[333] = {
 				615,
 				615,
 			},
+			["itemId"] = 74726,
 			["name"] = "Enchant Weapon - Dancing Steel",
 			["reagents"] = {
 				[74248] = 10,
@@ -5917,6 +6276,7 @@ addon.recipeDB[333] = {
 				600,
 				605,
 			},
+			["itemId"] = 74727,
 			["name"] = "Enchant Weapon - Colossus",
 			["reagents"] = {
 				[74247] = 3,
@@ -5931,6 +6291,7 @@ addon.recipeDB[333] = {
 				615,
 				615,
 			},
+			["itemId"] = 74728,
 			["name"] = "Enchant Weapon - River's Song",
 			["reagents"] = {
 				[74250] = 50,
@@ -5946,6 +6307,7 @@ addon.recipeDB[333] = {
 				600,
 				605,
 			},
+			["itemId"] = 74729,
 			["name"] = "Enchant Off-Hand - Major Intellect",
 			["reagents"] = {
 				[74250] = 3,
@@ -5986,6 +6348,7 @@ addon.recipeDB[333] = {
 				600,
 				600,
 			},
+			["itemId"] = 74622,
 			["name"] = "Release Spirit",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -6082,6 +6445,7 @@ addon.recipeDB[333] = {
 				600,
 				605,
 			},
+			["itemId"] = 89737,
 			["name"] = "Enchant Shield - Greater Parry",
 			["reagents"] = {
 				[74247] = 1,
@@ -6188,6 +6552,7 @@ addon.recipeDB[333] = {
 				120,
 				130,
 			},
+			["itemId"] = 223163,
 			["name"] = "Scroll of Spatial Mending",
 			["reagents"] = {
 				[4470] = 1,
@@ -6650,6 +7015,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 235526,
 			["name"] = "Enchant Bracer - Spell Power",
 			["reagents"] = {
 				[7078] = 2,
@@ -6669,6 +7035,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 235528,
 			["name"] = "Enchant Bracer - Agility",
 			["reagents"] = {
 				[7082] = 2,
@@ -6833,6 +7200,7 @@ addon.recipeDB[333] = {
 				305,
 				310,
 			},
+			["itemId"] = 241191,
 			["name"] = "Enchant Weapon - Grand Crusader",
 			["reagents"] = {
 				[12811] = 2,
@@ -6850,6 +7218,7 @@ addon.recipeDB[333] = {
 				305,
 				310,
 			},
+			["itemId"] = 241195,
 			["name"] = "Enchant 2H Weapon - Grand Arcanist",
 			["reagents"] = {
 				[12811] = 4,
@@ -6867,6 +7236,7 @@ addon.recipeDB[333] = {
 				305,
 				310,
 			},
+			["itemId"] = 241201,
 			["name"] = "Enchant Weapon - Grand Sorceror",
 			["reagents"] = {
 				[12811] = 3,
@@ -6884,6 +7254,7 @@ addon.recipeDB[333] = {
 				305,
 				310,
 			},
+			["itemId"] = 242361,
 			["name"] = "Enchant 2H Weapon - Grand Inquisitor",
 			["reagents"] = {
 				[12811] = 6,
@@ -6901,6 +7272,7 @@ addon.recipeDB[333] = {
 				615,
 				615,
 			},
+			["itemId"] = 254314,
 			["name"] = "Enchant Weapon - Tyranny",
 			["reagents"] = {
 				[74248] = 10,

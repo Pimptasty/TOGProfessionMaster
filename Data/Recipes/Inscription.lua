@@ -5659,6 +5659,7 @@ addon.recipeDB[773] = {
 				375,
 				400,
 			},
+			["itemId"] = 46108,
 			["name"] = "Rituals of the New Moon",
 			["reagents"] = {
 				[35627] = 3,
@@ -6696,6 +6697,7 @@ addon.recipeDB[773] = {
 				380,
 				385,
 			},
+			["itemId"] = 50167,
 			["name"] = "Glyph of Rapid Rejuvenation",
 			["reagents"] = {
 				[39502] = 1,
@@ -6711,6 +6713,7 @@ addon.recipeDB[773] = {
 				255,
 				260,
 			},
+			["itemId"] = 50166,
 			["name"] = "Glyph of Counterspell",
 			["reagents"] = {
 				[39354] = 1,
@@ -6726,6 +6729,7 @@ addon.recipeDB[773] = {
 				380,
 				385,
 			},
+			["itemId"] = 50168,
 			["name"] = "Glyph of Eternal Resolve",
 			["reagents"] = {
 				[39354] = 1,
@@ -6965,6 +6969,7 @@ addon.recipeDB[773] = {
 				470,
 				490,
 			},
+			["itemId"] = 65649,
 			["name"] = "Origami Slime",
 			["reagents"] = {
 				[39354] = 3,
@@ -6979,6 +6984,7 @@ addon.recipeDB[773] = {
 				480,
 				500,
 			},
+			["itemId"] = 65650,
 			["name"] = "Origami Rock",
 			["reagents"] = {
 				[39354] = 3,
@@ -6993,6 +6999,7 @@ addon.recipeDB[773] = {
 				490,
 				510,
 			},
+			["itemId"] = 65651,
 			["name"] = "Origami Beetle",
 			["reagents"] = {
 				[39354] = 3,
@@ -7246,6 +7253,7 @@ addon.recipeDB[773] = {
 				470,
 				485,
 			},
+			["itemId"] = 68810,
 			["name"] = "Glyph of Colossus Smash",
 			["reagents"] = {
 				[39354] = 1,
@@ -7590,6 +7598,7 @@ addon.recipeDB[773] = {
 				600,
 				600,
 			},
+			["itemId"] = 74622,
 			["name"] = "Release Spirit",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -8937,6 +8946,7 @@ addon.recipeDB[773] = {
 				600,
 				605,
 			},
+			["itemId"] = 87829,
 			["name"] = "Incarnadine Ink",
 			["reagents"] = {
 				[76061] = 1,
@@ -9076,6 +9086,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 102534,
 			["name"] = "Crafted Malevolent Gladiator's Medallion of Tenacity",
 			["reagents"] = {
 				[72096] = 10,
@@ -9090,6 +9101,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104197,
 			["name"] = "Glyph of Swift Death",
 			["reagents"] = {
 				[39354] = 1,
@@ -9105,6 +9117,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104209,
 			["name"] = "Glyph of Loud Horn",
 			["reagents"] = {
 				[39354] = 1,
@@ -9120,6 +9133,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104210,
 			["name"] = "Glyph of Regenerative Magic",
 			["reagents"] = {
 				[39354] = 1,
@@ -9135,6 +9149,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104211,
 			["name"] = "Glyph of Festering Blood",
 			["reagents"] = {
 				[39354] = 1,
@@ -9150,6 +9165,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104212,
 			["name"] = "Glyph of Divine Shield",
 			["reagents"] = {
 				[39354] = 1,
@@ -9165,6 +9181,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104213,
 			["name"] = "Glyph of Hand of Sacrifice",
 			["reagents"] = {
 				[39354] = 1,
@@ -9180,6 +9197,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104214,
 			["name"] = "Glyph of Purging",
 			["reagents"] = {
 				[39354] = 1,
@@ -9195,6 +9213,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104215,
 			["name"] = "Glyph of Eternal Earth",
 			["reagents"] = {
 				[39354] = 1,
@@ -9210,6 +9229,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104217,
 			["name"] = "Glyph of Impaling Throws",
 			["reagents"] = {
 				[39354] = 1,
@@ -9225,6 +9245,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104218,
 			["name"] = "Glyph of the Executor",
 			["reagents"] = {
 				[39354] = 1,
@@ -9240,6 +9261,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104219,
 			["name"] = "Glyph of the Skeleton",
 			["reagents"] = {
 				[39354] = 1,
@@ -9255,6 +9277,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104220,
 			["name"] = "Glyph of the Long Winter",
 			["reagents"] = {
 				[39354] = 1,
@@ -9270,6 +9293,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104221,
 			["name"] = "Glyph of the Sprouting Mushroom",
 			["reagents"] = {
 				[39354] = 1,
@@ -9285,6 +9309,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104222,
 			["name"] = "Glyph of One with Nature",
 			["reagents"] = {
 				[39354] = 1,
@@ -9300,6 +9325,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104223,
 			["name"] = "Glyph of the Unbound Elemental",
 			["reagents"] = {
 				[39354] = 1,
@@ -9315,6 +9341,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104224,
 			["name"] = "Glyph of Evaporation",
 			["reagents"] = {
 				[39354] = 1,
@@ -9330,6 +9357,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104225,
 			["name"] = "Glyph of Condensation",
 			["reagents"] = {
 				[39354] = 1,
@@ -9345,6 +9373,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104226,
 			["name"] = "Glyph of the Exorcist",
 			["reagents"] = {
 				[39354] = 1,
@@ -9360,6 +9389,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104227,
 			["name"] = "Glyph of Pillar of Light",
 			["reagents"] = {
 				[39354] = 1,
@@ -9375,6 +9405,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104228,
 			["name"] = "Glyph of Angels",
 			["reagents"] = {
 				[39354] = 1,
@@ -9390,6 +9421,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104229,
 			["name"] = "Glyph of the Sha",
 			["reagents"] = {
 				[39354] = 1,
@@ -9405,6 +9437,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104230,
 			["name"] = "Glyph of Shifted Appearances",
 			["reagents"] = {
 				[39354] = 1,
@@ -9420,6 +9453,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104231,
 			["name"] = "Glyph of Inspired Hymns",
 			["reagents"] = {
 				[39354] = 1,
@@ -9435,6 +9469,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104232,
 			["name"] = "Glyph of Headhunting",
 			["reagents"] = {
 				[39354] = 1,
@@ -9450,6 +9485,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104233,
 			["name"] = "Glyph of Improved Distraction",
 			["reagents"] = {
 				[39354] = 1,
@@ -9465,6 +9501,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104234,
 			["name"] = "Glyph of Spirit Raptors",
 			["reagents"] = {
 				[39354] = 1,
@@ -9480,6 +9517,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104235,
 			["name"] = "Glyph of Lingering Ancestors",
 			["reagents"] = {
 				[39354] = 1,
@@ -9495,6 +9533,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104236,
 			["name"] = "Glyph of Spirit Wolf",
 			["reagents"] = {
 				[39354] = 1,
@@ -9510,6 +9549,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104237,
 			["name"] = "Glyph of Flaming Serpent",
 			["reagents"] = {
 				[39354] = 1,
@@ -9525,6 +9565,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104238,
 			["name"] = "Glyph of the Compy",
 			["reagents"] = {
 				[39354] = 1,
@@ -9540,6 +9581,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104239,
 			["name"] = "Glyph of Elemental Familiars",
 			["reagents"] = {
 				[39354] = 1,
@@ -9555,6 +9597,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104240,
 			["name"] = "Glyph of Astral Fixation",
 			["reagents"] = {
 				[39354] = 1,
@@ -9570,6 +9613,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104241,
 			["name"] = "Glyph of Rain of Frogs",
 			["reagents"] = {
 				[39354] = 1,
@@ -9585,6 +9629,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104242,
 			["name"] = "Glyph of the Raging Whirlwind",
 			["reagents"] = {
 				[39354] = 1,
@@ -9600,6 +9645,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104243,
 			["name"] = "Glyph of the Subtle Defender",
 			["reagents"] = {
 				[39354] = 1,
@@ -9615,6 +9661,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104244,
 			["name"] = "Glyph of the Watchful Eye",
 			["reagents"] = {
 				[39354] = 1,
@@ -9630,6 +9677,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104245,
 			["name"] = "Glyph of the Weaponmaster",
 			["reagents"] = {
 				[39354] = 1,
@@ -9645,6 +9693,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104279,
 			["name"] = "Glyph of the Lean Pack",
 			["reagents"] = {
 				[39354] = 1,
@@ -9660,6 +9709,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104280,
 			["name"] = "Glyph of Focused Fire",
 			["reagents"] = {
 				[39354] = 1,
@@ -9675,6 +9725,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104281,
 			["name"] = "Glyph of Enduring Deceit",
 			["reagents"] = {
 				[39354] = 1,
@@ -9690,6 +9741,7 @@ addon.recipeDB[773] = {
 				595,
 				605,
 			},
+			["itemId"] = 104282,
 			["name"] = "Glyph of Chameleon",
 			["reagents"] = {
 				[39354] = 1,

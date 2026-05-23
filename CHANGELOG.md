@@ -1,5 +1,21 @@
 # TOG Profession Master Changelog
 
+## [v0.5.1] (2026-05-23) - Lua error storm in Missing Recipes from passing spell ids to item-id APIs
+
+### Bug Fixes
+
+- **`Blizzard_ObjectAPI/Classic/Item.lua:320: table index is nil` Lua error firing 148-247x per Missing Recipes session, with the stack rooted in `TOGProfessionMaster/GUI/MissingRecipesTab.lua:683` (the row `OnEnter` handler calling `GameTooltip:SetItemByID`)** — v0.5.0 rebuilt the recipe DB keyed by recipe SPELL id (was the crafted-item id in the legacy PS data). The row code in [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua) still treated `entry.spellId` as an item id and passed it to every item-id API: `GameTooltip:SetItemByID(spellId)`, `GetItemInfo(spellId)`, `GetItemIcon(spellId)`, `GetItemQualityColor`. Blizzard's `SetItemByID` silently sets an empty tooltip when given an id that doesn't match an item — but downstream addons that hook `SetItemByID` (e.g. LoonBestInSlot's tooltip-update path) then crash trying to load the empty item, surfacing as the storm of `table index is nil` errors in BugSack. Fix has three parts:
+
+   1. **Add a real `itemId` field to the runtime recipe DB.** [tools/build_authoritative_data.py](tools/build_authoritative_data.py) was already capturing `items` (list of recipe-scroll item ids that teach the spell, via `ItemEffect`) but stripping the field from `emit_recipe_file`. Now keep the first id as `entry.itemId` (or omit when the recipe has no scroll — trainer-taught entries like "Brown Linen Vest" spell 2385 are correctly nil). Re-ran Phase A; verified e.g. Red Linen Robe (spell 2389) → itemId 2598 (Pattern: Red Linen Robe).
+
+   2. **Route every item-id API call through `entry.itemId` with a spell-id fallback.** [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua) `FillList`, `OnEnter`, `OnMouseDown`, the AH-scan `getItems` collector, and the search filter all updated. When `itemId` is nil (trainer-only recipe with no scroll), fall back to `GetSpellInfo` for the row name, `GetSpellTexture` for the icon, `GameTooltip:SetSpellByID` for the hover tooltip, and `GetSpellLink` for the shift-click chat link. Bank + AH buttons hide when itemId is nil (no scroll to bank or auction).
+
+   3. **Guard the row tooltip handler against any nil id.** `OnEnter` now early-returns unless `f._itemId or f._spellId` is non-nil. The previous guard checked only `f._itemId`, which never triggered the early-return for trainer-only rows because we were also storing the spell id IN `f._itemId` (the bug).
+
+   Knock-on benefit: search filter now finds recipes by spell name too, so trainer-taught recipes are searchable by their actual name instead of only by their (non-existent) scroll item name. Location: [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua), [tools/build_authoritative_data.py](tools/build_authoritative_data.py), `Data/Recipes/*.lua` (re-emitted with `itemId` field).
+
+---
+
 ## [v0.5.0] (2026-05-23) - Authoritative recipe + source data from Blizzard DBCs + emulator world DBs
 
 ### Bug Fixes

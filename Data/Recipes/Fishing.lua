@@ -80,6 +80,7 @@ addon.recipeDB[356] = {
 				0,
 				0,
 			},
+			["itemId"] = 34109,
 			["name"] = "Find Fish",
 			["reagents"] = {},
 			["requiredSkill"] = 1,

@@ -128,6 +128,7 @@ addon.recipeDB[202] = {
 				105,
 				135,
 			},
+			["itemId"] = 4408,
 			["name"] = "Mechanical Squirrel Box",
 			["reagents"] = {
 				[774] = 2,
@@ -203,6 +204,7 @@ addon.recipeDB[202] = {
 				130,
 				160,
 			},
+			["itemId"] = 4409,
 			["name"] = "Small Seaforium Charge",
 			["reagents"] = {
 				[159] = 1,
@@ -280,6 +282,7 @@ addon.recipeDB[202] = {
 				145,
 				170,
 			},
+			["itemId"] = 13309,
 			["name"] = "Lovingly Crafted Boomstick",
 			["reagents"] = {
 				[1206] = 3,
@@ -297,6 +300,7 @@ addon.recipeDB[202] = {
 				145,
 				170,
 			},
+			["itemId"] = 4410,
 			["name"] = "Shadow Goggles",
 			["reagents"] = {
 				[1210] = 2,
@@ -344,6 +348,7 @@ addon.recipeDB[202] = {
 				125,
 				175,
 			},
+			["itemId"] = 4411,
 			["name"] = "Flame Deflector",
 			["reagents"] = {
 				[4375] = 1,
@@ -436,6 +441,7 @@ addon.recipeDB[202] = {
 				165,
 				190,
 			},
+			["itemId"] = 14639,
 			["name"] = "Minor Recombobulator",
 			["reagents"] = {
 				[1206] = 1,
@@ -469,6 +475,7 @@ addon.recipeDB[202] = {
 				170,
 				195,
 			},
+			["itemId"] = 4412,
 			["name"] = "Moonsight Rifle",
 			["reagents"] = {
 				[1705] = 2,
@@ -519,6 +526,7 @@ addon.recipeDB[202] = {
 				175,
 				195,
 			},
+			["itemId"] = 13308,
 			["name"] = "Ice Deflector",
 			["reagents"] = {
 				[3829] = 1,
@@ -548,6 +556,7 @@ addon.recipeDB[202] = {
 				180,
 				200,
 			},
+			["itemId"] = 4413,
 			["name"] = "Discombobulator Ray",
 			["reagents"] = {
 				[1529] = 1,
@@ -565,6 +574,7 @@ addon.recipeDB[202] = {
 				185,
 				205,
 			},
+			["itemId"] = 4414,
 			["name"] = "Portable Bronze Mortar",
 			["reagents"] = {
 				[2319] = 4,
@@ -647,6 +657,7 @@ addon.recipeDB[202] = {
 				205,
 				225,
 			},
+			["itemId"] = 4415,
 			["name"] = "Craftsman's Monocle",
 			["reagents"] = {
 				[3864] = 2,
@@ -678,6 +689,7 @@ addon.recipeDB[202] = {
 				215,
 				235,
 			},
+			["itemId"] = 4416,
 			["name"] = "Goblin Land Mine",
 			["reagents"] = {
 				[3575] = 2,
@@ -694,6 +706,7 @@ addon.recipeDB[202] = {
 				220,
 				240,
 			},
+			["itemId"] = 13311,
 			["name"] = "Mechanical Dragonling",
 			["reagents"] = {
 				[3864] = 1,
@@ -711,6 +724,7 @@ addon.recipeDB[202] = {
 				220,
 				240,
 			},
+			["itemId"] = 7742,
 			["name"] = "Gnomish Cloaking Device",
 			["reagents"] = {
 				[1529] = 2,
@@ -729,6 +743,7 @@ addon.recipeDB[202] = {
 				200,
 				240,
 			},
+			["itemId"] = 4417,
 			["name"] = "Large Seaforium Charge",
 			["reagents"] = {
 				[159] = 1,
@@ -790,6 +805,7 @@ addon.recipeDB[202] = {
 				200,
 				220,
 			},
+			["itemId"] = 13310,
 			["name"] = "Accurate Scope",
 			["reagents"] = {
 				[1529] = 1,
@@ -842,6 +858,7 @@ addon.recipeDB[202] = {
 				0,
 				0,
 			},
+			["itemId"] = 4396,
 			["name"] = "Mechanical Dragonling",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -884,6 +901,7 @@ addon.recipeDB[202] = {
 				185,
 				225,
 			},
+			["itemId"] = 6672,
 			["name"] = "Flash Bomb",
 			["reagents"] = {
 				[4306] = 1,
@@ -914,6 +932,7 @@ addon.recipeDB[202] = {
 				115,
 				130,
 			},
+			["itemId"] = 6716,
 			["name"] = "EZ-Thro Dynamite",
 			["reagents"] = {
 				[2592] = 1,
@@ -929,6 +948,7 @@ addon.recipeDB[202] = {
 				245,
 				265,
 			},
+			["itemId"] = 7192,
 			["name"] = "Goblin Rocket Boots",
 			["reagents"] = {
 				[4234] = 4,
@@ -947,6 +967,7 @@ addon.recipeDB[202] = {
 				150,
 				175,
 			},
+			["itemId"] = 7560,
 			["name"] = "Gnomish Universal Remote",
 			["reagents"] = {
 				[774] = 1,
@@ -981,6 +1002,7 @@ addon.recipeDB[202] = {
 				160,
 				200,
 			},
+			["itemId"] = 7561,
 			["name"] = "Goblin Jumper Cables",
 			["reagents"] = {
 				[814] = 2,
@@ -1043,6 +1065,7 @@ addon.recipeDB[202] = {
 				195,
 				215,
 			},
+			["itemId"] = 10601,
 			["name"] = "Bright-Eye Goggles",
 			["reagents"] = {
 				[3864] = 2,
@@ -1152,6 +1175,7 @@ addon.recipeDB[202] = {
 				230,
 				250,
 			},
+			["itemId"] = 10602,
 			["name"] = "Deadly Scope",
 			["reagents"] = {
 				[4304] = 2,
@@ -1198,6 +1222,7 @@ addon.recipeDB[202] = {
 				240,
 				260,
 			},
+			["itemId"] = 10603,
 			["name"] = "Catseye Ultra Goggles",
 			["reagents"] = {
 				[4304] = 4,
@@ -1214,6 +1239,7 @@ addon.recipeDB[202] = {
 				240,
 				260,
 			},
+			["itemId"] = 10604,
 			["name"] = "Mithril Heavy-bore Rifle",
 			["reagents"] = {
 				[3860] = 6,
@@ -1232,6 +1258,7 @@ addon.recipeDB[202] = {
 				245,
 				265,
 			},
+			["itemId"] = 10605,
 			["name"] = "Spellpower Goggles Xtreme",
 			["reagents"] = {
 				[4304] = 4,
@@ -1247,6 +1274,7 @@ addon.recipeDB[202] = {
 				245,
 				265,
 			},
+			["itemId"] = 10606,
 			["name"] = "Parachute Cloak",
 			["reagents"] = {
 				[4339] = 4,
@@ -1264,6 +1292,7 @@ addon.recipeDB[202] = {
 				250,
 				270,
 			},
+			["itemId"] = 10607,
 			["name"] = "Deepdive Helmet",
 			["reagents"] = {
 				[774] = 4,
@@ -1313,6 +1342,7 @@ addon.recipeDB[202] = {
 				260,
 				280,
 			},
+			["itemId"] = 10608,
 			["name"] = "Sniper Scope",
 			["reagents"] = {
 				[6037] = 2,
@@ -1362,6 +1392,7 @@ addon.recipeDB[202] = {
 				270,
 				290,
 			},
+			["itemId"] = 10609,
 			["name"] = "Mithril Mechanical Dragonling",
 			["reagents"] = {
 				[3860] = 4,
@@ -1506,6 +1537,7 @@ addon.recipeDB[202] = {
 				0,
 				0,
 			},
+			["itemId"] = 10576,
 			["name"] = "Mithril Mechanical Dragonling",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -1851,6 +1883,7 @@ addon.recipeDB[202] = {
 				205,
 				205,
 			},
+			["itemId"] = 11828,
 			["name"] = "Pet Bombling",
 			["reagents"] = {
 				[3860] = 6,
@@ -1868,6 +1901,7 @@ addon.recipeDB[202] = {
 				205,
 				205,
 			},
+			["itemId"] = 11827,
 			["name"] = "Lil' Smoky",
 			["reagents"] = {
 				[3860] = 2,
@@ -1916,6 +1950,7 @@ addon.recipeDB[202] = {
 				280,
 				300,
 			},
+			["itemId"] = 16041,
 			["name"] = "Thorium Grenade",
 			["reagents"] = {
 				[12359] = 3,
@@ -1933,6 +1968,7 @@ addon.recipeDB[202] = {
 				280,
 				300,
 			},
+			["itemId"] = 16042,
 			["name"] = "Thorium Widget",
 			["reagents"] = {
 				[12359] = 3,
@@ -1948,6 +1984,7 @@ addon.recipeDB[202] = {
 				280,
 				300,
 			},
+			["itemId"] = 16043,
 			["name"] = "Thorium Rifle",
 			["reagents"] = {
 				[10546] = 1,
@@ -1966,6 +2003,7 @@ addon.recipeDB[202] = {
 				285,
 				305,
 			},
+			["itemId"] = 16044,
 			["name"] = "Lifelike Mechanical Toad",
 			["reagents"] = {
 				[8170] = 1,
@@ -1983,6 +2021,7 @@ addon.recipeDB[202] = {
 				290,
 				310,
 			},
+			["itemId"] = 16045,
 			["name"] = "Spellpower Goggles Xtreme Plus",
 			["reagents"] = {
 				[7910] = 4,
@@ -2000,6 +2039,7 @@ addon.recipeDB[202] = {
 				295,
 				315,
 			},
+			["itemId"] = 16047,
 			["name"] = "Thorium Tube",
 			["reagents"] = {
 				[12359] = 6,
@@ -2014,6 +2054,7 @@ addon.recipeDB[202] = {
 				295,
 				315,
 			},
+			["itemId"] = 16048,
 			["name"] = "Dark Iron Rifle",
 			["reagents"] = {
 				[8170] = 4,
@@ -2033,6 +2074,7 @@ addon.recipeDB[202] = {
 				305,
 				325,
 			},
+			["itemId"] = 16049,
 			["name"] = "Dark Iron Bomb",
 			["reagents"] = {
 				[11371] = 1,
@@ -2050,6 +2092,7 @@ addon.recipeDB[202] = {
 				295,
 				305,
 			},
+			["itemId"] = 16051,
 			["name"] = "Thorium Shells",
 			["reagents"] = {
 				[12359] = 2,
@@ -2065,6 +2108,7 @@ addon.recipeDB[202] = {
 				0,
 				0,
 			},
+			["itemId"] = 16022,
 			["name"] = "Arcanite Dragonling",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -2077,6 +2121,7 @@ addon.recipeDB[202] = {
 				295,
 				315,
 			},
+			["itemId"] = 16046,
 			["name"] = "Masterwork Target Dummy",
 			["reagents"] = {
 				[6037] = 1,
@@ -2096,6 +2141,7 @@ addon.recipeDB[202] = {
 				305,
 				325,
 			},
+			["itemId"] = 16050,
 			["name"] = "Delicate Arcanite Converter",
 			["reagents"] = {
 				[12360] = 1,
@@ -2111,6 +2157,7 @@ addon.recipeDB[202] = {
 				310,
 				330,
 			},
+			["itemId"] = 16052,
 			["name"] = "Voice Amplification Modulator",
 			["reagents"] = {
 				[10558] = 1,
@@ -2128,6 +2175,7 @@ addon.recipeDB[202] = {
 				310,
 				330,
 			},
+			["itemId"] = 16053,
 			["name"] = "Master Engineer's Goggles",
 			["reagents"] = {
 				[10500] = 1,
@@ -2144,6 +2192,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 16054,
 			["name"] = "Arcanite Dragonling",
 			["reagents"] = {
 				[10576] = 1,
@@ -2159,6 +2208,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 16055,
 			["name"] = "Arcane Bomb",
 			["reagents"] = {
 				[12359] = 3,
@@ -2175,6 +2225,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 16056,
 			["name"] = "Flawless Arcanite Rifle",
 			["reagents"] = {
 				[7076] = 2,
@@ -2218,6 +2269,7 @@ addon.recipeDB[202] = {
 				190,
 				230,
 			},
+			["itemId"] = 17720,
 			["name"] = "Snowmaster 9000",
 			["reagents"] = {
 				[3829] = 1,
@@ -2235,6 +2287,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 18235,
 			["name"] = "Field Repair Bot 74A",
 			["reagents"] = {
 				[7191] = 2,
@@ -2250,6 +2303,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 18290,
 			["name"] = "Biznicks 247x128 Accurascope",
 			["reagents"] = {
 				[7076] = 2,
@@ -2268,6 +2322,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 18292,
 			["name"] = "Core Marksman Rifle",
 			["reagents"] = {
 				[12360] = 6,
@@ -2286,6 +2341,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 18291,
 			["name"] = "Force Reactive Disk",
 			["reagents"] = {
 				[7076] = 8,
@@ -2304,6 +2360,7 @@ addon.recipeDB[202] = {
 				150,
 				175,
 			},
+			["itemId"] = 18647,
 			["name"] = "Red Firework",
 			["reagents"] = {
 				[4234] = 1,
@@ -2319,6 +2376,7 @@ addon.recipeDB[202] = {
 				150,
 				175,
 			},
+			["itemId"] = 18649,
 			["name"] = "Blue Firework",
 			["reagents"] = {
 				[4234] = 1,
@@ -2334,6 +2392,7 @@ addon.recipeDB[202] = {
 				150,
 				175,
 			},
+			["itemId"] = 18648,
 			["name"] = "Green Firework",
 			["reagents"] = {
 				[4234] = 1,
@@ -2349,6 +2408,7 @@ addon.recipeDB[202] = {
 				200,
 				220,
 			},
+			["itemId"] = 18650,
 			["name"] = "EZ-Thro Dynamite II",
 			["reagents"] = {
 				[4338] = 2,
@@ -2379,6 +2439,7 @@ addon.recipeDB[202] = {
 				270,
 				280,
 			},
+			["itemId"] = 18651,
 			["name"] = "Truesilver Transformer",
 			["reagents"] = {
 				[6037] = 2,
@@ -2395,6 +2456,7 @@ addon.recipeDB[202] = {
 				280,
 				300,
 			},
+			["itemId"] = 18652,
 			["name"] = "Gyrofreeze Ice Reflector",
 			["reagents"] = {
 				[3829] = 2,
@@ -2414,6 +2476,7 @@ addon.recipeDB[202] = {
 				285,
 				305,
 			},
+			["itemId"] = 18653,
 			["name"] = "Goblin Jumper Cables XL",
 			["reagents"] = {
 				[7191] = 2,
@@ -2432,6 +2495,7 @@ addon.recipeDB[202] = {
 				285,
 				295,
 			},
+			["itemId"] = 18655,
 			["name"] = "Major Recombobulator",
 			["reagents"] = {
 				[14047] = 2,
@@ -2448,6 +2512,7 @@ addon.recipeDB[202] = {
 				275,
 				295,
 			},
+			["itemId"] = 18656,
 			["name"] = "Powerful Seaforium Charge",
 			["reagents"] = {
 				[159] = 1,
@@ -2465,6 +2530,7 @@ addon.recipeDB[202] = {
 				310,
 				330,
 			},
+			["itemId"] = 18657,
 			["name"] = "Hyper-Radiant Flame Reflector",
 			["reagents"] = {
 				[7080] = 6,
@@ -2483,6 +2549,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 18658,
 			["name"] = "Ultra-Flash Shadow Reflector",
 			["reagents"] = {
 				[11371] = 8,
@@ -2502,6 +2569,7 @@ addon.recipeDB[202] = {
 				275,
 				285,
 			},
+			["itemId"] = 18654,
 			["name"] = "Gnomish Alarm-o-Bot",
 			["reagents"] = {
 				[7191] = 1,
@@ -2517,6 +2585,7 @@ addon.recipeDB[202] = {
 				260,
 				270,
 			},
+			["itemId"] = 18661,
 			["name"] = "World Enlarger",
 			["reagents"] = {
 				[3864] = 1,
@@ -2572,6 +2641,7 @@ addon.recipeDB[202] = {
 				250,
 				270,
 			},
+			["itemId"] = 19027,
 			["name"] = "Snake Burst Firework",
 			["reagents"] = {
 				[8150] = 1,
@@ -2588,6 +2658,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 20000,
 			["name"] = "Bloodvine Goggles",
 			["reagents"] = {
 				[7910] = 2,
@@ -2604,6 +2675,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 20001,
 			["name"] = "Bloodvine Lens",
 			["reagents"] = {
 				[12655] = 4,
@@ -2638,6 +2710,7 @@ addon.recipeDB[202] = {
 				125,
 				150,
 			},
+			["itemId"] = 21724,
 			["name"] = "Small Blue Rocket",
 			["reagents"] = {
 				[2319] = 1,
@@ -2653,6 +2726,7 @@ addon.recipeDB[202] = {
 				125,
 				150,
 			},
+			["itemId"] = 21725,
 			["name"] = "Small Green Rocket",
 			["reagents"] = {
 				[2319] = 1,
@@ -2668,6 +2742,7 @@ addon.recipeDB[202] = {
 				125,
 				150,
 			},
+			["itemId"] = 21726,
 			["name"] = "Small Red Rocket",
 			["reagents"] = {
 				[2319] = 1,
@@ -2683,6 +2758,7 @@ addon.recipeDB[202] = {
 				175,
 				200,
 			},
+			["itemId"] = 21727,
 			["name"] = "Large Blue Rocket",
 			["reagents"] = {
 				[4234] = 1,
@@ -2698,6 +2774,7 @@ addon.recipeDB[202] = {
 				175,
 				200,
 			},
+			["itemId"] = 21728,
 			["name"] = "Large Green Rocket",
 			["reagents"] = {
 				[4234] = 1,
@@ -2713,6 +2790,7 @@ addon.recipeDB[202] = {
 				175,
 				200,
 			},
+			["itemId"] = 21729,
 			["name"] = "Large Red Rocket",
 			["reagents"] = {
 				[4234] = 1,
@@ -2728,6 +2806,7 @@ addon.recipeDB[202] = {
 				225,
 				250,
 			},
+			["itemId"] = 21730,
 			["name"] = "Blue Rocket Cluster",
 			["reagents"] = {
 				[4304] = 1,
@@ -2743,6 +2822,7 @@ addon.recipeDB[202] = {
 				225,
 				250,
 			},
+			["itemId"] = 21731,
 			["name"] = "Green Rocket Cluster",
 			["reagents"] = {
 				[4304] = 1,
@@ -2758,6 +2838,7 @@ addon.recipeDB[202] = {
 				225,
 				250,
 			},
+			["itemId"] = 21732,
 			["name"] = "Red Rocket Cluster",
 			["reagents"] = {
 				[4304] = 1,
@@ -2773,6 +2854,7 @@ addon.recipeDB[202] = {
 				275,
 				285,
 			},
+			["itemId"] = 21733,
 			["name"] = "Large Blue Rocket Cluster",
 			["reagents"] = {
 				[8170] = 1,
@@ -2788,6 +2870,7 @@ addon.recipeDB[202] = {
 				275,
 				285,
 			},
+			["itemId"] = 21734,
 			["name"] = "Large Green Rocket Cluster",
 			["reagents"] = {
 				[8170] = 1,
@@ -2803,6 +2886,7 @@ addon.recipeDB[202] = {
 				275,
 				285,
 			},
+			["itemId"] = 21735,
 			["name"] = "Large Red Rocket Cluster",
 			["reagents"] = {
 				[8170] = 1,
@@ -2818,6 +2902,7 @@ addon.recipeDB[202] = {
 				245,
 				265,
 			},
+			["itemId"] = 21738,
 			["name"] = "Firework Launcher",
 			["reagents"] = {
 				[9060] = 1,
@@ -2835,6 +2920,7 @@ addon.recipeDB[202] = {
 				295,
 				315,
 			},
+			["itemId"] = 21737,
 			["name"] = "Cluster Launcher",
 			["reagents"] = {
 				[9061] = 1,
@@ -2850,6 +2936,7 @@ addon.recipeDB[202] = {
 				275,
 				285,
 			},
+			["itemId"] = 22729,
 			["name"] = "Steam Tonk Controller",
 			["reagents"] = {
 				[3860] = 3,
@@ -3014,6 +3101,7 @@ addon.recipeDB[202] = {
 				360,
 				380,
 			},
+			["itemId"] = 23799,
 			["name"] = "Adamantite Rifle",
 			["reagents"] = {
 				[23782] = 3,
@@ -3030,6 +3118,7 @@ addon.recipeDB[202] = {
 				370,
 				390,
 			},
+			["itemId"] = 23800,
 			["name"] = "Felsteel Boomstick",
 			["reagents"] = {
 				[23783] = 4,
@@ -3046,6 +3135,7 @@ addon.recipeDB[202] = {
 				385,
 				405,
 			},
+			["itemId"] = 23802,
 			["name"] = "Ornate Khorium Rifle",
 			["reagents"] = {
 				[23439] = 2,
@@ -3063,6 +3153,7 @@ addon.recipeDB[202] = {
 				350,
 				370,
 			},
+			["itemId"] = 23803,
 			["name"] = "Cogspinner Goggles",
 			["reagents"] = {
 				[22445] = 8,
@@ -3079,6 +3170,7 @@ addon.recipeDB[202] = {
 				350,
 				370,
 			},
+			["itemId"] = 23804,
 			["name"] = "Power Amplification Goggles",
 			["reagents"] = {
 				[21929] = 2,
@@ -3095,6 +3187,7 @@ addon.recipeDB[202] = {
 				360,
 				380,
 			},
+			["itemId"] = 23805,
 			["name"] = "Ultra-Spectropic Detection Goggles",
 			["reagents"] = {
 				[22448] = 2,
@@ -3112,6 +3205,7 @@ addon.recipeDB[202] = {
 				370,
 				390,
 			},
+			["itemId"] = 23806,
 			["name"] = "Hyper-Vision Goggles",
 			["reagents"] = {
 				[22449] = 2,
@@ -3129,6 +3223,7 @@ addon.recipeDB[202] = {
 				345,
 				365,
 			},
+			["itemId"] = 23807,
 			["name"] = "Adamantite Scope",
 			["reagents"] = {
 				[23112] = 2,
@@ -3144,6 +3239,7 @@ addon.recipeDB[202] = {
 				370,
 				390,
 			},
+			["itemId"] = 23808,
 			["name"] = "Khorium Scope",
 			["reagents"] = {
 				[23440] = 2,
@@ -3160,6 +3256,7 @@ addon.recipeDB[202] = {
 				385,
 				405,
 			},
+			["itemId"] = 23809,
 			["name"] = "Stabilized Eternium Scope",
 			["reagents"] = {
 				[23438] = 2,
@@ -3176,6 +3273,7 @@ addon.recipeDB[202] = {
 				335,
 				355,
 			},
+			["itemId"] = 23810,
 			["name"] = "Crashin' Thrashin' Robot",
 			["reagents"] = {
 				[10558] = 1,
@@ -3193,6 +3291,7 @@ addon.recipeDB[202] = {
 				335,
 				355,
 			},
+			["itemId"] = 23811,
 			["name"] = "White Smoke Flare",
 			["reagents"] = {
 				[21877] = 1,
@@ -3208,6 +3307,7 @@ addon.recipeDB[202] = {
 				335,
 				355,
 			},
+			["itemId"] = 23812,
 			["name"] = "Red Smoke Flare",
 			["reagents"] = {
 				[2604] = 1,
@@ -3224,6 +3324,7 @@ addon.recipeDB[202] = {
 				335,
 				355,
 			},
+			["itemId"] = 23813,
 			["name"] = "Blue Smoke Flare",
 			["reagents"] = {
 				[6260] = 1,
@@ -3240,6 +3341,7 @@ addon.recipeDB[202] = {
 				335,
 				355,
 			},
+			["itemId"] = 23814,
 			["name"] = "Green Smoke Flare",
 			["reagents"] = {
 				[2605] = 1,
@@ -3271,6 +3373,7 @@ addon.recipeDB[202] = {
 				335,
 				355,
 			},
+			["itemId"] = 23815,
 			["name"] = "Adamantite Shell Machine",
 			["reagents"] = {
 				[4470] = 4,
@@ -3287,6 +3390,7 @@ addon.recipeDB[202] = {
 				325,
 				345,
 			},
+			["itemId"] = 23816,
 			["name"] = "Fel Iron Toolbox",
 			["reagents"] = {
 				[23445] = 5,
@@ -3303,6 +3407,7 @@ addon.recipeDB[202] = {
 				425,
 				440,
 			},
+			["itemId"] = 23817,
 			["name"] = "Titanium Toolbox",
 			["reagents"] = {
 				[36913] = 8,
@@ -3331,6 +3436,7 @@ addon.recipeDB[202] = {
 				350,
 				360,
 			},
+			["itemId"] = 23874,
 			["name"] = "Elemental Seaforium Charge",
 			["reagents"] = {
 				[23781] = 2,
@@ -3347,6 +3453,7 @@ addon.recipeDB[202] = {
 				305,
 				325,
 			},
+			["itemId"] = 23888,
 			["name"] = "Zapthrottle Mote Extractor",
 			["reagents"] = {
 				[16006] = 1,
@@ -3364,6 +3471,7 @@ addon.recipeDB[202] = {
 				325,
 				345,
 			},
+			["itemId"] = 23882,
 			["name"] = "Critter Enlarger",
 			["reagents"] = {
 				[10558] = 1,
@@ -3380,6 +3488,7 @@ addon.recipeDB[202] = {
 				330,
 				350,
 			},
+			["itemId"] = 23883,
 			["name"] = "Healing Potion Injector",
 			["reagents"] = {
 				[21887] = 2,
@@ -3397,6 +3506,7 @@ addon.recipeDB[202] = {
 				345,
 				365,
 			},
+			["itemId"] = 23884,
 			["name"] = "Mana Potion Injector",
 			["reagents"] = {
 				[21887] = 2,
@@ -3414,6 +3524,7 @@ addon.recipeDB[202] = {
 				365,
 				385,
 			},
+			["itemId"] = 23887,
 			["name"] = "Rocket Boots Xtreme",
 			["reagents"] = {
 				[23785] = 2,
@@ -3636,6 +3747,7 @@ addon.recipeDB[202] = {
 				335,
 				355,
 			},
+			["itemId"] = 25887,
 			["name"] = "Purple Smoke Flare",
 			["reagents"] = {
 				[4342] = 1,
@@ -3688,6 +3800,7 @@ addon.recipeDB[202] = {
 				275,
 				285,
 			},
+			["itemId"] = 32381,
 			["name"] = "Fused Wiring",
 			["reagents"] = {
 				[2840] = 6,
@@ -4013,6 +4126,7 @@ addon.recipeDB[202] = {
 				370,
 				390,
 			},
+			["itemId"] = 34114,
 			["name"] = "Field Repair Bot 110G",
 			["reagents"] = {
 				[23446] = 8,
@@ -4029,6 +4143,7 @@ addon.recipeDB[202] = {
 				390,
 				430,
 			},
+			["itemId"] = 35191,
 			["name"] = "Wonderheal XT68 Shades",
 			["reagents"] = {
 				[21885] = 4,
@@ -4046,6 +4161,7 @@ addon.recipeDB[202] = {
 				390,
 				430,
 			},
+			["itemId"] = 35187,
 			["name"] = "Justicebringer 3000 Specs",
 			["reagents"] = {
 				[21886] = 8,
@@ -4064,6 +4180,7 @@ addon.recipeDB[202] = {
 				390,
 				430,
 			},
+			["itemId"] = 35189,
 			["name"] = "Powerheal 9000 Lens",
 			["reagents"] = {
 				[21886] = 8,
@@ -4081,6 +4198,7 @@ addon.recipeDB[202] = {
 				390,
 				430,
 			},
+			["itemId"] = 35190,
 			["name"] = "Hyper-Magnified Moon Specs",
 			["reagents"] = {
 				[21885] = 6,
@@ -4098,6 +4216,7 @@ addon.recipeDB[202] = {
 				390,
 				430,
 			},
+			["itemId"] = 35192,
 			["name"] = "Primal-Attuned Goggles",
 			["reagents"] = {
 				[21885] = 5,
@@ -4116,6 +4235,7 @@ addon.recipeDB[202] = {
 				390,
 				430,
 			},
+			["itemId"] = 35186,
 			["name"] = "Annihilator Holo-Gogs",
 			["reagents"] = {
 				[21884] = 4,
@@ -4134,6 +4254,7 @@ addon.recipeDB[202] = {
 				390,
 				430,
 			},
+			["itemId"] = 35193,
 			["name"] = "Lightning Etched Specs",
 			["reagents"] = {
 				[22451] = 2,
@@ -4151,6 +4272,7 @@ addon.recipeDB[202] = {
 				390,
 				430,
 			},
+			["itemId"] = 35194,
 			["name"] = "Surestrike Goggles v3.0",
 			["reagents"] = {
 				[22451] = 12,
@@ -4167,6 +4289,7 @@ addon.recipeDB[202] = {
 				390,
 				430,
 			},
+			["itemId"] = 35195,
 			["name"] = "Mayhem Projection Goggles",
 			["reagents"] = {
 				[21884] = 10,
@@ -4183,6 +4306,7 @@ addon.recipeDB[202] = {
 				390,
 				430,
 			},
+			["itemId"] = 35196,
 			["name"] = "Hard Khorium Goggles",
 			["reagents"] = {
 				[23571] = 1,
@@ -4200,6 +4324,7 @@ addon.recipeDB[202] = {
 				390,
 				430,
 			},
+			["itemId"] = 35197,
 			["name"] = "Quad Deathblow X44 Goggles",
 			["reagents"] = {
 				[22456] = 12,
@@ -4216,6 +4341,7 @@ addon.recipeDB[202] = {
 				365,
 				385,
 			},
+			["itemId"] = 35582,
 			["name"] = "Rocket Boots Xtreme Lite",
 			["reagents"] = {
 				[21840] = 8,
@@ -4289,6 +4415,7 @@ addon.recipeDB[202] = {
 				390,
 				395,
 			},
+			["itemId"] = 40776,
 			["name"] = "EMP Generator",
 			["reagents"] = {
 				[90146] = 1,
@@ -4303,6 +4430,7 @@ addon.recipeDB[202] = {
 				380,
 				385,
 			},
+			["itemId"] = 40800,
 			["name"] = "Frag Belt",
 			["reagents"] = {
 				[90146] = 1,
@@ -4317,6 +4445,7 @@ addon.recipeDB[202] = {
 				400,
 				405,
 			},
+			["itemId"] = 41091,
 			["name"] = "Hand-Mounted Pyro Rocket",
 			["reagents"] = {
 				[90146] = 1,
@@ -4345,6 +4474,7 @@ addon.recipeDB[202] = {
 				380,
 				385,
 			},
+			["itemId"] = 41111,
 			["name"] = "Flexweave Underlay",
 			["reagents"] = {
 				[90146] = 1,
@@ -4359,6 +4489,7 @@ addon.recipeDB[202] = {
 				400,
 				410,
 			},
+			["itemId"] = 41118,
 			["name"] = "Nitro Boosts",
 			["reagents"] = {
 				[90146] = 1,
@@ -4879,6 +5010,7 @@ addon.recipeDB[202] = {
 				480,
 				490,
 			},
+			["itemId"] = 44502,
 			["name"] = "Mechano-Hog",
 			["reagents"] = {
 				[37663] = 12,
@@ -4898,6 +5030,7 @@ addon.recipeDB[202] = {
 				480,
 				490,
 			},
+			["itemId"] = 44503,
 			["name"] = "Mekgineer's Chopper",
 			["reagents"] = {
 				[37663] = 12,
@@ -5129,6 +5262,7 @@ addon.recipeDB[202] = {
 				480,
 				490,
 			},
+			["itemId"] = 49050,
 			["name"] = "Jeeves",
 			["reagents"] = {
 				[18232] = 2,
@@ -5148,6 +5282,7 @@ addon.recipeDB[202] = {
 				440,
 				460,
 			},
+			["itemId"] = 52022,
 			["name"] = "Shatter Rounds",
 			["reagents"] = {
 				[37701] = 2,
@@ -5162,6 +5297,7 @@ addon.recipeDB[202] = {
 				440,
 				460,
 			},
+			["itemId"] = 52023,
 			["name"] = "Iceblade Arrow",
 			["reagents"] = {
 				[37703] = 2,
@@ -5380,6 +5516,7 @@ addon.recipeDB[202] = {
 				425,
 				480,
 			},
+			["itemId"] = 60223,
 			["name"] = "Explosive Bolts",
 			["reagents"] = {
 				[60224] = 1,
@@ -5810,6 +5947,7 @@ addon.recipeDB[202] = {
 				525,
 				535,
 			},
+			["itemId"] = 70177,
 			["name"] = "Flintlocke's Woodchucker",
 			["reagents"] = {
 				[52192] = 2,
@@ -5827,6 +5965,7 @@ addon.recipeDB[202] = {
 				525,
 				525,
 			},
+			["itemId"] = 71078,
 			["name"] = "Extreme-Impact Hole Puncher",
 			["reagents"] = {
 				[39684] = 1,
@@ -5845,6 +5984,7 @@ addon.recipeDB[202] = {
 				115,
 				130,
 			},
+			["itemId"] = 6712,
 			["name"] = "Open Box",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -5885,6 +6025,7 @@ addon.recipeDB[202] = {
 				550,
 				550,
 			},
+			["itemId"] = 87748,
 			["name"] = "Watergliding Jets",
 			["reagents"] = {
 				[90146] = 1,
@@ -5911,6 +6052,7 @@ addon.recipeDB[202] = {
 				600,
 				600,
 			},
+			["itemId"] = 74622,
 			["name"] = "Release Spirit",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -5979,6 +6121,7 @@ addon.recipeDB[202] = {
 				600,
 				600,
 			},
+			["itemId"] = 87738,
 			["name"] = "Lord Blastington's Scope of Doom",
 			["reagents"] = {
 				[76061] = 1,
@@ -5995,6 +6138,7 @@ addon.recipeDB[202] = {
 				575,
 				600,
 			},
+			["itemId"] = 87739,
 			["name"] = "Mirror Scope",
 			["reagents"] = {
 				[76133] = 2,
@@ -6010,6 +6154,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 87740,
 			["name"] = "Lightweight Retinal Armor",
 			["reagents"] = {
 				[72104] = 6,
@@ -6026,6 +6171,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 87741,
 			["name"] = "Agile Retinal Armor",
 			["reagents"] = {
 				[72104] = 6,
@@ -6042,6 +6188,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 87742,
 			["name"] = "Camouflage Retinal Armor",
 			["reagents"] = {
 				[72104] = 6,
@@ -6058,6 +6205,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 87743,
 			["name"] = "Deadly Retinal Armor",
 			["reagents"] = {
 				[72104] = 6,
@@ -6074,6 +6222,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 87744,
 			["name"] = "Energized Retinal Armor",
 			["reagents"] = {
 				[72104] = 6,
@@ -6090,6 +6239,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 87745,
 			["name"] = "Specialized Retinal Armor",
 			["reagents"] = {
 				[72104] = 6,
@@ -6106,6 +6256,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 87746,
 			["name"] = "Reinforced Retinal Armor",
 			["reagents"] = {
 				[72104] = 6,
@@ -6121,6 +6272,7 @@ addon.recipeDB[202] = {
 				520,
 				530,
 			},
+			["itemId"] = 87747,
 			["name"] = "Locksmith's Powderkeg",
 			["reagents"] = {
 				[4470] = 1,
@@ -6136,6 +6288,7 @@ addon.recipeDB[202] = {
 				550,
 				575,
 			},
+			["itemId"] = 87750,
 			["name"] = "G91 Landshark",
 			["reagents"] = {
 				[77467] = 2,
@@ -6151,6 +6304,7 @@ addon.recipeDB[202] = {
 				565,
 				575,
 			},
+			["itemId"] = 87751,
 			["name"] = "Goblin Dragon Gun, Mark II",
 			["reagents"] = {
 				[77467] = 3,
@@ -6166,6 +6320,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 87752,
 			["name"] = "Blingtron 4000",
 			["reagents"] = {
 				[72095] = 4,
@@ -6185,6 +6340,7 @@ addon.recipeDB[202] = {
 				600,
 				615,
 			},
+			["itemId"] = 87753,
 			["name"] = "Mist-Piercing Goggles",
 			["reagents"] = {
 				[76061] = 2,
@@ -6200,6 +6356,7 @@ addon.recipeDB[202] = {
 				575,
 				615,
 			},
+			["itemId"] = 87754,
 			["name"] = "Thermal Anvil",
 			["reagents"] = {
 				[77467] = 6,
@@ -6215,6 +6372,7 @@ addon.recipeDB[202] = {
 				600,
 				600,
 			},
+			["itemId"] = 87755,
 			["name"] = "Wormhole Generator: Pandaria",
 			["reagents"] = {
 				[72095] = 12,
@@ -6230,6 +6388,7 @@ addon.recipeDB[202] = {
 				575,
 				600,
 			},
+			["itemId"] = 87757,
 			["name"] = "Ghost Iron Dragonling",
 			["reagents"] = {
 				[72988] = 12,
@@ -6246,6 +6405,7 @@ addon.recipeDB[202] = {
 				600,
 				600,
 			},
+			["itemId"] = 87758,
 			["name"] = "Mechanical Pandaren Dragonling",
 			["reagents"] = {
 				[72095] = 6,
@@ -6262,6 +6422,7 @@ addon.recipeDB[202] = {
 				565,
 				575,
 			},
+			["itemId"] = 87759,
 			["name"] = "Big Game Hunter",
 			["reagents"] = {
 				[39684] = 1,
@@ -6279,6 +6440,7 @@ addon.recipeDB[202] = {
 				605,
 				605,
 			},
+			["itemId"] = 87760,
 			["name"] = "Long-Range Trillium Sniper",
 			["reagents"] = {
 				[39684] = 1,
@@ -6296,6 +6458,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 87761,
 			["name"] = "Depleted-Kyparium Rocket",
 			["reagents"] = {
 				[72093] = 200,
@@ -6315,6 +6478,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 87762,
 			["name"] = "Geosynchronous World Spinner",
 			["reagents"] = {
 				[72095] = 12,
@@ -6333,6 +6497,7 @@ addon.recipeDB[202] = {
 				525,
 				550,
 			},
+			["itemId"] = 89994,
 			["name"] = "Celestial Firework",
 			["reagents"] = {
 				[77468] = 1,
@@ -6347,6 +6512,7 @@ addon.recipeDB[202] = {
 				525,
 				550,
 			},
+			["itemId"] = 89993,
 			["name"] = "Grand Celebration Firework",
 			["reagents"] = {
 				[77468] = 1,
@@ -6361,6 +6527,7 @@ addon.recipeDB[202] = {
 				525,
 				550,
 			},
+			["itemId"] = 89992,
 			["name"] = "Serpent's Heart Firework",
 			["reagents"] = {
 				[77468] = 1,
@@ -6487,6 +6654,7 @@ addon.recipeDB[202] = {
 				525,
 				550,
 			},
+			["itemId"] = 89996,
 			["name"] = "Autumn Flower Firework",
 			["reagents"] = {
 				[77468] = 1,
@@ -6501,6 +6669,7 @@ addon.recipeDB[202] = {
 				525,
 				550,
 			},
+			["itemId"] = 89997,
 			["name"] = "Jade Blossom Firework",
 			["reagents"] = {
 				[77468] = 1,
@@ -6545,6 +6714,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 97230,
 			["name"] = "Jard's Peculiar Energy Source",
 			["reagents"] = {
 				[72096] = 10,
@@ -6559,6 +6729,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 94880,
 			["name"] = "Sky Golem",
 			["reagents"] = {
 				[72104] = 30,
@@ -6574,6 +6745,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 94893,
 			["name"] = "Pierre",
 			["reagents"] = {
 				[72104] = 15,
@@ -6589,6 +6761,7 @@ addon.recipeDB[202] = {
 				600,
 				605,
 			},
+			["itemId"] = 94894,
 			["name"] = "Advanced Refrigeration Unit",
 			["reagents"] = {
 				[72104] = 5,
@@ -6604,6 +6777,7 @@ addon.recipeDB[202] = {
 				605,
 				615,
 			},
+			["itemId"] = 100907,
 			["name"] = "Rascal-Bot",
 			["reagents"] = {
 				[72104] = 15,
@@ -6619,6 +6793,7 @@ addon.recipeDB[202] = {
 				135,
 				145,
 			},
+			["itemId"] = 210178,
 			["name"] = "Shredder Autosalvage Unit",
 			["reagents"] = {
 				[4234] = 1,
@@ -6924,6 +7099,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 235530,
 			["name"] = "Obsidian Scope",
 			["reagents"] = {
 				[12363] = 1,
@@ -6940,6 +7116,7 @@ addon.recipeDB[202] = {
 				275,
 				280,
 			},
+			["itemId"] = 236872,
 			["name"] = "Creepy Censor Sensors",
 			["reagents"] = {
 				[8170] = 8,
@@ -6955,6 +7132,7 @@ addon.recipeDB[202] = {
 				260,
 				280,
 			},
+			["itemId"] = 238782,
 			["name"] = "Tinkerbox",
 			["reagents"] = {
 				[10558] = 2,
@@ -6970,6 +7148,7 @@ addon.recipeDB[202] = {
 				270,
 				290,
 			},
+			["itemId"] = 238783,
 			["name"] = "Tinkerbox: Teleport",
 			["reagents"] = {
 				[10560] = 1,
@@ -6986,6 +7165,7 @@ addon.recipeDB[202] = {
 				270,
 				290,
 			},
+			["itemId"] = 238784,
 			["name"] = "Tinkerbox: Nitro Boosts",
 			["reagents"] = {
 				[10560] = 1,
@@ -7002,6 +7182,7 @@ addon.recipeDB[202] = {
 				270,
 				290,
 			},
+			["itemId"] = 238785,
 			["name"] = "Tinkerbox: Magnetic Displacement",
 			["reagents"] = {
 				[4387] = 2,
@@ -7018,6 +7199,7 @@ addon.recipeDB[202] = {
 				280,
 				285,
 			},
+			["itemId"] = 238786,
 			["name"] = "Tinker: Teleport",
 			["reagents"] = {
 				[15994] = 1,
@@ -7034,6 +7216,7 @@ addon.recipeDB[202] = {
 				280,
 				285,
 			},
+			["itemId"] = 238787,
 			["name"] = "Tinker: Nitro Boosts",
 			["reagents"] = {
 				[16000] = 1,
@@ -7050,6 +7233,7 @@ addon.recipeDB[202] = {
 				280,
 				285,
 			},
+			["itemId"] = 238788,
 			["name"] = "Tinker: Magnetic Displacement",
 			["reagents"] = {
 				[4387] = 2,
@@ -7066,6 +7250,7 @@ addon.recipeDB[202] = {
 				305,
 				305,
 			},
+			["itemId"] = 238789,
 			["name"] = "Semisafe Transporter: New Avalon",
 			["reagents"] = {
 				[10560] = 1,
@@ -7085,6 +7270,7 @@ addon.recipeDB[202] = {
 				255,
 				260,
 			},
+			["itemId"] = 239222,
 			["name"] = "Pop-Up Shrub",
 			["reagents"] = {
 				[4382] = 1,

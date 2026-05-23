@@ -240,13 +240,24 @@ def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
     recipe DB."""
     cleaned = {}
     for spell_id, entry in recipes.items():
-        cleaned[spell_id] = {
+        # itemId = first recipe-scroll item that teaches this spell, or nil
+        # for trainer-only recipes (no scroll exists in the game). Used by
+        # GUI/MissingRecipesTab.lua for tooltip / icon / shift-click link
+        # — those all need an ACTUAL item id, not the spell id (the spell
+        # tooltip alone doesn't render reagents the way the recipe-scroll
+        # item tooltip does). When nil, the GUI falls back to spell-based
+        # display (GetSpellInfo / GameTooltip:SetSpellByID).
+        items = entry.get("items") or []
+        out = {
             "name":          entry["name"],
             "difficulty":    entry["difficulty"],
             "teaches":       entry["teaches"],
             "requiredSkill": entry["requiredSkill"],
             "reagents":      entry["reagents"],
         }
+        if items:
+            out["itemId"] = items[0]
+        cleaned[spell_id] = out
     body = lua_value(cleaned, 1)
     target = RECIPES_DIR / f"{filename}.lua"
     target.parent.mkdir(parents=True, exist_ok=True)

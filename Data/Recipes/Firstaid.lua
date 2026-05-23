@@ -114,6 +114,7 @@ addon.recipeDB[129] = {
 				210,
 				240,
 			},
+			["itemId"] = 16112,
 			["name"] = "Heavy Silk Bandage",
 			["reagents"] = {
 				[4306] = 2,
@@ -142,6 +143,7 @@ addon.recipeDB[129] = {
 				130,
 				200,
 			},
+			["itemId"] = 6454,
 			["name"] = "Strong Anti-Venom",
 			["reagents"] = {
 				[1288] = 1,
@@ -156,6 +158,7 @@ addon.recipeDB[129] = {
 				240,
 				250,
 			},
+			["itemId"] = 16113,
 			["name"] = "Mageweave Bandage",
 			["reagents"] = {
 				[4338] = 1,
@@ -224,6 +227,7 @@ addon.recipeDB[129] = {
 				300,
 				360,
 			},
+			["itemId"] = 19442,
 			["name"] = "Powerful Anti-Venom",
 			["reagents"] = {
 				[19441] = 1,
@@ -250,6 +254,7 @@ addon.recipeDB[129] = {
 				330,
 				365,
 			},
+			["itemId"] = 21992,
 			["name"] = "Netherweave Bandage",
 			["reagents"] = {
 				[21877] = 1,
@@ -264,6 +269,7 @@ addon.recipeDB[129] = {
 				350,
 				375,
 			},
+			["itemId"] = 21993,
 			["name"] = "Heavy Netherweave Bandage",
 			["reagents"] = {
 				[21877] = 2,
@@ -278,6 +284,7 @@ addon.recipeDB[129] = {
 				300,
 				360,
 			},
+			["itemId"] = 23689,
 			["name"] = "Crystal Infused Bandage",
 			["reagents"] = {
 				[14047] = 10,
@@ -319,6 +326,7 @@ addon.recipeDB[129] = {
 				425,
 				470,
 			},
+			["itemId"] = 39152,
 			["name"] = "Heavy Frostweave Bandage",
 			["reagents"] = {
 				[33470] = 2,

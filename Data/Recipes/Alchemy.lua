@@ -84,6 +84,7 @@ addon.recipeDB[171] = {
 				165,
 				205,
 			},
+			["itemId"] = 3396,
 			["name"] = "Elixir of Lesser Agility",
 			["reagents"] = {
 				[2452] = 1,
@@ -100,6 +101,7 @@ addon.recipeDB[171] = {
 				80,
 				120,
 			},
+			["itemId"] = 2554,
 			["name"] = "Elixir of Minor Fortitude",
 			["reagents"] = {
 				[2447] = 1,
@@ -116,6 +118,7 @@ addon.recipeDB[171] = {
 				90,
 				130,
 			},
+			["itemId"] = 2555,
 			["name"] = "Swiftness Potion",
 			["reagents"] = {
 				[2450] = 1,
@@ -132,6 +135,7 @@ addon.recipeDB[171] = {
 				100,
 				140,
 			},
+			["itemId"] = 2556,
 			["name"] = "Elixir of Tongues",
 			["reagents"] = {
 				[785] = 2,
@@ -207,6 +211,7 @@ addon.recipeDB[171] = {
 				135,
 				175,
 			},
+			["itemId"] = 3393,
 			["name"] = "Minor Magic Resistance Potion",
 			["reagents"] = {
 				[785] = 3,
@@ -239,6 +244,7 @@ addon.recipeDB[171] = {
 				145,
 				185,
 			},
+			["itemId"] = 3394,
 			["name"] = "Potion of Curing",
 			["reagents"] = {
 				[1288] = 1,
@@ -255,6 +261,7 @@ addon.recipeDB[171] = {
 				275,
 				315,
 			},
+			["itemId"] = 3395,
 			["name"] = "Limited Invulnerability Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -303,6 +310,7 @@ addon.recipeDB[171] = {
 				175,
 				215,
 			},
+			["itemId"] = 6211,
 			["name"] = "Elixir of Ogre's Strength",
 			["reagents"] = {
 				[2449] = 1,
@@ -319,6 +327,7 @@ addon.recipeDB[171] = {
 				80,
 				120,
 			},
+			["itemId"] = 2553,
 			["name"] = "Elixir of Minor Agility",
 			["reagents"] = {
 				[765] = 1,
@@ -367,6 +376,7 @@ addon.recipeDB[171] = {
 				190,
 				230,
 			},
+			["itemId"] = 6068,
 			["name"] = "Shadow Oil",
 			["reagents"] = {
 				[3369] = 2,
@@ -382,6 +392,7 @@ addon.recipeDB[171] = {
 				195,
 				235,
 			},
+			["itemId"] = 3830,
 			["name"] = "Elixir of Fortitude",
 			["reagents"] = {
 				[3355] = 1,
@@ -398,6 +409,7 @@ addon.recipeDB[171] = {
 				200,
 				240,
 			},
+			["itemId"] = 3831,
 			["name"] = "Major Troll's Blood Elixir",
 			["reagents"] = {
 				[2453] = 1,
@@ -430,6 +442,7 @@ addon.recipeDB[171] = {
 				215,
 				255,
 			},
+			["itemId"] = 3832,
 			["name"] = "Elixir of Detect Lesser Invisibility",
 			["reagents"] = {
 				[3358] = 1,
@@ -446,6 +459,7 @@ addon.recipeDB[171] = {
 				220,
 				260,
 			},
+			["itemId"] = 14634,
 			["name"] = "Frost Oil",
 			["reagents"] = {
 				[3358] = 4,
@@ -474,6 +488,7 @@ addon.recipeDB[171] = {
 				80,
 				120,
 			},
+			["itemId"] = 4597,
 			["name"] = "Discolored Healing Potion",
 			["reagents"] = {
 				[2447] = 1,
@@ -490,6 +505,7 @@ addon.recipeDB[171] = {
 				230,
 				270,
 			},
+			["itemId"] = 4624,
 			["name"] = "Lesser Stoneshield Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -506,6 +522,7 @@ addon.recipeDB[171] = {
 				90,
 				130,
 			},
+			["itemId"] = 5640,
 			["name"] = "Rage Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -521,6 +538,7 @@ addon.recipeDB[171] = {
 				195,
 				235,
 			},
+			["itemId"] = 5643,
 			["name"] = "Great Rage Potion",
 			["reagents"] = {
 				[3356] = 1,
@@ -537,6 +555,7 @@ addon.recipeDB[171] = {
 				150,
 				190,
 			},
+			["itemId"] = 5641,
 			["name"] = "Cowardly Flight Potion",
 			["reagents"] = {
 				[3356] = 1,
@@ -553,6 +572,7 @@ addon.recipeDB[171] = {
 				175,
 				215,
 			},
+			["itemId"] = 5642,
 			["name"] = "Free Action Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -616,6 +636,7 @@ addon.recipeDB[171] = {
 				130,
 				170,
 			},
+			["itemId"] = 6053,
 			["name"] = "Holy Protection Potion",
 			["reagents"] = {
 				[2452] = 1,
@@ -632,6 +653,7 @@ addon.recipeDB[171] = {
 				160,
 				200,
 			},
+			["itemId"] = 6054,
 			["name"] = "Shadow Protection Potion",
 			["reagents"] = {
 				[3356] = 1,
@@ -648,6 +670,7 @@ addon.recipeDB[171] = {
 				210,
 				250,
 			},
+			["itemId"] = 6055,
 			["name"] = "Fire Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -664,6 +687,7 @@ addon.recipeDB[171] = {
 				205,
 				245,
 			},
+			["itemId"] = 6056,
 			["name"] = "Frost Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -680,6 +704,7 @@ addon.recipeDB[171] = {
 				210,
 				250,
 			},
+			["itemId"] = 6057,
 			["name"] = "Nature Protection Potion",
 			["reagents"] = {
 				[3357] = 1,
@@ -756,6 +781,7 @@ addon.recipeDB[171] = {
 				120,
 				160,
 			},
+			["itemId"] = 6663,
 			["name"] = "Elixir of Giant Growth",
 			["reagents"] = {
 				[2449] = 1,
@@ -868,6 +894,7 @@ addon.recipeDB[171] = {
 				225,
 				265,
 			},
+			["itemId"] = 9293,
 			["name"] = "Magic Resistance Potion",
 			["reagents"] = {
 				[3358] = 1,
@@ -884,6 +911,7 @@ addon.recipeDB[171] = {
 				225,
 				265,
 			},
+			["itemId"] = 10644,
 			["name"] = "Goblin Rocket Fuel",
 			["reagents"] = {
 				[3371] = 1,
@@ -916,6 +944,7 @@ addon.recipeDB[171] = {
 				240,
 				280,
 			},
+			["itemId"] = 9294,
 			["name"] = "Wildvine Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -932,6 +961,7 @@ addon.recipeDB[171] = {
 				240,
 				280,
 			},
+			["itemId"] = 9303,
 			["name"] = "Philosopher's Stone",
 			["reagents"] = {
 				[3575] = 4,
@@ -980,6 +1010,7 @@ addon.recipeDB[171] = {
 				250,
 				290,
 			},
+			["itemId"] = 9295,
 			["name"] = "Invisibility Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1012,6 +1043,7 @@ addon.recipeDB[171] = {
 				255,
 				295,
 			},
+			["itemId"] = 9296,
 			["name"] = "Gift of Arthas",
 			["reagents"] = {
 				[3371] = 1,
@@ -1043,6 +1075,7 @@ addon.recipeDB[171] = {
 				255,
 				295,
 			},
+			["itemId"] = 9297,
 			["name"] = "Elixir of Dream Vision",
 			["reagents"] = {
 				[3371] = 1,
@@ -1058,6 +1091,7 @@ addon.recipeDB[171] = {
 				260,
 				300,
 			},
+			["itemId"] = 9298,
 			["name"] = "Elixir of Giants",
 			["reagents"] = {
 				[3371] = 1,
@@ -1074,6 +1108,7 @@ addon.recipeDB[171] = {
 				260,
 				300,
 			},
+			["itemId"] = 9302,
 			["name"] = "Ghost Dye",
 			["reagents"] = {
 				[3371] = 1,
@@ -1090,6 +1125,7 @@ addon.recipeDB[171] = {
 				265,
 				305,
 			},
+			["itemId"] = 9301,
 			["name"] = "Elixir of Shadow Power",
 			["reagents"] = {
 				[3371] = 1,
@@ -1105,6 +1141,7 @@ addon.recipeDB[171] = {
 				265,
 				305,
 			},
+			["itemId"] = 9300,
 			["name"] = "Elixir of Demonslaying",
 			["reagents"] = {
 				[3371] = 1,
@@ -1136,6 +1173,7 @@ addon.recipeDB[171] = {
 				240,
 				280,
 			},
+			["itemId"] = 9304,
 			["name"] = "Transmute: Iron to Gold",
 			["reagents"] = {
 				[3575] = 1,
@@ -1150,6 +1188,7 @@ addon.recipeDB[171] = {
 				240,
 				280,
 			},
+			["itemId"] = 9305,
 			["name"] = "Transmute: Mithril to Truesilver",
 			["reagents"] = {
 				[3860] = 1,
@@ -1207,6 +1246,7 @@ addon.recipeDB[171] = {
 				275,
 				290,
 			},
+			["itemId"] = 12958,
 			["name"] = "Transmute: Arcanite",
 			["reagents"] = {
 				[12359] = 1,
@@ -1236,6 +1276,7 @@ addon.recipeDB[171] = {
 				270,
 				310,
 			},
+			["itemId"] = 13476,
 			["name"] = "Mighty Rage Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1251,6 +1292,7 @@ addon.recipeDB[171] = {
 				275,
 				315,
 			},
+			["itemId"] = 13477,
 			["name"] = "Superior Mana Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1267,6 +1309,7 @@ addon.recipeDB[171] = {
 				280,
 				320,
 			},
+			["itemId"] = 13478,
 			["name"] = "Elixir of Superior Defense",
 			["reagents"] = {
 				[3371] = 1,
@@ -1283,6 +1326,7 @@ addon.recipeDB[171] = {
 				285,
 				325,
 			},
+			["itemId"] = 13479,
 			["name"] = "Elixir of the Sages",
 			["reagents"] = {
 				[3371] = 1,
@@ -1299,6 +1343,7 @@ addon.recipeDB[171] = {
 				290,
 				330,
 			},
+			["itemId"] = 13480,
 			["name"] = "Major Healing Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1315,6 +1360,7 @@ addon.recipeDB[171] = {
 				290,
 				330,
 			},
+			["itemId"] = 13481,
 			["name"] = "Elixir of Brute Force",
 			["reagents"] = {
 				[3371] = 1,
@@ -1331,6 +1377,7 @@ addon.recipeDB[171] = {
 				275,
 				290,
 			},
+			["itemId"] = 13482,
 			["name"] = "Transmute: Air to Fire",
 			["reagents"] = {
 				[7082] = 1,
@@ -1345,6 +1392,7 @@ addon.recipeDB[171] = {
 				275,
 				290,
 			},
+			["itemId"] = 13483,
 			["name"] = "Transmute: Fire to Earth",
 			["reagents"] = {
 				[7078] = 1,
@@ -1359,6 +1407,7 @@ addon.recipeDB[171] = {
 				275,
 				290,
 			},
+			["itemId"] = 13484,
 			["name"] = "Transmute: Earth to Water",
 			["reagents"] = {
 				[7076] = 1,
@@ -1373,6 +1422,7 @@ addon.recipeDB[171] = {
 				275,
 				290,
 			},
+			["itemId"] = 13485,
 			["name"] = "Transmute: Water to Air",
 			["reagents"] = {
 				[7080] = 1,
@@ -1387,6 +1437,7 @@ addon.recipeDB[171] = {
 				275,
 				290,
 			},
+			["itemId"] = 13486,
 			["name"] = "Transmute: Undeath to Water",
 			["reagents"] = {
 				[12808] = 1,
@@ -1401,6 +1452,7 @@ addon.recipeDB[171] = {
 				275,
 				290,
 			},
+			["itemId"] = 13487,
 			["name"] = "Transmute: Water to Undeath",
 			["reagents"] = {
 				[7080] = 1,
@@ -1415,6 +1467,7 @@ addon.recipeDB[171] = {
 				275,
 				290,
 			},
+			["itemId"] = 13488,
 			["name"] = "Transmute: Life to Earth",
 			["reagents"] = {
 				[12803] = 1,
@@ -1429,6 +1482,7 @@ addon.recipeDB[171] = {
 				275,
 				290,
 			},
+			["itemId"] = 13489,
 			["name"] = "Transmute: Earth to Life",
 			["reagents"] = {
 				[7076] = 1,
@@ -1443,6 +1497,7 @@ addon.recipeDB[171] = {
 				295,
 				335,
 			},
+			["itemId"] = 13490,
 			["name"] = "Greater Stoneshield Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1459,6 +1514,7 @@ addon.recipeDB[171] = {
 				295,
 				335,
 			},
+			["itemId"] = 13491,
 			["name"] = "Elixir of the Mongoose",
 			["reagents"] = {
 				[3371] = 1,
@@ -1475,6 +1531,7 @@ addon.recipeDB[171] = {
 				300,
 				340,
 			},
+			["itemId"] = 13492,
 			["name"] = "Purification Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1491,6 +1548,7 @@ addon.recipeDB[171] = {
 				300,
 				340,
 			},
+			["itemId"] = 13493,
 			["name"] = "Greater Arcane Elixir",
 			["reagents"] = {
 				[3371] = 1,
@@ -1507,6 +1565,7 @@ addon.recipeDB[171] = {
 				305,
 				345,
 			},
+			["itemId"] = 13494,
 			["name"] = "Greater Fire Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1523,6 +1582,7 @@ addon.recipeDB[171] = {
 				305,
 				345,
 			},
+			["itemId"] = 13495,
 			["name"] = "Greater Frost Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1539,6 +1599,7 @@ addon.recipeDB[171] = {
 				305,
 				345,
 			},
+			["itemId"] = 13496,
 			["name"] = "Greater Nature Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1555,6 +1616,7 @@ addon.recipeDB[171] = {
 				305,
 				345,
 			},
+			["itemId"] = 13497,
 			["name"] = "Greater Arcane Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1571,6 +1633,7 @@ addon.recipeDB[171] = {
 				305,
 				345,
 			},
+			["itemId"] = 13499,
 			["name"] = "Greater Shadow Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1587,6 +1650,7 @@ addon.recipeDB[171] = {
 				305,
 				345,
 			},
+			["itemId"] = 13500,
 			["name"] = "Greater Holy Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1603,6 +1667,7 @@ addon.recipeDB[171] = {
 				310,
 				350,
 			},
+			["itemId"] = 13501,
 			["name"] = "Major Mana Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1619,6 +1684,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 13517,
 			["name"] = "Alchemist Stone",
 			["reagents"] = {
 				[9149] = 1,
@@ -1637,6 +1703,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 13518,
 			["name"] = "Potion of Petrification",
 			["reagents"] = {
 				[3371] = 1,
@@ -1652,6 +1719,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 13519,
 			["name"] = "Flask of the Titans",
 			["reagents"] = {
 				[3371] = 1,
@@ -1669,6 +1737,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 13520,
 			["name"] = "Flask of Distilled Wisdom",
 			["reagents"] = {
 				[3371] = 1,
@@ -1686,6 +1755,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 13521,
 			["name"] = "Flask of Supreme Power",
 			["reagents"] = {
 				[3371] = 1,
@@ -1703,6 +1773,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 13522,
 			["name"] = "Flask of Chromatic Resistance",
 			["reagents"] = {
 				[3371] = 1,
@@ -1720,6 +1791,7 @@ addon.recipeDB[171] = {
 				210,
 				250,
 			},
+			["itemId"] = 17709,
 			["name"] = "Elixir of Frost Power",
 			["reagents"] = {
 				[3358] = 1,
@@ -1750,6 +1822,7 @@ addon.recipeDB[171] = {
 				310,
 				330,
 			},
+			["itemId"] = 18257,
 			["name"] = "Major Rejuvenation Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1800,6 +1873,7 @@ addon.recipeDB[171] = {
 				290,
 				330,
 			},
+			["itemId"] = 20011,
 			["name"] = "Mageblood Elixir",
 			["reagents"] = {
 				[3371] = 1,
@@ -1816,6 +1890,7 @@ addon.recipeDB[171] = {
 				290,
 				330,
 			},
+			["itemId"] = 20012,
 			["name"] = "Greater Dreamless Sleep Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1832,6 +1907,7 @@ addon.recipeDB[171] = {
 				300,
 				340,
 			},
+			["itemId"] = 20013,
 			["name"] = "Living Action Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1848,6 +1924,7 @@ addon.recipeDB[171] = {
 				305,
 				345,
 			},
+			["itemId"] = 20014,
 			["name"] = "Mighty Troll's Blood Elixir",
 			["reagents"] = {
 				[3371] = 1,
@@ -1864,6 +1941,7 @@ addon.recipeDB[171] = {
 				301,
 				310,
 			},
+			["itemId"] = 20761,
 			["name"] = "Transmute: Elemental Fire",
 			["reagents"] = {
 				[7077] = 1,
@@ -1878,6 +1956,7 @@ addon.recipeDB[171] = {
 				265,
 				305,
 			},
+			["itemId"] = 21547,
 			["name"] = "Elixir of Greater Firepower",
 			["reagents"] = {
 				[3371] = 1,
@@ -1894,6 +1973,7 @@ addon.recipeDB[171] = {
 				320,
 				335,
 			},
+			["itemId"] = 22900,
 			["name"] = "Elixir of Camouflage",
 			["reagents"] = {
 				[3371] = 1,
@@ -1942,6 +2022,7 @@ addon.recipeDB[171] = {
 				330,
 				345,
 			},
+			["itemId"] = 22901,
 			["name"] = "Sneaking Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -1958,6 +2039,7 @@ addon.recipeDB[171] = {
 				335,
 				350,
 			},
+			["itemId"] = 22902,
 			["name"] = "Elixir of Major Frost Power",
 			["reagents"] = {
 				[3371] = 1,
@@ -1974,6 +2056,7 @@ addon.recipeDB[171] = {
 				335,
 				350,
 			},
+			["itemId"] = 22903,
 			["name"] = "Insane Strength Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -2005,6 +2088,7 @@ addon.recipeDB[171] = {
 				340,
 				355,
 			},
+			["itemId"] = 22904,
 			["name"] = "Elixir of the Searching Eye",
 			["reagents"] = {
 				[3371] = 1,
@@ -2021,6 +2105,7 @@ addon.recipeDB[171] = {
 				345,
 				360,
 			},
+			["itemId"] = 22905,
 			["name"] = "Elixir of Major Agility",
 			["reagents"] = {
 				[3371] = 1,
@@ -2037,6 +2122,7 @@ addon.recipeDB[171] = {
 				350,
 				365,
 			},
+			["itemId"] = 22906,
 			["name"] = "Shrouding Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -2053,6 +2139,7 @@ addon.recipeDB[171] = {
 				355,
 				370,
 			},
+			["itemId"] = 22907,
 			["name"] = "Super Mana Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -2069,6 +2156,7 @@ addon.recipeDB[171] = {
 				360,
 				375,
 			},
+			["itemId"] = 22908,
 			["name"] = "Elixir of Major Firepower",
 			["reagents"] = {
 				[3371] = 1,
@@ -2085,6 +2173,7 @@ addon.recipeDB[171] = {
 				360,
 				375,
 			},
+			["itemId"] = 22909,
 			["name"] = "Elixir of Major Defense",
 			["reagents"] = {
 				[3371] = 1,
@@ -2101,6 +2190,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 22910,
 			["name"] = "Elixir of Major Shadow Power",
 			["reagents"] = {
 				[3371] = 1,
@@ -2117,6 +2207,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 22911,
 			["name"] = "Major Dreamless Sleep Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -2133,6 +2224,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 22912,
 			["name"] = "Heroic Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -2149,6 +2241,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 22913,
 			["name"] = "Haste Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -2165,6 +2258,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 22914,
 			["name"] = "Destruction Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -2181,6 +2275,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 22915,
 			["name"] = "Transmute: Primal Air to Fire",
 			["reagents"] = {
 				[22451] = 1,
@@ -2195,6 +2290,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 22916,
 			["name"] = "Transmute: Primal Earth to Water",
 			["reagents"] = {
 				[22452] = 1,
@@ -2209,6 +2305,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 22917,
 			["name"] = "Transmute: Primal Fire to Earth",
 			["reagents"] = {
 				[21884] = 1,
@@ -2223,6 +2320,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 22918,
 			["name"] = "Transmute: Primal Water to Air",
 			["reagents"] = {
 				[21885] = 1,
@@ -2237,6 +2335,7 @@ addon.recipeDB[171] = {
 				370,
 				380,
 			},
+			["itemId"] = 22919,
 			["name"] = "Elixir of Major Mageblood",
 			["reagents"] = {
 				[3371] = 1,
@@ -2253,6 +2352,7 @@ addon.recipeDB[171] = {
 				375,
 				380,
 			},
+			["itemId"] = 22920,
 			["name"] = "Major Fire Protection Potion",
 			["reagents"] = {
 				[3371] = 5,
@@ -2269,6 +2369,7 @@ addon.recipeDB[171] = {
 				375,
 				380,
 			},
+			["itemId"] = 22921,
 			["name"] = "Major Frost Protection Potion",
 			["reagents"] = {
 				[3371] = 5,
@@ -2285,6 +2386,7 @@ addon.recipeDB[171] = {
 				375,
 				380,
 			},
+			["itemId"] = 22922,
 			["name"] = "Major Nature Protection Potion",
 			["reagents"] = {
 				[3371] = 5,
@@ -2301,6 +2403,7 @@ addon.recipeDB[171] = {
 				375,
 				380,
 			},
+			["itemId"] = 22923,
 			["name"] = "Major Arcane Protection Potion",
 			["reagents"] = {
 				[3371] = 5,
@@ -2317,6 +2420,7 @@ addon.recipeDB[171] = {
 				375,
 				380,
 			},
+			["itemId"] = 22924,
 			["name"] = "Major Shadow Protection Potion",
 			["reagents"] = {
 				[3371] = 5,
@@ -2333,6 +2437,7 @@ addon.recipeDB[171] = {
 				375,
 				380,
 			},
+			["itemId"] = 22925,
 			["name"] = "Major Holy Protection Potion",
 			["reagents"] = {
 				[3371] = 5,
@@ -2349,6 +2454,7 @@ addon.recipeDB[171] = {
 				375,
 				380,
 			},
+			["itemId"] = 22926,
 			["name"] = "Elixir of Empowerment",
 			["reagents"] = {
 				[3371] = 1,
@@ -2365,6 +2471,7 @@ addon.recipeDB[171] = {
 				375,
 				380,
 			},
+			["itemId"] = 22927,
 			["name"] = "Ironshield Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -2615,6 +2722,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 23574,
 			["name"] = "Transmute: Primal Might",
 			["reagents"] = {
 				[21884] = 1,
@@ -2633,6 +2741,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 25869,
 			["name"] = "Transmute: Earthstorm Diamond",
 			["reagents"] = {
 				[21885] = 2,
@@ -2651,6 +2760,7 @@ addon.recipeDB[171] = {
 				365,
 				380,
 			},
+			["itemId"] = 25870,
 			["name"] = "Transmute: Skyfire Diamond",
 			["reagents"] = {
 				[21884] = 2,
@@ -2765,6 +2875,7 @@ addon.recipeDB[171] = {
 				350,
 				365,
 			},
+			["itemId"] = 31680,
 			["name"] = "Fel Strength Elixir",
 			["reagents"] = {
 				[3371] = 1,
@@ -2781,6 +2892,7 @@ addon.recipeDB[171] = {
 				375,
 				380,
 			},
+			["itemId"] = 31682,
 			["name"] = "Fel Mana Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -2797,6 +2909,7 @@ addon.recipeDB[171] = {
 				360,
 				375,
 			},
+			["itemId"] = 31681,
 			["name"] = "Fel Regeneration Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -2829,6 +2942,7 @@ addon.recipeDB[171] = {
 				335,
 				350,
 			},
+			["itemId"] = 32070,
 			["name"] = "Earthen Elixir",
 			["reagents"] = {
 				[3371] = 1,
@@ -2861,6 +2975,7 @@ addon.recipeDB[171] = {
 				345,
 				360,
 			},
+			["itemId"] = 32071,
 			["name"] = "Elixir of Ironskin",
 			["reagents"] = {
 				[3371] = 1,
@@ -2957,6 +3072,7 @@ addon.recipeDB[171] = {
 				390,
 				405,
 			},
+			["itemId"] = 33209,
 			["name"] = "Flask of Chromatic Wonder",
 			["reagents"] = {
 				[3371] = 1,
@@ -2974,6 +3090,7 @@ addon.recipeDB[171] = {
 				335,
 				350,
 			},
+			["itemId"] = 34481,
 			["name"] = "Mad Alchemist's Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -2989,6 +3106,7 @@ addon.recipeDB[171] = {
 				380,
 				390,
 			},
+			["itemId"] = 35752,
 			["name"] = "Guardian's Alchemist Stone",
 			["reagents"] = {
 				[13503] = 1,
@@ -3005,6 +3123,7 @@ addon.recipeDB[171] = {
 				380,
 				390,
 			},
+			["itemId"] = 35753,
 			["name"] = "Sorcerer's Alchemist Stone",
 			["reagents"] = {
 				[13503] = 1,
@@ -3021,6 +3140,7 @@ addon.recipeDB[171] = {
 				380,
 				390,
 			},
+			["itemId"] = 35754,
 			["name"] = "Redeemer's Alchemist Stone",
 			["reagents"] = {
 				[13503] = 1,
@@ -3037,6 +3157,7 @@ addon.recipeDB[171] = {
 				380,
 				390,
 			},
+			["itemId"] = 35755,
 			["name"] = "Assassin's Alchemist Stone",
 			["reagents"] = {
 				[13503] = 1,
@@ -3543,6 +3664,7 @@ addon.recipeDB[171] = {
 				410,
 				420,
 			},
+			["itemId"] = 44564,
 			["name"] = "Mighty Arcane Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -3558,6 +3680,7 @@ addon.recipeDB[171] = {
 				410,
 				420,
 			},
+			["itemId"] = 44566,
 			["name"] = "Mighty Frost Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -3573,6 +3696,7 @@ addon.recipeDB[171] = {
 				410,
 				420,
 			},
+			["itemId"] = 44568,
 			["name"] = "Mighty Shadow Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -3588,6 +3712,7 @@ addon.recipeDB[171] = {
 				410,
 				420,
 			},
+			["itemId"] = 44565,
 			["name"] = "Mighty Fire Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -3603,6 +3728,7 @@ addon.recipeDB[171] = {
 				410,
 				420,
 			},
+			["itemId"] = 44567,
 			["name"] = "Mighty Nature Protection Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -4132,6 +4258,7 @@ addon.recipeDB[171] = {
 				440,
 				450,
 			},
+			["itemId"] = 47507,
 			["name"] = "Flask of the North",
 			["reagents"] = {
 				[3371] = 1,
@@ -4762,6 +4889,7 @@ addon.recipeDB[171] = {
 				525,
 				525,
 			},
+			["itemId"] = 65435,
 			["name"] = "Cauldron of Battle",
 			["reagents"] = {
 				[58085] = 1,
@@ -4780,6 +4908,7 @@ addon.recipeDB[171] = {
 				525,
 				525,
 			},
+			["itemId"] = 65498,
 			["name"] = "Big Cauldron of Battle",
 			["reagents"] = {
 				[58085] = 3,
@@ -4797,6 +4926,7 @@ addon.recipeDB[171] = {
 				525,
 				535,
 			},
+			["itemId"] = 67538,
 			["name"] = "Vial of the Sands",
 			["reagents"] = {
 				[56850] = 8,
@@ -4897,6 +5027,7 @@ addon.recipeDB[171] = {
 				525,
 				535,
 			},
+			["itemId"] = 71955,
 			["name"] = "",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -4909,6 +5040,7 @@ addon.recipeDB[171] = {
 				525,
 				535,
 			},
+			["itemId"] = 71956,
 			["name"] = "",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -4921,6 +5053,7 @@ addon.recipeDB[171] = {
 				525,
 				535,
 			},
+			["itemId"] = 71958,
 			["name"] = "",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -4933,6 +5066,7 @@ addon.recipeDB[171] = {
 				525,
 				535,
 			},
+			["itemId"] = 71959,
 			["name"] = "",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -4945,6 +5079,7 @@ addon.recipeDB[171] = {
 				525,
 				535,
 			},
+			["itemId"] = 71960,
 			["name"] = "",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -4957,6 +5092,7 @@ addon.recipeDB[171] = {
 				525,
 				535,
 			},
+			["itemId"] = 71957,
 			["name"] = "",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -4981,6 +5117,7 @@ addon.recipeDB[171] = {
 				600,
 				600,
 			},
+			["itemId"] = 74622,
 			["name"] = "Release Spirit",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -4993,6 +5130,7 @@ addon.recipeDB[171] = {
 				515,
 				535,
 			},
+			["itemId"] = 84127,
 			["name"] = "Alchemist's Rejuvenation",
 			["reagents"] = {
 				[3371] = 1,
@@ -5008,6 +5146,7 @@ addon.recipeDB[171] = {
 				515,
 				535,
 			},
+			["itemId"] = 84124,
 			["name"] = "Master Healing Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -5023,6 +5162,7 @@ addon.recipeDB[171] = {
 				540,
 				565,
 			},
+			["itemId"] = 84147,
 			["name"] = "Potion of the Mountains",
 			["reagents"] = {
 				[3371] = 1,
@@ -5039,6 +5179,7 @@ addon.recipeDB[171] = {
 				540,
 				565,
 			},
+			["itemId"] = 84138,
 			["name"] = "Mad Hozen Elixir",
 			["reagents"] = {
 				[3371] = 1,
@@ -5054,6 +5195,7 @@ addon.recipeDB[171] = {
 				540,
 				565,
 			},
+			["itemId"] = 84139,
 			["name"] = "Mantid Elixir",
 			["reagents"] = {
 				[3371] = 1,
@@ -5069,6 +5211,7 @@ addon.recipeDB[171] = {
 				540,
 				565,
 			},
+			["itemId"] = 84133,
 			["name"] = "Elixir of Weaponry",
 			["reagents"] = {
 				[3371] = 1,
@@ -5084,6 +5227,7 @@ addon.recipeDB[171] = {
 				540,
 				565,
 			},
+			["itemId"] = 84146,
 			["name"] = "Potion of the Jade Serpent",
 			["reagents"] = {
 				[3371] = 1,
@@ -5100,6 +5244,7 @@ addon.recipeDB[171] = {
 				540,
 				565,
 			},
+			["itemId"] = 84141,
 			["name"] = "Monk's Elixir",
 			["reagents"] = {
 				[3371] = 1,
@@ -5116,6 +5261,7 @@ addon.recipeDB[171] = {
 				565,
 				590,
 			},
+			["itemId"] = 84132,
 			["name"] = "Elixir of the Rapids",
 			["reagents"] = {
 				[3371] = 1,
@@ -5132,6 +5278,7 @@ addon.recipeDB[171] = {
 				565,
 				590,
 			},
+			["itemId"] = 84144,
 			["name"] = "Potion of Mogu Power",
 			["reagents"] = {
 				[3371] = 1,
@@ -5148,6 +5295,7 @@ addon.recipeDB[171] = {
 				540,
 				565,
 			},
+			["itemId"] = 84128,
 			["name"] = "Desecrated Oil",
 			["reagents"] = {
 				[83064] = 3,
@@ -5162,6 +5310,7 @@ addon.recipeDB[171] = {
 				565,
 				590,
 			},
+			["itemId"] = 84131,
 			["name"] = "Elixir of Perfection",
 			["reagents"] = {
 				[3371] = 1,
@@ -5178,6 +5327,7 @@ addon.recipeDB[171] = {
 				565,
 				590,
 			},
+			["itemId"] = 84129,
 			["name"] = "Elixir of Mirrors",
 			["reagents"] = {
 				[3371] = 1,
@@ -5194,6 +5344,7 @@ addon.recipeDB[171] = {
 				565,
 				590,
 			},
+			["itemId"] = 84130,
 			["name"] = "Elixir of Peace",
 			["reagents"] = {
 				[3371] = 1,
@@ -5210,6 +5361,7 @@ addon.recipeDB[171] = {
 				565,
 				590,
 			},
+			["itemId"] = 84155,
 			["name"] = "Virmen's Bite",
 			["reagents"] = {
 				[3371] = 1,
@@ -5226,6 +5378,7 @@ addon.recipeDB[171] = {
 				600,
 				610,
 			},
+			["itemId"] = 84152,
 			["name"] = "Transmute: River's Heart",
 			["reagents"] = {
 				[72238] = 1,
@@ -5241,6 +5394,7 @@ addon.recipeDB[171] = {
 				600,
 				610,
 			},
+			["itemId"] = 84154,
 			["name"] = "Transmute: Wild Jade",
 			["reagents"] = {
 				[72238] = 1,
@@ -5256,6 +5410,7 @@ addon.recipeDB[171] = {
 				600,
 				605,
 			},
+			["itemId"] = 84134,
 			["name"] = "Flask of Spring Blossoms",
 			["reagents"] = {
 				[3371] = 1,
@@ -5272,6 +5427,7 @@ addon.recipeDB[171] = {
 				600,
 				605,
 			},
+			["itemId"] = 84135,
 			["name"] = "Flask of the Earth",
 			["reagents"] = {
 				[3371] = 1,
@@ -5288,6 +5444,7 @@ addon.recipeDB[171] = {
 				600,
 				605,
 			},
+			["itemId"] = 84136,
 			["name"] = "Flask of the Warm Sun",
 			["reagents"] = {
 				[3371] = 1,
@@ -5304,6 +5461,7 @@ addon.recipeDB[171] = {
 				600,
 				605,
 			},
+			["itemId"] = 84123,
 			["name"] = "Flask of Falling Leaves",
 			["reagents"] = {
 				[3371] = 1,
@@ -5320,6 +5478,7 @@ addon.recipeDB[171] = {
 				600,
 				605,
 			},
+			["itemId"] = 84137,
 			["name"] = "Flask of Winter's Bite",
 			["reagents"] = {
 				[3371] = 1,
@@ -5336,6 +5495,7 @@ addon.recipeDB[171] = {
 				565,
 				590,
 			},
+			["itemId"] = 84142,
 			["name"] = "Darkwater Potion",
 			["reagents"] = {
 				[3371] = 1,
@@ -5351,6 +5511,7 @@ addon.recipeDB[171] = {
 				600,
 				605,
 			},
+			["itemId"] = 84140,
 			["name"] = "Master Mana Potion",
 			["reagents"] = {
 				[3371] = 2,
@@ -5368,6 +5529,7 @@ addon.recipeDB[171] = {
 				600,
 				610,
 			},
+			["itemId"] = 84126,
 			["name"] = "Transmute: Vermilion Onyx",
 			["reagents"] = {
 				[72238] = 1,
@@ -5383,6 +5545,7 @@ addon.recipeDB[171] = {
 				600,
 				610,
 			},
+			["itemId"] = 84148,
 			["name"] = "Transmute: Imperial Amethyst",
 			["reagents"] = {
 				[72238] = 1,
@@ -5398,6 +5561,7 @@ addon.recipeDB[171] = {
 				600,
 				610,
 			},
+			["itemId"] = 84125,
 			["name"] = "Transmute: Sun's Radiance",
 			["reagents"] = {
 				[72238] = 1,
@@ -5413,6 +5577,7 @@ addon.recipeDB[171] = {
 				605,
 				615,
 			},
+			["itemId"] = 84145,
 			["name"] = "Potion of Luck",
 			["reagents"] = {
 				[3371] = 1,
@@ -5428,6 +5593,7 @@ addon.recipeDB[171] = {
 				605,
 				615,
 			},
+			["itemId"] = 84149,
 			["name"] = "Transmute: Living Steel",
 			["reagents"] = {
 				[72095] = 6,
@@ -5442,6 +5608,7 @@ addon.recipeDB[171] = {
 				600,
 				610,
 			},
+			["itemId"] = 84150,
 			["name"] = "Transmute: Primal Diamond",
 			["reagents"] = {
 				[76139] = 2,
@@ -5458,6 +5625,7 @@ addon.recipeDB[171] = {
 				565,
 				590,
 			},
+			["itemId"] = 84143,
 			["name"] = "Potion of Focus",
 			["reagents"] = {
 				[3371] = 1,
@@ -5473,6 +5641,7 @@ addon.recipeDB[171] = {
 				600,
 				610,
 			},
+			["itemId"] = 84153,
 			["name"] = "Transmute: Trillium Bar",
 			["reagents"] = {
 				[72096] = 10,
@@ -5487,6 +5656,7 @@ addon.recipeDB[171] = {
 				600,
 				610,
 			},
+			["itemId"] = 84151,
 			["name"] = "Transmute: Primordial Ruby",
 			["reagents"] = {
 				[72238] = 1,
@@ -5502,6 +5672,7 @@ addon.recipeDB[171] = {
 				315,
 				325,
 			},
+			["itemId"] = 84122,
 			["name"] = "Alchemist's Flask",
 			["reagents"] = {
 				[3371] = 1,
@@ -5797,6 +5968,7 @@ addon.recipeDB[171] = {
 				270,
 				290,
 			},
+			["itemId"] = 241651,
 			["name"] = "Major Discolored Healing Potion",
 			["reagents"] = {
 				[8925] = 1,
@@ -5813,6 +5985,7 @@ addon.recipeDB[171] = {
 				540,
 				565,
 			},
+			["itemId"] = 247800,
 			["name"] = "Venerable Potion of Invisibility",
 			["reagents"] = {
 				[3371] = 1,

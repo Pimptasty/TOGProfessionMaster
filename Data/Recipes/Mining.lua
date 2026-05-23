@@ -284,6 +284,7 @@ addon.recipeDB[186] = {
 				350,
 				375,
 			},
+			["itemId"] = 44956,
 			["name"] = "Smelt Enchanted Elementium",
 			["reagents"] = {
 				[12360] = 10,
@@ -438,6 +439,7 @@ addon.recipeDB[186] = {
 				375,
 				375,
 			},
+			["itemId"] = 35273,
 			["name"] = "Smelt Hardened Khorium",
 			["reagents"] = {
 				[23449] = 3,
@@ -745,6 +747,7 @@ addon.recipeDB[186] = {
 				600,
 				600,
 			},
+			["itemId"] = 74622,
 			["name"] = "Release Spirit",
 			["reagents"] = {},
 			["requiredSkill"] = 1,

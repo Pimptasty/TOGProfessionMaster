@@ -119,6 +119,7 @@ addon.recipeDB[164] = {
 				120,
 				160,
 			},
+			["itemId"] = 2881,
 			["name"] = "Runed Copper Breastplate",
 			["reagents"] = {
 				[1210] = 1,
@@ -163,6 +164,7 @@ addon.recipeDB[164] = {
 				145,
 				175,
 			},
+			["itemId"] = 5577,
 			["name"] = "Rough Bronze Bracers",
 			["reagents"] = {
 				[2841] = 4,
@@ -192,6 +194,7 @@ addon.recipeDB[164] = {
 				160,
 				190,
 			},
+			["itemId"] = 5578,
 			["name"] = "Silvered Bronze Breastplate",
 			["reagents"] = {
 				[2841] = 10,
@@ -446,6 +449,7 @@ addon.recipeDB[164] = {
 				155,
 				185,
 			},
+			["itemId"] = 2883,
 			["name"] = "Deadly Bronze Poniard",
 			["reagents"] = {
 				[1210] = 2,
@@ -484,6 +488,7 @@ addon.recipeDB[164] = {
 				175,
 				205,
 			},
+			["itemId"] = 3608,
 			["name"] = "Mighty Iron Hammer",
 			["reagents"] = {
 				[1705] = 2,
@@ -531,6 +536,7 @@ addon.recipeDB[164] = {
 				75,
 				115,
 			},
+			["itemId"] = 3609,
 			["name"] = "Copper Chain Vest",
 			["reagents"] = {
 				[2840] = 8,
@@ -577,6 +583,7 @@ addon.recipeDB[164] = {
 				100,
 				140,
 			},
+			["itemId"] = 3610,
 			["name"] = "Gemmed Copper Gauntlets",
 			["reagents"] = {
 				[774] = 1,
@@ -622,6 +629,7 @@ addon.recipeDB[164] = {
 				155,
 				185,
 			},
+			["itemId"] = 2882,
 			["name"] = "Silvered Bronze Shoulders",
 			["reagents"] = {
 				[2841] = 8,
@@ -670,6 +678,7 @@ addon.recipeDB[164] = {
 				175,
 				205,
 			},
+			["itemId"] = 3611,
 			["name"] = "Green Iron Boots",
 			["reagents"] = {
 				[2605] = 1,
@@ -686,6 +695,7 @@ addon.recipeDB[164] = {
 				180,
 				210,
 			},
+			["itemId"] = 3612,
 			["name"] = "Green Iron Gauntlets",
 			["reagents"] = {
 				[2605] = 1,
@@ -735,6 +745,7 @@ addon.recipeDB[164] = {
 				185,
 				210,
 			},
+			["itemId"] = 12162,
 			["name"] = "Hardened Iron Shortsword",
 			["reagents"] = {
 				[1705] = 2,
@@ -753,6 +764,7 @@ addon.recipeDB[164] = {
 				200,
 				225,
 			},
+			["itemId"] = 3866,
 			["name"] = "Jade Serpentblade",
 			["reagents"] = {
 				[1529] = 2,
@@ -771,6 +783,7 @@ addon.recipeDB[164] = {
 				180,
 				205,
 			},
+			["itemId"] = 10858,
 			["name"] = "Solid Iron Maul",
 			["reagents"] = {
 				[2842] = 4,
@@ -789,6 +802,7 @@ addon.recipeDB[164] = {
 				195,
 				220,
 			},
+			["itemId"] = 3867,
 			["name"] = "Golden Iron Destroyer",
 			["reagents"] = {
 				[1705] = 2,
@@ -808,6 +822,7 @@ addon.recipeDB[164] = {
 				205,
 				230,
 			},
+			["itemId"] = 12163,
 			["name"] = "Moonsteel Broadsword",
 			["reagents"] = {
 				[1705] = 3,
@@ -826,6 +841,7 @@ addon.recipeDB[164] = {
 				225,
 				250,
 			},
+			["itemId"] = 3868,
 			["name"] = "Frost Tiger Blade",
 			["reagents"] = {
 				[1529] = 2,
@@ -842,6 +858,7 @@ addon.recipeDB[164] = {
 				210,
 				235,
 			},
+			["itemId"] = 12164,
 			["name"] = "Massive Iron Axe",
 			["reagents"] = {
 				[3466] = 2,
@@ -860,6 +877,7 @@ addon.recipeDB[164] = {
 				225,
 				250,
 			},
+			["itemId"] = 3869,
 			["name"] = "Shadow Crescent Axe",
 			["reagents"] = {
 				[3824] = 2,
@@ -907,6 +925,7 @@ addon.recipeDB[164] = {
 				215,
 				240,
 			},
+			["itemId"] = 6047,
 			["name"] = "Golden Scale Coif",
 			["reagents"] = {
 				[3486] = 2,
@@ -923,6 +942,7 @@ addon.recipeDB[164] = {
 				185,
 				210,
 			},
+			["itemId"] = 3870,
 			["name"] = "Green Iron Shoulders",
 			["reagents"] = {
 				[2605] = 1,
@@ -939,6 +959,7 @@ addon.recipeDB[164] = {
 				200,
 				225,
 			},
+			["itemId"] = 3871,
 			["name"] = "Golden Scale Shoulders",
 			["reagents"] = {
 				[3486] = 1,
@@ -971,6 +992,7 @@ addon.recipeDB[164] = {
 				195,
 				220,
 			},
+			["itemId"] = 3872,
 			["name"] = "Golden Scale Leggings",
 			["reagents"] = {
 				[3486] = 1,
@@ -1005,6 +1027,7 @@ addon.recipeDB[164] = {
 				220,
 				245,
 			},
+			["itemId"] = 3873,
 			["name"] = "Golden Scale Cuirass",
 			["reagents"] = {
 				[3486] = 4,
@@ -1021,6 +1044,7 @@ addon.recipeDB[164] = {
 				210,
 				235,
 			},
+			["itemId"] = 3874,
 			["name"] = "Polished Steel Boots",
 			["reagents"] = {
 				[1705] = 1,
@@ -1038,6 +1062,7 @@ addon.recipeDB[164] = {
 				225,
 				250,
 			},
+			["itemId"] = 3875,
 			["name"] = "Golden Scale Boots",
 			["reagents"] = {
 				[3486] = 4,
@@ -1083,6 +1108,7 @@ addon.recipeDB[164] = {
 				170,
 				200,
 			},
+			["itemId"] = 5543,
 			["name"] = "Iridescent Hammer",
 			["reagents"] = {
 				[2319] = 2,
@@ -1101,6 +1127,7 @@ addon.recipeDB[164] = {
 				180,
 				210,
 			},
+			["itemId"] = 6044,
 			["name"] = "Iron Shield Spike",
 			["reagents"] = {
 				[3478] = 4,
@@ -1116,6 +1143,7 @@ addon.recipeDB[164] = {
 				190,
 				215,
 			},
+			["itemId"] = 6045,
 			["name"] = "Iron Counterweight",
 			["reagents"] = {
 				[1705] = 1,
@@ -1147,6 +1175,7 @@ addon.recipeDB[164] = {
 				215,
 				240,
 			},
+			["itemId"] = 6046,
 			["name"] = "Steel Weapon Chain",
 			["reagents"] = {
 				[3486] = 2,
@@ -1209,6 +1238,7 @@ addon.recipeDB[164] = {
 				110,
 				150,
 			},
+			["itemId"] = 6734,
 			["name"] = "Ironforge Chain",
 			["reagents"] = {
 				[774] = 2,
@@ -1225,6 +1255,7 @@ addon.recipeDB[164] = {
 				140,
 				180,
 			},
+			["itemId"] = 6735,
 			["name"] = "Ironforge Breastplate",
 			["reagents"] = {
 				[818] = 2,
@@ -1241,6 +1272,7 @@ addon.recipeDB[164] = {
 				170,
 				200,
 			},
+			["itemId"] = 6736,
 			["name"] = "Ironforge Gauntlets",
 			["reagents"] = {
 				[1210] = 3,
@@ -1324,6 +1356,7 @@ addon.recipeDB[164] = {
 				185,
 				210,
 			},
+			["itemId"] = 7978,
 			["name"] = "Barbaric Iron Shoulders",
 			["reagents"] = {
 				[3486] = 2,
@@ -1340,6 +1373,7 @@ addon.recipeDB[164] = {
 				185,
 				210,
 			},
+			["itemId"] = 7979,
 			["name"] = "Barbaric Iron Breastplate",
 			["reagents"] = {
 				[3486] = 4,
@@ -1355,6 +1389,7 @@ addon.recipeDB[164] = {
 				200,
 				225,
 			},
+			["itemId"] = 7980,
 			["name"] = "Barbaric Iron Helm",
 			["reagents"] = {
 				[3575] = 10,
@@ -1371,6 +1406,7 @@ addon.recipeDB[164] = {
 				205,
 				230,
 			},
+			["itemId"] = 7981,
 			["name"] = "Barbaric Iron Boots",
 			["reagents"] = {
 				[3486] = 2,
@@ -1387,6 +1423,7 @@ addon.recipeDB[164] = {
 				210,
 				235,
 			},
+			["itemId"] = 7982,
 			["name"] = "Barbaric Iron Gloves",
 			["reagents"] = {
 				[3486] = 3,
@@ -1505,6 +1542,7 @@ addon.recipeDB[164] = {
 				230,
 				250,
 			},
+			["itemId"] = 7975,
 			["name"] = "Heavy Mithril Pants",
 			["reagents"] = {
 				[3860] = 10,
@@ -1535,6 +1573,7 @@ addon.recipeDB[164] = {
 				235,
 				255,
 			},
+			["itemId"] = 7995,
 			["name"] = "Mithril Scale Bracers",
 			["reagents"] = {
 				[3860] = 8,
@@ -1549,6 +1588,7 @@ addon.recipeDB[164] = {
 				235,
 				255,
 			},
+			["itemId"] = 7976,
 			["name"] = "Mithril Shield Spike",
 			["reagents"] = {
 				[3860] = 4,
@@ -1565,6 +1605,7 @@ addon.recipeDB[164] = {
 				240,
 				260,
 			},
+			["itemId"] = 7977,
 			["name"] = "Mithril Scale Gloves",
 			["reagents"] = {
 				[3860] = 8,
@@ -1581,6 +1622,7 @@ addon.recipeDB[164] = {
 				240,
 				260,
 			},
+			["itemId"] = 7983,
 			["name"] = "Ornate Mithril Pants",
 			["reagents"] = {
 				[3860] = 12,
@@ -1597,6 +1639,7 @@ addon.recipeDB[164] = {
 				240,
 				260,
 			},
+			["itemId"] = 7984,
 			["name"] = "Ornate Mithril Gloves",
 			["reagents"] = {
 				[3860] = 10,
@@ -1614,6 +1657,7 @@ addon.recipeDB[164] = {
 				245,
 				265,
 			},
+			["itemId"] = 7985,
 			["name"] = "Ornate Mithril Shoulder",
 			["reagents"] = {
 				[3860] = 12,
@@ -1649,6 +1693,7 @@ addon.recipeDB[164] = {
 				250,
 				270,
 			},
+			["itemId"] = 7994,
 			["name"] = "Orcish War Leggings",
 			["reagents"] = {
 				[3860] = 12,
@@ -1693,6 +1738,7 @@ addon.recipeDB[164] = {
 				255,
 				275,
 			},
+			["itemId"] = 7989,
 			["name"] = "Mithril Spurs",
 			["reagents"] = {
 				[3860] = 4,
@@ -1708,6 +1754,7 @@ addon.recipeDB[164] = {
 				255,
 				275,
 			},
+			["itemId"] = 7991,
 			["name"] = "Mithril Scale Shoulders",
 			["reagents"] = {
 				[3860] = 14,
@@ -1738,6 +1785,7 @@ addon.recipeDB[164] = {
 				255,
 				275,
 			},
+			["itemId"] = 7990,
 			["name"] = "Heavy Mithril Helm",
 			["reagents"] = {
 				[3860] = 14,
@@ -1753,6 +1801,7 @@ addon.recipeDB[164] = {
 				260,
 				280,
 			},
+			["itemId"] = 7986,
 			["name"] = "Ornate Mithril Breastplate",
 			["reagents"] = {
 				[3860] = 16,
@@ -1788,6 +1837,7 @@ addon.recipeDB[164] = {
 				265,
 				285,
 			},
+			["itemId"] = 7988,
 			["name"] = "Ornate Mithril Boots",
 			["reagents"] = {
 				[3860] = 14,
@@ -1806,6 +1856,7 @@ addon.recipeDB[164] = {
 				265,
 				285,
 			},
+			["itemId"] = 7987,
 			["name"] = "Ornate Mithril Helm",
 			["reagents"] = {
 				[3860] = 16,
@@ -1904,6 +1955,7 @@ addon.recipeDB[164] = {
 				245,
 				270,
 			},
+			["itemId"] = 7992,
 			["name"] = "Blue Glittering Axe",
 			["reagents"] = {
 				[3860] = 16,
@@ -1921,6 +1973,7 @@ addon.recipeDB[164] = {
 				250,
 				275,
 			},
+			["itemId"] = 8029,
 			["name"] = "Wicked Mithril Blade",
 			["reagents"] = {
 				[3860] = 14,
@@ -1976,6 +2029,7 @@ addon.recipeDB[164] = {
 				265,
 				290,
 			},
+			["itemId"] = 7993,
 			["name"] = "Dazzling Mithril Rapier",
 			["reagents"] = {
 				[1206] = 2,
@@ -1995,6 +2049,7 @@ addon.recipeDB[164] = {
 				270,
 				295,
 			},
+			["itemId"] = 74274,
 			["name"] = "Phantom Blade",
 			["reagents"] = {
 				[3823] = 2,
@@ -2015,6 +2070,7 @@ addon.recipeDB[164] = {
 				270,
 				295,
 			},
+			["itemId"] = 8028,
 			["name"] = "Runed Mithril Hammer",
 			["reagents"] = {
 				[3860] = 18,
@@ -2050,6 +2106,7 @@ addon.recipeDB[164] = {
 				280,
 				305,
 			},
+			["itemId"] = 8030,
 			["name"] = "Ebon Shiv",
 			["reagents"] = {
 				[3860] = 12,
@@ -2087,6 +2144,7 @@ addon.recipeDB[164] = {
 				225,
 				250,
 			},
+			["itemId"] = 10713,
 			["name"] = "Inlaid Mithril Cylinder",
 			["reagents"] = {
 				[3577] = 1,
@@ -2103,6 +2161,7 @@ addon.recipeDB[164] = {
 				225,
 				245,
 			},
+			["itemId"] = 9367,
 			["name"] = "Golden Scale Gauntlets",
 			["reagents"] = {
 				[3486] = 4,
@@ -2119,6 +2178,7 @@ addon.recipeDB[164] = {
 				180,
 				205,
 			},
+			["itemId"] = 10424,
 			["name"] = "Silvered Bronze Leggings",
 			["reagents"] = {
 				[2841] = 12,
@@ -2179,6 +2239,7 @@ addon.recipeDB[164] = {
 				285,
 				305,
 			},
+			["itemId"] = 11610,
 			["name"] = "Dark Iron Pulverizer",
 			["reagents"] = {
 				[7077] = 4,
@@ -2194,6 +2255,7 @@ addon.recipeDB[164] = {
 				290,
 				310,
 			},
+			["itemId"] = 11614,
 			["name"] = "Dark Iron Mail",
 			["reagents"] = {
 				[7077] = 2,
@@ -2209,6 +2271,7 @@ addon.recipeDB[164] = {
 				295,
 				315,
 			},
+			["itemId"] = 11611,
 			["name"] = "Dark Iron Sunderer",
 			["reagents"] = {
 				[7077] = 4,
@@ -2224,6 +2287,7 @@ addon.recipeDB[164] = {
 				300,
 				320,
 			},
+			["itemId"] = 11615,
 			["name"] = "Dark Iron Shoulders",
 			["reagents"] = {
 				[7077] = 1,
@@ -2239,6 +2303,7 @@ addon.recipeDB[164] = {
 				305,
 				325,
 			},
+			["itemId"] = 11612,
 			["name"] = "Dark Iron Plate",
 			["reagents"] = {
 				[7077] = 8,
@@ -2272,6 +2337,7 @@ addon.recipeDB[164] = {
 				215,
 				240,
 			},
+			["itemId"] = 12261,
 			["name"] = "Searing Golden Blade",
 			["reagents"] = {
 				[3577] = 4,
@@ -2332,6 +2398,7 @@ addon.recipeDB[164] = {
 				270,
 				290,
 			},
+			["itemId"] = 12682,
 			["name"] = "Thorium Armor",
 			["reagents"] = {
 				[12359] = 16,
@@ -2347,6 +2414,7 @@ addon.recipeDB[164] = {
 				270,
 				290,
 			},
+			["itemId"] = 12683,
 			["name"] = "Thorium Belt",
 			["reagents"] = {
 				[12359] = 8,
@@ -2361,6 +2429,7 @@ addon.recipeDB[164] = {
 				275,
 				295,
 			},
+			["itemId"] = 12684,
 			["name"] = "Thorium Bracers",
 			["reagents"] = {
 				[12359] = 8,
@@ -2375,6 +2444,7 @@ addon.recipeDB[164] = {
 				280,
 				300,
 			},
+			["itemId"] = 12685,
 			["name"] = "Radiant Belt",
 			["reagents"] = {
 				[7077] = 2,
@@ -2390,6 +2460,7 @@ addon.recipeDB[164] = {
 				285,
 				305,
 			},
+			["itemId"] = 12687,
 			["name"] = "Imperial Plate Shoulders",
 			["reagents"] = {
 				[8170] = 6,
@@ -2405,6 +2476,7 @@ addon.recipeDB[164] = {
 				285,
 				305,
 			},
+			["itemId"] = 12688,
 			["name"] = "Imperial Plate Belt",
 			["reagents"] = {
 				[8170] = 6,
@@ -2420,6 +2492,7 @@ addon.recipeDB[164] = {
 				290,
 				310,
 			},
+			["itemId"] = 12689,
 			["name"] = "Radiant Breastplate",
 			["reagents"] = {
 				[7077] = 2,
@@ -2436,6 +2509,7 @@ addon.recipeDB[164] = {
 				290,
 				310,
 			},
+			["itemId"] = 12690,
 			["name"] = "Imperial Plate Bracers",
 			["reagents"] = {
 				[12359] = 12,
@@ -2450,6 +2524,7 @@ addon.recipeDB[164] = {
 				290,
 				310,
 			},
+			["itemId"] = 12691,
 			["name"] = "Wildthorn Mail",
 			["reagents"] = {
 				[8153] = 4,
@@ -2468,6 +2543,7 @@ addon.recipeDB[164] = {
 				295,
 				315,
 			},
+			["itemId"] = 12692,
 			["name"] = "Thorium Shield Spike",
 			["reagents"] = {
 				[7076] = 2,
@@ -2484,6 +2560,7 @@ addon.recipeDB[164] = {
 				300,
 				320,
 			},
+			["itemId"] = 12693,
 			["name"] = "Thorium Boots",
 			["reagents"] = {
 				[8170] = 8,
@@ -2499,6 +2576,7 @@ addon.recipeDB[164] = {
 				300,
 				320,
 			},
+			["itemId"] = 12694,
 			["name"] = "Thorium Helm",
 			["reagents"] = {
 				[7910] = 1,
@@ -2514,6 +2592,7 @@ addon.recipeDB[164] = {
 				305,
 				325,
 			},
+			["itemId"] = 12695,
 			["name"] = "Radiant Gloves",
 			["reagents"] = {
 				[7077] = 4,
@@ -2529,6 +2608,7 @@ addon.recipeDB[164] = {
 				310,
 				330,
 			},
+			["itemId"] = 12699,
 			["name"] = "Fiery Plate Gauntlets",
 			["reagents"] = {
 				[7078] = 2,
@@ -2546,6 +2626,7 @@ addon.recipeDB[164] = {
 				310,
 				330,
 			},
+			["itemId"] = 12697,
 			["name"] = "Radiant Boots",
 			["reagents"] = {
 				[7077] = 4,
@@ -2561,6 +2642,7 @@ addon.recipeDB[164] = {
 				315,
 				335,
 			},
+			["itemId"] = 12700,
 			["name"] = "Imperial Plate Boots",
 			["reagents"] = {
 				[12359] = 18,
@@ -2575,6 +2657,7 @@ addon.recipeDB[164] = {
 				315,
 				335,
 			},
+			["itemId"] = 12701,
 			["name"] = "Imperial Plate Helm",
 			["reagents"] = {
 				[7910] = 1,
@@ -2590,6 +2673,7 @@ addon.recipeDB[164] = {
 				315,
 				335,
 			},
+			["itemId"] = 12702,
 			["name"] = "Radiant Circlet",
 			["reagents"] = {
 				[7077] = 4,
@@ -2605,6 +2689,7 @@ addon.recipeDB[164] = {
 				310,
 				330,
 			},
+			["itemId"] = 12698,
 			["name"] = "Dawnbringer Shoulders",
 			["reagents"] = {
 				[7080] = 2,
@@ -2622,6 +2707,7 @@ addon.recipeDB[164] = {
 				315,
 				335,
 			},
+			["itemId"] = 12703,
 			["name"] = "Storm Gauntlets",
 			["reagents"] = {
 				[7080] = 4,
@@ -2639,6 +2725,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12704,
 			["name"] = "Thorium Leggings",
 			["reagents"] = {
 				[12359] = 12,
@@ -2653,6 +2740,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12705,
 			["name"] = "Imperial Plate Chest",
 			["reagents"] = {
 				[12359] = 20,
@@ -2667,6 +2755,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12706,
 			["name"] = "Runic Plate Shoulders",
 			["reagents"] = {
 				[3577] = 6,
@@ -2683,6 +2772,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12707,
 			["name"] = "Runic Plate Boots",
 			["reagents"] = {
 				[2842] = 10,
@@ -2699,6 +2789,7 @@ addon.recipeDB[164] = {
 				305,
 				325,
 			},
+			["itemId"] = 12696,
 			["name"] = "Demon Forged Breastplate",
 			["reagents"] = {
 				[7910] = 4,
@@ -2716,6 +2807,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12711,
 			["name"] = "Whitesoul Helm",
 			["reagents"] = {
 				[3577] = 6,
@@ -2734,6 +2826,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12713,
 			["name"] = "Radiant Leggings",
 			["reagents"] = {
 				[7077] = 4,
@@ -2749,6 +2842,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12714,
 			["name"] = "Runic Plate Helm",
 			["reagents"] = {
 				[6037] = 2,
@@ -2766,6 +2860,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12716,
 			["name"] = "Helm of the Great Chief",
 			["reagents"] = {
 				[12359] = 40,
@@ -2783,6 +2878,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12717,
 			["name"] = "Lionheart Helm",
 			["reagents"] = {
 				[12359] = 80,
@@ -2800,6 +2896,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12715,
 			["name"] = "Imperial Plate Leggings",
 			["reagents"] = {
 				[12359] = 24,
@@ -2814,6 +2911,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12718,
 			["name"] = "Runic Breastplate",
 			["reagents"] = {
 				[7910] = 1,
@@ -2830,6 +2928,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12719,
 			["name"] = "Runic Plate Leggings",
 			["reagents"] = {
 				[7910] = 1,
@@ -2846,6 +2945,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12720,
 			["name"] = "Stronghold Gauntlets",
 			["reagents"] = {
 				[7076] = 10,
@@ -2864,6 +2964,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12725,
 			["name"] = "Enchanted Thorium Helm",
 			["reagents"] = {
 				[7076] = 6,
@@ -2882,6 +2983,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12726,
 			["name"] = "Enchanted Thorium Leggings",
 			["reagents"] = {
 				[7080] = 6,
@@ -2900,6 +3002,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12727,
 			["name"] = "Enchanted Thorium Breastplate",
 			["reagents"] = {
 				[7076] = 4,
@@ -2919,6 +3022,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12728,
 			["name"] = "Invulnerable Mail",
 			["reagents"] = {
 				[12360] = 30,
@@ -2936,6 +3040,7 @@ addon.recipeDB[164] = {
 				285,
 				310,
 			},
+			["itemId"] = 12816,
 			["name"] = "Thorium Greatsword",
 			["reagents"] = {
 				[8170] = 4,
@@ -2952,6 +3057,7 @@ addon.recipeDB[164] = {
 				295,
 				320,
 			},
+			["itemId"] = 12817,
 			["name"] = "Bleakwood Hew",
 			["reagents"] = {
 				[8153] = 6,
@@ -2971,6 +3077,7 @@ addon.recipeDB[164] = {
 				295,
 				320,
 			},
+			["itemId"] = 12818,
 			["name"] = "Inlaid Thorium Hammer",
 			["reagents"] = {
 				[3577] = 4,
@@ -2989,6 +3096,7 @@ addon.recipeDB[164] = {
 				300,
 				325,
 			},
+			["itemId"] = 12819,
 			["name"] = "Ornate Thorium Handaxe",
 			["reagents"] = {
 				[8170] = 4,
@@ -3006,6 +3114,7 @@ addon.recipeDB[164] = {
 				300,
 				325,
 			},
+			["itemId"] = 12821,
 			["name"] = "Dawn's Edge",
 			["reagents"] = {
 				[7910] = 4,
@@ -3025,6 +3134,7 @@ addon.recipeDB[164] = {
 				305,
 				330,
 			},
+			["itemId"] = 12823,
 			["name"] = "Huge Thorium Battleaxe",
 			["reagents"] = {
 				[8170] = 6,
@@ -3041,6 +3151,7 @@ addon.recipeDB[164] = {
 				305,
 				330,
 			},
+			["itemId"] = 12824,
 			["name"] = "Enchanted Battlehammer",
 			["reagents"] = {
 				[8170] = 4,
@@ -3059,6 +3170,7 @@ addon.recipeDB[164] = {
 				305,
 				330,
 			},
+			["itemId"] = 12825,
 			["name"] = "Blazing Rapier",
 			["reagents"] = {
 				[7077] = 4,
@@ -3077,6 +3189,7 @@ addon.recipeDB[164] = {
 				310,
 				335,
 			},
+			["itemId"] = 12826,
 			["name"] = "Rune Edge",
 			["reagents"] = {
 				[8170] = 4,
@@ -3094,6 +3207,7 @@ addon.recipeDB[164] = {
 				310,
 				335,
 			},
+			["itemId"] = 12827,
 			["name"] = "Serenity",
 			["reagents"] = {
 				[12360] = 2,
@@ -3113,6 +3227,7 @@ addon.recipeDB[164] = {
 				315,
 				340,
 			},
+			["itemId"] = 12828,
 			["name"] = "Volcanic Hammer",
 			["reagents"] = {
 				[7077] = 4,
@@ -3130,6 +3245,7 @@ addon.recipeDB[164] = {
 				315,
 				340,
 			},
+			["itemId"] = 12830,
 			["name"] = "Corruption",
 			["reagents"] = {
 				[8170] = 4,
@@ -3150,6 +3266,7 @@ addon.recipeDB[164] = {
 				325,
 				350,
 			},
+			["itemId"] = 12831,
 			["name"] = "Blood Talon",
 			["reagents"] = {
 				[7910] = 10,
@@ -3168,6 +3285,7 @@ addon.recipeDB[164] = {
 				325,
 				350,
 			},
+			["itemId"] = 12832,
 			["name"] = "Darkspear",
 			["reagents"] = {
 				[12364] = 2,
@@ -3186,6 +3304,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12833,
 			["name"] = "Hammer of the Titans",
 			["reagents"] = {
 				[7076] = 10,
@@ -3204,6 +3323,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12834,
 			["name"] = "Arcanite Champion",
 			["reagents"] = {
 				[12360] = 15,
@@ -3223,6 +3343,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12835,
 			["name"] = "Annihilator",
 			["reagents"] = {
 				[12359] = 40,
@@ -3242,6 +3363,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12836,
 			["name"] = "Frostguard",
 			["reagents"] = {
 				[7080] = 4,
@@ -3261,6 +3383,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12837,
 			["name"] = "Masterwork Stormhammer",
 			["reagents"] = {
 				[7076] = 6,
@@ -3279,6 +3402,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12838,
 			["name"] = "Arcanite Reaper",
 			["reagents"] = {
 				[12360] = 20,
@@ -3295,6 +3419,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 12839,
 			["name"] = "Heartseeker",
 			["reagents"] = {
 				[7910] = 6,
@@ -3426,6 +3551,7 @@ addon.recipeDB[164] = {
 				315,
 				335,
 			},
+			["itemId"] = 17049,
 			["name"] = "Fiery Chain Girdle",
 			["reagents"] = {
 				[11371] = 6,
@@ -3442,6 +3568,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 17053,
 			["name"] = "Fiery Chain Shoulders",
 			["reagents"] = {
 				[11371] = 16,
@@ -3458,6 +3585,7 @@ addon.recipeDB[164] = {
 				315,
 				335,
 			},
+			["itemId"] = 17051,
 			["name"] = "Dark Iron Bracers",
 			["reagents"] = {
 				[11371] = 4,
@@ -3474,6 +3602,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 17052,
 			["name"] = "Dark Iron Leggings",
 			["reagents"] = {
 				[11371] = 16,
@@ -3490,6 +3619,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 17059,
 			["name"] = "Dark Iron Reaver",
 			["reagents"] = {
 				[11371] = 16,
@@ -3507,6 +3637,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 17060,
 			["name"] = "Dark Iron Destroyer",
 			["reagents"] = {
 				[11371] = 18,
@@ -3524,6 +3655,7 @@ addon.recipeDB[164] = {
 				325,
 				350,
 			},
+			["itemId"] = 18592,
 			["name"] = "Sulfuron Hammer",
 			["reagents"] = {
 				[7078] = 25,
@@ -3544,6 +3676,7 @@ addon.recipeDB[164] = {
 				215,
 				240,
 			},
+			["itemId"] = 17706,
 			["name"] = "Edge of Winter",
 			["reagents"] = {
 				[3829] = 1,
@@ -3562,6 +3695,7 @@ addon.recipeDB[164] = {
 				300,
 				320,
 			},
+			["itemId"] = 18264,
 			["name"] = "Elemental Sharpening Stone",
 			["reagents"] = {
 				[7067] = 2,
@@ -3577,6 +3711,7 @@ addon.recipeDB[164] = {
 				310,
 				330,
 			},
+			["itemId"] = 19202,
 			["name"] = "Heavy Timbermaw Belt",
 			["reagents"] = {
 				[7076] = 3,
@@ -3593,6 +3728,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19204,
 			["name"] = "Heavy Timbermaw Boots",
 			["reagents"] = {
 				[7076] = 6,
@@ -3609,6 +3745,7 @@ addon.recipeDB[164] = {
 				310,
 				330,
 			},
+			["itemId"] = 19203,
 			["name"] = "Girdle of the Dawn",
 			["reagents"] = {
 				[6037] = 6,
@@ -3625,6 +3762,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19205,
 			["name"] = "Gloves of the Dawn",
 			["reagents"] = {
 				[6037] = 10,
@@ -3641,6 +3779,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19206,
 			["name"] = "Dark Iron Helm",
 			["reagents"] = {
 				[11371] = 4,
@@ -3657,6 +3796,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19207,
 			["name"] = "Dark Iron Gauntlets",
 			["reagents"] = {
 				[11371] = 4,
@@ -3675,6 +3815,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19208,
 			["name"] = "Black Amnesty",
 			["reagents"] = {
 				[11371] = 4,
@@ -3693,6 +3834,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19209,
 			["name"] = "Blackfury",
 			["reagents"] = {
 				[11371] = 6,
@@ -3710,6 +3852,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19210,
 			["name"] = "Ebon Hand",
 			["reagents"] = {
 				[11371] = 8,
@@ -3728,6 +3871,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19211,
 			["name"] = "Blackguard",
 			["reagents"] = {
 				[11371] = 6,
@@ -3746,6 +3890,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19212,
 			["name"] = "Nightfall",
 			["reagents"] = {
 				[11371] = 12,
@@ -3764,6 +3909,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19776,
 			["name"] = "Bloodsoul Breastplate",
 			["reagents"] = {
 				[7910] = 2,
@@ -3779,6 +3925,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19777,
 			["name"] = "Bloodsoul Shoulders",
 			["reagents"] = {
 				[7910] = 1,
@@ -3794,6 +3941,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19778,
 			["name"] = "Bloodsoul Gauntlets",
 			["reagents"] = {
 				[12359] = 12,
@@ -3809,6 +3957,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19779,
 			["name"] = "Darksoul Breastplate",
 			["reagents"] = {
 				[12359] = 20,
@@ -3824,6 +3973,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19780,
 			["name"] = "Darksoul Leggings",
 			["reagents"] = {
 				[12359] = 18,
@@ -3839,6 +3989,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 19781,
 			["name"] = "Darksoul Shoulders",
 			["reagents"] = {
 				[12359] = 16,
@@ -3854,6 +4005,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 20040,
 			["name"] = "Dark Iron Boots",
 			["reagents"] = {
 				[11371] = 6,
@@ -3871,6 +4023,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 20553,
 			["name"] = "Darkrune Gauntlets",
 			["reagents"] = {
 				[6037] = 6,
@@ -3888,6 +4041,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 20555,
 			["name"] = "Darkrune Helm",
 			["reagents"] = {
 				[6037] = 8,
@@ -3905,6 +4059,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 20554,
 			["name"] = "Darkrune Breastplate",
 			["reagents"] = {
 				[6037] = 10,
@@ -3921,6 +4076,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22209,
 			["name"] = "Heavy Obsidian Belt",
 			["reagents"] = {
 				[7076] = 2,
@@ -3937,6 +4093,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22219,
 			["name"] = "Jagged Obsidian Shield",
 			["reagents"] = {
 				[7076] = 4,
@@ -3954,6 +4111,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22222,
 			["name"] = "Thick Obsidian Breastplate",
 			["reagents"] = {
 				[7076] = 10,
@@ -3972,6 +4130,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22214,
 			["name"] = "Light Obsidian Belt",
 			["reagents"] = {
 				[12810] = 4,
@@ -3987,6 +4146,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22220,
 			["name"] = "Black Grasp of the Destroyer",
 			["reagents"] = {
 				[12810] = 8,
@@ -4004,6 +4164,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22221,
 			["name"] = "Obsidian Mail Tunic",
 			["reagents"] = {
 				[12800] = 4,
@@ -4022,6 +4183,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22388,
 			["name"] = "Titanic Leggings",
 			["reagents"] = {
 				[7076] = 10,
@@ -4039,6 +4201,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22390,
 			["name"] = "Persuader",
 			["reagents"] = {
 				[11371] = 10,
@@ -4057,6 +4220,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22389,
 			["name"] = "Sageblade",
 			["reagents"] = {
 				[12360] = 12,
@@ -4074,6 +4238,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22703,
 			["name"] = "Icebane Breastplate",
 			["reagents"] = {
 				[7080] = 4,
@@ -4091,6 +4256,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22704,
 			["name"] = "Icebane Gauntlets",
 			["reagents"] = {
 				[7080] = 2,
@@ -4108,6 +4274,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22705,
 			["name"] = "Icebane Bracers",
 			["reagents"] = {
 				[7080] = 2,
@@ -4125,6 +4292,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22766,
 			["name"] = "Ironvine Breastplate",
 			["reagents"] = {
 				[12360] = 2,
@@ -4141,6 +4309,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22767,
 			["name"] = "Ironvine Gloves",
 			["reagents"] = {
 				[12655] = 8,
@@ -4156,6 +4325,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22768,
 			["name"] = "Ironvine Belt",
 			["reagents"] = {
 				[12655] = 6,
@@ -4339,6 +4509,7 @@ addon.recipeDB[164] = {
 				335,
 				355,
 			},
+			["itemId"] = 23590,
 			["name"] = "Adamantite Maul",
 			["reagents"] = {
 				[23446] = 8,
@@ -4353,6 +4524,7 @@ addon.recipeDB[164] = {
 				340,
 				360,
 			},
+			["itemId"] = 23591,
 			["name"] = "Adamantite Cleaver",
 			["reagents"] = {
 				[23446] = 8,
@@ -4367,6 +4539,7 @@ addon.recipeDB[164] = {
 				340,
 				360,
 			},
+			["itemId"] = 23592,
 			["name"] = "Adamantite Dagger",
 			["reagents"] = {
 				[21887] = 2,
@@ -4382,6 +4555,7 @@ addon.recipeDB[164] = {
 				345,
 				365,
 			},
+			["itemId"] = 23593,
 			["name"] = "Adamantite Rapier",
 			["reagents"] = {
 				[23446] = 12,
@@ -4396,6 +4570,7 @@ addon.recipeDB[164] = {
 				345,
 				365,
 			},
+			["itemId"] = 23594,
 			["name"] = "Adamantite Plate Bracers",
 			["reagents"] = {
 				[21884] = 2,
@@ -4412,6 +4587,7 @@ addon.recipeDB[164] = {
 				345,
 				365,
 			},
+			["itemId"] = 23595,
 			["name"] = "Adamantite Plate Gloves",
 			["reagents"] = {
 				[21884] = 2,
@@ -4429,6 +4605,7 @@ addon.recipeDB[164] = {
 				350,
 				370,
 			},
+			["itemId"] = 23596,
 			["name"] = "Adamantite Breastplate",
 			["reagents"] = {
 				[21884] = 2,
@@ -4445,6 +4622,7 @@ addon.recipeDB[164] = {
 				365,
 				385,
 			},
+			["itemId"] = 23597,
 			["name"] = "Enchanted Adamantite Belt",
 			["reagents"] = {
 				[22445] = 8,
@@ -4461,6 +4639,7 @@ addon.recipeDB[164] = {
 				370,
 				390,
 			},
+			["itemId"] = 23599,
 			["name"] = "Enchanted Adamantite Breastplate",
 			["reagents"] = {
 				[22445] = 20,
@@ -4477,6 +4656,7 @@ addon.recipeDB[164] = {
 				365,
 				385,
 			},
+			["itemId"] = 23598,
 			["name"] = "Enchanted Adamantite Boots",
 			["reagents"] = {
 				[22445] = 12,
@@ -4493,6 +4673,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23600,
 			["name"] = "Enchanted Adamantite Leggings",
 			["reagents"] = {
 				[22445] = 24,
@@ -4509,6 +4690,7 @@ addon.recipeDB[164] = {
 				360,
 				380,
 			},
+			["itemId"] = 23601,
 			["name"] = "Flamebane Bracers",
 			["reagents"] = {
 				[21884] = 2,
@@ -4525,6 +4707,7 @@ addon.recipeDB[164] = {
 				365,
 				385,
 			},
+			["itemId"] = 23602,
 			["name"] = "Flamebane Helm",
 			["reagents"] = {
 				[21884] = 3,
@@ -4541,6 +4724,7 @@ addon.recipeDB[164] = {
 				370,
 				390,
 			},
+			["itemId"] = 23603,
 			["name"] = "Flamebane Gloves",
 			["reagents"] = {
 				[21884] = 4,
@@ -4557,6 +4741,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23604,
 			["name"] = "Flamebane Breastplate",
 			["reagents"] = {
 				[21884] = 4,
@@ -4573,6 +4758,7 @@ addon.recipeDB[164] = {
 				370,
 				390,
 			},
+			["itemId"] = 23605,
 			["name"] = "Felsteel Gloves",
 			["reagents"] = {
 				[23448] = 6,
@@ -4587,6 +4773,7 @@ addon.recipeDB[164] = {
 				370,
 				390,
 			},
+			["itemId"] = 23606,
 			["name"] = "Felsteel Leggings",
 			["reagents"] = {
 				[23448] = 8,
@@ -4601,6 +4788,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23607,
 			["name"] = "Felsteel Helm",
 			["reagents"] = {
 				[23448] = 8,
@@ -4615,6 +4803,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23621,
 			["name"] = "Gauntlets of the Iron Tower",
 			["reagents"] = {
 				[22452] = 15,
@@ -4632,6 +4821,7 @@ addon.recipeDB[164] = {
 				370,
 				390,
 			},
+			["itemId"] = 23608,
 			["name"] = "Khorium Belt",
 			["reagents"] = {
 				[21885] = 2,
@@ -4648,6 +4838,7 @@ addon.recipeDB[164] = {
 				370,
 				390,
 			},
+			["itemId"] = 23609,
 			["name"] = "Khorium Pants",
 			["reagents"] = {
 				[21885] = 4,
@@ -4664,6 +4855,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23610,
 			["name"] = "Khorium Boots",
 			["reagents"] = {
 				[21885] = 3,
@@ -4680,6 +4872,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23611,
 			["name"] = "Ragesteel Gloves",
 			["reagents"] = {
 				[21884] = 6,
@@ -4697,6 +4890,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23612,
 			["name"] = "Ragesteel Helm",
 			["reagents"] = {
 				[21884] = 10,
@@ -4714,6 +4908,7 @@ addon.recipeDB[164] = {
 				380,
 				400,
 			},
+			["itemId"] = 23613,
 			["name"] = "Ragesteel Breastplate",
 			["reagents"] = {
 				[21884] = 10,
@@ -4731,6 +4926,7 @@ addon.recipeDB[164] = {
 				380,
 				400,
 			},
+			["itemId"] = 23615,
 			["name"] = "Swiftsteel Gloves",
 			["reagents"] = {
 				[22449] = 2,
@@ -4748,6 +4944,7 @@ addon.recipeDB[164] = {
 				380,
 				400,
 			},
+			["itemId"] = 23617,
 			["name"] = "Earthpeace Breastplate",
 			["reagents"] = {
 				[21886] = 6,
@@ -4779,6 +4976,7 @@ addon.recipeDB[164] = {
 				350,
 				360,
 			},
+			["itemId"] = 23618,
 			["name"] = "Adamantite Sharpening Stone",
 			["reagents"] = {
 				[22573] = 2,
@@ -4794,6 +4992,7 @@ addon.recipeDB[164] = {
 				370,
 				390,
 			},
+			["itemId"] = 23619,
 			["name"] = "Felsteel Shield Spike",
 			["reagents"] = {
 				[21884] = 4,
@@ -4810,6 +5009,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23620,
 			["name"] = "Felfury Gauntlets",
 			["reagents"] = {
 				[23448] = 10,
@@ -4826,6 +5026,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23622,
 			["name"] = "Steelgrip Gauntlets",
 			["reagents"] = {
 				[23448] = 10,
@@ -4842,6 +5043,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23623,
 			["name"] = "Storm Helm",
 			["reagents"] = {
 				[21885] = 16,
@@ -4859,6 +5061,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23624,
 			["name"] = "Helm of the Stalwart Defender",
 			["reagents"] = {
 				[22452] = 22,
@@ -4876,6 +5079,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23625,
 			["name"] = "Oathkeeper's Helm",
 			["reagents"] = {
 				[21886] = 18,
@@ -4893,6 +5097,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23626,
 			["name"] = "Black Felsteel Bracers",
 			["reagents"] = {
 				[22456] = 15,
@@ -4909,6 +5114,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23627,
 			["name"] = "Bracers of the Green Fortress",
 			["reagents"] = {
 				[21886] = 20,
@@ -4925,6 +5131,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23628,
 			["name"] = "Blessed Bracers",
 			["reagents"] = {
 				[21885] = 15,
@@ -4942,6 +5149,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23629,
 			["name"] = "Felsteel Longblade",
 			["reagents"] = {
 				[23448] = 10,
@@ -4959,6 +5167,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23630,
 			["name"] = "Khorium Champion",
 			["reagents"] = {
 				[23449] = 20,
@@ -4976,6 +5185,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23631,
 			["name"] = "Fel Edged Battleaxe",
 			["reagents"] = {
 				[23448] = 10,
@@ -4993,6 +5203,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23632,
 			["name"] = "Felsteel Reaper",
 			["reagents"] = {
 				[23448] = 10,
@@ -5010,6 +5221,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23633,
 			["name"] = "Runic Hammer",
 			["reagents"] = {
 				[23448] = 10,
@@ -5027,6 +5239,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23634,
 			["name"] = "Fel Hardened Maul",
 			["reagents"] = {
 				[23448] = 10,
@@ -5044,6 +5257,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23635,
 			["name"] = "Eternium Runed Blade",
 			["reagents"] = {
 				[23447] = 10,
@@ -5062,6 +5276,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23636,
 			["name"] = "Dirge",
 			["reagents"] = {
 				[23448] = 10,
@@ -5079,6 +5294,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 23637,
 			["name"] = "Hand of Eternity",
 			["reagents"] = {
 				[23447] = 10,
@@ -5097,6 +5313,7 @@ addon.recipeDB[164] = {
 				340,
 				350,
 			},
+			["itemId"] = 23638,
 			["name"] = "Lesser Ward of Shielding",
 			["reagents"] = {
 				[23446] = 1,
@@ -5111,6 +5328,7 @@ addon.recipeDB[164] = {
 				375,
 				375,
 			},
+			["itemId"] = 23639,
 			["name"] = "Greater Ward of Shielding",
 			["reagents"] = {
 				[23447] = 1,
@@ -5151,6 +5369,7 @@ addon.recipeDB[164] = {
 				350,
 				360,
 			},
+			["itemId"] = 25526,
 			["name"] = "Greater Rune of Warding",
 			["reagents"] = {
 				[23449] = 1,
@@ -5179,6 +5398,7 @@ addon.recipeDB[164] = {
 				350,
 				360,
 			},
+			["itemId"] = 25846,
 			["name"] = "Adamantite Rod",
 			["reagents"] = {
 				[23446] = 10,
@@ -5193,6 +5413,7 @@ addon.recipeDB[164] = {
 				365,
 				375,
 			},
+			["itemId"] = 25847,
 			["name"] = "Eternium Rod",
 			["reagents"] = {
 				[23447] = 4,
@@ -5485,6 +5706,7 @@ addon.recipeDB[164] = {
 				350,
 				360,
 			},
+			["itemId"] = 28632,
 			["name"] = "Adamantite Weightstone",
 			["reagents"] = {
 				[21877] = 2,
@@ -5883,6 +6105,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 30321,
 			["name"] = "Belt of the Guardian",
 			["reagents"] = {
 				[21885] = 10,
@@ -5900,6 +6123,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 30322,
 			["name"] = "Red Belt of Battle",
 			["reagents"] = {
 				[21884] = 10,
@@ -5916,6 +6140,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 30323,
 			["name"] = "Boots of the Protector",
 			["reagents"] = {
 				[21885] = 12,
@@ -5932,6 +6157,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 30324,
 			["name"] = "Red Havoc Boots",
 			["reagents"] = {
 				[21884] = 12,
@@ -5948,6 +6174,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 31390,
 			["name"] = "Wildguard Breastplate",
 			["reagents"] = {
 				[21886] = 12,
@@ -5965,6 +6192,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 31391,
 			["name"] = "Wildguard Leggings",
 			["reagents"] = {
 				[21886] = 12,
@@ -5982,6 +6210,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 31392,
 			["name"] = "Wildguard Helm",
 			["reagents"] = {
 				[21886] = 12,
@@ -5999,6 +6228,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 31393,
 			["name"] = "Iceguard Breastplate",
 			["reagents"] = {
 				[21884] = 12,
@@ -6016,6 +6246,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 31394,
 			["name"] = "Iceguard Leggings",
 			["reagents"] = {
 				[21884] = 12,
@@ -6033,6 +6264,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 31395,
 			["name"] = "Iceguard Helm",
 			["reagents"] = {
 				[21884] = 12,
@@ -6050,6 +6282,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 32441,
 			["name"] = "Shadesteel Sabots",
 			["reagents"] = {
 				[21886] = 2,
@@ -6068,6 +6301,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 32442,
 			["name"] = "Shadesteel Bracers",
 			["reagents"] = {
 				[21886] = 2,
@@ -6086,6 +6320,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 32443,
 			["name"] = "Shadesteel Greaves",
 			["reagents"] = {
 				[21886] = 4,
@@ -6104,6 +6339,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 32444,
 			["name"] = "Shadesteel Girdle",
 			["reagents"] = {
 				[21886] = 3,
@@ -6122,6 +6358,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 32736,
 			["name"] = "Swiftsteel Bracers",
 			["reagents"] = {
 				[22451] = 6,
@@ -6139,6 +6376,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 32737,
 			["name"] = "Swiftsteel Shoulders",
 			["reagents"] = {
 				[22451] = 8,
@@ -6156,6 +6394,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 32738,
 			["name"] = "Dawnsteel Bracers",
 			["reagents"] = {
 				[21884] = 6,
@@ -6173,6 +6412,7 @@ addon.recipeDB[164] = {
 				385,
 				405,
 			},
+			["itemId"] = 32739,
 			["name"] = "Dawnsteel Shoulders",
 			["reagents"] = {
 				[21884] = 8,
@@ -6190,6 +6430,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 33174,
 			["name"] = "Ragesteel Shoulders",
 			["reagents"] = {
 				[21884] = 2,
@@ -6207,6 +6448,7 @@ addon.recipeDB[164] = {
 				345,
 				355,
 			},
+			["itemId"] = 33186,
 			["name"] = "Adamantite Weapon Chain",
 			["reagents"] = {
 				[23449] = 1,
@@ -6222,6 +6464,7 @@ addon.recipeDB[164] = {
 				75,
 				115,
 			},
+			["itemId"] = 33792,
 			["name"] = "Heavy Copper Longsword",
 			["reagents"] = {
 				[818] = 1,
@@ -6238,6 +6481,7 @@ addon.recipeDB[164] = {
 				375,
 				395,
 			},
+			["itemId"] = 33954,
 			["name"] = "Hammer of Righteous Might",
 			["reagents"] = {
 				[23448] = 12,
@@ -6255,6 +6499,7 @@ addon.recipeDB[164] = {
 				375,
 				410,
 			},
+			["itemId"] = 35208,
 			["name"] = "Sunblessed Gauntlets",
 			["reagents"] = {
 				[21886] = 20,
@@ -6272,6 +6517,7 @@ addon.recipeDB[164] = {
 				375,
 				410,
 			},
+			["itemId"] = 35209,
 			["name"] = "Hard Khorium Battlefists",
 			["reagents"] = {
 				[21884] = 12,
@@ -6290,6 +6536,7 @@ addon.recipeDB[164] = {
 				375,
 				410,
 			},
+			["itemId"] = 35210,
 			["name"] = "Sunblessed Breastplate",
 			["reagents"] = {
 				[21885] = 15,
@@ -6308,6 +6555,7 @@ addon.recipeDB[164] = {
 				375,
 				410,
 			},
+			["itemId"] = 35211,
 			["name"] = "Hard Khorium Battleplate",
 			["reagents"] = {
 				[21884] = 10,
@@ -6668,6 +6916,7 @@ addon.recipeDB[164] = {
 				395,
 				405,
 			},
+			["itemId"] = 41124,
 			["name"] = "Reinforced Cobalt Shoulders",
 			["reagents"] = {
 				[36916] = 8,
@@ -6683,6 +6932,7 @@ addon.recipeDB[164] = {
 				405,
 				415,
 			},
+			["itemId"] = 41123,
 			["name"] = "Reinforced Cobalt Helm",
 			["reagents"] = {
 				[36916] = 8,
@@ -6698,6 +6948,7 @@ addon.recipeDB[164] = {
 				410,
 				420,
 			},
+			["itemId"] = 41120,
 			["name"] = "Reinforced Cobalt Legplates",
 			["reagents"] = {
 				[36916] = 8,
@@ -6713,6 +6964,7 @@ addon.recipeDB[164] = {
 				415,
 				425,
 			},
+			["itemId"] = 41122,
 			["name"] = "Reinforced Cobalt Chestpiece",
 			["reagents"] = {
 				[36916] = 8,
@@ -7876,6 +8128,7 @@ addon.recipeDB[164] = {
 				455,
 				465,
 			},
+			["itemId"] = 44937,
 			["name"] = "Titanium Plating",
 			["reagents"] = {
 				[35627] = 4,
@@ -7907,6 +8160,7 @@ addon.recipeDB[164] = {
 				455,
 				475,
 			},
+			["itemId"] = 45088,
 			["name"] = "Belt of the Titans",
 			["reagents"] = {
 				[37663] = 5,
@@ -7922,6 +8176,7 @@ addon.recipeDB[164] = {
 				455,
 				475,
 			},
+			["itemId"] = 45089,
 			["name"] = "Battlelord's Plate Boots",
 			["reagents"] = {
 				[37663] = 5,
@@ -7937,6 +8192,7 @@ addon.recipeDB[164] = {
 				455,
 				475,
 			},
+			["itemId"] = 45090,
 			["name"] = "Plate Girdle of Righteousness",
 			["reagents"] = {
 				[37663] = 5,
@@ -7952,6 +8208,7 @@ addon.recipeDB[164] = {
 				455,
 				475,
 			},
+			["itemId"] = 45091,
 			["name"] = "Treads of Destiny",
 			["reagents"] = {
 				[37663] = 5,
@@ -7967,6 +8224,7 @@ addon.recipeDB[164] = {
 				455,
 				475,
 			},
+			["itemId"] = 45092,
 			["name"] = "Indestructible Plate Girdle",
 			["reagents"] = {
 				[37663] = 5,
@@ -7982,6 +8240,7 @@ addon.recipeDB[164] = {
 				455,
 				475,
 			},
+			["itemId"] = 45093,
 			["name"] = "Spiked Deathdealers",
 			["reagents"] = {
 				[37663] = 5,
@@ -7997,6 +8256,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
+			["itemId"] = 47622,
 			["name"] = "Breastplate of the White Knight",
 			["reagents"] = {
 				[35625] = 8,
@@ -8014,6 +8274,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
+			["itemId"] = 47623,
 			["name"] = "Saronite Swordbreakers",
 			["reagents"] = {
 				[36913] = 20,
@@ -8030,6 +8291,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
+			["itemId"] = 47624,
 			["name"] = "Titanium Razorplate",
 			["reagents"] = {
 				[37663] = 10,
@@ -8046,6 +8308,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
+			["itemId"] = 47625,
 			["name"] = "Titanium Spikeguards",
 			["reagents"] = {
 				[37663] = 8,
@@ -8062,6 +8325,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
+			["itemId"] = 47626,
 			["name"] = "Sunforged Breastplate",
 			["reagents"] = {
 				[35625] = 20,
@@ -8078,6 +8342,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
+			["itemId"] = 47627,
 			["name"] = "Sunforged Bracers",
 			["reagents"] = {
 				[35625] = 12,
@@ -8094,6 +8359,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
+			["itemId"] = 47640,
 			["name"] = "Breastplate of the White Knight",
 			["reagents"] = {
 				[35625] = 8,
@@ -8111,6 +8377,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
+			["itemId"] = 47641,
 			["name"] = "Saronite Swordbreakers",
 			["reagents"] = {
 				[36913] = 20,
@@ -8127,6 +8394,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
+			["itemId"] = 47644,
 			["name"] = "Titanium Razorplate",
 			["reagents"] = {
 				[37663] = 10,
@@ -8143,6 +8411,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
+			["itemId"] = 47645,
 			["name"] = "Titanium Spikeguards",
 			["reagents"] = {
 				[37663] = 8,
@@ -8159,6 +8428,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
+			["itemId"] = 47643,
 			["name"] = "Sunforged Breastplate",
 			["reagents"] = {
 				[35625] = 20,
@@ -8175,6 +8445,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
+			["itemId"] = 47642,
 			["name"] = "Sunforged Bracers",
 			["reagents"] = {
 				[35625] = 12,
@@ -8191,6 +8462,7 @@ addon.recipeDB[164] = {
 				475,
 				500,
 			},
+			["itemId"] = 49969,
 			["name"] = "Puresteel Legplates",
 			["reagents"] = {
 				[35623] = 20,
@@ -8207,6 +8479,7 @@ addon.recipeDB[164] = {
 				475,
 				500,
 			},
+			["itemId"] = 49970,
 			["name"] = "Protectors of Life",
 			["reagents"] = {
 				[35624] = 12,
@@ -8223,6 +8496,7 @@ addon.recipeDB[164] = {
 				475,
 				500,
 			},
+			["itemId"] = 49971,
 			["name"] = "Legplates of Painful Death",
 			["reagents"] = {
 				[35627] = 20,
@@ -8239,6 +8513,7 @@ addon.recipeDB[164] = {
 				475,
 				500,
 			},
+			["itemId"] = 49972,
 			["name"] = "Hellfrozen Bonegrinders",
 			["reagents"] = {
 				[35622] = 6,
@@ -8256,6 +8531,7 @@ addon.recipeDB[164] = {
 				475,
 				500,
 			},
+			["itemId"] = 49973,
 			["name"] = "Pillars of Might",
 			["reagents"] = {
 				[35624] = 20,
@@ -8272,6 +8548,7 @@ addon.recipeDB[164] = {
 				475,
 				500,
 			},
+			["itemId"] = 49974,
 			["name"] = "Boots of Kingly Upheaval",
 			["reagents"] = {
 				[35624] = 12,
@@ -8317,6 +8594,7 @@ addon.recipeDB[164] = {
 				460,
 				465,
 			},
+			["itemId"] = 66063,
 			["name"] = "Hardened Obsidium Gauntlets",
 			["reagents"] = {
 				[65365] = 3,
@@ -8331,6 +8609,7 @@ addon.recipeDB[164] = {
 				470,
 				475,
 			},
+			["itemId"] = 66062,
 			["name"] = "Hardened Obsidium Belt",
 			["reagents"] = {
 				[52327] = 1,
@@ -8346,6 +8625,7 @@ addon.recipeDB[164] = {
 				480,
 				485,
 			},
+			["itemId"] = 66065,
 			["name"] = "Hardened Obsidium Boots",
 			["reagents"] = {
 				[65365] = 5,
@@ -8360,6 +8640,7 @@ addon.recipeDB[164] = {
 				490,
 				495,
 			},
+			["itemId"] = 66066,
 			["name"] = "Hardened Obsidium Shoulders",
 			["reagents"] = {
 				[52186] = 15,
@@ -8376,6 +8657,7 @@ addon.recipeDB[164] = {
 				500,
 				505,
 			},
+			["itemId"] = 66068,
 			["name"] = "Hardened Obsidium Legguards",
 			["reagents"] = {
 				[52186] = 10,
@@ -8391,6 +8673,7 @@ addon.recipeDB[164] = {
 				500,
 				505,
 			},
+			["itemId"] = 66069,
 			["name"] = "Hardened Obsidium Helm",
 			["reagents"] = {
 				[52186] = 15,
@@ -8407,6 +8690,7 @@ addon.recipeDB[164] = {
 				510,
 				515,
 			},
+			["itemId"] = 66071,
 			["name"] = "Hardened Obsidium Breastplate",
 			["reagents"] = {
 				[52186] = 6,
@@ -8422,6 +8706,7 @@ addon.recipeDB[164] = {
 				460,
 				465,
 			},
+			["itemId"] = 66072,
 			["name"] = "Redsteel Bracers",
 			["reagents"] = {
 				[65365] = 3,
@@ -8436,6 +8721,7 @@ addon.recipeDB[164] = {
 				460,
 				465,
 			},
+			["itemId"] = 66074,
 			["name"] = "Redsteel Gauntlets",
 			["reagents"] = {
 				[65365] = 3,
@@ -8450,6 +8736,7 @@ addon.recipeDB[164] = {
 				470,
 				475,
 			},
+			["itemId"] = 66077,
 			["name"] = "Redsteel Belt",
 			["reagents"] = {
 				[52327] = 1,
@@ -8465,6 +8752,7 @@ addon.recipeDB[164] = {
 				480,
 				485,
 			},
+			["itemId"] = 66078,
 			["name"] = "Redsteel Boots",
 			["reagents"] = {
 				[65365] = 5,
@@ -8479,6 +8767,7 @@ addon.recipeDB[164] = {
 				490,
 				495,
 			},
+			["itemId"] = 66079,
 			["name"] = "Redsteel Shoulders",
 			["reagents"] = {
 				[52186] = 6,
@@ -8494,6 +8783,7 @@ addon.recipeDB[164] = {
 				500,
 				505,
 			},
+			["itemId"] = 66081,
 			["name"] = "Redsteel Legguards",
 			["reagents"] = {
 				[52186] = 7,
@@ -8509,6 +8799,7 @@ addon.recipeDB[164] = {
 				510,
 				515,
 			},
+			["itemId"] = 66082,
 			["name"] = "Redsteel Helm",
 			["reagents"] = {
 				[52186] = 15,
@@ -8523,6 +8814,7 @@ addon.recipeDB[164] = {
 				510,
 				515,
 			},
+			["itemId"] = 66083,
 			["name"] = "Redsteel Breastplate",
 			["reagents"] = {
 				[52186] = 15,
@@ -8538,6 +8830,7 @@ addon.recipeDB[164] = {
 				460,
 				465,
 			},
+			["itemId"] = 66084,
 			["name"] = "Stormforged Bracers",
 			["reagents"] = {
 				[65365] = 3,
@@ -8552,6 +8845,7 @@ addon.recipeDB[164] = {
 				460,
 				465,
 			},
+			["itemId"] = 66085,
 			["name"] = "Stormforged Gauntlets",
 			["reagents"] = {
 				[52327] = 8,
@@ -8567,6 +8861,7 @@ addon.recipeDB[164] = {
 				470,
 				475,
 			},
+			["itemId"] = 66086,
 			["name"] = "Stormforged Belt",
 			["reagents"] = {
 				[52327] = 1,
@@ -8582,6 +8877,7 @@ addon.recipeDB[164] = {
 				480,
 				485,
 			},
+			["itemId"] = 66087,
 			["name"] = "Stormforged Boots",
 			["reagents"] = {
 				[65365] = 5,
@@ -8596,6 +8892,7 @@ addon.recipeDB[164] = {
 				490,
 				495,
 			},
+			["itemId"] = 66088,
 			["name"] = "Stormforged Shoulders",
 			["reagents"] = {
 				[52186] = 8,
@@ -8611,6 +8908,7 @@ addon.recipeDB[164] = {
 				490,
 				495,
 			},
+			["itemId"] = 66089,
 			["name"] = "Stormforged Legguards",
 			["reagents"] = {
 				[52186] = 8,
@@ -8626,6 +8924,7 @@ addon.recipeDB[164] = {
 				500,
 				505,
 			},
+			["itemId"] = 66090,
 			["name"] = "Stormforged Helm",
 			["reagents"] = {
 				[52186] = 20,
@@ -8641,6 +8940,7 @@ addon.recipeDB[164] = {
 				510,
 				515,
 			},
+			["itemId"] = 66091,
 			["name"] = "Stormforged Breastplate",
 			["reagents"] = {
 				[52186] = 15,
@@ -8655,6 +8955,7 @@ addon.recipeDB[164] = {
 				460,
 				465,
 			},
+			["itemId"] = 66092,
 			["name"] = "Hardened Obsidium Shield",
 			["reagents"] = {
 				[65365] = 3,
@@ -8669,6 +8970,7 @@ addon.recipeDB[164] = {
 				480,
 				485,
 			},
+			["itemId"] = 66093,
 			["name"] = "Stormforged Shield",
 			["reagents"] = {
 				[52327] = 4,
@@ -8684,6 +8986,7 @@ addon.recipeDB[164] = {
 				475,
 				480,
 			},
+			["itemId"] = 66094,
 			["name"] = "Decapitator's Razor",
 			["reagents"] = {
 				[52327] = 8,
@@ -8699,6 +9002,7 @@ addon.recipeDB[164] = {
 				480,
 				485,
 			},
+			["itemId"] = 66095,
 			["name"] = "Cold-Forged Shank",
 			["reagents"] = {
 				[52326] = 4,
@@ -8715,6 +9019,7 @@ addon.recipeDB[164] = {
 				490,
 				495,
 			},
+			["itemId"] = 66096,
 			["name"] = "Fire-Etched Dagger",
 			["reagents"] = {
 				[52186] = 20,
@@ -8731,6 +9036,7 @@ addon.recipeDB[164] = {
 				490,
 				495,
 			},
+			["itemId"] = 66097,
 			["name"] = "Lifeforce Hammer",
 			["reagents"] = {
 				[52186] = 12,
@@ -8748,6 +9054,7 @@ addon.recipeDB[164] = {
 				490,
 				495,
 			},
+			["itemId"] = 66098,
 			["name"] = "Obsidium Executioner",
 			["reagents"] = {
 				[52186] = 10,
@@ -8764,6 +9071,7 @@ addon.recipeDB[164] = {
 				480,
 				490,
 			},
+			["itemId"] = 66099,
 			["name"] = "Obsidium Skeleton Key",
 			["reagents"] = {
 				[65365] = 2,
@@ -8778,6 +9086,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 66100,
 			["name"] = "Ebonsteel Belt Buckle",
 			["reagents"] = {
 				[51950] = 4,
@@ -8794,6 +9103,7 @@ addon.recipeDB[164] = {
 				530,
 				540,
 			},
+			["itemId"] = 66101,
 			["name"] = "Pyrium Shield Spike",
 			["reagents"] = {
 				[51950] = 5,
@@ -8808,6 +9118,7 @@ addon.recipeDB[164] = {
 				500,
 				505,
 			},
+			["itemId"] = 66102,
 			["name"] = "Elementium Shield Spike",
 			["reagents"] = {
 				[52186] = 15,
@@ -8822,6 +9133,7 @@ addon.recipeDB[164] = {
 				505,
 				515,
 			},
+			["itemId"] = 66103,
 			["name"] = "Pyrium Weapon Chain",
 			["reagents"] = {
 				[51950] = 1,
@@ -8836,6 +9148,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 66104,
 			["name"] = "Hardened Elementium Hauberk",
 			["reagents"] = {
 				[52078] = 3,
@@ -8852,6 +9165,7 @@ addon.recipeDB[164] = {
 				520,
 				525,
 			},
+			["itemId"] = 66105,
 			["name"] = "Hardened Elementium Girdle",
 			["reagents"] = {
 				[52078] = 2,
@@ -8868,6 +9182,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 66106,
 			["name"] = "Elementium Deathplate",
 			["reagents"] = {
 				[52078] = 3,
@@ -8884,6 +9199,7 @@ addon.recipeDB[164] = {
 				520,
 				525,
 			},
+			["itemId"] = 66107,
 			["name"] = "Elementium Girdle of Pain",
 			["reagents"] = {
 				[52078] = 2,
@@ -8900,6 +9216,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 66108,
 			["name"] = "Light Elementium Chestguard",
 			["reagents"] = {
 				[52078] = 3,
@@ -8916,6 +9233,7 @@ addon.recipeDB[164] = {
 				520,
 				525,
 			},
+			["itemId"] = 66109,
 			["name"] = "Light Elementium Belt",
 			["reagents"] = {
 				[52078] = 2,
@@ -8932,6 +9250,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 66110,
 			["name"] = "Elementium Spellblade",
 			["reagents"] = {
 				[52078] = 3,
@@ -8948,6 +9267,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 66111,
 			["name"] = "Elementium Hammer",
 			["reagents"] = {
 				[52078] = 3,
@@ -8964,6 +9284,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 66112,
 			["name"] = "Elementium Poleaxe",
 			["reagents"] = {
 				[52078] = 3,
@@ -8980,6 +9301,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 66113,
 			["name"] = "Elementium Bonesplitter",
 			["reagents"] = {
 				[52078] = 3,
@@ -8996,6 +9318,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 66114,
 			["name"] = "Elementium Shank",
 			["reagents"] = {
 				[52078] = 3,
@@ -9012,6 +9335,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 66115,
 			["name"] = "Elementium Earthguard",
 			["reagents"] = {
 				[52078] = 1,
@@ -9028,6 +9352,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 66116,
 			["name"] = "Elementium Stormshield",
 			["reagents"] = {
 				[52078] = 1,
@@ -9044,6 +9369,7 @@ addon.recipeDB[164] = {
 				510,
 				515,
 			},
+			["itemId"] = 66117,
 			["name"] = "Bloodthirsty Pyrium Bracers",
 			["reagents"] = {
 				[52186] = 8,
@@ -9059,6 +9385,7 @@ addon.recipeDB[164] = {
 				515,
 				520,
 			},
+			["itemId"] = 66118,
 			["name"] = "Bloodthirsty Pyrium Gauntlets",
 			["reagents"] = {
 				[52186] = 10,
@@ -9074,6 +9401,7 @@ addon.recipeDB[164] = {
 				520,
 				525,
 			},
+			["itemId"] = 66119,
 			["name"] = "Bloodthirsty Pyrium Belt",
 			["reagents"] = {
 				[52186] = 10,
@@ -9089,6 +9417,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 66120,
 			["name"] = "Bloodthirsty Pyrium Boots",
 			["reagents"] = {
 				[52186] = 12,
@@ -9104,6 +9433,7 @@ addon.recipeDB[164] = {
 				530,
 				535,
 			},
+			["itemId"] = 66121,
 			["name"] = "Bloodthirsty Pyrium Shoulders",
 			["reagents"] = {
 				[52186] = 12,
@@ -9119,6 +9449,7 @@ addon.recipeDB[164] = {
 				535,
 				540,
 			},
+			["itemId"] = 66122,
 			["name"] = "Bloodthirsty Pyrium Legguards",
 			["reagents"] = {
 				[52186] = 15,
@@ -9134,6 +9465,7 @@ addon.recipeDB[164] = {
 				535,
 				540,
 			},
+			["itemId"] = 66123,
 			["name"] = "Bloodthirsty Pyrium Helm",
 			["reagents"] = {
 				[52186] = 15,
@@ -9149,6 +9481,7 @@ addon.recipeDB[164] = {
 				535,
 				540,
 			},
+			["itemId"] = 66124,
 			["name"] = "Bloodthirsty Pyrium Breastplate",
 			["reagents"] = {
 				[52186] = 15,
@@ -9164,6 +9497,7 @@ addon.recipeDB[164] = {
 				510,
 				515,
 			},
+			["itemId"] = 66125,
 			["name"] = "Bloodthirsty Ornate Pyrium Bracers",
 			["reagents"] = {
 				[52186] = 8,
@@ -9179,6 +9513,7 @@ addon.recipeDB[164] = {
 				515,
 				520,
 			},
+			["itemId"] = 66126,
 			["name"] = "Bloodthirsty Ornate Pyrium Gauntlets",
 			["reagents"] = {
 				[52186] = 10,
@@ -9194,6 +9529,7 @@ addon.recipeDB[164] = {
 				520,
 				525,
 			},
+			["itemId"] = 66127,
 			["name"] = "Bloodthirsty Ornate Pyrium Belt",
 			["reagents"] = {
 				[52186] = 10,
@@ -9209,6 +9545,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 66128,
 			["name"] = "Bloodthirsty Ornate Pyrium Boots",
 			["reagents"] = {
 				[52186] = 12,
@@ -9224,6 +9561,7 @@ addon.recipeDB[164] = {
 				530,
 				535,
 			},
+			["itemId"] = 66129,
 			["name"] = "Bloodthirsty Ornate Pyrium Shoulders",
 			["reagents"] = {
 				[52186] = 12,
@@ -9239,6 +9577,7 @@ addon.recipeDB[164] = {
 				535,
 				540,
 			},
+			["itemId"] = 66130,
 			["name"] = "Bloodthirsty Ornate Pyrium Legguards",
 			["reagents"] = {
 				[52186] = 15,
@@ -9254,6 +9593,7 @@ addon.recipeDB[164] = {
 				535,
 				540,
 			},
+			["itemId"] = 66131,
 			["name"] = "Bloodthirsty Ornate Pyrium Helm",
 			["reagents"] = {
 				[52186] = 15,
@@ -9269,6 +9609,7 @@ addon.recipeDB[164] = {
 				535,
 				540,
 			},
+			["itemId"] = 66132,
 			["name"] = "Bloodthirsty Ornate Pyrium Breastplate",
 			["reagents"] = {
 				[52186] = 15,
@@ -9284,6 +9625,7 @@ addon.recipeDB[164] = {
 				480,
 				485,
 			},
+			["itemId"] = 66133,
 			["name"] = "Obsidium Bladespear",
 			["reagents"] = {
 				[52325] = 4,
@@ -9312,6 +9654,7 @@ addon.recipeDB[164] = {
 				480,
 				490,
 			},
+			["itemId"] = 66134,
 			["name"] = "Elementium Rod",
 			["reagents"] = {
 				[52186] = 15,
@@ -9326,6 +9669,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 67603,
 			["name"] = "Elementium Gutslicer",
 			["reagents"] = {
 				[52078] = 3,
@@ -9342,6 +9686,7 @@ addon.recipeDB[164] = {
 				525,
 				525,
 			},
+			["itemId"] = 67606,
 			["name"] = "Forged Elementium Mindcrusher",
 			["reagents"] = {
 				[52078] = 3,
@@ -9358,6 +9703,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 69957,
 			["name"] = "Fists of Fury",
 			["reagents"] = {
 				[52078] = 3,
@@ -9375,6 +9721,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 69958,
 			["name"] = "Eternal Elementium Handguards",
 			["reagents"] = {
 				[52078] = 3,
@@ -9392,6 +9739,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 69959,
 			["name"] = "Holy Flame Gauntlets",
 			["reagents"] = {
 				[52078] = 3,
@@ -9409,6 +9757,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 69968,
 			["name"] = "Warboots of Mighty Lords",
 			["reagents"] = {
 				[52078] = 3,
@@ -9426,6 +9775,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 69969,
 			["name"] = "Mirrored Boots",
 			["reagents"] = {
 				[52078] = 3,
@@ -9443,6 +9793,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 69970,
 			["name"] = "Emberforged Elementium Boots",
 			["reagents"] = {
 				[52078] = 3,
@@ -9460,6 +9811,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 70166,
 			["name"] = "Brainsplinter",
 			["reagents"] = {
 				[52078] = 5,
@@ -9477,6 +9829,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 70167,
 			["name"] = "Masterwork Elementium Spellblade",
 			["reagents"] = {
 				[52078] = 5,
@@ -9495,6 +9848,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 70168,
 			["name"] = "Lightforged Elementium Hammer",
 			["reagents"] = {
 				[52078] = 5,
@@ -9511,6 +9865,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 70169,
 			["name"] = "Elementium-Edged Scalper",
 			["reagents"] = {
 				[52078] = 5,
@@ -9528,6 +9883,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 70170,
 			["name"] = "Pyrium Spellward",
 			["reagents"] = {
 				[52078] = 5,
@@ -9545,6 +9901,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 70171,
 			["name"] = "Unbreakable Guardian",
 			["reagents"] = {
 				[52078] = 5,
@@ -9562,6 +9919,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 70172,
 			["name"] = "Masterwork Elementium Deathblade",
 			["reagents"] = {
 				[52078] = 5,
@@ -9579,6 +9937,7 @@ addon.recipeDB[164] = {
 				525,
 				530,
 			},
+			["itemId"] = 70173,
 			["name"] = "Witch-Hunter's Harvester",
 			["reagents"] = {
 				[52078] = 5,
@@ -9596,6 +9955,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 72001,
 			["name"] = "Pyrium Legplates of Purified Evil",
 			["reagents"] = {
 				[52078] = 4,
@@ -9613,6 +9973,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 72012,
 			["name"] = "Unstoppable Destroyer's Legplates",
 			["reagents"] = {
 				[52078] = 4,
@@ -9630,6 +9991,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 72013,
 			["name"] = "Foundations of Courage",
 			["reagents"] = {
 				[52078] = 4,
@@ -9647,6 +10009,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 72014,
 			["name"] = "Soul Redeemer Bracers",
 			["reagents"] = {
 				[52078] = 2,
@@ -9664,6 +10027,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 72015,
 			["name"] = "Bracers of Destructive Strength",
 			["reagents"] = {
 				[52078] = 2,
@@ -9681,6 +10045,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 72016,
 			["name"] = "Titanguard Wristplates",
 			["reagents"] = {
 				[52078] = 2,
@@ -9710,6 +10075,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 74622,
 			["name"] = "Release Spirit",
 			["reagents"] = {},
 			["requiredSkill"] = 1,
@@ -9750,6 +10116,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84235,
 			["name"] = "Spiritguard Helm",
 			["reagents"] = {
 				[72096] = 12,
@@ -9764,6 +10131,7 @@ addon.recipeDB[164] = {
 				550,
 				600,
 			},
+			["itemId"] = 84238,
 			["name"] = "Spiritguard Shoulders",
 			["reagents"] = {
 				[72096] = 7,
@@ -9778,6 +10146,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84233,
 			["name"] = "Spiritguard Breastplate",
 			["reagents"] = {
 				[72096] = 12,
@@ -9792,6 +10161,7 @@ addon.recipeDB[164] = {
 				540,
 				600,
 			},
+			["itemId"] = 84234,
 			["name"] = "Spiritguard Gauntlets",
 			["reagents"] = {
 				[72096] = 7,
@@ -9806,6 +10176,7 @@ addon.recipeDB[164] = {
 				545,
 				600,
 			},
+			["itemId"] = 84236,
 			["name"] = "Spiritguard Legplates",
 			["reagents"] = {
 				[72096] = 12,
@@ -9820,6 +10191,7 @@ addon.recipeDB[164] = {
 				525,
 				600,
 			},
+			["itemId"] = 84232,
 			["name"] = "Spiritguard Bracers",
 			["reagents"] = {
 				[72096] = 5,
@@ -9834,6 +10206,7 @@ addon.recipeDB[164] = {
 				545,
 				600,
 			},
+			["itemId"] = 84231,
 			["name"] = "Spiritguard Boots",
 			["reagents"] = {
 				[72096] = 7,
@@ -9848,6 +10221,7 @@ addon.recipeDB[164] = {
 				540,
 				600,
 			},
+			["itemId"] = 84230,
 			["name"] = "Spiritguard Belt",
 			["reagents"] = {
 				[72096] = 7,
@@ -9862,6 +10236,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84183,
 			["name"] = "Ghost-Forged Helm",
 			["reagents"] = {
 				[72096] = 12,
@@ -9876,6 +10251,7 @@ addon.recipeDB[164] = {
 				550,
 				600,
 			},
+			["itemId"] = 84185,
 			["name"] = "Ghost-Forged Shoulders",
 			["reagents"] = {
 				[72096] = 7,
@@ -9890,6 +10266,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84181,
 			["name"] = "Ghost-Forged Breastplate",
 			["reagents"] = {
 				[72096] = 12,
@@ -9904,6 +10281,7 @@ addon.recipeDB[164] = {
 				540,
 				600,
 			},
+			["itemId"] = 84182,
 			["name"] = "Ghost-Forged Gauntlets",
 			["reagents"] = {
 				[72096] = 7,
@@ -9918,6 +10296,7 @@ addon.recipeDB[164] = {
 				545,
 				600,
 			},
+			["itemId"] = 84184,
 			["name"] = "Ghost-Forged Legplates",
 			["reagents"] = {
 				[72096] = 12,
@@ -9932,6 +10311,7 @@ addon.recipeDB[164] = {
 				525,
 				600,
 			},
+			["itemId"] = 84180,
 			["name"] = "Ghost-Forged Bracers",
 			["reagents"] = {
 				[72096] = 5,
@@ -9946,6 +10326,7 @@ addon.recipeDB[164] = {
 				545,
 				600,
 			},
+			["itemId"] = 84179,
 			["name"] = "Ghost-Forged Boots",
 			["reagents"] = {
 				[72096] = 7,
@@ -9960,6 +10341,7 @@ addon.recipeDB[164] = {
 				540,
 				600,
 			},
+			["itemId"] = 84177,
 			["name"] = "Ghost-Forged Belt",
 			["reagents"] = {
 				[72096] = 7,
@@ -9974,6 +10356,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84192,
 			["name"] = "Lightsteel Helm",
 			["reagents"] = {
 				[72096] = 12,
@@ -9988,6 +10371,7 @@ addon.recipeDB[164] = {
 				550,
 				600,
 			},
+			["itemId"] = 84195,
 			["name"] = "Lightsteel Shoulders",
 			["reagents"] = {
 				[72096] = 7,
@@ -10002,6 +10386,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84190,
 			["name"] = "Lightsteel Breastplate",
 			["reagents"] = {
 				[72096] = 12,
@@ -10016,6 +10401,7 @@ addon.recipeDB[164] = {
 				540,
 				600,
 			},
+			["itemId"] = 84191,
 			["name"] = "Lightsteel Gauntlets",
 			["reagents"] = {
 				[72096] = 7,
@@ -10030,6 +10416,7 @@ addon.recipeDB[164] = {
 				545,
 				600,
 			},
+			["itemId"] = 84193,
 			["name"] = "Lightsteel Legplates",
 			["reagents"] = {
 				[72096] = 12,
@@ -10044,6 +10431,7 @@ addon.recipeDB[164] = {
 				525,
 				600,
 			},
+			["itemId"] = 84189,
 			["name"] = "Lightsteel Bracers",
 			["reagents"] = {
 				[72096] = 5,
@@ -10058,6 +10446,7 @@ addon.recipeDB[164] = {
 				545,
 				600,
 			},
+			["itemId"] = 84188,
 			["name"] = "Lightsteel Boots",
 			["reagents"] = {
 				[72096] = 7,
@@ -10072,6 +10461,7 @@ addon.recipeDB[164] = {
 				540,
 				600,
 			},
+			["itemId"] = 84187,
 			["name"] = "Lightsteel Belt",
 			["reagents"] = {
 				[72096] = 7,
@@ -10086,6 +10476,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84224,
 			["name"] = "Masterwork Spiritguard Helm",
 			["reagents"] = {
 				[72095] = 1,
@@ -10101,6 +10492,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84227,
 			["name"] = "Masterwork Spiritguard Shoulders",
 			["reagents"] = {
 				[72095] = 1,
@@ -10116,6 +10508,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84222,
 			["name"] = "Masterwork Spiritguard Breastplate",
 			["reagents"] = {
 				[72095] = 1,
@@ -10131,6 +10524,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84223,
 			["name"] = "Masterwork Spiritguard Gauntlets",
 			["reagents"] = {
 				[72095] = 1,
@@ -10146,6 +10540,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84225,
 			["name"] = "Masterwork Spiritguard Legplates",
 			["reagents"] = {
 				[72095] = 1,
@@ -10161,6 +10556,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84221,
 			["name"] = "Masterwork Spiritguard Bracers",
 			["reagents"] = {
 				[72095] = 1,
@@ -10176,6 +10572,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84220,
 			["name"] = "Masterwork Spiritguard Boots",
 			["reagents"] = {
 				[72095] = 1,
@@ -10191,6 +10588,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84219,
 			["name"] = "Masterwork Spiritguard Belt",
 			["reagents"] = {
 				[72095] = 1,
@@ -10206,6 +10604,7 @@ addon.recipeDB[164] = {
 				590,
 				600,
 			},
+			["itemId"] = 84205,
 			["name"] = "Masterwork Ghost-Forged Helm",
 			["reagents"] = {
 				[72096] = 12,
@@ -10220,6 +10619,7 @@ addon.recipeDB[164] = {
 				575,
 				600,
 			},
+			["itemId"] = 84207,
 			["name"] = "Masterwork Ghost-Forged Shoulders",
 			["reagents"] = {
 				[72096] = 7,
@@ -10234,6 +10634,7 @@ addon.recipeDB[164] = {
 				590,
 				600,
 			},
+			["itemId"] = 84203,
 			["name"] = "Masterwork Ghost-Forged Breastplate",
 			["reagents"] = {
 				[72096] = 12,
@@ -10248,6 +10649,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84204,
 			["name"] = "Masterwork Ghost-Forged Gauntlets",
 			["reagents"] = {
 				[72096] = 7,
@@ -10262,6 +10664,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84206,
 			["name"] = "Masterwork Ghost-Forged Legplates",
 			["reagents"] = {
 				[72096] = 12,
@@ -10276,6 +10679,7 @@ addon.recipeDB[164] = {
 				555,
 				600,
 			},
+			["itemId"] = 84202,
 			["name"] = "Masterwork Ghost-Forged Bracers",
 			["reagents"] = {
 				[72096] = 5,
@@ -10290,6 +10694,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84201,
 			["name"] = "Masterwork Ghost-Forged Boots",
 			["reagents"] = {
 				[72096] = 7,
@@ -10304,6 +10709,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84199,
 			["name"] = "Masterwork Ghost-Forged Belt",
 			["reagents"] = {
 				[72096] = 7,
@@ -10318,6 +10724,7 @@ addon.recipeDB[164] = {
 				590,
 				600,
 			},
+			["itemId"] = 84214,
 			["name"] = "Masterwork Lightsteel Helm",
 			["reagents"] = {
 				[72096] = 12,
@@ -10332,6 +10739,7 @@ addon.recipeDB[164] = {
 				575,
 				600,
 			},
+			["itemId"] = 84216,
 			["name"] = "Masterwork Lightsteel Shoulders",
 			["reagents"] = {
 				[72096] = 7,
@@ -10346,6 +10754,7 @@ addon.recipeDB[164] = {
 				590,
 				600,
 			},
+			["itemId"] = 84212,
 			["name"] = "Masterwork Lightsteel Breastplate",
 			["reagents"] = {
 				[72096] = 12,
@@ -10360,6 +10769,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84213,
 			["name"] = "Masterwork Lightsteel Gauntlets",
 			["reagents"] = {
 				[72096] = 7,
@@ -10374,6 +10784,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84215,
 			["name"] = "Masterwork Lightsteel Legplates",
 			["reagents"] = {
 				[72096] = 12,
@@ -10388,6 +10799,7 @@ addon.recipeDB[164] = {
 				555,
 				600,
 			},
+			["itemId"] = 84211,
 			["name"] = "Masterwork Lightsteel Bracers",
 			["reagents"] = {
 				[72096] = 5,
@@ -10402,6 +10814,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84210,
 			["name"] = "Masterwork Lightsteel Boots",
 			["reagents"] = {
 				[72096] = 7,
@@ -10416,6 +10829,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84209,
 			["name"] = "Masterwork Lightsteel Belt",
 			["reagents"] = {
 				[72096] = 7,
@@ -10430,6 +10844,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84163,
 			["name"] = "Contender's Revenant Helm",
 			["reagents"] = {
 				[72096] = 12,
@@ -10444,6 +10859,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84165,
 			["name"] = "Contender's Revenant Shoulders",
 			["reagents"] = {
 				[72096] = 7,
@@ -10458,6 +10874,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84161,
 			["name"] = "Contender's Revenant Breastplate",
 			["reagents"] = {
 				[72096] = 12,
@@ -10472,6 +10889,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84162,
 			["name"] = "Contender's Revenant Gauntlets",
 			["reagents"] = {
 				[72096] = 7,
@@ -10486,6 +10904,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84164,
 			["name"] = "Contender's Revenant Legplates",
 			["reagents"] = {
 				[72096] = 12,
@@ -10500,6 +10919,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84160,
 			["name"] = "Contender's Revenant Bracers",
 			["reagents"] = {
 				[72096] = 5,
@@ -10514,6 +10934,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84159,
 			["name"] = "Contender's Revenant Boots",
 			["reagents"] = {
 				[72096] = 7,
@@ -10528,6 +10949,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84158,
 			["name"] = "Contender's Revenant Belt",
 			["reagents"] = {
 				[72096] = 7,
@@ -10542,6 +10964,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84171,
 			["name"] = "Contender's Spirit Helm",
 			["reagents"] = {
 				[72096] = 12,
@@ -10556,6 +10979,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84173,
 			["name"] = "Contender's Spirit Shoulders",
 			["reagents"] = {
 				[72096] = 7,
@@ -10570,6 +10994,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84169,
 			["name"] = "Contender's Spirit Breastplate",
 			["reagents"] = {
 				[72096] = 12,
@@ -10584,6 +11009,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84170,
 			["name"] = "Contender's Spirit Gauntlets",
 			["reagents"] = {
 				[72096] = 7,
@@ -10598,6 +11024,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84172,
 			["name"] = "Contender's Spirit Legplates",
 			["reagents"] = {
 				[72096] = 12,
@@ -10612,6 +11039,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84168,
 			["name"] = "Contender's Spirit Bracers",
 			["reagents"] = {
 				[72096] = 5,
@@ -10626,6 +11054,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84167,
 			["name"] = "Contender's Spirit Boots",
 			["reagents"] = {
 				[72096] = 7,
@@ -10640,6 +11069,7 @@ addon.recipeDB[164] = {
 				600,
 				600,
 			},
+			["itemId"] = 84166,
 			["name"] = "Contender's Spirit Belt",
 			["reagents"] = {
 				[72096] = 7,
@@ -10654,6 +11084,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 84196,
 			["name"] = "Living Steel Belt Buckle",
 			["reagents"] = {
 				[72104] = 1,
@@ -10668,6 +11099,7 @@ addon.recipeDB[164] = {
 				515,
 				530,
 			},
+			["itemId"] = 84186,
 			["name"] = "Ghostly Skeleton Key",
 			["reagents"] = {
 				[72096] = 1,
@@ -10682,6 +11114,7 @@ addon.recipeDB[164] = {
 				550,
 				600,
 			},
+			["itemId"] = 84194,
 			["name"] = "Lightsteel Shield",
 			["reagents"] = {
 				[72096] = 9,
@@ -10696,6 +11129,7 @@ addon.recipeDB[164] = {
 				555,
 				600,
 			},
+			["itemId"] = 84237,
 			["name"] = "Spiritguard Shield",
 			["reagents"] = {
 				[72096] = 9,
@@ -10710,6 +11144,7 @@ addon.recipeDB[164] = {
 				560,
 				600,
 			},
+			["itemId"] = 84174,
 			["name"] = "Forgewire Axe",
 			["reagents"] = {
 				[72096] = 4,
@@ -10727,6 +11162,7 @@ addon.recipeDB[164] = {
 				565,
 				600,
 			},
+			["itemId"] = 84178,
 			["name"] = "Ghost-Forged Blade",
 			["reagents"] = {
 				[72096] = 8,
@@ -10742,6 +11178,7 @@ addon.recipeDB[164] = {
 				570,
 				600,
 			},
+			["itemId"] = 84228,
 			["name"] = "Phantasmal Hammer",
 			["reagents"] = {
 				[72096] = 8,
@@ -10757,6 +11194,7 @@ addon.recipeDB[164] = {
 				575,
 				600,
 			},
+			["itemId"] = 84229,
 			["name"] = "Spiritblade Decimator",
 			["reagents"] = {
 				[72096] = 10,
@@ -10772,6 +11210,7 @@ addon.recipeDB[164] = {
 				575,
 				600,
 			},
+			["itemId"] = 84176,
 			["name"] = "Ghost Shard",
 			["reagents"] = {
 				[72096] = 7,
@@ -10787,6 +11226,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 84208,
 			["name"] = "Masterwork Lightsteel Shield",
 			["reagents"] = {
 				[72095] = 2,
@@ -10802,6 +11242,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 84226,
 			["name"] = "Masterwork Spiritguard Shield",
 			["reagents"] = {
 				[72095] = 2,
@@ -10817,6 +11258,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 84197,
 			["name"] = "Masterwork Forgewire Axe",
 			["reagents"] = {
 				[72093] = 30,
@@ -10833,6 +11275,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 84200,
 			["name"] = "Masterwork Ghost-Forged Blade",
 			["reagents"] = {
 				[72093] = 30,
@@ -10849,6 +11292,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 84217,
 			["name"] = "Masterwork Phantasmal Hammer",
 			["reagents"] = {
 				[72093] = 30,
@@ -10865,6 +11309,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 84218,
 			["name"] = "Masterwork Spiritblade Decimator",
 			["reagents"] = {
 				[72093] = 40,
@@ -10881,6 +11326,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 84198,
 			["name"] = "Masterwork Ghost Shard",
 			["reagents"] = {
 				[72093] = 40,
@@ -10897,6 +11343,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 83787,
 			["name"] = "Ghost Reaver's Breastplate",
 			["reagents"] = {
 				[72104] = 8,
@@ -10912,6 +11359,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 83788,
 			["name"] = "Ghost Reaver's Gauntlets",
 			["reagents"] = {
 				[72104] = 5,
@@ -10927,6 +11375,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 83789,
 			["name"] = "Living Steel Breastplate",
 			["reagents"] = {
 				[72104] = 8,
@@ -10942,6 +11391,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 83790,
 			["name"] = "Living Steel Gauntlets",
 			["reagents"] = {
 				[72104] = 5,
@@ -10957,6 +11407,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 83791,
 			["name"] = "Breastplate of Ancient Steel",
 			["reagents"] = {
 				[72104] = 8,
@@ -10972,6 +11423,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 83792,
 			["name"] = "Gauntlets of Ancient Steel",
 			["reagents"] = {
 				[72104] = 5,
@@ -10987,6 +11439,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 87408,
 			["name"] = "Unyielding Bloodplate",
 			["reagents"] = {
 				[72104] = 8,
@@ -11003,6 +11456,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 87409,
 			["name"] = "Gauntlets of Battle Command",
 			["reagents"] = {
 				[72104] = 6,
@@ -11019,6 +11473,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 87410,
 			["name"] = "Ornate Battleplate of the Master",
 			["reagents"] = {
 				[72104] = 8,
@@ -11035,6 +11490,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 87411,
 			["name"] = "Bloodforged Warfists",
 			["reagents"] = {
 				[72104] = 6,
@@ -11051,6 +11507,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 87412,
 			["name"] = "Chestplate of Limitless Faith",
 			["reagents"] = {
 				[72104] = 8,
@@ -11067,6 +11524,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 87413,
 			["name"] = "Gauntlets of Unbound Devotion",
 			["reagents"] = {
 				[72104] = 6,
@@ -11097,6 +11555,7 @@ addon.recipeDB[164] = {
 				550,
 				565,
 			},
+			["itemId"] = 90531,
 			["name"] = "Ghost Iron Shield Spike",
 			["reagents"] = {
 				[72096] = 12,
@@ -11111,6 +11570,7 @@ addon.recipeDB[164] = {
 				600,
 				605,
 			},
+			["itemId"] = 90532,
 			["name"] = "Living Steel Weapon Chain",
 			["reagents"] = {
 				[72104] = 1,
@@ -11585,6 +12045,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 94552,
 			["name"] = "Lightning Steel Ingot",
 			["reagents"] = {
 				[72096] = 10,
@@ -11599,6 +12060,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 94570,
 			["name"] = "The Planar Edge, Reborn",
 			["reagents"] = {
 				[72104] = 2,
@@ -11615,6 +12077,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 94569,
 			["name"] = "Lunar Crescent, Reborn",
 			["reagents"] = {
 				[72104] = 3,
@@ -11699,6 +12162,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 94568,
 			["name"] = "Drakefist Hammer, Reborn",
 			["reagents"] = {
 				[72104] = 2,
@@ -11715,6 +12179,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 94567,
 			["name"] = "Thunder, Reborn",
 			["reagents"] = {
 				[72104] = 3,
@@ -11799,6 +12264,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 94572,
 			["name"] = "Fireguard, Reborn",
 			["reagents"] = {
 				[72104] = 2,
@@ -11815,6 +12281,7 @@ addon.recipeDB[164] = {
 				605,
 				615,
 			},
+			["itemId"] = 94571,
 			["name"] = "Lionheart Blade, Reborn",
 			["reagents"] = {
 				[72104] = 3,
@@ -13867,6 +14334,7 @@ addon.recipeDB[164] = {
 				515,
 				525,
 			},
+			["itemId"] = 238084,
 			["name"] = "Vicious Ornate Pyrium Belt",
 			["reagents"] = {
 				[52186] = 10,
@@ -13882,6 +14350,7 @@ addon.recipeDB[164] = {
 				520,
 				530,
 			},
+			["itemId"] = 238085,
 			["name"] = "Vicious Ornate Pyrium Boots",
 			["reagents"] = {
 				[52186] = 12,
@@ -13897,6 +14366,7 @@ addon.recipeDB[164] = {
 				505,
 				515,
 			},
+			["itemId"] = 238082,
 			["name"] = "Vicious Ornate Pyrium Bracers",
 			["reagents"] = {
 				[52186] = 8,
@@ -13912,6 +14382,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238089,
 			["name"] = "Vicious Ornate Pyrium Breastplate",
 			["reagents"] = {
 				[52186] = 15,
@@ -13927,6 +14398,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238083,
 			["name"] = "Vicious Ornate Pyrium Gauntlets",
 			["reagents"] = {
 				[52186] = 10,
@@ -13942,6 +14414,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238088,
 			["name"] = "Vicious Ornate Pyrium Helm",
 			["reagents"] = {
 				[52186] = 15,
@@ -13957,6 +14430,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238087,
 			["name"] = "Vicious Ornate Pyrium Legguards",
 			["reagents"] = {
 				[52186] = 15,
@@ -13972,6 +14446,7 @@ addon.recipeDB[164] = {
 				515,
 				525,
 			},
+			["itemId"] = 238086,
 			["name"] = "Vicious Ornate Pyrium Shoulders",
 			["reagents"] = {
 				[52186] = 12,
@@ -13987,6 +14462,7 @@ addon.recipeDB[164] = {
 				515,
 				525,
 			},
+			["itemId"] = 238076,
 			["name"] = "Vicious Pyrium Belt",
 			["reagents"] = {
 				[52186] = 10,
@@ -14002,6 +14478,7 @@ addon.recipeDB[164] = {
 				520,
 				530,
 			},
+			["itemId"] = 238077,
 			["name"] = "Vicious Pyrium Boots",
 			["reagents"] = {
 				[52186] = 12,
@@ -14017,6 +14494,7 @@ addon.recipeDB[164] = {
 				505,
 				515,
 			},
+			["itemId"] = 238074,
 			["name"] = "Vicious Pyrium Bracers",
 			["reagents"] = {
 				[52186] = 8,
@@ -14032,6 +14510,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238081,
 			["name"] = "Vicious Pyrium Breastplate",
 			["reagents"] = {
 				[52186] = 15,
@@ -14047,6 +14526,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238075,
 			["name"] = "Vicious Pyrium Gauntlets",
 			["reagents"] = {
 				[52186] = 10,
@@ -14062,6 +14542,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238080,
 			["name"] = "Vicious Pyrium Helm",
 			["reagents"] = {
 				[52186] = 15,
@@ -14077,6 +14558,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238079,
 			["name"] = "Vicious Pyrium Legguards",
 			["reagents"] = {
 				[52186] = 15,
@@ -14092,6 +14574,7 @@ addon.recipeDB[164] = {
 				515,
 				525,
 			},
+			["itemId"] = 238078,
 			["name"] = "Vicious Pyrium Shoulders",
 			["reagents"] = {
 				[52186] = 12,
@@ -14107,6 +14590,7 @@ addon.recipeDB[164] = {
 				505,
 				515,
 			},
+			["itemId"] = 238129,
 			["name"] = "Bloodied Pyrium Bracers",
 			["reagents"] = {
 				[52186] = 8,
@@ -14122,6 +14606,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238130,
 			["name"] = "Bloodied Pyrium Gauntlets",
 			["reagents"] = {
 				[52186] = 10,
@@ -14137,6 +14622,7 @@ addon.recipeDB[164] = {
 				515,
 				525,
 			},
+			["itemId"] = 238131,
 			["name"] = "Bloodied Pyrium Belt",
 			["reagents"] = {
 				[52186] = 10,
@@ -14152,6 +14638,7 @@ addon.recipeDB[164] = {
 				520,
 				530,
 			},
+			["itemId"] = 238132,
 			["name"] = "Bloodied Pyrium Boots",
 			["reagents"] = {
 				[52186] = 12,
@@ -14167,6 +14654,7 @@ addon.recipeDB[164] = {
 				515,
 				525,
 			},
+			["itemId"] = 238133,
 			["name"] = "Bloodied Pyrium Shoulders",
 			["reagents"] = {
 				[52186] = 12,
@@ -14182,6 +14670,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238134,
 			["name"] = "Bloodied Pyrium Legguards",
 			["reagents"] = {
 				[52186] = 15,
@@ -14197,6 +14686,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238135,
 			["name"] = "Bloodied Pyrium Helm",
 			["reagents"] = {
 				[52186] = 15,
@@ -14212,6 +14702,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238136,
 			["name"] = "Bloodied Pyrium Breastplate",
 			["reagents"] = {
 				[52186] = 15,
@@ -14227,6 +14718,7 @@ addon.recipeDB[164] = {
 				505,
 				515,
 			},
+			["itemId"] = 238137,
 			["name"] = "Ornate Pyrium Bracers",
 			["reagents"] = {
 				[52186] = 8,
@@ -14242,6 +14734,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238138,
 			["name"] = "Ornate Pyrium Gauntlets",
 			["reagents"] = {
 				[52186] = 10,
@@ -14257,6 +14750,7 @@ addon.recipeDB[164] = {
 				515,
 				525,
 			},
+			["itemId"] = 238139,
 			["name"] = "Ornate Pyrium Belt",
 			["reagents"] = {
 				[52186] = 10,
@@ -14272,6 +14766,7 @@ addon.recipeDB[164] = {
 				520,
 				530,
 			},
+			["itemId"] = 238140,
 			["name"] = "Ornate Pyrium Boots",
 			["reagents"] = {
 				[52186] = 12,
@@ -14287,6 +14782,7 @@ addon.recipeDB[164] = {
 				515,
 				525,
 			},
+			["itemId"] = 238141,
 			["name"] = "Ornate Pyrium Shoulders",
 			["reagents"] = {
 				[52186] = 12,
@@ -14302,6 +14798,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238142,
 			["name"] = "Ornate Pyrium Legguards",
 			["reagents"] = {
 				[52186] = 15,
@@ -14317,6 +14814,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238143,
 			["name"] = "Ornate Pyrium Helm",
 			["reagents"] = {
 				[52186] = 15,
@@ -14332,6 +14830,7 @@ addon.recipeDB[164] = {
 				525,
 				535,
 			},
+			["itemId"] = 238144,
 			["name"] = "Ornate Pyrium Breastplate",
 			["reagents"] = {
 				[52186] = 15,
@@ -14347,6 +14846,7 @@ addon.recipeDB[164] = {
 				285,
 				305,
 			},
+			["itemId"] = 238322,
 			["name"] = "Scarlet Soldier's Helmet",
 			["reagents"] = {
 				[12359] = 24,
@@ -14363,6 +14863,7 @@ addon.recipeDB[164] = {
 				285,
 				305,
 			},
+			["itemId"] = 238323,
 			["name"] = "Scarlet Soldier's Spaulders",
 			["reagents"] = {
 				[12359] = 20,
@@ -14378,6 +14879,7 @@ addon.recipeDB[164] = {
 				285,
 				305,
 			},
+			["itemId"] = 238324,
 			["name"] = "Scarlet Soldier's Chestplate",
 			["reagents"] = {
 				[12359] = 24,
@@ -14394,6 +14896,7 @@ addon.recipeDB[164] = {
 				260,
 				305,
 			},
+			["itemId"] = 238325,
 			["name"] = "Scarlet Soldier's Protectors",
 			["reagents"] = {
 				[12359] = 16,
@@ -14408,6 +14911,7 @@ addon.recipeDB[164] = {
 				270,
 				305,
 			},
+			["itemId"] = 238326,
 			["name"] = "Scarlet Soldier's Grips",
 			["reagents"] = {
 				[12359] = 20,
@@ -14423,6 +14927,7 @@ addon.recipeDB[164] = {
 				260,
 				305,
 			},
+			["itemId"] = 238327,
 			["name"] = "Scarlet Soldier's Waistguard",
 			["reagents"] = {
 				[12359] = 20,
@@ -14438,6 +14943,7 @@ addon.recipeDB[164] = {
 				280,
 				305,
 			},
+			["itemId"] = 238328,
 			["name"] = "Scarlet Soldier's Legplates",
 			["reagents"] = {
 				[12359] = 20,
@@ -14454,6 +14960,7 @@ addon.recipeDB[164] = {
 				270,
 				305,
 			},
+			["itemId"] = 238329,
 			["name"] = "Scarlet Soldier's Stompers",
 			["reagents"] = {
 				[12359] = 20,

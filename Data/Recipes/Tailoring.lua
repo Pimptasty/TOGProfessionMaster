@@ -856,42 +856,6 @@ addon.recipeDB[197] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 3873,
 		},
-		[3908] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Tailoring",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3908,
-		},
-		[3909] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Tailoring",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3909,
-		},
-		[3910] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Tailoring",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3910,
-		},
 		[3914] = {
 			["difficulty"] = {
 				1,
@@ -1241,18 +1205,6 @@ addon.recipeDB[197] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 8467,
-		},
-		[8468] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 8468,
 		},
 		[8483] = {
 			["difficulty"] = {
@@ -2415,18 +2367,6 @@ addon.recipeDB[197] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 12093,
-		},
-		[12180] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Tailoring",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 12180,
 		},
 		[18401] = {
 			["difficulty"] = {
@@ -4354,54 +4294,6 @@ addon.recipeDB[197] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 26784,
 		},
-		[26790] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Tailoring",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 26790,
-		},
-		[26797] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Spellfire Tailoring",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 26797,
-		},
-		[26798] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Mooncloth Tailoring",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 26798,
-		},
-		[26801] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Shadoweave Tailoring",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 26801,
-		},
 		[27658] = {
 			["difficulty"] = {
 				1,
@@ -5668,18 +5560,6 @@ addon.recipeDB[197] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 50647,
-		},
-		[51309] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Tailoring",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 51309,
 		},
 		[55642] = {
 			["difficulty"] = {
@@ -7429,18 +7309,6 @@ addon.recipeDB[197] = {
 			["requiredSkill"] = 500,
 			["teaches"] = 75155,
 		},
-		[75156] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Tailoring",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 75156,
-		},
 		[75172] = {
 			["difficulty"] = {
 				500,
@@ -8424,30 +8292,6 @@ addon.recipeDB[197] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 102171,
-		},
-		[104115] = {
-			["difficulty"] = {
-				1,
-				300,
-				600,
-				600,
-			},
-			["name"] = "Release Fire Spirit",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 104115,
-		},
-		[110426] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Tailoring",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 110426,
 		},
 		[110955] = {
 			["difficulty"] = {

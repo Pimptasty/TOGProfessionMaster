@@ -1,30 +1,6 @@
 local _, addon = ...
 
 addon.recipeDB[129] = {
-		[3273] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "First Aid",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3273,
-		},
-		[3274] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "First Aid",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3274,
-		},
 		[3275] = {
 			["difficulty"] = {
 				1,
@@ -80,18 +56,6 @@ addon.recipeDB[129] = {
 			},
 			["requiredSkill"] = 115,
 			["teaches"] = 3278,
-		},
-		[7924] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "First Aid",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 7924,
 		},
 		[7928] = {
 			["difficulty"] = {
@@ -180,18 +144,6 @@ addon.recipeDB[129] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 10841,
 		},
-		[10846] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "First Aid",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 10846,
-		},
 		[18629] = {
 			["difficulty"] = {
 				1,
@@ -234,18 +186,6 @@ addon.recipeDB[129] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 23787,
-		},
-		[27028] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "First Aid",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 27028,
 		},
 		[27032] = {
 			["difficulty"] = {
@@ -292,18 +232,6 @@ addon.recipeDB[129] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 30021,
-		},
-		[45542] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "First Aid",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 45542,
 		},
 		[45545] = {
 			["difficulty"] = {
@@ -376,18 +304,6 @@ addon.recipeDB[129] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 74558,
 		},
-		[74559] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "First Aid",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 74559,
-		},
 		[88893] = {
 			["difficulty"] = {
 				1,
@@ -443,18 +359,6 @@ addon.recipeDB[129] = {
 			},
 			["requiredSkill"] = 600,
 			["teaches"] = 102699,
-		},
-		[110406] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "First Aid",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 110406,
 		},
 		[470349] = {
 			["difficulty"] = {

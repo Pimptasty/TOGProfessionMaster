@@ -239,6 +239,7 @@ def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
     they're for the importer's downstream Source-DB pass, not the runtime
     recipe DB."""
     cleaned = {}
+    n_skipped_non_recipe = 0
     for spell_id, entry in recipes.items():
         # itemId = first recipe-scroll item that teaches this spell, or nil
         # for trainer-only recipes (no scroll exists in the game). Used by
@@ -247,17 +248,37 @@ def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
         # tooltip alone doesn't render reagents the way the recipe-scroll
         # item tooltip does). When nil, the GUI falls back to spell-based
         # display (GetSpellInfo / GameTooltip:SetSpellByID).
-        items = entry.get("items") or []
+        items    = entry.get("items") or []
+        reagents = entry.get("reagents") or {}
+
+        # SkillLineAbility includes EVERY spell in a profession's skill line,
+        # which is wider than just craftable recipes — it also covers
+        # skill-rank-up spells (Apprentice/Journeyman/Expert Alchemy, etc.),
+        # specialisation spells, gathering toggles like "Find Minerals", and
+        # other utility spells the trainer hands out. Those aren't recipes
+        # the user can "be missing" in any meaningful way. Filter them out
+        # by the only signal that cleanly separates a craftable recipe from
+        # everything else in SkillLineAbility: a real recipe either has at
+        # least one reagent (every craft needs materials) OR is taught by
+        # a recipe-scroll item (Pattern: / Plans: / Recipe: / Formula: /
+        # Design: / Schematic:). Anything missing BOTH is not a craftable.
+        if not reagents and not items:
+            n_skipped_non_recipe += 1
+            continue
+
         out = {
             "name":          entry["name"],
             "difficulty":    entry["difficulty"],
             "teaches":       entry["teaches"],
             "requiredSkill": entry["requiredSkill"],
-            "reagents":      entry["reagents"],
+            "reagents":      reagents,
         }
         if items:
             out["itemId"] = items[0]
         cleaned[spell_id] = out
+    if n_skipped_non_recipe:
+        print(f"  {prof_id}: skipped {n_skipped_non_recipe} non-recipe spells "
+              f"(rank-ups / specs / utility)", file=sys.stderr)
     body = lua_value(cleaned, 1)
     target = RECIPES_DIR / f"{filename}.lua"
     target.parent.mkdir(parents=True, exist_ok=True)

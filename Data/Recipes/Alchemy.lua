@@ -1,18 +1,6 @@
 local _, addon = ...
 
 addon.recipeDB[171] = {
-		[2259] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Alchemy",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 2259,
-		},
 		[2329] = {
 			["difficulty"] = {
 				1,
@@ -159,18 +147,6 @@ addon.recipeDB[171] = {
 			},
 			["requiredSkill"] = 80,
 			["teaches"] = 2337,
-		},
-		[3101] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Alchemy",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3101,
 		},
 		[3170] = {
 			["difficulty"] = {
@@ -468,18 +444,6 @@ addon.recipeDB[171] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 3454,
-		},
-		[3464] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Alchemy",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3464,
 		},
 		[4508] = {
 			["difficulty"] = {
@@ -1195,18 +1159,6 @@ addon.recipeDB[171] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 11480,
-		},
-		[11611] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Alchemy",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 11611,
 		},
 		[12609] = {
 			["difficulty"] = {
@@ -2667,54 +2619,6 @@ addon.recipeDB[171] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 28591,
 		},
-		[28596] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Alchemy",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 28596,
-		},
-		[28672] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Transmutation Master",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 28672,
-		},
-		[28675] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Potion Master",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 28675,
-		},
-		[28677] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Elixir Master",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 28677,
-		},
 		[29688] = {
 			["difficulty"] = {
 				1,
@@ -3166,30 +3070,6 @@ addon.recipeDB[171] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 47050,
-		},
-		[51304] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Alchemy",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 51304,
-		},
-		[53042] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Mixology",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 53042,
 		},
 		[53771] = {
 			["difficulty"] = {
@@ -4870,18 +4750,6 @@ addon.recipeDB[171] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 80726,
 		},
-		[80731] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Alchemy",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 80731,
-		},
 		[92643] = {
 			["difficulty"] = {
 				1,
@@ -5097,18 +4965,6 @@ addon.recipeDB[171] = {
 			["reagents"] = {},
 			["requiredSkill"] = 1,
 			["teaches"] = 101828,
-		},
-		[105206] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Alchemy",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 105206,
 		},
 		[110955] = {
 			["difficulty"] = {

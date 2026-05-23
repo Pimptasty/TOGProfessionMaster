@@ -1,18 +1,6 @@
 local _, addon = ...
 
 addon.recipeDB[185] = {
-		[818] = {
-			["difficulty"] = {
-				1,
-				13,
-				25,
-				75,
-			},
-			["name"] = "Cooking Fire",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 818,
-		},
 		[2538] = {
 			["difficulty"] = {
 				1,
@@ -188,18 +176,6 @@ addon.recipeDB[185] = {
 			["requiredSkill"] = 135,
 			["teaches"] = 2549,
 		},
-		[2550] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Cooking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 2550,
-		},
 		[2795] = {
 			["difficulty"] = {
 				40,
@@ -214,18 +190,6 @@ addon.recipeDB[185] = {
 			},
 			["requiredSkill"] = 40,
 			["teaches"] = 2795,
-		},
-		[3102] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Cooking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3102,
 		},
 		[3370] = {
 			["difficulty"] = {
@@ -376,18 +340,6 @@ addon.recipeDB[185] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 3400,
-		},
-		[3413] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Cooking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3413,
 		},
 		[4094] = {
 			["difficulty"] = {
@@ -1085,18 +1037,6 @@ addon.recipeDB[185] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 18247,
 		},
-		[18260] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Cooking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 18260,
-		},
 		[20626] = {
 			["difficulty"] = {
 				1,
@@ -1565,18 +1505,6 @@ addon.recipeDB[185] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 33296,
-		},
-		[33359] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Cooking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 33359,
 		},
 		[36210] = {
 			["difficulty"] = {
@@ -2181,18 +2109,6 @@ addon.recipeDB[185] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 46688,
-		},
-		[51296] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Cooking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 51296,
 		},
 		[53056] = {
 			["difficulty"] = {
@@ -3243,18 +3159,6 @@ addon.recipeDB[185] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 88047,
 		},
-		[88053] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Cooking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 88053,
-		},
 		[93741] = {
 			["difficulty"] = {
 				1,
@@ -3311,18 +3215,6 @@ addon.recipeDB[185] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 104297,
-		},
-		[104381] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Cooking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 104381,
 		},
 		[105190] = {
 			["difficulty"] = {

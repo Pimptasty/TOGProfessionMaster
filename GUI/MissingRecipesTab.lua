@@ -693,12 +693,30 @@ function MissingRecipesTab:BuildPool(parent)
         f:SetScript("OnEnter", function()
             if not (f._itemId or f._spellId) then return end
             addon.Tooltip.Owner(f)
-            if f._itemId then
+            -- Decide between item tooltip and spell tooltip. Item is
+            -- preferred (shows reagents + profession requirement) but
+            -- ONLY when the item is already in the WoW client's cache.
+            -- Calling GameTooltip:SetItemByID on a cache-cold item ID
+            -- silently sets an empty tooltip on our side, but LoonBestInSlot
+            -- (and other addons that hook SetItemByID via AceHook) then
+            -- read back nil from GameTooltip:GetItem() and crash trying to
+            -- ContinueOnItemLoad(nil). GetItemInfo doubles as the
+            -- cache-presence check and the async cache load trigger: nil
+            -- return means not cached, but the call queues the fetch so
+            -- the NEXT mouseover succeeds.
+            local useItem = false
+            if f._itemId and GetItemInfo then
+                local cachedName = GetItemInfo(f._itemId)
+                useItem = cachedName ~= nil
+            end
+            if useItem then
                 GameTooltip:SetItemByID(f._itemId)
-            elseif GameTooltip.SetSpellByID then
+            elseif f._spellId and GameTooltip.SetSpellByID then
                 GameTooltip:SetSpellByID(f._spellId)
             else
-                local name = GetSpellInfo and GetSpellInfo(f._spellId) or ("spell:" .. tostring(f._spellId))
+                local name = (f._spellId and GetSpellInfo and GetSpellInfo(f._spellId))
+                             or (f._itemId and ("Item #" .. f._itemId))
+                             or "?"
                 GameTooltip:SetText(name, 1, 1, 1, 1, true)
             end
             GameTooltip:AddLine(" ")

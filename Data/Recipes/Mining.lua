@@ -1,90 +1,6 @@
 local _, addon = ...
 
 addon.recipeDB[186] = {
-		[2575] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Mining",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 2575,
-		},
-		[2576] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Mining",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 2576,
-		},
-		[2577] = {
-			["difficulty"] = {
-				1,
-				50,
-				100,
-				125,
-			},
-			["name"] = "Mining",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 2577,
-		},
-		[2578] = {
-			["difficulty"] = {
-				1,
-				63,
-				125,
-				150,
-			},
-			["name"] = "Mining",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 2578,
-		},
-		[2579] = {
-			["difficulty"] = {
-				1,
-				75,
-				150,
-				175,
-			},
-			["name"] = "Mining",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 2579,
-		},
-		[2580] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Find Minerals",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 2580,
-		},
-		[2656] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Smelting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 2656,
-		},
 		[2657] = {
 			["difficulty"] = {
 				1,
@@ -170,18 +86,6 @@ addon.recipeDB[186] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 3308,
 		},
-		[3564] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Mining",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3564,
-		},
 		[3569] = {
 			["difficulty"] = {
 				1,
@@ -196,18 +100,6 @@ addon.recipeDB[186] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 3569,
-		},
-		[8388] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Find Minerals",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 8388,
 		},
 		[10097] = {
 			["difficulty"] = {
@@ -236,18 +128,6 @@ addon.recipeDB[186] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 10098,
-		},
-		[10248] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Mining",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 10248,
 		},
 		[14891] = {
 			["difficulty"] = {
@@ -294,18 +174,6 @@ addon.recipeDB[186] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 22967,
-		},
-		[29354] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Mining",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 29354,
 		},
 		[29356] = {
 			["difficulty"] = {
@@ -392,18 +260,6 @@ addon.recipeDB[186] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 29686,
 		},
-		[32606] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Mining",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 32606,
-		},
 		[35750] = {
 			["difficulty"] = {
 				1,
@@ -476,90 +332,6 @@ addon.recipeDB[186] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 49258,
 		},
-		[50310] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Mining",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 50310,
-		},
-		[53040] = {
-			["difficulty"] = {
-				450,
-				450,
-				0,
-				0,
-			},
-			["name"] = "Toughness",
-			["reagents"] = {},
-			["requiredSkill"] = 450,
-			["teaches"] = 53040,
-		},
-		[53120] = {
-			["difficulty"] = {
-				75,
-				75,
-				0,
-				0,
-			},
-			["name"] = "Toughness",
-			["reagents"] = {},
-			["requiredSkill"] = 75,
-			["teaches"] = 53120,
-		},
-		[53121] = {
-			["difficulty"] = {
-				150,
-				150,
-				0,
-				0,
-			},
-			["name"] = "Toughness",
-			["reagents"] = {},
-			["requiredSkill"] = 150,
-			["teaches"] = 53121,
-		},
-		[53122] = {
-			["difficulty"] = {
-				225,
-				225,
-				0,
-				0,
-			},
-			["name"] = "Toughness",
-			["reagents"] = {},
-			["requiredSkill"] = 225,
-			["teaches"] = 53122,
-		},
-		[53123] = {
-			["difficulty"] = {
-				300,
-				300,
-				0,
-				0,
-			},
-			["name"] = "Toughness",
-			["reagents"] = {},
-			["requiredSkill"] = 300,
-			["teaches"] = 53123,
-		},
-		[53124] = {
-			["difficulty"] = {
-				375,
-				375,
-				0,
-				0,
-			},
-			["name"] = "Toughness",
-			["reagents"] = {},
-			["requiredSkill"] = 375,
-			["teaches"] = 53124,
-		},
 		[55208] = {
 			["difficulty"] = {
 				1,
@@ -605,30 +377,6 @@ addon.recipeDB[186] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 70524,
-		},
-		[74496] = {
-			["difficulty"] = {
-				525,
-				525,
-				0,
-				0,
-			},
-			["name"] = "Toughness",
-			["reagents"] = {},
-			["requiredSkill"] = 525,
-			["teaches"] = 74496,
-		},
-		[74517] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Mining",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 74517,
 		},
 		[74529] = {
 			["difficulty"] = {
@@ -686,30 +434,6 @@ addon.recipeDB[186] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 84038,
-		},
-		[102161] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Mining",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 102161,
-		},
-		[102163] = {
-			["difficulty"] = {
-				600,
-				600,
-				0,
-				0,
-			},
-			["name"] = "Toughness",
-			["reagents"] = {},
-			["requiredSkill"] = 600,
-			["teaches"] = 102163,
 		},
 		[102165] = {
 			["difficulty"] = {

@@ -1,78 +1,6 @@
 local _, addon = ...
 
 addon.recipeDB[773] = {
-		[45357] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Inscription",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 45357,
-		},
-		[45358] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Inscription",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 45358,
-		},
-		[45359] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Inscription",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 45359,
-		},
-		[45360] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Inscription",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 45360,
-		},
-		[45361] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Inscription",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 45361,
-		},
-		[45363] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Inscription",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 45363,
-		},
 		[45382] = {
 			["difficulty"] = {
 				1,
@@ -477,30 +405,6 @@ addon.recipeDB[773] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 50620,
-		},
-		[51005] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Milling",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 51005,
-		},
-		[52175] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Decipher",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 52175,
 		},
 		[52738] = {
 			["difficulty"] = {
@@ -6781,18 +6685,6 @@ addon.recipeDB[773] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 86005,
 		},
-		[86008] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Inscription",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 86008,
-		},
 		[86375] = {
 			["difficulty"] = {
 				1,
@@ -7578,18 +7470,6 @@ addon.recipeDB[773] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 107907,
-		},
-		[110417] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Inscription",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 110417,
 		},
 		[110955] = {
 			["difficulty"] = {
@@ -9749,42 +9629,6 @@ addon.recipeDB[773] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 148490,
-		},
-		[405005] = {
-			["difficulty"] = {
-				1,
-				195,
-				390,
-				405,
-			},
-			["name"] = "",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 405005,
-		},
-		[413897] = {
-			["difficulty"] = {
-				1,
-				195,
-				390,
-				405,
-			},
-			["name"] = "",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 413897,
-		},
-		[414814] = {
-			["difficulty"] = {
-				1,
-				195,
-				390,
-				405,
-			},
-			["name"] = "",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 414814,
 		},
 		[1216290] = {
 			["difficulty"] = {

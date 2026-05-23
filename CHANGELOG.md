@@ -1,5 +1,15 @@
 # TOG Profession Master Changelog
 
+## [v0.5.2] (2026-05-23) - Skill-rank-up spells in the Missing list + cache-cold item crash
+
+### Bug Fixes
+
+- **Skill-rank-up + utility spells appearing in the Missing Recipes list** ("Master Alchemy", "Find Minerals", "Apprentice Jewelcrafting", etc. surfacing as missing "recipes") — `SkillLineAbility` in wago.tools is wider than just craftable recipes: it also includes the rank-up spells trainers hand out at each tier (Apprentice / Journeyman / Expert / Artisan / Master / Grand Master / Illustrious), profession specialisation spells, and utility toggles like "Find Minerals" / "Find Herbs" / "Find Fish". v0.5.0 / v0.5.1 emitted every SLA row, so these non-recipes leaked into the list. Filter in [tools/build_authoritative_data.py](tools/build_authoritative_data.py)'s `emit_recipe_file`: skip any spell where `reagents` is empty AND no `items` (recipe-scroll items) exist. Every real craft has at least one reagent (you need materials); every scroll-taught recipe has at least one teaching item. Anything missing BOTH is by definition not a craftable recipe. Re-ran Phase A; 149 non-recipe spells filtered across all professions (Mining -23, Engineering -14, Tailoring -13, Inscription -13, Blacksmithing -13, Cooking -9, etc.). New recipe total: 5,865 (was 6,014).
+
+- **`Blizzard_ObjectAPI/Classic/Item.lua:320: table index is nil` crash storm STILL firing at higher spell IDs (e.g. 27667, 33209, 35752+) even after v0.5.1's nil-itemId fix** — different root cause this time: we now correctly pass a real, valid item ID to `GameTooltip:SetItemByID`, but when the item is not yet in the WoW client's item cache, `LoonBestInSlot`'s post-hook (AceHook-3.0 wrapper around SetItemByID) reads `GameTooltip:GetItem()` and gets back nil — the cache hasn't populated yet — then crashes calling `ContinueOnItemLoad(nil)`. Symptom: `Tooltip: fallback Show-hook fired for itemID = N` appears in chat (proving the item id IS valid) but BugSack still shows 289x Item.lua errors from LoonBestInSlot's stack. Fix in [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua) `OnEnter` handler: use `GetItemInfo(itemId)` as both a cache-presence test and an async-load trigger BEFORE deciding to call `SetItemByID`. When cached → call `SetItemByID` as before. When not cached → fall back to spell tooltip (`SetSpellByID`) AND the GetItemInfo call queues the item for fetch, so the next mouseover on the same row succeeds. Effectively the row "warms up" on first hover then renders the proper item tooltip on subsequent hovers. No more SetItemByID on cache-cold items, no more crash in LoonBestInSlot.
+
+---
+
 ## [v0.5.1] (2026-05-23) - Lua error storm in Missing Recipes from passing spell ids to item-id APIs
 
 ### Bug Fixes

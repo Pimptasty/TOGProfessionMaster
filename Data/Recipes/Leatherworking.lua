@@ -1,18 +1,6 @@
 local _, addon = ...
 
 addon.recipeDB[165] = {
-		[2108] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Leatherworking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 2108,
-		},
 		[2149] = {
 			["difficulty"] = {
 				1,
@@ -260,18 +248,6 @@ addon.recipeDB[165] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 2881,
-		},
-		[3104] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Leatherworking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3104,
 		},
 		[3753] = {
 			["difficulty"] = {
@@ -675,18 +651,6 @@ addon.recipeDB[165] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 3780,
-		},
-		[3811] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Leatherworking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3811,
 		},
 		[3816] = {
 			["difficulty"] = {
@@ -2101,54 +2065,6 @@ addon.recipeDB[165] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 10650,
-		},
-		[10656] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Dragonscale Leatherworking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 10656,
-		},
-		[10658] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Elemental Leatherworking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 10658,
-		},
-		[10660] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Tribal Leatherworking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 10660,
-		},
-		[10662] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Leatherworking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 10662,
 		},
 		[14930] = {
 			["difficulty"] = {
@@ -4699,18 +4615,6 @@ addon.recipeDB[165] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 32503,
 		},
-		[32549] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Leatherworking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 32549,
-		},
 		[35520] = {
 			["difficulty"] = {
 				1,
@@ -6956,18 +6860,6 @@ addon.recipeDB[165] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 50971,
-		},
-		[51302] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Leatherworking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 51302,
 		},
 		[51568] = {
 			["difficulty"] = {
@@ -10282,18 +10174,6 @@ addon.recipeDB[165] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 78490,
 		},
-		[81199] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Leatherworking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 81199,
-		},
 		[84950] = {
 			["difficulty"] = {
 				1,
@@ -10802,18 +10682,6 @@ addon.recipeDB[165] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 102366,
-		},
-		[110423] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Leatherworking",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 110423,
 		},
 		[110955] = {
 			["difficulty"] = {

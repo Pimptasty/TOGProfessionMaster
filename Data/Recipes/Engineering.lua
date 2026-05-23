@@ -815,42 +815,6 @@ addon.recipeDB[202] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 3979,
 		},
-		[4036] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Engineering",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 4036,
-		},
-		[4037] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Engineering",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 4037,
-		},
-		[4038] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Engineering",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 4038,
-		},
 		[4073] = {
 			["difficulty"] = {
 				1,
@@ -1403,18 +1367,6 @@ addon.recipeDB[202] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 12624,
 		},
-		[12656] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Engineering",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 12656,
-		},
 		[12715] = {
 			["difficulty"] = {
 				1,
@@ -1820,18 +1772,6 @@ addon.recipeDB[202] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 12908,
 		},
-		[13166] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Battle Chicken",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 13166,
-		},
 		[13240] = {
 			["difficulty"] = {
 				1,
@@ -1847,18 +1787,6 @@ addon.recipeDB[202] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 13240,
-		},
-		[13258] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Summon Goblin Bomb",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 13258,
 		},
 		[15255] = {
 			["difficulty"] = {
@@ -2237,30 +2165,6 @@ addon.recipeDB[202] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 19833,
-		},
-		[20219] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Gnomish Engineer",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 20219,
-		},
-		[20222] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Goblin Engineer",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 20222,
 		},
 		[21940] = {
 			["difficulty"] = {
@@ -3417,18 +3321,6 @@ addon.recipeDB[202] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 30349,
 		},
-		[30350] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Engineering",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 30350,
-		},
 		[30547] = {
 			["difficulty"] = {
 				1,
@@ -4352,30 +4244,6 @@ addon.recipeDB[202] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 46697,
 		},
-		[49383] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Engineering",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 49383,
-		},
-		[51306] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Engineering",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 51306,
-		},
 		[53281] = {
 			["difficulty"] = {
 				1,
@@ -4510,18 +4378,6 @@ addon.recipeDB[202] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 55252,
-		},
-		[56273] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Wormhole: Gadgetzan",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 56273,
 		},
 		[56349] = {
 			["difficulty"] = {
@@ -5524,18 +5380,6 @@ addon.recipeDB[202] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 82207,
 		},
-		[82774] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Engineering",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 82774,
-		},
 		[84403] = {
 			["difficulty"] = {
 				1,
@@ -6032,18 +5876,6 @@ addon.recipeDB[202] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 109099,
-		},
-		[110403] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Engineering",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 110403,
 		},
 		[110955] = {
 			["difficulty"] = {

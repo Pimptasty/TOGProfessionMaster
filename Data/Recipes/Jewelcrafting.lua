@@ -1,30 +1,6 @@
 local _, addon = ...
 
 addon.recipeDB[755] = {
-		[25229] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Jewelcrafting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 25229,
-		},
-		[25230] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Jewelcrafting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 25230,
-		},
 		[25255] = {
 			["difficulty"] = {
 				1,
@@ -993,42 +969,6 @@ addon.recipeDB[755] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 26928,
-		},
-		[28894] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Jewelcrafting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 28894,
-		},
-		[28895] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Jewelcrafting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 28895,
-		},
-		[28897] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Jewelcrafting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 28897,
 		},
 		[28903] = {
 			["difficulty"] = {
@@ -2344,18 +2284,6 @@ addon.recipeDB[755] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 31149,
-		},
-		[31252] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Prospecting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 31252,
 		},
 		[32178] = {
 			["difficulty"] = {
@@ -4152,18 +4080,6 @@ addon.recipeDB[755] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 48789,
-		},
-		[51311] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Jewelcrafting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 51311,
 		},
 		[53830] = {
 			["difficulty"] = {
@@ -6579,18 +6495,6 @@ addon.recipeDB[755] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 55407,
 		},
-		[55534] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Gem Perfection",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 55534,
-		},
 		[56049] = {
 			["difficulty"] = {
 				1,
@@ -8583,18 +8487,6 @@ addon.recipeDB[755] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 66586,
 		},
-		[66587] = {
-			["difficulty"] = {
-				1,
-				220,
-				440,
-				465,
-			},
-			["name"] = "",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 66587,
-		},
 		[68253] = {
 			["difficulty"] = {
 				1,
@@ -9305,18 +9197,6 @@ addon.recipeDB[755] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 73281,
-		},
-		[73318] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Jewelcrafting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 73318,
 		},
 		[73335] = {
 			["difficulty"] = {
@@ -14184,18 +14064,6 @@ addon.recipeDB[755] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 107768,
-		},
-		[110420] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Jewelcrafting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 110420,
 		},
 		[110955] = {
 			["difficulty"] = {

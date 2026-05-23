@@ -1,18 +1,6 @@
 local _, addon = ...
 
 addon.recipeDB[164] = {
-		[2018] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Blacksmithing",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 2018,
-		},
 		[2660] = {
 			["difficulty"] = {
 				1,
@@ -331,18 +319,6 @@ addon.recipeDB[164] = {
 			},
 			["requiredSkill"] = 95,
 			["teaches"] = 2742,
-		},
-		[3100] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Blacksmithing",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3100,
 		},
 		[3115] = {
 			["difficulty"] = {
@@ -1072,18 +1048,6 @@ addon.recipeDB[164] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 3515,
 		},
-		[3538] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Blacksmithing",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 3538,
-		},
 		[6517] = {
 			["difficulty"] = {
 				1,
@@ -1312,42 +1276,6 @@ addon.recipeDB[164] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 8880,
-		},
-		[9785] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Blacksmithing",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 9785,
-		},
-		[9787] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Weaponsmith",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 9787,
-		},
-		[9788] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Armorsmith",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 9788,
 		},
 		[9811] = {
 			["difficulty"] = {
@@ -3433,42 +3361,6 @@ addon.recipeDB[164] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 16995,
 		},
-		[17039] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Master Swordsmith",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 17039,
-		},
-		[17040] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Master Hammersmith",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 17040,
-		},
-		[17041] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Master Axesmith",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 17041,
-		},
 		[19666] = {
 			["difficulty"] = {
 				1,
@@ -5336,18 +5228,6 @@ addon.recipeDB[164] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 29729,
 		},
-		[29844] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Blacksmithing",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 29844,
-		},
 		[32284] = {
 			["difficulty"] = {
 				1,
@@ -6566,18 +6446,6 @@ addon.recipeDB[164] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 46144,
-		},
-		[51300] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Blacksmithing",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 51300,
 		},
 		[52567] = {
 			["difficulty"] = {
@@ -9635,18 +9503,6 @@ addon.recipeDB[164] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 76474,
 		},
-		[76666] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Blacksmithing",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 76666,
-		},
 		[92375] = {
 			["difficulty"] = {
 				1,
@@ -10055,18 +9911,6 @@ addon.recipeDB[164] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 101932,
-		},
-		[110396] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Blacksmithing",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 110396,
 		},
 		[110955] = {
 			["difficulty"] = {

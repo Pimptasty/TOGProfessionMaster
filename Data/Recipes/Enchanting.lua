@@ -1,42 +1,6 @@
 local _, addon = ...
 
 addon.recipeDB[333] = {
-		[7411] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Enchanting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 7411,
-		},
-		[7412] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Enchanting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 7412,
-		},
-		[7413] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Enchanting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 7413,
-		},
 		[7418] = {
 			["difficulty"] = {
 				1,
@@ -413,18 +377,6 @@ addon.recipeDB[333] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 7867,
-		},
-		[13262] = {
-			["difficulty"] = {
-				1,
-				10,
-				20,
-				60,
-			},
-			["name"] = "Disenchant",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 13262,
 		},
 		[13378] = {
 			["difficulty"] = {
@@ -1333,18 +1285,6 @@ addon.recipeDB[333] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 13917,
-		},
-		[13920] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Enchanting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 13920,
 		},
 		[13931] = {
 			["difficulty"] = {
@@ -3172,18 +3112,6 @@ addon.recipeDB[333] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 28028,
 		},
-		[28029] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Enchanting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 28029,
-		},
 		[32664] = {
 			["difficulty"] = {
 				1,
@@ -4449,18 +4377,6 @@ addon.recipeDB[333] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 47901,
 		},
-		[51313] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Enchanting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 51313,
-		},
 		[59619] = {
 			["difficulty"] = {
 				1,
@@ -5687,18 +5603,6 @@ addon.recipeDB[333] = {
 			["requiredSkill"] = 1,
 			["teaches"] = 74256,
 		},
-		[74258] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Enchanting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 74258,
-		},
 		[92370] = {
 			["difficulty"] = {
 				1,
@@ -6328,18 +6232,6 @@ addon.recipeDB[333] = {
 			},
 			["requiredSkill"] = 1,
 			["teaches"] = 104698,
-		},
-		[110400] = {
-			["difficulty"] = {
-				1,
-				1,
-				0,
-				0,
-			},
-			["name"] = "Enchanting",
-			["reagents"] = {},
-			["requiredSkill"] = 1,
-			["teaches"] = 110400,
 		},
 		[110955] = {
 			["difficulty"] = {

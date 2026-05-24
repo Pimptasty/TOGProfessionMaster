@@ -1,5 +1,15 @@
 # TOG Profession Master Changelog
 
+## [v0.5.3] (2026-05-23) - Cross-expansion recipe bleed + persistent "(loading)" placeholders
+
+### Bug Fixes
+
+- **Recipes from later expansions appearing in the Missing list on earlier-expansion clients** (e.g. MoP First Aid spell 102697 showing for a TBC Anniversary player who can never learn it; Wrath/Cata Jewelcrafting designs on TBC) — v0.5.0's recipe database is a UNION across every expansion's data shipped as a single `Data/Recipes/*.lua` set, loaded by every TOC variant. So a TBC client loads MoP recipes too even though they're unreachable. Fix in [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua) `BuildMissingList`: hide any recipe whose `requiredSkill` exceeds the current client's expansion cap. Caps: Vanilla 300, TBC 375, Wrath 450, Cata 525, MoP 600. Detected via the existing `addon.isVanilla` / `isTBC` / etc. flags from [Compat.lua](Compat.lua); no Data file changes needed. A future-expansion recipe shows up automatically once the player is on a later TOC variant that supports its required skill. Note: this is an expansion-level filter only — TBC content from later PHASES (e.g. Shattered Sun Offensive recipes during Phase 2 of TBC Anniversary) still surfaces because we don't have per-recipe phase metadata; that's a separate v0.5.4+ problem requiring phase tagging.
+
+- **Rows persistently showing `#22430 (loading…)` instead of the recipe name** — `GetItemInfo` returns nil when an item is not yet in the WoW client cache (triggers an async load) AND returns nil indefinitely if the item id genuinely doesn't exist on the current client (e.g. some Vanilla recipe scrolls were removed from the game over the years even though wago.tools still has the spell). The previous fallback was a static "(loading…)" placeholder that never resolved in the latter case. Fix in [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua) FillList: when the item name can't be resolved, fall back to the SPELL name (`GetSpellInfo(entry.spellId)`) and the spell icon (`GetSpellTexture`). The row now shows e.g. "Brown Linen Vest" via the spell name instead of "#22589 (loading…)" via the missing item. When the item later loads from the cache, `GET_ITEM_INFO_RECEIVED` triggers a refresh and we render the proper item display.
+
+---
+
 ## [v0.5.2] (2026-05-23) - Skill-rank-up spells in the Missing list + cache-cold item crash
 
 ### Bug Fixes

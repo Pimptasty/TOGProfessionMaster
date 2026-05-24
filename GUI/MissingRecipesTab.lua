@@ -255,9 +255,35 @@ local function BuildMissingList(charKey, profId, includeTrainer)
 
     local out = {}
 
+    -- Per-client max profession skill. Our shipped recipeDB is a UNION across
+    -- every expansion's data (one Data/Recipes/*.lua file is loaded by every
+    -- TOC variant), so a TBC Anniversary player would otherwise see MoP-
+    -- introduced recipes that require ~600 skill — recipes they can never
+    -- learn on their client. Filter on requiredSkill > this cap so each
+    -- client only surfaces recipes within reach of its own progression.
+    --
+    -- Caps are identical across the crafting + secondary professions per
+    -- expansion (Vanilla 300, TBC 375, Wrath 450, Cata 525, MoP 600). When
+    -- the client's expansion can't be identified, default to MoP's cap (no
+    -- filtering) so we degrade to showing everything rather than hiding
+    -- recipes we shouldn't.
+    local clientMaxSkill
+    if     addon.isVanilla then clientMaxSkill = 300
+    elseif addon.isTBC     then clientMaxSkill = 375
+    elseif addon.isWrath   then clientMaxSkill = 450
+    elseif addon.isCata    then clientMaxSkill = 525
+    elseif addon.isMoP     then clientMaxSkill = 600
+    else                        clientMaxSkill = 600
+    end
+
     for spellId, data in pairs(recipes) do
         local skip = false
-        if data.specialization and data.specialization ~= playerSpec then
+        if data.requiredSkill and data.requiredSkill > clientMaxSkill then
+            -- Recipe is from a future expansion the current client can't
+            -- support. Hide it; the player will see it once they're on a
+            -- later TOC variant.
+            skip = true
+        elseif data.specialization and data.specialization ~= playerSpec then
             skip = true
         elseif data.season then
             skip = true
@@ -790,10 +816,29 @@ function MissingRecipesTab:UpdateVirtualRows()
                 -- load; the GET_ITEM_INFO_RECEIVED handler debounces a
                 -- RefreshList so placeholders fill in once items finish
                 -- loading. Bounded to POOL_SIZE rows so the cache-miss
-                -- volume stays small.
+                -- volume stays small. When the item never resolves (some
+                -- recipe items legitimately don't exist on the current
+                -- client even after expansion-cap filtering — e.g. Vanilla
+                -- recipes whose scroll items were removed from the game),
+                -- fall back to the spell name + icon so the row still
+                -- shows SOMETHING meaningful instead of a permanent
+                -- "#22430 (loading…)" placeholder.
                 itemName, itemLink, itemQuality = GetItemInfo(itemId)
-                displayName = itemName or ("|cffaaaaaa#" .. itemId .. " (loading\226\128\166)|r")
-                f.icon:SetTexture((GetItemIcon and GetItemIcon(itemId)) or 134400)
+                if itemName then
+                    displayName = itemName
+                    f.icon:SetTexture((GetItemIcon and GetItemIcon(itemId)) or 134400)
+                else
+                    -- Item not in cache yet OR item id genuinely doesn't
+                    -- exist on this client. Show the spell name as the
+                    -- visible label; if the item later loads, the cache
+                    -- event triggers a refresh and we render properly.
+                    local spellName = (GetSpellInfo and GetSpellInfo(entry.spellId))
+                                      or (entry.name)
+                    displayName = spellName
+                                  or ("|cffaaaaaa#" .. itemId .. " (loading\226\128\166)|r")
+                    local spellIcon = GetSpellTexture and GetSpellTexture(entry.spellId)
+                    f.icon:SetTexture(spellIcon or 134400)
+                end
             else
                 -- Trainer-only recipe with no scroll item. Fall back to the
                 -- spell's name + icon. No item link / quality colour

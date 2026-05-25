@@ -2842,6 +2842,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 22729,
 			["name"] = "Steam Tonk Controller",
+			["phase"] = 3,
 			["reagents"] = {
 				[3860] = 3,
 				[10558] = 1,
@@ -3330,6 +3331,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 23874,
 			["name"] = "Elemental Seaforium Charge",
+			["phase"] = 3,
 			["reagents"] = {
 				[23781] = 2,
 				[23782] = 1,
@@ -3382,6 +3384,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 23883,
 			["name"] = "Healing Potion Injector",
+			["phase"] = 4,
 			["reagents"] = {
 				[21887] = 2,
 				[22829] = 20,
@@ -3400,6 +3403,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 23884,
 			["name"] = "Mana Potion Injector",
+			["phase"] = 4,
 			["reagents"] = {
 				[21887] = 2,
 				[22832] = 20,
@@ -3969,6 +3973,7 @@ addon.recipeDB[202] = {
 				355,
 			},
 			["name"] = "Adamantite Arrow Maker",
+			["phase"] = 3,
 			["reagents"] = {
 				[4470] = 4,
 				[23446] = 1,
@@ -3985,6 +3990,7 @@ addon.recipeDB[202] = {
 				350,
 			},
 			["name"] = "Flying Machine",
+			["phase"] = 3,
 			["reagents"] = {
 				[11291] = 8,
 				[23781] = 20,
@@ -4002,6 +4008,7 @@ addon.recipeDB[202] = {
 				395,
 			},
 			["name"] = "Turbo-Charged Flying Machine",
+			["phase"] = 3,
 			["reagents"] = {
 				[23784] = 4,
 				[23786] = 8,
@@ -4020,6 +4027,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 34114,
 			["name"] = "Field Repair Bot 110G",
+			["phase"] = 3,
 			["reagents"] = {
 				[23446] = 8,
 				[23783] = 8,
@@ -4037,6 +4045,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 35191,
 			["name"] = "Wonderheal XT68 Shades",
+			["phase"] = 4,
 			["reagents"] = {
 				[21885] = 4,
 				[22457] = 8,
@@ -4055,6 +4064,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 35187,
 			["name"] = "Justicebringer 3000 Specs",
+			["phase"] = 4,
 			["reagents"] = {
 				[21886] = 8,
 				[22452] = 8,
@@ -4074,6 +4084,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 35189,
 			["name"] = "Powerheal 9000 Lens",
+			["phase"] = 4,
 			["reagents"] = {
 				[21886] = 8,
 				[22457] = 8,
@@ -4092,6 +4103,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 35190,
 			["name"] = "Hyper-Magnified Moon Specs",
+			["phase"] = 4,
 			["reagents"] = {
 				[21885] = 6,
 				[21886] = 12,
@@ -4110,6 +4122,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 35192,
 			["name"] = "Primal-Attuned Goggles",
+			["phase"] = 4,
 			["reagents"] = {
 				[21885] = 5,
 				[21886] = 5,
@@ -4129,6 +4142,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 35186,
 			["name"] = "Annihilator Holo-Gogs",
+			["phase"] = 4,
 			["reagents"] = {
 				[21884] = 4,
 				[22456] = 4,
@@ -4148,6 +4162,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 35193,
 			["name"] = "Lightning Etched Specs",
+			["phase"] = 4,
 			["reagents"] = {
 				[22451] = 2,
 				[23571] = 2,
@@ -4166,6 +4181,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 35194,
 			["name"] = "Surestrike Goggles v3.0",
+			["phase"] = 4,
 			["reagents"] = {
 				[22451] = 12,
 				[23572] = 4,
@@ -4183,6 +4199,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 35195,
 			["name"] = "Mayhem Projection Goggles",
+			["phase"] = 4,
 			["reagents"] = {
 				[21884] = 10,
 				[23572] = 4,
@@ -4200,6 +4217,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 35196,
 			["name"] = "Hard Khorium Goggles",
+			["phase"] = 4,
 			["reagents"] = {
 				[23571] = 1,
 				[23572] = 4,
@@ -4218,6 +4236,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 35197,
 			["name"] = "Quad Deathblow X44 Goggles",
+			["phase"] = 4,
 			["reagents"] = {
 				[22456] = 12,
 				[23572] = 4,
@@ -4235,6 +4254,7 @@ addon.recipeDB[202] = {
 			},
 			["itemId"] = 35582,
 			["name"] = "Rocket Boots Xtreme Lite",
+			["phase"] = 4,
 			["reagents"] = {
 				[21840] = 8,
 				[23785] = 2,

@@ -1,5 +1,21 @@
 # TOG Profession Master Changelog
 
+## [v0.5.4] (2026-05-25) - TBC Anniversary phase filter (hide future-phase recipes like Sunwell on Phase 2)
+
+### New Features
+
+- **TBC Anniversary phase filter on the Missing Recipes tab.** TBC Anniversary is currently live on Phase 2 (Serpentshrine Cavern + Tempest Keep), but the recipe DB we ship contains every TBC recipe including Phase 3 (Black Temple, Hyjal), Phase 3.5 (Zul'Aman), and Phase 4 (Sunwell, Magisters' Terrace, Shattered Sun). Users on Phase 2 were seeing Sunwell jewelcrafting designs and Black Temple drops in their Missing list with no way to actually obtain them. New Settings entry **"TBC Anniversary phase"** (visible only on TBC clients via `addon.isTBC`) lets the user pick the current live phase; `BuildMissingList` then hides any recipe whose `phase` field exceeds the selected value. Default = 2 (matches Anniversary live state on v0.5.4 release date). Users bump the setting as Blizzard advances phases. Locations: [GUI/Settings.lua](GUI/Settings.lua), [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua), [Locale/enUS.lua](Locale/enUS.lua), [TOGProfessionMaster.lua](TOGProfessionMaster.lua) (default).
+
+- **Per-recipe phase data sourced from AllTheThings at build time.** Phase numbers are derived in a dev-only Python pipeline that reads ATT's per-expansion Lua data files via `lupa` (an embedded Lua VM in Python — chosen over regex-based parsing because executing ATT's actual Lua code is more reliable than trying to re-implement Lua semantics for ATT's compressed nested-call format). The pipeline merges recipe fields across **5 ATT files** (`Professions.lua`, `Instances.lua`, `Zones.lua`, `WorldDrops.lua`, `Craftables.lua`) since the phase-relevant data (`minReputation`, `awp`) is scattered — e.g. spell 42588 (Design: Kailee's Rose) has only basic fields in `Professions.lua` but its Shattered Sun reputation gate `minReputation={935: 9000}` only appears in `Zones.lua`. Phase derivation combines three signals in confidence order: (1) boss-drop containment inside a known TBC raid `inst()` wrapper (Karazhan→1, SSC→2, Tempest Keep→2, Hyjal→3, Black Temple→3, Magisters' Terrace→4, Sunwell Plateau→4); (2) faction reputation gate (Shattered Sun Offensive→4, Scale of the Sands→3, Ashtongue Deathsworn→3); (3) ATT's `awp` patch-added tag (≥2.4.0→4, ≥2.3.0→3). Fallback: no `phase` field emitted, addon treats as always-visible. Coverage on the 2,252 shipped TBC recipes: 16 tagged Phase 2, 109 tagged Phase 3, 87 tagged Phase 4. Locations: [tools/att_probe.py](tools/att_probe.py), [tools/att_extract_phase.py](tools/att_extract_phase.py), [tools/build_authoritative_data.py](tools/build_authoritative_data.py), `Data/Recipes/*.lua` re-emitted.
+
+### Known Gaps
+
+- **Recipes ATT doesn't tag with phase signals default to Phase 1 (always shown).** 88 of our 2,252 shipped TBC recipes have no entry in ATT at all; ATT also doesn't tag every Sunwell-era recipe with `awp` or `minReputation` (their schema only requires phase metadata on a subset). These slip past the filter and remain visible on earlier phases — opposite of the user's complaint, but the failure mode this release is biased toward (show extra rather than hide what shouldn't be hidden) since we can't distinguish "ATT doesn't know" from "ATT knows it's launch content."
+- **Phase 3.5 (Zul'Aman) is currently bucketed as Phase 3 or 4** depending on the recipe's other signals — the patch table doesn't separate 2.3.0 (Zul'Aman) from 2.4.0 (Sunwell) cleanly enough for a sub-phase split. When Anniversary advances to Phase 3.5 in autumn 2026 we'll add a separate setting value and re-derive.
+- **Wrath / Cata / MoP have no phase tags yet.** Same pipeline will produce them when those Anniversary cycles approach phase changes that matter; v0.5.4 is TBC-scoped because that's the immediate user-reported bug.
+
+---
+
 ## [v0.5.3] (2026-05-23) - Cross-expansion recipe bleed + persistent "(loading)" placeholders
 
 ### Bug Fixes

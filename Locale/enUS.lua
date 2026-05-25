@@ -166,6 +166,15 @@ L["MissingSrcTrainer"]          = "Trainer"
 L["MissingSrcOther"]            = "Other"
 L["MissingSrcUnknown"]          = "Unknown"
 
+-- Settings: TBC Anniversary phase filter
+L["SettingsTBCPhaseHeader"]     = "TBC Anniversary phase"
+L["SettingsTBCPhase"]           = "Current content phase"
+L["SettingsTBCPhaseDesc"]       = "Hide Missing Recipes that come from later phases than the one Anniversary is currently in. Bump this each time Blizzard advances the phase. (Recipes you can already access on the live phase stay visible.)"
+L["SettingsTBCPhase1"]          = "Phase 1 — Karazhan / Gruul / Magtheridon"
+L["SettingsTBCPhase2"]          = "Phase 2 — Serpentshrine Cavern / Tempest Keep"
+L["SettingsTBCPhase3"]          = "Phase 3 — Black Temple / Mount Hyjal"
+L["SettingsTBCPhase4"]          = "Phase 4 — Sunwell / Magisters' Terrace"
+
 -- ---------------------------------------------------------------------------
 -- Settings
 -- ---------------------------------------------------------------------------

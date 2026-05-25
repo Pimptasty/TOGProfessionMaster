@@ -217,6 +217,45 @@ local OPTIONS = {
             end,
         },
 
+        -- ---- Phase filtering (TBC Anniversary only) ------------------------
+        -- Only meaningful on TBC clients; hidden on Vanilla / Wrath / Cata /
+        -- MoP where there's nothing to filter. The recipe DB ships with a
+        -- `phase` field on Phase 2+ TBC recipes (sourced at build time from
+        -- ATT — see tools/att_extract_phase.py). GUI/MissingRecipesTab.lua
+        -- skips any recipe with phase > tbcAnniversaryPhase on TBC clients.
+        phaseHeader = {
+            name   = L["SettingsTBCPhaseHeader"],
+            type   = "header",
+            order  = 19.85,
+            hidden = function() return not addon.isTBC end,
+        },
+
+        tbcAnniversaryPhase = {
+            name   = L["SettingsTBCPhase"],
+            desc   = L["SettingsTBCPhaseDesc"],
+            type   = "select",
+            order  = 19.86,
+            hidden = function() return not addon.isTBC end,
+            values = {
+                [1] = L["SettingsTBCPhase1"],
+                [2] = L["SettingsTBCPhase2"],
+                [3] = L["SettingsTBCPhase3"],
+                [4] = L["SettingsTBCPhase4"],
+            },
+            sortByValue = true,
+            get = function() return Ace.db.profile.tbcAnniversaryPhase or 2 end,
+            set = function(_, val)
+                Ace.db.profile.tbcAnniversaryPhase = val
+                -- Re-render Missing Recipes if it's the active tab so the
+                -- filter change takes effect immediately rather than on
+                -- next refresh.
+                if addon.MainWindow and addon.MainWindow.activeTab == "missing"
+                   and addon.MissingRecipesTab and addon.MissingRecipesTab.RefreshList then
+                    addon.MissingRecipesTab:RefreshList()
+                end
+            end,
+        },
+
         -- ---- Debug ---------------------------------------------------------
         debugHeader = {
             name  = L["SettingsDevHeader"],

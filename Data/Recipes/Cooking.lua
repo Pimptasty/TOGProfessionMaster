@@ -2089,6 +2089,7 @@ addon.recipeDB[185] = {
 			},
 			["itemId"] = 35564,
 			["name"] = "Charred Bear Kabobs",
+			["phase"] = 4,
 			["reagents"] = {
 				[35562] = 1,
 			},
@@ -2104,6 +2105,7 @@ addon.recipeDB[185] = {
 			},
 			["itemId"] = 35566,
 			["name"] = "Juicy Bear Burger",
+			["phase"] = 4,
 			["reagents"] = {
 				[35562] = 1,
 			},

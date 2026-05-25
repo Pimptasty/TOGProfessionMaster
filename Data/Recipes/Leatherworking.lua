@@ -2274,6 +2274,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 15732,
 			["name"] = "Volcanic Leggings",
+			["phase"] = 4,
 			["reagents"] = {
 				[7075] = 1,
 				[7078] = 1,
@@ -2514,6 +2515,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 15747,
 			["name"] = "Frostsaber Leggings",
+			["phase"] = 4,
 			["reagents"] = {
 				[7080] = 1,
 				[8170] = 6,
@@ -2584,6 +2586,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 15752,
 			["name"] = "Living Leggings",
+			["phase"] = 4,
 			["reagents"] = {
 				[8170] = 16,
 				[12803] = 6,
@@ -2723,6 +2726,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 15760,
 			["name"] = "Ironfeather Breastplate",
+			["phase"] = 4,
 			["reagents"] = {
 				[1529] = 1,
 				[8170] = 35,
@@ -2742,6 +2746,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 15761,
 			["name"] = "Frostsaber Gloves",
+			["phase"] = 4,
 			["reagents"] = {
 				[7080] = 1,
 				[8170] = 6,
@@ -2777,6 +2782,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 15763,
 			["name"] = "Blue Dragonscale Shoulders",
+			["phase"] = 4,
 			["reagents"] = {
 				[8170] = 28,
 				[12810] = 2,
@@ -2883,6 +2889,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 15771,
 			["name"] = "Living Breastplate",
+			["phase"] = 4,
 			["reagents"] = {
 				[8170] = 16,
 				[12803] = 8,
@@ -3012,6 +3019,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 15779,
 			["name"] = "Frostsaber Tunic",
+			["phase"] = 4,
 			["reagents"] = {
 				[7080] = 1,
 				[8170] = 12,
@@ -4402,6 +4410,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 25732,
 			["name"] = "Fel Leather Gloves",
+			["phase"] = 3,
 			["reagents"] = {
 				[14341] = 3,
 				[22456] = 6,
@@ -4420,6 +4429,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 25733,
 			["name"] = "Fel Leather Boots",
+			["phase"] = 3,
 			["reagents"] = {
 				[14341] = 3,
 				[22456] = 8,
@@ -4438,6 +4448,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 25734,
 			["name"] = "Fel Leather Leggings",
+			["phase"] = 3,
 			["reagents"] = {
 				[14341] = 3,
 				[22456] = 10,
@@ -4946,6 +4957,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 29714,
 			["name"] = "Drums of Restoration",
+			["phase"] = 3,
 			["reagents"] = {
 				[23793] = 6,
 				[29548] = 4,
@@ -4977,6 +4989,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 29717,
 			["name"] = "Drums of Battle",
+			["phase"] = 4,
 			["reagents"] = {
 				[23793] = 6,
 				[25708] = 4,
@@ -4993,6 +5006,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 29718,
 			["name"] = "Drums of Speed",
+			["phase"] = 3,
 			["reagents"] = {
 				[23793] = 6,
 				[29547] = 4,
@@ -5098,6 +5112,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 29724,
 			["name"] = "Cobrascale Gloves",
+			["phase"] = 4,
 			["reagents"] = {
 				[22451] = 12,
 				[22456] = 12,
@@ -5154,6 +5169,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 29727,
 			["name"] = "Gloves of the Living Touch",
+			["phase"] = 4,
 			["reagents"] = {
 				[21886] = 16,
 				[22452] = 12,
@@ -5229,6 +5245,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 29731,
 			["name"] = "Windstrike Gloves",
+			["phase"] = 4,
 			["reagents"] = {
 				[21884] = 10,
 				[22451] = 14,
@@ -5267,6 +5284,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 29733,
 			["name"] = "Netherdrake Gloves",
+			["phase"] = 4,
 			["reagents"] = {
 				[21884] = 14,
 				[22457] = 10,
@@ -5614,6 +5632,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 30301,
 			["name"] = "Belt of Natural Power",
+			["phase"] = 2,
 			["reagents"] = {
 				[14341] = 2,
 				[21886] = 10,
@@ -5633,6 +5652,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 30302,
 			["name"] = "Belt of Deep Shadow",
+			["phase"] = 2,
 			["reagents"] = {
 				[14341] = 2,
 				[22451] = 10,
@@ -5652,6 +5672,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 30303,
 			["name"] = "Belt of the Black Eagle",
+			["phase"] = 2,
 			["reagents"] = {
 				[14341] = 2,
 				[22451] = 10,
@@ -5671,6 +5692,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 30304,
 			["name"] = "Monsoon Belt",
+			["phase"] = 2,
 			["reagents"] = {
 				[14341] = 2,
 				[21885] = 10,
@@ -5690,6 +5712,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 30305,
 			["name"] = "Boots of Natural Grace",
+			["phase"] = 2,
 			["reagents"] = {
 				[14341] = 2,
 				[21886] = 12,
@@ -5708,6 +5731,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 30306,
 			["name"] = "Boots of Utter Darkness",
+			["phase"] = 2,
 			["reagents"] = {
 				[14341] = 2,
 				[22456] = 12,
@@ -5726,6 +5750,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 30307,
 			["name"] = "Boots of the Crimson Hawk",
+			["phase"] = 2,
 			["reagents"] = {
 				[14341] = 2,
 				[22451] = 10,
@@ -5745,6 +5770,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 30308,
 			["name"] = "Hurricane Boots",
+			["phase"] = 2,
 			["reagents"] = {
 				[14341] = 2,
 				[21885] = 10,
@@ -5764,6 +5790,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32429,
 			["name"] = "Boots of Shackled Souls",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 2,
 				[22450] = 1,
@@ -5783,6 +5810,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32430,
 			["name"] = "Bracers of Shackled Souls",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 2,
 				[22450] = 1,
@@ -5802,6 +5830,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32431,
 			["name"] = "Greaves of Shackled Souls",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 4,
 				[22450] = 1,
@@ -5821,6 +5850,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32432,
 			["name"] = "Waistguard of Shackled Souls",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 3,
 				[22450] = 1,
@@ -5840,6 +5870,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32433,
 			["name"] = "Redeemed Soul Moccasins",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 2,
 				[22450] = 1,
@@ -5859,6 +5890,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32434,
 			["name"] = "Redeemed Soul Wristguards",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 2,
 				[22450] = 1,
@@ -5878,6 +5910,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32435,
 			["name"] = "Redeemed Soul Legguards",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 4,
 				[22450] = 1,
@@ -5897,6 +5930,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32436,
 			["name"] = "Redeemed Soul Cinch",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 3,
 				[22450] = 1,
@@ -5916,6 +5950,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32744,
 			["name"] = "Bracers of Renewed Life",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 6,
 				[22451] = 6,
@@ -5934,6 +5969,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32745,
 			["name"] = "Shoulderpads of Renewed Life",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 8,
 				[22451] = 8,
@@ -5952,6 +5988,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32746,
 			["name"] = "Swiftstrike Bracers",
+			["phase"] = 3,
 			["reagents"] = {
 				[22451] = 10,
 				[23793] = 4,
@@ -5969,6 +6006,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32747,
 			["name"] = "Swiftstrike Shoulders",
+			["phase"] = 3,
 			["reagents"] = {
 				[22451] = 12,
 				[23793] = 6,
@@ -5986,6 +6024,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32748,
 			["name"] = "Bindings of Lightning Reflexes",
+			["phase"] = 3,
 			["reagents"] = {
 				[21885] = 4,
 				[22451] = 4,
@@ -6005,6 +6044,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32749,
 			["name"] = "Shoulders of Lightning Reflexes",
+			["phase"] = 3,
 			["reagents"] = {
 				[21885] = 6,
 				[22451] = 6,
@@ -6024,6 +6064,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32750,
 			["name"] = "Living Earth Bindings",
+			["phase"] = 3,
 			["reagents"] = {
 				[22451] = 4,
 				[22452] = 4,
@@ -6043,6 +6084,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 32751,
 			["name"] = "Living Earth Shoulders",
+			["phase"] = 3,
 			["reagents"] = {
 				[22451] = 6,
 				[22452] = 6,
@@ -6099,6 +6141,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 34103,
 			["name"] = "Knothide Ammo Pouch",
+			["phase"] = 3,
 			["reagents"] = {
 				[14341] = 4,
 				[21887] = 24,
@@ -6116,6 +6159,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 34104,
 			["name"] = "Knothide Quiver",
+			["phase"] = 3,
 			["reagents"] = {
 				[14341] = 2,
 				[21887] = 20,
@@ -6132,6 +6176,7 @@ addon.recipeDB[165] = {
 				380,
 			},
 			["name"] = "Quiver of a Thousand Feathers",
+			["phase"] = 3,
 			["reagents"] = {
 				[17056] = 99,
 				[22451] = 2,
@@ -6150,6 +6195,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 34201,
 			["name"] = "Netherscale Ammo Pouch",
+			["phase"] = 3,
 			["reagents"] = {
 				[22452] = 4,
 				[23572] = 1,
@@ -6167,6 +6213,7 @@ addon.recipeDB[165] = {
 				365,
 			},
 			["name"] = "Glove Reinforcements",
+			["phase"] = 3,
 			["reagents"] = {
 				[22452] = 3,
 				[23793] = 4,
@@ -6200,6 +6247,7 @@ addon.recipeDB[165] = {
 				365,
 			},
 			["name"] = "Heavy Knothide Armor Kit",
+			["phase"] = 3,
 			["reagents"] = {
 				[23793] = 3,
 			},
@@ -6214,6 +6262,7 @@ addon.recipeDB[165] = {
 				330,
 			},
 			["name"] = "Leatherworker's Satchel",
+			["phase"] = 3,
 			["reagents"] = {
 				[14341] = 3,
 				[21887] = 20,
@@ -6232,6 +6281,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 34491,
 			["name"] = "Bag of Many Hides",
+			["phase"] = 3,
 			["reagents"] = {
 				[14341] = 3,
 				[23793] = 15,
@@ -6252,6 +6302,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 35212,
 			["name"] = "Leather Gauntlets of the Sun",
+			["phase"] = 4,
 			["reagents"] = {
 				[21886] = 18,
 				[23571] = 8,
@@ -6271,6 +6322,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 35213,
 			["name"] = "Fletcher's Gloves of the Phoenix",
+			["phase"] = 4,
 			["reagents"] = {
 				[22451] = 18,
 				[23571] = 8,
@@ -6290,6 +6342,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 35214,
 			["name"] = "Gloves of Immortal Dusk",
+			["phase"] = 4,
 			["reagents"] = {
 				[22456] = 18,
 				[23571] = 8,
@@ -6309,6 +6362,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 35215,
 			["name"] = "Sun-Drenched Scale Gloves",
+			["phase"] = 4,
 			["reagents"] = {
 				[21886] = 18,
 				[23571] = 8,
@@ -6328,6 +6382,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 35216,
 			["name"] = "Leather Chestguard of the Sun",
+			["phase"] = 4,
 			["reagents"] = {
 				[23571] = 6,
 				[23572] = 6,
@@ -6346,6 +6401,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 35217,
 			["name"] = "Embrace of the Phoenix",
+			["phase"] = 4,
 			["reagents"] = {
 				[23571] = 6,
 				[23572] = 6,
@@ -6364,6 +6420,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 35218,
 			["name"] = "Carapace of Sun and Shadow",
+			["phase"] = 4,
 			["reagents"] = {
 				[23571] = 6,
 				[23572] = 6,
@@ -6382,6 +6439,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 35219,
 			["name"] = "Sun-Drenched Scale Chestguard",
+			["phase"] = 4,
 			["reagents"] = {
 				[23571] = 6,
 				[23572] = 6,
@@ -14526,6 +14584,7 @@ addon.recipeDB[165] = {
 			},
 			["itemId"] = 185926,
 			["name"] = "Greater Drums of Battle",
+			["phase"] = 4,
 			["reagents"] = {
 				[23793] = 6,
 				[25708] = 4,

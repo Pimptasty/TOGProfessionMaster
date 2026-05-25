@@ -996,6 +996,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 5775,
 			["name"] = "Black Silk Pack",
+			["phase"] = 4,
 			["reagents"] = {
 				[2321] = 4,
 				[2325] = 1,
@@ -4614,6 +4615,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 24296,
 			["name"] = "Unyielding Bracers",
+			["phase"] = 4,
 			["reagents"] = {
 				[21842] = 4,
 				[22452] = 8,
@@ -4712,6 +4714,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 24302,
 			["name"] = "Unyielding Girdle",
+			["phase"] = 4,
 			["reagents"] = {
 				[21845] = 8,
 				[22452] = 16,
@@ -4916,6 +4919,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 24314,
 			["name"] = "Bag of Jewels",
+			["phase"] = 3,
 			["reagents"] = {
 				[21842] = 6,
 				[21887] = 4,
@@ -4961,6 +4965,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 30280,
 			["name"] = "Belt of Blasting",
+			["phase"] = 2,
 			["reagents"] = {
 				[14341] = 2,
 				[21842] = 4,
@@ -4979,6 +4984,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 30281,
 			["name"] = "Belt of the Long Road",
+			["phase"] = 2,
 			["reagents"] = {
 				[14341] = 2,
 				[21842] = 4,
@@ -4998,6 +5004,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 30282,
 			["name"] = "Boots of Blasting",
+			["phase"] = 2,
 			["reagents"] = {
 				[14341] = 2,
 				[23572] = 2,
@@ -5016,6 +5023,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 30283,
 			["name"] = "Boots of the Long Road",
+			["phase"] = 2,
 			["reagents"] = {
 				[14341] = 2,
 				[21845] = 4,
@@ -5232,6 +5240,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 32437,
 			["name"] = "Soulguard Slippers",
+			["phase"] = 3,
 			["reagents"] = {
 				[21842] = 1,
 				[21886] = 2,
@@ -5251,6 +5260,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 32438,
 			["name"] = "Soulguard Bracers",
+			["phase"] = 3,
 			["reagents"] = {
 				[21842] = 1,
 				[21886] = 2,
@@ -5270,6 +5280,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 32439,
 			["name"] = "Soulguard Leggings",
+			["phase"] = 3,
 			["reagents"] = {
 				[21842] = 2,
 				[21886] = 4,
@@ -5289,6 +5300,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 32440,
 			["name"] = "Soulguard Girdle",
+			["phase"] = 3,
 			["reagents"] = {
 				[21842] = 1,
 				[21886] = 3,
@@ -5308,6 +5320,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 32447,
 			["name"] = "Night's End",
+			["phase"] = 3,
 			["reagents"] = {
 				[21842] = 1,
 				[21886] = 2,
@@ -5327,6 +5340,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 32754,
 			["name"] = "Bracers of Nimble Thought",
+			["phase"] = 3,
 			["reagents"] = {
 				[21842] = 3,
 				[22457] = 8,
@@ -5345,6 +5359,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 32755,
 			["name"] = "Mantle of Nimble Thought",
+			["phase"] = 3,
 			["reagents"] = {
 				[21842] = 4,
 				[22457] = 6,
@@ -5363,6 +5378,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 32752,
 			["name"] = "Swiftheal Wraps",
+			["phase"] = 3,
 			["reagents"] = {
 				[21842] = 3,
 				[21845] = 4,
@@ -5381,6 +5397,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 32753,
 			["name"] = "Swiftheal Mantle",
+			["phase"] = 3,
 			["reagents"] = {
 				[21842] = 4,
 				[21845] = 2,
@@ -5435,6 +5452,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 35204,
 			["name"] = "Sunfire Handwraps",
+			["phase"] = 4,
 			["reagents"] = {
 				[24271] = 10,
 				[24272] = 10,
@@ -5452,6 +5470,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 35205,
 			["name"] = "Hands of Eternal Light",
+			["phase"] = 4,
 			["reagents"] = {
 				[21845] = 18,
 				[21885] = 12,
@@ -5470,6 +5489,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 35206,
 			["name"] = "Sunfire Robe",
+			["phase"] = 4,
 			["reagents"] = {
 				[23572] = 2,
 				[24271] = 12,
@@ -5487,6 +5507,7 @@ addon.recipeDB[197] = {
 			},
 			["itemId"] = 35207,
 			["name"] = "Robe of Eternal Light",
+			["phase"] = 4,
 			["reagents"] = {
 				[21845] = 20,
 				[23572] = 2,

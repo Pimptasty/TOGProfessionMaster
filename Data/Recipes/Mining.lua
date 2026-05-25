@@ -297,6 +297,7 @@ addon.recipeDB[186] = {
 			},
 			["itemId"] = 35273,
 			["name"] = "Smelt Hardened Khorium",
+			["phase"] = 4,
 			["reagents"] = {
 				[23449] = 3,
 				[23573] = 1,

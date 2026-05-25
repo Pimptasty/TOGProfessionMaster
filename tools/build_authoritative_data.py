@@ -230,6 +230,31 @@ def lua_value(v, indent_level: int) -> str:
     raise TypeError(f"cannot serialise {type(v).__name__} to Lua")
 
 
+# Lazy-loaded phase map keyed by spellId -> phase int. Populated from
+# tools/wago_cache/att_phase_map.json (produced by att_extract_phase.py).
+# Currently only TBC entries are present; recipes not in the map have no
+# `phase` field emitted and the addon treats them as Phase 1 (always-show).
+_PHASE_MAP = None
+
+
+def _load_phase_map():
+    global _PHASE_MAP
+    if _PHASE_MAP is not None:
+        return _PHASE_MAP
+    import json
+    p = SCRIPT_DIR / "wago_cache" / "att_phase_map.json"
+    if not p.exists():
+        print(f"  no att_phase_map.json found; recipes will ship without "
+              f"`phase` field. Run tools/att_extract_phase.py first to "
+              f"enable TBC Anniversary phase filtering.", file=sys.stderr)
+        _PHASE_MAP = {}
+        return _PHASE_MAP
+    raw = json.loads(p.read_text(encoding="utf-8"))
+    _PHASE_MAP = {int(k): v for k, v in (raw.get("spell_phase") or {}).items()}
+    print(f"  loaded {len(_PHASE_MAP)} phase tags from {p.name}", file=sys.stderr)
+    return _PHASE_MAP
+
+
 def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
     """Write Data/Recipes/<filename>.lua. The recipe entries include the
     new `name` field which the existing addon doesn't use today — adding it
@@ -237,7 +262,13 @@ def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
 
     We strip the helper-only fields (`items`, `expansion`) before emit since
     they're for the importer's downstream Source-DB pass, not the runtime
-    recipe DB."""
+    recipe DB.
+
+    When ATT's phase map is available (att_extract_phase.py output), each
+    recipe gets a `phase` field for client-side content-phase filtering.
+    Only TBC has phase data today; other expansions get no `phase` field
+    and the addon's filter treats them as always-visible."""
+    phase_map = _load_phase_map()
     cleaned = {}
     n_skipped_non_recipe = 0
     for spell_id, entry in recipes.items():
@@ -275,6 +306,12 @@ def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
         }
         if items:
             out["itemId"] = items[0]
+        phase = phase_map.get(spell_id)
+        if phase and phase > 1:
+            # Only emit `phase` when it's beyond Phase 1 (the default).
+            # Recipes without a phase entry — or tagged Phase 1 — get no
+            # field and the addon treats them as always-visible.
+            out["phase"] = phase
         cleaned[spell_id] = out
     if n_skipped_non_recipe:
         print(f"  {prof_id}: skipped {n_skipped_non_recipe} non-recipe spells "

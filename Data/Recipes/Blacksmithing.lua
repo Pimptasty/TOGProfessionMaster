@@ -3137,6 +3137,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 12827,
 			["name"] = "Serenity",
+			["phase"] = 4,
 			["reagents"] = {
 				[12360] = 2,
 				[12361] = 2,
@@ -3175,6 +3176,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 12830,
 			["name"] = "Corruption",
+			["phase"] = 4,
 			["reagents"] = {
 				[8170] = 4,
 				[12359] = 40,
@@ -5699,6 +5701,7 @@ addon.recipeDB[164] = {
 				300,
 			},
 			["name"] = "Light Earthforged Blade",
+			["phase"] = 4,
 			["reagents"] = {
 				[3860] = 12,
 				[7075] = 4,
@@ -5987,6 +5990,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 30321,
 			["name"] = "Belt of the Guardian",
+			["phase"] = 2,
 			["reagents"] = {
 				[21885] = 10,
 				[22452] = 5,
@@ -6005,6 +6009,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 30322,
 			["name"] = "Red Belt of Battle",
+			["phase"] = 2,
 			["reagents"] = {
 				[21884] = 10,
 				[23573] = 5,
@@ -6022,6 +6027,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 30323,
 			["name"] = "Boots of the Protector",
+			["phase"] = 2,
 			["reagents"] = {
 				[21885] = 12,
 				[23572] = 2,
@@ -6039,6 +6045,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 30324,
 			["name"] = "Red Havoc Boots",
+			["phase"] = 2,
 			["reagents"] = {
 				[21884] = 12,
 				[23572] = 2,
@@ -6164,6 +6171,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 32441,
 			["name"] = "Shadesteel Sabots",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 2,
 				[22450] = 1,
@@ -6183,6 +6191,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 32442,
 			["name"] = "Shadesteel Bracers",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 2,
 				[22450] = 1,
@@ -6202,6 +6211,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 32443,
 			["name"] = "Shadesteel Greaves",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 4,
 				[22450] = 1,
@@ -6221,6 +6231,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 32444,
 			["name"] = "Shadesteel Girdle",
+			["phase"] = 3,
 			["reagents"] = {
 				[21886] = 3,
 				[22450] = 1,
@@ -6240,6 +6251,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 32736,
 			["name"] = "Swiftsteel Bracers",
+			["phase"] = 3,
 			["reagents"] = {
 				[22451] = 6,
 				[23448] = 14,
@@ -6258,6 +6270,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 32737,
 			["name"] = "Swiftsteel Shoulders",
+			["phase"] = 3,
 			["reagents"] = {
 				[22451] = 8,
 				[23448] = 18,
@@ -6276,6 +6289,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 32738,
 			["name"] = "Dawnsteel Bracers",
+			["phase"] = 3,
 			["reagents"] = {
 				[21884] = 6,
 				[23449] = 14,
@@ -6294,6 +6308,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 32739,
 			["name"] = "Dawnsteel Shoulders",
+			["phase"] = 3,
 			["reagents"] = {
 				[21884] = 8,
 				[23449] = 18,
@@ -6330,6 +6345,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 33186,
 			["name"] = "Adamantite Weapon Chain",
+			["phase"] = 4,
 			["reagents"] = {
 				[23449] = 1,
 				[23573] = 2,
@@ -6363,6 +6379,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 33954,
 			["name"] = "Hammer of Righteous Might",
+			["phase"] = 3,
 			["reagents"] = {
 				[23448] = 12,
 				[23449] = 16,
@@ -6381,6 +6398,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 35208,
 			["name"] = "Sunblessed Gauntlets",
+			["phase"] = 4,
 			["reagents"] = {
 				[21886] = 20,
 				[23571] = 6,
@@ -6399,6 +6417,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 35209,
 			["name"] = "Hard Khorium Battlefists",
+			["phase"] = 4,
 			["reagents"] = {
 				[21884] = 12,
 				[22451] = 12,
@@ -6418,6 +6437,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 35210,
 			["name"] = "Sunblessed Breastplate",
+			["phase"] = 4,
 			["reagents"] = {
 				[21885] = 15,
 				[21886] = 15,
@@ -6437,6 +6457,7 @@ addon.recipeDB[164] = {
 			},
 			["itemId"] = 35211,
 			["name"] = "Hard Khorium Battleplate",
+			["phase"] = 4,
 			["reagents"] = {
 				[21884] = 10,
 				[22456] = 10,

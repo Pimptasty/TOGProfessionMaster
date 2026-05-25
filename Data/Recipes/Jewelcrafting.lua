@@ -1024,6 +1024,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 23134,
 			["name"] = "Delicate Blood Garnet",
+			["phase"] = 3,
 			["reagents"] = {
 				[23077] = 1,
 			},
@@ -1054,6 +1055,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 23136,
 			["name"] = "Reckless Flame Spessarite",
+			["phase"] = 3,
 			["reagents"] = {
 				[21929] = 1,
 			},
@@ -1189,6 +1191,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 23146,
 			["name"] = "Shifting Shadow Draenite",
+			["phase"] = 3,
 			["reagents"] = {
 				[23107] = 1,
 			},
@@ -1249,6 +1252,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 23150,
 			["name"] = "Subtle Golden Draenite",
+			["phase"] = 3,
 			["reagents"] = {
 				[23112] = 1,
 			},
@@ -1324,6 +1328,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 23155,
 			["name"] = "Lustrous Azure Moonstone",
+			["phase"] = 3,
 			["reagents"] = {
 				[23117] = 1,
 			},
@@ -1621,6 +1626,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 24178,
 			["name"] = "Pendant of the Null Rune",
+			["phase"] = 3,
 			["reagents"] = {
 				[22457] = 8,
 				[23448] = 2,
@@ -1825,6 +1831,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 24182,
 			["name"] = "Figurine - Talasite Owl",
+			["phase"] = 4,
 			["reagents"] = {
 				[22457] = 4,
 				[23437] = 2,
@@ -1904,6 +1911,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 24195,
 			["name"] = "Brilliant Living Ruby",
+			["phase"] = 4,
 			["reagents"] = {
 				[23436] = 1,
 			},
@@ -1919,6 +1927,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 24192,
 			["name"] = "Bright Living Ruby",
+			["phase"] = 4,
 			["reagents"] = {
 				[23436] = 1,
 			},
@@ -1964,6 +1973,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 24199,
 			["name"] = "Solid Star of Elune",
+			["phase"] = 4,
 			["reagents"] = {
 				[23438] = 1,
 			},
@@ -2039,6 +2049,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 24205,
 			["name"] = "Rigid Star of Elune",
+			["phase"] = 4,
 			["reagents"] = {
 				[23438] = 1,
 			},
@@ -2469,6 +2480,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 25904,
 			["name"] = "Insightful Earthstorm Diamond",
+			["phase"] = 4,
 			["reagents"] = {
 				[25867] = 1,
 			},
@@ -2514,6 +2526,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 25908,
 			["name"] = "Swift Skyfire Diamond",
+			["phase"] = 3,
 			["reagents"] = {
 				[25868] = 1,
 			},
@@ -2717,6 +2730,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 30826,
 			["name"] = "Ring of Arcane Shielding",
+			["phase"] = 4,
 			["reagents"] = {
 				[22457] = 8,
 				[23447] = 2,
@@ -2950,6 +2964,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32274,
 			["name"] = "Bold Crimson Spinel",
+			["phase"] = 3,
 			["reagents"] = {
 				[32227] = 1,
 			},
@@ -2965,6 +2980,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32277,
 			["name"] = "Delicate Crimson Spinel",
+			["phase"] = 3,
 			["reagents"] = {
 				[32227] = 1,
 			},
@@ -2980,6 +2996,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32281,
 			["name"] = "Teardrop Crimson Spinel",
+			["phase"] = 3,
 			["reagents"] = {
 				[32227] = 1,
 			},
@@ -2995,6 +3012,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32281,
 			["name"] = "Brilliant Crimson Spinel",
+			["phase"] = 3,
 			["reagents"] = {
 				[32227] = 1,
 			},
@@ -3010,6 +3028,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32283,
 			["name"] = "Bright Crimson Spinel",
+			["phase"] = 3,
 			["reagents"] = {
 				[32227] = 1,
 			},
@@ -3025,6 +3044,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32284,
 			["name"] = "Subtle Lionseye",
+			["phase"] = 3,
 			["reagents"] = {
 				[32229] = 1,
 			},
@@ -3040,6 +3060,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32285,
 			["name"] = "Flashing Crimson Spinel",
+			["phase"] = 3,
 			["reagents"] = {
 				[32227] = 1,
 			},
@@ -3055,6 +3076,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32286,
 			["name"] = "Solid Empyrean Sapphire",
+			["phase"] = 3,
 			["reagents"] = {
 				[32228] = 1,
 			},
@@ -3070,6 +3092,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32287,
 			["name"] = "Sparkling Empyrean Sapphire",
+			["phase"] = 3,
 			["reagents"] = {
 				[32228] = 1,
 			},
@@ -3085,6 +3108,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32288,
 			["name"] = "Lustrous Empyrean Sapphire",
+			["phase"] = 3,
 			["reagents"] = {
 				[32228] = 1,
 			},
@@ -3100,6 +3124,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32289,
 			["name"] = "Stormy Empyrean Sapphire",
+			["phase"] = 3,
 			["reagents"] = {
 				[32228] = 1,
 			},
@@ -3115,6 +3140,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32290,
 			["name"] = "Brilliant Lionseye",
+			["phase"] = 3,
 			["reagents"] = {
 				[32229] = 1,
 			},
@@ -3130,6 +3156,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32291,
 			["name"] = "Smooth Lionseye",
+			["phase"] = 3,
 			["reagents"] = {
 				[32229] = 1,
 			},
@@ -3145,6 +3172,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32292,
 			["name"] = "Rigid Empyrean Sapphire",
+			["phase"] = 3,
 			["reagents"] = {
 				[32228] = 1,
 			},
@@ -3160,6 +3188,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32293,
 			["name"] = "Gleaming Lionseye",
+			["phase"] = 3,
 			["reagents"] = {
 				[32229] = 1,
 			},
@@ -3175,6 +3204,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32294,
 			["name"] = "Thick Lionseye",
+			["phase"] = 3,
 			["reagents"] = {
 				[32229] = 1,
 			},
@@ -3190,6 +3220,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32295,
 			["name"] = "Mystic Lionseye",
+			["phase"] = 3,
 			["reagents"] = {
 				[32229] = 1,
 			},
@@ -3205,6 +3236,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32296,
 			["name"] = "Great Lionseye",
+			["phase"] = 3,
 			["reagents"] = {
 				[32229] = 1,
 			},
@@ -3220,6 +3252,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32297,
 			["name"] = "Sovereign Shadowsong Amethyst",
+			["phase"] = 3,
 			["reagents"] = {
 				[32230] = 1,
 			},
@@ -3235,6 +3268,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32298,
 			["name"] = "Shifting Shadowsong Amethyst",
+			["phase"] = 3,
 			["reagents"] = {
 				[32230] = 1,
 			},
@@ -3250,6 +3284,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32299,
 			["name"] = "Balanced Shadowsong Amethyst",
+			["phase"] = 3,
 			["reagents"] = {
 				[32230] = 1,
 			},
@@ -3265,6 +3300,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32300,
 			["name"] = "Infused Shadowsong Amethyst",
+			["phase"] = 3,
 			["reagents"] = {
 				[32230] = 1,
 			},
@@ -3280,6 +3316,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32301,
 			["name"] = "Timeless Shadowsong Amethyst",
+			["phase"] = 3,
 			["reagents"] = {
 				[32230] = 1,
 			},
@@ -3295,6 +3332,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32302,
 			["name"] = "Royal Shadowsong Amethyst",
+			["phase"] = 3,
 			["reagents"] = {
 				[32230] = 1,
 			},
@@ -3310,6 +3348,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32303,
 			["name"] = "Inscribed Pyrestone",
+			["phase"] = 3,
 			["reagents"] = {
 				[32231] = 1,
 			},
@@ -3325,6 +3364,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32304,
 			["name"] = "Potent Pyrestone",
+			["phase"] = 3,
 			["reagents"] = {
 				[32231] = 1,
 			},
@@ -3340,6 +3380,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32305,
 			["name"] = "Luminous Pyrestone",
+			["phase"] = 3,
 			["reagents"] = {
 				[32231] = 1,
 			},
@@ -3355,6 +3396,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32300,
 			["name"] = "Glinting Shadowsong Amethyst",
+			["phase"] = 3,
 			["reagents"] = {
 				[32230] = 1,
 			},
@@ -3370,6 +3412,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32307,
 			["name"] = "Veiled Shadowsong Amethyst",
+			["phase"] = 3,
 			["reagents"] = {
 				[32230] = 1,
 			},
@@ -3385,6 +3428,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32308,
 			["name"] = "Deadly Pyrestone",
+			["phase"] = 3,
 			["reagents"] = {
 				[32231] = 1,
 			},
@@ -3400,6 +3444,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32309,
 			["name"] = "Regal Seaspray Emerald",
+			["phase"] = 3,
 			["reagents"] = {
 				[32249] = 1,
 			},
@@ -3415,6 +3460,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32310,
 			["name"] = "Radiant Seaspray Emerald",
+			["phase"] = 3,
 			["reagents"] = {
 				[32249] = 1,
 			},
@@ -3430,6 +3476,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32302,
 			["name"] = "Purified Shadowsong Amethyst",
+			["phase"] = 3,
 			["reagents"] = {
 				[32230] = 1,
 			},
@@ -3445,6 +3492,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32312,
 			["name"] = "Jagged Seaspray Emerald",
+			["phase"] = 3,
 			["reagents"] = {
 				[32249] = 1,
 			},
@@ -3460,6 +3508,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32412,
 			["name"] = "Relentless Earthstorm Diamond",
+			["phase"] = 3,
 			["reagents"] = {
 				[25867] = 1,
 			},
@@ -3583,6 +3632,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 33305,
 			["name"] = "Don Julio's Heart",
+			["phase"] = 3,
 			["reagents"] = {
 				[23436] = 1,
 			},
@@ -3598,6 +3648,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 33155,
 			["name"] = "Kailee's Rose",
+			["phase"] = 4,
 			["reagents"] = {
 				[23436] = 1,
 			},
@@ -3613,6 +3664,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 33156,
 			["name"] = "Crimson Sun",
+			["phase"] = 3,
 			["reagents"] = {
 				[23436] = 1,
 			},
@@ -3658,6 +3710,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 33159,
 			["name"] = "Blood of Amber",
+			["phase"] = 4,
 			["reagents"] = {
 				[23440] = 1,
 			},
@@ -3703,6 +3756,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 34221,
 			["name"] = "Chaotic Skyfire Diamond",
+			["phase"] = 3,
 			["reagents"] = {
 				[25868] = 1,
 			},
@@ -3718,6 +3772,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 35198,
 			["name"] = "Loop of Forged Power",
+			["phase"] = 4,
 			["reagents"] = {
 				[23571] = 4,
 				[31079] = 12,
@@ -3736,6 +3791,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 35199,
 			["name"] = "Ring of Flowing Life",
+			["phase"] = 4,
 			["reagents"] = {
 				[21886] = 20,
 				[31079] = 12,
@@ -3754,6 +3810,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 35200,
 			["name"] = "Hard Khorium Band",
+			["phase"] = 4,
 			["reagents"] = {
 				[22451] = 20,
 				[31079] = 12,
@@ -3772,6 +3829,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 35201,
 			["name"] = "Pendant of Sunfire",
+			["phase"] = 4,
 			["reagents"] = {
 				[31079] = 12,
 				[32227] = 3,
@@ -3789,6 +3847,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 35202,
 			["name"] = "Amulet of Flowing Life",
+			["phase"] = 4,
 			["reagents"] = {
 				[31079] = 6,
 				[32249] = 6,
@@ -3805,6 +3864,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 35203,
 			["name"] = "Hard Khorium Choker",
+			["phase"] = 4,
 			["reagents"] = {
 				[23572] = 9,
 				[35128] = 6,
@@ -3821,6 +3881,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 35322,
 			["name"] = "Quick Dawnstone",
+			["phase"] = 4,
 			["reagents"] = {
 				[23440] = 1,
 			},
@@ -3836,6 +3897,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 35323,
 			["name"] = "Reckless Noble Topaz",
+			["phase"] = 4,
 			["reagents"] = {
 				[23439] = 1,
 			},
@@ -3851,6 +3913,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 35325,
 			["name"] = "Forceful Talasite",
+			["phase"] = 4,
 			["reagents"] = {
 				[23437] = 1,
 			},
@@ -3996,6 +4059,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 35765,
 			["name"] = "Forceful Seaspray Emerald",
+			["phase"] = 3,
 			["reagents"] = {
 				[32249] = 1,
 			},
@@ -4011,6 +4075,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 35764,
 			["name"] = "Steady Seaspray Emerald",
+			["phase"] = 3,
 			["reagents"] = {
 				[32249] = 1,
 			},
@@ -4026,6 +4091,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 32305,
 			["name"] = "Reckless Pyrestone",
+			["phase"] = 3,
 			["reagents"] = {
 				[32231] = 1,
 			},
@@ -4041,6 +4107,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 35763,
 			["name"] = "Quick Lionseye",
+			["phase"] = 3,
 			["reagents"] = {
 				[32229] = 1,
 			},
@@ -4055,6 +4122,7 @@ addon.recipeDB[755] = {
 				380,
 			},
 			["name"] = "Brilliant Glass",
+			["phase"] = 4,
 			["reagents"] = {
 				[21929] = 3,
 				[23077] = 3,
@@ -4075,6 +4143,7 @@ addon.recipeDB[755] = {
 			},
 			["itemId"] = 37504,
 			["name"] = "Purified Shadowsong Amethyst",
+			["phase"] = 4,
 			["reagents"] = {
 				[32230] = 1,
 			},

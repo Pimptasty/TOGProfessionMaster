@@ -133,6 +133,17 @@ local SETTINGS_DEFAULTS = {
         -- (set by Compat.lua, which loads AFTER this defaults table) is
         -- guaranteed populated before we read it.
         ahScanDelay = 0,
+
+        -- TBC Anniversary content phase. The recipe DB ships with `phase`
+        -- field on TBC raid / Shattered-Sun / BT / Hyjal / Sunwell recipes
+        -- (sourced from ATT at build time). When the client is TBC, the
+        -- Missing Recipes tab hides any recipe whose `phase` exceeds this
+        -- setting — keeps phase-locked content like Sunwell jewelcrafting
+        -- patterns from showing up before Blizzard opens the phase. Defaults
+        -- to 2 (Anniversary live state as of v0.5.4 release: SSC + TK).
+        -- User bumps it manually when phase 3 / 3.5 / 4 go live; we'll ship
+        -- the new default in a follow-up patch each time.
+        tbcAnniversaryPhase = 2,
     },
     char = {
         -- Shopping list: [spellId] = { quantity = N }

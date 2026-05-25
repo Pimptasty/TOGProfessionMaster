@@ -2131,6 +2131,7 @@ addon.recipeDB[333] = {
 			},
 			["itemId"] = 20726,
 			["name"] = "Enchant Gloves - Threat",
+			["phase"] = 4,
 			["reagents"] = {
 				[21886] = 8,
 				[22446] = 2,
@@ -2593,6 +2594,7 @@ addon.recipeDB[333] = {
 			},
 			["itemId"] = 22537,
 			["name"] = "Enchant Ring - Healing Power",
+			["phase"] = 4,
 			["reagents"] = {
 				[22445] = 5,
 				[22446] = 3,
@@ -2693,6 +2695,7 @@ addon.recipeDB[333] = {
 			},
 			["itemId"] = 22542,
 			["name"] = "Enchant Boots - Vitality",
+			["phase"] = 4,
 			["reagents"] = {
 				[13444] = 4,
 				[13446] = 4,
@@ -2840,6 +2843,7 @@ addon.recipeDB[333] = {
 			},
 			["itemId"] = 22552,
 			["name"] = "Enchant Weapon - Major Striking",
+			["phase"] = 3,
 			["reagents"] = {
 				[22445] = 6,
 				[22446] = 6,
@@ -3303,6 +3307,7 @@ addon.recipeDB[333] = {
 			},
 			["itemId"] = 28273,
 			["name"] = "Enchant Gloves - Major Healing",
+			["phase"] = 4,
 			["reagents"] = {
 				[21886] = 6,
 				[22446] = 6,
@@ -3350,6 +3355,7 @@ addon.recipeDB[333] = {
 			},
 			["itemId"] = 28274,
 			["name"] = "Enchant Cloak - PvP Power",
+			["phase"] = 3,
 			["reagents"] = {
 				[22445] = 6,
 				[22446] = 2,
@@ -3416,6 +3422,7 @@ addon.recipeDB[333] = {
 			},
 			["itemId"] = 28279,
 			["name"] = "Enchant Boots - Cat's Swiftness",
+			["phase"] = 4,
 			["reagents"] = {
 				[22449] = 8,
 				[22451] = 8,
@@ -3432,6 +3439,7 @@ addon.recipeDB[333] = {
 			},
 			["itemId"] = 28280,
 			["name"] = "Enchant Boots - Boar's Speed",
+			["phase"] = 4,
 			["reagents"] = {
 				[22449] = 8,
 				[22452] = 8,
@@ -3463,6 +3471,7 @@ addon.recipeDB[333] = {
 			},
 			["itemId"] = 28281,
 			["name"] = "Enchant Weapon - Major Healing",
+			["phase"] = 4,
 			["reagents"] = {
 				[21885] = 8,
 				[21886] = 8,
@@ -3508,6 +3517,7 @@ addon.recipeDB[333] = {
 			},
 			["itemId"] = 33165,
 			["name"] = "Enchant Weapon - Greater Agility",
+			["phase"] = 3,
 			["reagents"] = {
 				[22445] = 8,
 				[22446] = 4,
@@ -3545,6 +3555,7 @@ addon.recipeDB[333] = {
 			},
 			["itemId"] = 38949,
 			["name"] = "Enchant Shield - Resilience",
+			["phase"] = 3,
 			["reagents"] = {
 				[22447] = 4,
 				[22449] = 1,
@@ -4273,6 +4284,7 @@ addon.recipeDB[333] = {
 			},
 			["itemId"] = 35756,
 			["name"] = "Enchant Cloak - Greater Dodge",
+			["phase"] = 4,
 			["reagents"] = {
 				[22446] = 8,
 				[22452] = 8,

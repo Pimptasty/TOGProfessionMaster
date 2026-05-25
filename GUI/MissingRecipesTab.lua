@@ -255,6 +255,20 @@ local function BuildMissingList(charKey, profId, includeTrainer)
 
     local out = {}
 
+    -- On TBC clients, also hide recipes from later TBC phases than the user
+    -- has set in Settings. The recipe DB ships a `phase` field on Phase 2+
+    -- TBC recipes (Sunwell jewelcrafting, Black Temple drops, Shattered Sun
+    -- quartermaster patterns, etc.) sourced at build time from ATT. A user
+    -- on Phase 2 (current Anniversary live state) shouldn't see Phase 3/4
+    -- recipes in the Missing list because the content gating them isn't open
+    -- yet. Recipes WITHOUT a phase field show on every phase (safe default —
+    -- they're launch/early content). Other expansions don't ship phase tags
+    -- yet, so the filter is gated on isTBC.
+    local tbcPhaseLimit
+    if addon.isTBC and Ace and Ace.db and Ace.db.profile then
+        tbcPhaseLimit = Ace.db.profile.tbcAnniversaryPhase or 2
+    end
+
     -- Per-client max profession skill. Our shipped recipeDB is a UNION across
     -- every expansion's data (one Data/Recipes/*.lua file is loaded by every
     -- TOC variant), so a TBC Anniversary player would otherwise see MoP-
@@ -282,6 +296,13 @@ local function BuildMissingList(charKey, profId, includeTrainer)
             -- Recipe is from a future expansion the current client can't
             -- support. Hide it; the player will see it once they're on a
             -- later TOC variant.
+            skip = true
+        elseif tbcPhaseLimit and data.phase and data.phase > tbcPhaseLimit then
+            -- TBC client: recipe is gated by a content phase that hasn't
+            -- gone live yet (e.g. Sunwell content while Anniversary is on
+            -- Phase 2). User bumps Settings → TBC Anniversary phase when
+            -- Blizzard advances. Recipes without a `phase` field are
+            -- always shown (launch / unidentified content).
             skip = true
         elseif data.specialization and data.specialization ~= playerSpec then
             skip = true

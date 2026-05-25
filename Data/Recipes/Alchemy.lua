@@ -1638,6 +1638,7 @@ addon.recipeDB[171] = {
 			},
 			["itemId"] = 13517,
 			["name"] = "Alchemist Stone",
+			["phase"] = 4,
 			["reagents"] = {
 				[9149] = 1,
 				[22794] = 2,
@@ -1673,6 +1674,7 @@ addon.recipeDB[171] = {
 			},
 			["itemId"] = 13519,
 			["name"] = "Flask of the Titans",
+			["phase"] = 4,
 			["reagents"] = {
 				[3371] = 1,
 				[8846] = 7,
@@ -2195,6 +2197,7 @@ addon.recipeDB[171] = {
 			},
 			["itemId"] = 22913,
 			["name"] = "Haste Potion",
+			["phase"] = 4,
 			["reagents"] = {
 				[3371] = 1,
 				[22789] = 2,
@@ -2229,6 +2232,7 @@ addon.recipeDB[171] = {
 			},
 			["itemId"] = 22915,
 			["name"] = "Transmute: Primal Air to Fire",
+			["phase"] = 4,
 			["reagents"] = {
 				[22451] = 1,
 			},
@@ -2408,6 +2412,7 @@ addon.recipeDB[171] = {
 			},
 			["itemId"] = 22926,
 			["name"] = "Elixir of Empowerment",
+			["phase"] = 4,
 			["reagents"] = {
 				[3371] = 1,
 				[22791] = 1,
@@ -2996,6 +3001,7 @@ addon.recipeDB[171] = {
 			},
 			["itemId"] = 34481,
 			["name"] = "Mad Alchemist's Potion",
+			["phase"] = 3,
 			["reagents"] = {
 				[3371] = 1,
 				[22787] = 2,

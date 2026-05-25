@@ -31,6 +31,61 @@ addon.BrowserTab = BrowserTab
 local ROW_HEIGHT = 14
 local POOL_SIZE  = 35
 
+-- Resolve the best chat-insertable link for a recipe entry, falling back
+-- through several sources so the link / tooltip work even when the cached
+-- itemLink and recipeLink are both missing (true for trainer-taught recipes
+-- and for stub-created entries before recipemeta arrives).
+-- Priority: entry.itemLink (real item) > entry.recipeLink (real item) >
+-- GetItemInfo(entry.id) for non-spell recipes (Browser keys non-spell recipes
+-- by crafted-item ID) > GetSpellLink(entry.spellId) > synthetic
+-- "item:<id>" / "spell:<id>" link.
+local function ResolveRecipeLink(entry)
+    if not entry then return nil end
+    if type(entry.itemLink)   == "string" and entry.itemLink:find("|Hitem:")   then return entry.itemLink   end
+    if type(entry.recipeLink) == "string" and entry.recipeLink:find("|Hitem:") then return entry.recipeLink end
+    if not entry.isSpell and type(entry.id) == "number" and GetItemInfo then
+        local _, link = GetItemInfo(entry.id)
+        if link then return link end
+    end
+    local spellId = entry.spellId or (entry.isSpell and entry.id) or nil
+    if spellId and GetSpellLink then
+        local link = GetSpellLink(spellId)
+        if link then return link end
+    end
+    -- Synthetic minimal link. Won't carry the proper colour or stats but
+    -- will at least populate chat with something the user can paste.
+    if not entry.isSpell and type(entry.id) == "number" then
+        return "|cff71d5ff|Hitem:" .. entry.id .. "|h[" .. (entry.name or ("#" .. entry.id)) .. "]|h|r"
+    elseif spellId then
+        return "|cff71d5ff|Hspell:" .. spellId .. "|h[" .. (entry.name or ("#" .. spellId)) .. "]|h|r"
+    end
+    return nil
+end
+
+-- Append the brand-coloured [TOGPM] crafters + IDs lines to GameTooltip
+-- for a BrowserTab entry. Pulls itemID and spellID from the entry, then
+-- defers to addon.Tooltip's shared helpers — same code paths the global
+-- item-hover tooltip uses, so Browser tooltips look identical to AH /
+-- bag / chat-link tooltips. Crafters line only fires for item-keyed
+-- entries (item-tooltip hook can't resolve crafters from a spell id);
+-- IDs line always fires (gated on the user's tooltipShowIds setting).
+local function AppendBrandTooltipLines(entry)
+    if not entry then return end
+    -- Crafters line (only meaningful for item-keyed recipes).
+    if not entry.isSpell and type(entry.id) == "number" and addon.Tooltip.AppendCrafters then
+        addon.Tooltip.AppendCrafters(GameTooltip, entry.id)
+    end
+    -- IDs line. For item-keyed entries, entry.id IS the item id and
+    -- entry.spellId is the cast spell. For spell-keyed entries (Enchanting
+    -- on Classic, every recipe on TBC), entry.id IS the spell id; surface
+    -- it as spellId in that case.
+    if addon.Tooltip.AppendBrandIds then
+        local itemID  = (not entry.isSpell) and entry.id or nil
+        local spellID = entry.spellId or (entry.isSpell and entry.id) or nil
+        addon.Tooltip.AppendBrandIds(GameTooltip, itemID, spellID)
+    end
+end
+
 -- Detail panel constants
 local DP_W    = 268   -- outer width of the right detail panel
 local DP_PAD  = 6     -- inner padding
@@ -232,7 +287,19 @@ local function BuildRecipeList(profId, viewMode, searchText)
                                         isYou  = true,
                                     })
                                 end
-                            else
+                            elseif viewMode ~= "mine" then
+                                -- Guildmate crafter. Skip entirely in "mine"
+                                -- view so the crafter list only shows YOUR
+                                -- characters — otherwise a recipe that one of
+                                -- your alts crafts but is ALSO known to N
+                                -- guildmates renders with those N guildmate
+                                -- names alongside your alt, which the user
+                                -- correctly read as "TOGPM thinks these
+                                -- guildmates are my alts" even though the
+                                -- visibility filter on line 207-213 had
+                                -- already done the right "is this MY recipe"
+                                -- gate. In "guild" view we still show
+                                -- everyone (the whole point of that view).
                                 local shortName   = ck:match("^(.-)%-") or ck
                                 local online      = GuildCache and GuildCache:IsPlayerOnline(ck) or false
                                 local displayName = shortName
@@ -262,12 +329,64 @@ local function BuildRecipeList(profId, viewMode, searchText)
                         if youSelf then
                             table.insert(crafterObjs, 1, youSelf)
                         end
+                        -- Icon resolution. Three sources, tried in priority order.
+                        --
+                        -- 1. CRAFTED ITEM ID parsed out of rd.itemLink. This is
+                        --    the only authoritative source for the icon of the
+                        --    item the recipe produces. On TBC Anniversary every
+                        --    recipe is stored with isSpell=true keyed by spell ID
+                        --    (because GetTradeSkillRecipeLink returns enchant:
+                        --    links for every profession), so recipeId is NOT the
+                        --    crafted item ID there — but the itemLink captured at
+                        --    scan time still carries the Hitem:N of the crafted
+                        --    item (e.g. spell 29568 / Adamantite Cleaver →
+                        --    itemLink contains Hitem:23503). GetItemIcon(23503)
+                        --    is the actual cleaver icon.
+                        --
+                        -- 2. recipeId via GetItemIcon, for the Classic Era pattern
+                        --    where non-spell recipes are keyed by crafted item ID.
+                        --
+                        -- 3. rd.icon — the cached value (often wrong; on TBC it's
+                        --    the generic recipe-scroll icon 136192 from
+                        --    GetTradeSkillIcon, on stub-created entries it's the
+                        --    spell's generic icon). Last resort.
+                        --
+                        -- Final 134400 fallback only fires when all three return
+                        -- nil (cache cold, no link, no cached icon).
+                        local resolvedIcon
+                        if type(rd.itemLink) == "string" and GetItemIcon then
+                            local craftedId = tonumber(rd.itemLink:match("Hitem:(%d+)"))
+                            -- Reject spell-id namespace collisions. For
+                            -- Enchanting recipes on TBC, rd.itemLink often
+                            -- ends up as `Hitem:SPELLID:...[Unrelated Item]`
+                            -- because a stub-creation path pulled
+                            -- GetItemInfo(spellId) and stamped whatever item
+                            -- happened to share that numeric ID. Example:
+                            -- spell 13522 (Enchant Cloak - Lesser Shadow
+                            -- Resistance) got itemLink Hitem:13522 = "Recipe:
+                            -- Flask of Chromatic Resistance" → recipe-scroll
+                            -- icon; spell 13868 (Enchant Gloves - Advanced
+                            -- Herbalism) got Hitem:13868 = "Frostweave Robe"
+                            -- → robe icon. Tell: when the parsed itemID
+                            -- equals the recipe's spell ID, it's the
+                            -- collision pattern, not a real crafted item.
+                            -- Adamantite Cleaver (spell 29568, real crafted
+                            -- item 23503) passes — 23503 ≠ 29568.
+                            local collisionId = rd.spellId or (rd.isSpell and recipeId) or nil
+                            if craftedId and craftedId ~= collisionId then
+                                resolvedIcon = GetItemIcon(craftedId)
+                            end
+                        end
+                        if not resolvedIcon and not rd.isSpell and type(recipeId) == "number" and GetItemIcon then
+                            resolvedIcon = GetItemIcon(recipeId)
+                        end
+                        resolvedIcon = resolvedIcon or rd.icon
                         table.insert(list, {
                             id         = recipeId,
                             name       = name,
                             profName   = profName,
                             profIconId = profIconId,
-                            icon       = rd.icon or 134400,
+                            icon       = resolvedIcon or 134400,
                             isSpell    = rd.isSpell,
                             spellId    = rd.spellId,
                             recipeLink = rd.recipeLink,
@@ -1115,6 +1234,19 @@ function BrowserTab:BuildPool(parent)
             if button ~= "LeftButton" then return end
             local entry = f._entry
             if not entry then return end
+            -- Shift-click inserts the recipe link into the chat edit box.
+            -- ResolveRecipeLink falls back through itemLink → recipeLink →
+            -- GetItemInfo(id) → GetSpellLink → synthetic "item:<id>" so the
+            -- click always produces a link even for trainer-taught recipes
+            -- whose gdb entry has no link cached. Without this, shift-click
+            -- silently did nothing for entries with nil itemLink/recipeLink.
+            if IsShiftKeyDown() then
+                local link = ResolveRecipeLink(entry)
+                if link and ChatEdit_InsertLink then
+                    ChatEdit_InsertLink(link)
+                    return
+                end
+            end
             self:DrawDetail(entry)
         end)
 
@@ -1164,9 +1296,11 @@ function BrowserTab:BuildPool(parent)
                         end
                     end
                 end
-                if not entry.isSpell then
-                    addon.Tooltip.AppendCrafters(GameTooltip, entry.id)
-                end
+                -- Custom-built tooltip: add the brand-colored crafters + IDs
+                -- lines as the LAST content so they sit at the bottom. The
+                -- conditional inside AppendBrandTooltipLines handles the
+                -- isSpell branch (skips crafters for spell-keyed entries).
+                AppendBrandTooltipLines(entry)
                 GameTooltip:Show()
                 return
             elseif type(entry.itemLink) == "string" and entry.itemLink:find("|Hitem:") then
@@ -1178,6 +1312,14 @@ function BrowserTab:BuildPool(parent)
             else
                 GameTooltip:SetHyperlink("item:" .. entry.id)
             end
+            -- For SetHyperlink branches the global tooltip hook will fire on
+            -- Show() and add its own brand crafters+IDs (the hook dedups via
+            -- _togpmAppended). For SetSpellByID branches the hook does NOT
+            -- fire (no item context), so this manual call is the only way
+            -- spell-only recipes get an IDs line. The dedup means we don't
+            -- double-up on SetHyperlink branches — the manual call wins,
+            -- the hook's later call early-returns.
+            AppendBrandTooltipLines(entry)
             GameTooltip:Show()
         end)
         f:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1471,26 +1613,45 @@ function BrowserTab:DrawDetail(entry)
     local titleColor = type(entry.itemLink) == "string" and entry.itemLink:match("|c(ff%x%x%x%x%x%x)|H") or "ffffd100"
     self._dpName:SetText("|c" .. titleColor .. entry.name .. "|r")
 
-    -- Tooltip + shift-click to insert link on the header button
-    local nameLink = (type(entry.itemLink)   == "string" and entry.itemLink:find("|Hitem:")   and entry.itemLink)
-                 or (type(entry.recipeLink) == "string" and entry.recipeLink:find("|Hitem:") and entry.recipeLink)
-    if nameLink then
-        self._dpHdrBtn:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(self._dpHdrBtn)
-            GameTooltip:SetHyperlink(nameLink)
-            GameTooltip:Show()
-        end)
-        self._dpHdrBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        self._dpHdrBtn:SetScript("OnClick", function(_, btn)
-            if btn == "LeftButton" and IsShiftKeyDown() then
-                ChatEdit_InsertLink(nameLink)
+    -- Tooltip + shift-click to insert link on the header button.
+    -- ResolveRecipeLink falls back through itemLink → recipeLink →
+    -- GetItemInfo(entry.id) → GetSpellLink → synthetic "item:<id>" so
+    -- the click always produces a link. The previous behaviour bound NO
+    -- click handler when both itemLink and recipeLink were missing,
+    -- silently swallowing shift-clicks on trainer-taught recipes and on
+    -- any stub-created entry where sync hadn't filled in a link yet.
+    self._dpHdrBtn:SetScript("OnEnter", function()
+        addon.Tooltip.Owner(self._dpHdrBtn)
+        local link = ResolveRecipeLink(entry)
+        if link and link:find("|Hitem:") then
+            GameTooltip:SetHyperlink(link)
+        elseif link and link:find("|Hspell:") then
+            local sid = tonumber(link:match("|Hspell:(%d+)"))
+            if sid then
+                GameTooltip:SetSpellByID(sid)
+            else
+                GameTooltip:SetText(entry.name or "", 1, 1, 1, 1, false)
             end
-        end)
-    else
-        self._dpHdrBtn:SetScript("OnEnter", nil)
-        self._dpHdrBtn:SetScript("OnLeave", nil)
-        self._dpHdrBtn:SetScript("OnClick", nil)
-    end
+        elseif entry.spellId then
+            GameTooltip:SetSpellByID(entry.spellId)
+        else
+            GameTooltip:SetText(entry.name or "", 1, 1, 1, 1, false)
+        end
+        -- Brand crafters + IDs lines at the bottom — same helper used by
+        -- the recipe row tooltip and the global item tooltip hook, so
+        -- styling stays consistent across every TOGPM tooltip surface.
+        AppendBrandTooltipLines(entry)
+        GameTooltip:Show()
+    end)
+    self._dpHdrBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    self._dpHdrBtn:SetScript("OnClick", function(_, btn)
+        if btn == "LeftButton" and IsShiftKeyDown() then
+            local link = ResolveRecipeLink(entry)
+            if link and ChatEdit_InsertLink then
+                ChatEdit_InsertLink(link)
+            end
+        end
+    end)
 
     -- Shopping list qty display and controls
     local function RefreshQty()

@@ -9,10 +9,11 @@ addon.recipeDB[356] = {
 				0,
 			},
 			["itemId"] = 34109,
+			["minExpansion"] = 2,
 			["name"] = "Find Fish",
 			["phase"] = 3,
 			["reagents"] = {},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 100,
 			["teaches"] = 43308,
 		},
 	}

@@ -2,6 +2,7 @@ local _, addon = ...
 
 addon.recipeDB[129] = {
 		[3275] = {
+			["craftedItemId"] = 1251,
 			["difficulty"] = {
 				1,
 				20,
@@ -12,10 +13,10 @@ addon.recipeDB[129] = {
 			["reagents"] = {
 				[2589] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 3275,
 		},
 		[3276] = {
+			["craftedItemId"] = 2581,
 			["difficulty"] = {
 				40,
 				60,
@@ -30,6 +31,7 @@ addon.recipeDB[129] = {
 			["teaches"] = 3276,
 		},
 		[3277] = {
+			["craftedItemId"] = 3530,
 			["difficulty"] = {
 				80,
 				97,
@@ -44,6 +46,7 @@ addon.recipeDB[129] = {
 			["teaches"] = 3277,
 		},
 		[3278] = {
+			["craftedItemId"] = 3531,
 			["difficulty"] = {
 				115,
 				132,
@@ -58,6 +61,7 @@ addon.recipeDB[129] = {
 			["teaches"] = 3278,
 		},
 		[7928] = {
+			["craftedItemId"] = 6450,
 			["difficulty"] = {
 				150,
 				165,
@@ -72,6 +76,7 @@ addon.recipeDB[129] = {
 			["teaches"] = 7928,
 		},
 		[7929] = {
+			["craftedItemId"] = 6451,
 			["difficulty"] = {
 				180,
 				195,
@@ -87,6 +92,7 @@ addon.recipeDB[129] = {
 			["teaches"] = 7929,
 		},
 		[7934] = {
+			["craftedItemId"] = 6452,
 			["difficulty"] = {
 				80,
 				80,
@@ -101,6 +107,7 @@ addon.recipeDB[129] = {
 			["teaches"] = 7934,
 		},
 		[7935] = {
+			["craftedItemId"] = 6453,
 			["difficulty"] = {
 				1,
 				65,
@@ -112,10 +119,11 @@ addon.recipeDB[129] = {
 			["reagents"] = {
 				[1288] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 130,
 			["teaches"] = 7935,
 		},
 		[10840] = {
+			["craftedItemId"] = 8544,
 			["difficulty"] = {
 				210,
 				225,
@@ -131,6 +139,7 @@ addon.recipeDB[129] = {
 			["teaches"] = 10840,
 		},
 		[10841] = {
+			["craftedItemId"] = 8545,
 			["difficulty"] = {
 				1,
 				130,
@@ -141,10 +150,11 @@ addon.recipeDB[129] = {
 			["reagents"] = {
 				[4338] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 240,
 			["teaches"] = 10841,
 		},
 		[18629] = {
+			["craftedItemId"] = 14529,
 			["difficulty"] = {
 				1,
 				145,
@@ -155,10 +165,11 @@ addon.recipeDB[129] = {
 			["reagents"] = {
 				[14047] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 260,
 			["teaches"] = 18629,
 		},
 		[18630] = {
+			["craftedItemId"] = 14530,
 			["difficulty"] = {
 				1,
 				150,
@@ -169,10 +180,11 @@ addon.recipeDB[129] = {
 			["reagents"] = {
 				[14047] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 18630,
 		},
 		[23787] = {
+			["craftedItemId"] = 19440,
 			["difficulty"] = {
 				1,
 				150,
@@ -184,10 +196,11 @@ addon.recipeDB[129] = {
 			["reagents"] = {
 				[19441] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 23787,
 		},
 		[27032] = {
+			["craftedItemId"] = 21990,
 			["difficulty"] = {
 				1,
 				165,
@@ -195,14 +208,16 @@ addon.recipeDB[129] = {
 				365,
 			},
 			["itemId"] = 21992,
+			["minExpansion"] = 2,
 			["name"] = "Netherweave Bandage",
 			["reagents"] = {
 				[21877] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 330,
 			["teaches"] = 27032,
 		},
 		[27033] = {
+			["craftedItemId"] = 21991,
 			["difficulty"] = {
 				1,
 				175,
@@ -210,14 +225,16 @@ addon.recipeDB[129] = {
 				375,
 			},
 			["itemId"] = 21993,
+			["minExpansion"] = 2,
 			["name"] = "Heavy Netherweave Bandage",
 			["reagents"] = {
 				[21877] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 27033,
 		},
 		[30021] = {
+			["craftedItemId"] = 23684,
 			["difficulty"] = {
 				1,
 				150,
@@ -230,24 +247,27 @@ addon.recipeDB[129] = {
 				[14047] = 10,
 				[23567] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 30021,
 		},
 		[45545] = {
+			["craftedItemId"] = 34721,
 			["difficulty"] = {
 				1,
 				195,
 				390,
 				410,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostweave Bandage",
 			["reagents"] = {
 				[33470] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 45545,
 		},
 		[45546] = {
+			["craftedItemId"] = 34722,
 			["difficulty"] = {
 				1,
 				213,
@@ -255,112 +275,125 @@ addon.recipeDB[129] = {
 				470,
 			},
 			["itemId"] = 39152,
+			["minExpansion"] = 3,
 			["name"] = "Heavy Frostweave Bandage",
 			["reagents"] = {
 				[33470] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 45546,
 		},
 		[74556] = {
+			["craftedItemId"] = 53049,
 			["difficulty"] = {
 				1,
 				238,
 				475,
 				485,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Embersilk Bandage",
 			["reagents"] = {
 				[53010] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 74556,
 		},
 		[74557] = {
+			["craftedItemId"] = 53050,
 			["difficulty"] = {
 				1,
 				250,
 				500,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Heavy Embersilk Bandage",
 			["reagents"] = {
 				[53010] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 475,
 			["teaches"] = 74557,
 		},
 		[74558] = {
+			["craftedItemId"] = 53051,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Field Bandage: Dense Embersilk",
 			["reagents"] = {
 				[53050] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74558,
 		},
 		[88893] = {
+			["craftedItemId"] = 53051,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Dense Embersilk Bandage",
 			["reagents"] = {
 				[53010] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 88893,
 		},
 		[102697] = {
+			["craftedItemId"] = 72985,
 			["difficulty"] = {
 				1,
 				275,
 				550,
 				560,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Windwool Bandage",
 			["reagents"] = {
 				[72988] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 102697,
 		},
 		[102698] = {
+			["craftedItemId"] = 72986,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				610,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Heavy Windwool Bandage",
 			["reagents"] = {
 				[72988] = 3,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 102698,
 		},
 		[102699] = {
+			["craftedItemId"] = 72986,
 			["difficulty"] = {
 				600,
 				602,
 				605,
 				615,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Heavy Windwool Bandage",
 			["reagents"] = {
 				[72988] = 2,
 			},
-			["requiredSkill"] = 600,
 			["teaches"] = 102699,
 		},
 		[470349] = {
+			["craftedItemId"] = 232433,
 			["difficulty"] = {
 				1,
 				158,
@@ -371,7 +404,6 @@ addon.recipeDB[129] = {
 			["reagents"] = {
 				[14530] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 470349,
 		},
 	}

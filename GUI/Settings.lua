@@ -217,6 +217,37 @@ local OPTIONS = {
             end,
         },
 
+        -- ---- Global item tooltip lines ------------------------------------
+        -- The addon hooks the global item tooltip (bags, AH, chat links,
+        -- vendor, etc.) and appends up to two TOGPM lines: a crafters list
+        -- (who in your guild can make this) and an IDs line (itemId /
+        -- spellId — useful for troubleshooting icon or link issues).
+        -- Both default ON; each is independently togglable so users can
+        -- pick crafters-only, IDs-only, both, or none.
+        tooltipHeader = {
+            name  = L["SettingsTooltipHeader"],
+            type  = "header",
+            order = 19.50,
+        },
+        tooltipShowCrafters = {
+            name  = L["SettingsTooltipShowCrafters"],
+            desc  = L["SettingsTooltipShowCraftersDesc"],
+            type  = "toggle",
+            order = 19.51,
+            width = "full",
+            get   = function() return Ace.db.profile.tooltipShowCrafters ~= false end,
+            set   = function(_, val) Ace.db.profile.tooltipShowCrafters = val and true or false end,
+        },
+        tooltipShowIds = {
+            name  = L["SettingsTooltipShowIds"],
+            desc  = L["SettingsTooltipShowIdsDesc"],
+            type  = "toggle",
+            order = 19.52,
+            width = "full",
+            get   = function() return Ace.db.profile.tooltipShowIds ~= false end,
+            set   = function(_, val) Ace.db.profile.tooltipShowIds = val and true or false end,
+        },
+
         -- ---- Phase filtering (TBC Anniversary only) ------------------------
         -- Only meaningful on TBC clients; hidden on Vanilla / Wrath / Cata /
         -- MoP where there's nothing to filter. The recipe DB ships with a
@@ -242,7 +273,11 @@ local OPTIONS = {
                 [3] = L["SettingsTBCPhase3"],
                 [4] = L["SettingsTBCPhase4"],
             },
-            sortByValue = true,
+            -- Explicit order so the dropdown lists Phase 1 → 4 instead of
+            -- AceConfig's default alphabetical-by-label sort (which would
+            -- put "Phase 2 (SSC / Tempest Keep)" before "Phase 1 (...)"
+            -- depending on the localised label text).
+            sorting = { 1, 2, 3, 4 },
             get = function() return Ace.db.profile.tbcAnniversaryPhase or 2 end,
             set = function(_, val)
                 Ace.db.profile.tbcAnniversaryPhase = val

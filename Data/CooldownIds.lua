@@ -213,6 +213,12 @@ local OUTPUT_OVERRIDES = {
 local ICON_OVERRIDES = {
     [18560] = 14342,  -- Mooncloth spell → Mooncloth item icon
     [15846] = 15846,  -- Salt Shaker → Salt Shaker item icon
+    -- TBC tailoring cloth specs — GetSpellTexture returns generic net/cloth
+    -- icons (Blizzard never assigned proper spell icons to these crafts).
+    -- Map each to the produced bolt's item icon instead.
+    [26751] = 21845,  -- Primal Mooncloth spell → Bolt of Primal Mooncloth icon
+    [31373] = 24272,  -- Spellcloth spell      → Bolt of Spellcloth icon
+    [36686] = 24271,  -- Shadowcloth spell     → Bolt of Shadowcloth icon
 }
 
 -- ---------------------------------------------------------------------------

@@ -2,6 +2,7 @@ local _, addon = ...
 
 addon.recipeDB[186] = {
 		[2657] = {
+			["craftedItemId"] = 2840,
 			["difficulty"] = {
 				1,
 				10,
@@ -12,10 +13,10 @@ addon.recipeDB[186] = {
 			["reagents"] = {
 				[2770] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 2657,
 		},
 		[2658] = {
+			["craftedItemId"] = 2842,
 			["difficulty"] = {
 				1,
 				50,
@@ -26,10 +27,11 @@ addon.recipeDB[186] = {
 			["reagents"] = {
 				[2775] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 65,
 			["teaches"] = 2658,
 		},
 		[2659] = {
+			["craftedItemId"] = 2841,
 			["difficulty"] = {
 				1,
 				25,
@@ -41,10 +43,11 @@ addon.recipeDB[186] = {
 				[2840] = 1,
 				[3576] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 50,
 			["teaches"] = 2659,
 		},
 		[3304] = {
+			["craftedItemId"] = 3576,
 			["difficulty"] = {
 				1,
 				20,
@@ -55,10 +58,11 @@ addon.recipeDB[186] = {
 			["reagents"] = {
 				[2771] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 50,
 			["teaches"] = 3304,
 		},
 		[3307] = {
+			["craftedItemId"] = 3575,
 			["difficulty"] = {
 				1,
 				50,
@@ -69,10 +73,11 @@ addon.recipeDB[186] = {
 			["reagents"] = {
 				[2772] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 100,
 			["teaches"] = 3307,
 		},
 		[3308] = {
+			["craftedItemId"] = 3577,
 			["difficulty"] = {
 				1,
 				75,
@@ -83,10 +88,11 @@ addon.recipeDB[186] = {
 			["reagents"] = {
 				[2776] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 115,
 			["teaches"] = 3308,
 		},
 		[3569] = {
+			["craftedItemId"] = 3859,
 			["difficulty"] = {
 				1,
 				63,
@@ -98,10 +104,11 @@ addon.recipeDB[186] = {
 				[3575] = 1,
 				[3857] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 125,
 			["teaches"] = 3569,
 		},
 		[10097] = {
+			["craftedItemId"] = 3860,
 			["difficulty"] = {
 				1,
 				75,
@@ -112,10 +119,11 @@ addon.recipeDB[186] = {
 			["reagents"] = {
 				[3858] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 150,
 			["teaches"] = 10097,
 		},
 		[10098] = {
+			["craftedItemId"] = 6037,
 			["difficulty"] = {
 				1,
 				100,
@@ -126,10 +134,11 @@ addon.recipeDB[186] = {
 			["reagents"] = {
 				[7911] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 165,
 			["teaches"] = 10098,
 		},
 		[14891] = {
+			["craftedItemId"] = 11371,
 			["difficulty"] = {
 				1,
 				150,
@@ -140,10 +149,10 @@ addon.recipeDB[186] = {
 			["reagents"] = {
 				[11370] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 14891,
 		},
 		[16153] = {
+			["craftedItemId"] = 12359,
 			["difficulty"] = {
 				1,
 				100,
@@ -154,10 +163,11 @@ addon.recipeDB[186] = {
 			["reagents"] = {
 				[10620] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 200,
 			["teaches"] = 16153,
 		},
 		[22967] = {
+			["craftedItemId"] = 17771,
 			["difficulty"] = {
 				1,
 				175,
@@ -172,123 +182,140 @@ addon.recipeDB[186] = {
 				[18562] = 1,
 				[18567] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 22967,
 		},
 		[29356] = {
+			["craftedItemId"] = 23445,
 			["difficulty"] = {
 				1,
 				138,
 				275,
 				325,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Smelt Fel Iron",
 			["reagents"] = {
 				[23424] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 29356,
 		},
 		[29358] = {
+			["craftedItemId"] = 23446,
 			["difficulty"] = {
 				1,
 				163,
 				325,
 				340,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Smelt Adamantite",
 			["reagents"] = {
 				[23425] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 325,
 			["teaches"] = 29358,
 		},
 		[29359] = {
+			["craftedItemId"] = 23447,
 			["difficulty"] = {
 				1,
 				175,
 				350,
 				365,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Smelt Eternium",
 			["reagents"] = {
 				[23427] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 29359,
 		},
 		[29360] = {
+			["craftedItemId"] = 23448,
 			["difficulty"] = {
 				1,
 				170,
 				340,
 				375,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Smelt Felsteel",
 			["reagents"] = {
 				[23445] = 3,
 				[23447] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 29360,
 		},
 		[29361] = {
+			["craftedItemId"] = 23449,
 			["difficulty"] = {
 				1,
 				193,
 				385,
 				400,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Smelt Khorium",
 			["reagents"] = {
 				[23426] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 29361,
 		},
 		[29686] = {
+			["craftedItemId"] = 23573,
 			["difficulty"] = {
 				1,
 				193,
 				385,
 				400,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Smelt Hardened Adamantite",
 			["reagents"] = {
 				[23446] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 29686,
 		},
 		[35750] = {
+			["craftedItemId"] = 22573,
 			["difficulty"] = {
 				1,
 				150,
 				300,
 				300,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Earth Shatter",
 			["reagents"] = {
 				[22452] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 35750,
 		},
 		[35751] = {
+			["craftedItemId"] = 22574,
 			["difficulty"] = {
 				1,
 				150,
 				300,
 				300,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Fire Sunder",
 			["reagents"] = {
 				[21884] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 35751,
 		},
 		[46353] = {
+			["craftedItemId"] = 35128,
 			["difficulty"] = {
 				1,
 				188,
@@ -296,50 +323,57 @@ addon.recipeDB[186] = {
 				375,
 			},
 			["itemId"] = 35273,
+			["minExpansion"] = 2,
 			["name"] = "Smelt Hardened Khorium",
 			["phase"] = 4,
 			["reagents"] = {
 				[23449] = 3,
 				[23573] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 46353,
 		},
 		[49252] = {
+			["craftedItemId"] = 36916,
 			["difficulty"] = {
 				1,
 				175,
 				350,
 				375,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Smelt Cobalt",
 			["reagents"] = {
 				[36909] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 49252,
 		},
 		[49258] = {
+			["craftedItemId"] = 36913,
 			["difficulty"] = {
 				1,
 				200,
 				400,
 				425,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Smelt Saronite",
 			["reagents"] = {
 				[36912] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 49258,
 		},
 		[55208] = {
+			["craftedItemId"] = 37663,
 			["difficulty"] = {
 				1,
 				225,
 				450,
 				450,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Smelt Titansteel",
 			["reagents"] = {
 				[35624] = 1,
@@ -347,125 +381,140 @@ addon.recipeDB[186] = {
 				[36860] = 1,
 				[41163] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 55208,
 		},
 		[55211] = {
+			["craftedItemId"] = 41163,
 			["difficulty"] = {
 				1,
 				225,
 				450,
 				450,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Smelt Titanium",
 			["reagents"] = {
 				[36910] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 55211,
 		},
 		[70524] = {
+			["craftedItemId"] = 12655,
 			["difficulty"] = {
 				1,
 				125,
 				250,
 				290,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Enchanted Thorium Bar",
 			["reagents"] = {
 				[11176] = 3,
 				[12359] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 70524,
 		},
 		[74529] = {
+			["craftedItemId"] = 51950,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Smelt Pyrite",
 			["reagents"] = {
 				[52183] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74529,
 		},
 		[74530] = {
+			["craftedItemId"] = 52186,
 			["difficulty"] = {
 				1,
 				225,
 				450,
 				500,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Smelt Elementium",
 			["reagents"] = {
 				[52185] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 475,
 			["teaches"] = 74530,
 		},
 		[74537] = {
+			["craftedItemId"] = 53039,
 			["difficulty"] = {
 				1,
 				238,
 				475,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Smelt Hardened Elementium",
 			["reagents"] = {
 				[52186] = 10,
 				[52327] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 74537,
 		},
 		[84038] = {
+			["craftedItemId"] = 54849,
 			["difficulty"] = {
 				1,
 				200,
 				400,
 				475,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Smelt Obsidium",
 			["reagents"] = {
 				[53038] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 84038,
 		},
 		[102165] = {
+			["craftedItemId"] = 72096,
 			["difficulty"] = {
 				1,
 				238,
 				475,
 				525,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Smelt Ghost Iron",
 			["reagents"] = {
 				[72092] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 102165,
 		},
 		[102167] = {
+			["craftedItemId"] = 72095,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				600,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Smelt Trillium",
 			["reagents"] = {
 				[72094] = 2,
 				[72103] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 102167,
 		},
 		[110955] = {
+			["craftedItemId"] = 24507,
 			["difficulty"] = {
 				1,
 				300,
@@ -473,12 +522,13 @@ addon.recipeDB[186] = {
 				600,
 			},
 			["itemId"] = 74622,
+			["minExpansion"] = 5,
 			["name"] = "Release Spirit",
 			["reagents"] = {},
-			["requiredSkill"] = 1,
 			["teaches"] = 110955,
 		},
 		[1213638] = {
+			["craftedItemId"] = 234003,
 			["difficulty"] = {
 				1,
 				158,
@@ -490,7 +540,6 @@ addon.recipeDB[186] = {
 				[12655] = 2,
 				[22203] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213638,
 		},
 	}

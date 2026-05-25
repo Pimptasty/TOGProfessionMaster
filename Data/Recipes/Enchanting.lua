@@ -13,7 +13,6 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[10940] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 7418,
 		},
 		[7420] = {
@@ -28,10 +27,11 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[10940] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 15,
 			["teaches"] = 7420,
 		},
 		[7421] = {
+			["craftedItemId"] = 6218,
 			["difficulty"] = {
 				1,
 				3,
@@ -44,7 +44,6 @@ addon.recipeDB[333] = {
 				[10938] = 1,
 				[10940] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 7421,
 		},
 		[7426] = {
@@ -60,7 +59,7 @@ addon.recipeDB[333] = {
 				[10938] = 1,
 				[10940] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 40,
 			["teaches"] = 7426,
 		},
 		[7428] = {
@@ -76,7 +75,7 @@ addon.recipeDB[333] = {
 				[10938] = 1,
 				[10940] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 20,
 			["teaches"] = 7428,
 		},
 		[7443] = {
@@ -91,7 +90,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[10938] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 20,
 			["teaches"] = 7443,
 		},
 		[7454] = {
@@ -107,7 +106,7 @@ addon.recipeDB[333] = {
 				[10938] = 2,
 				[10940] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 45,
 			["teaches"] = 7454,
 		},
 		[7457] = {
@@ -122,7 +121,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[10940] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 50,
 			["teaches"] = 7457,
 		},
 		[7745] = {
@@ -138,7 +137,7 @@ addon.recipeDB[333] = {
 				[10940] = 4,
 				[10978] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 100,
 			["teaches"] = 7745,
 		},
 		[7748] = {
@@ -154,7 +153,7 @@ addon.recipeDB[333] = {
 				[10938] = 2,
 				[10940] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 60,
 			["teaches"] = 7748,
 		},
 		[7766] = {
@@ -169,7 +168,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[10938] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 60,
 			["teaches"] = 7766,
 		},
 		[7771] = {
@@ -185,7 +184,7 @@ addon.recipeDB[333] = {
 				[10939] = 1,
 				[10940] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 90,
 			["teaches"] = 7771,
 		},
 		[7776] = {
@@ -201,7 +200,7 @@ addon.recipeDB[333] = {
 				[10938] = 1,
 				[10939] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 80,
 			["teaches"] = 7776,
 		},
 		[7779] = {
@@ -217,7 +216,7 @@ addon.recipeDB[333] = {
 				[10939] = 1,
 				[10940] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 80,
 			["teaches"] = 7779,
 		},
 		[7782] = {
@@ -232,7 +231,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[10940] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 80,
 			["teaches"] = 7782,
 		},
 		[7786] = {
@@ -248,7 +247,7 @@ addon.recipeDB[333] = {
 				[10939] = 2,
 				[10940] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 90,
 			["teaches"] = 7786,
 		},
 		[7788] = {
@@ -265,7 +264,7 @@ addon.recipeDB[333] = {
 				[10940] = 2,
 				[10978] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 90,
 			["teaches"] = 7788,
 		},
 		[7793] = {
@@ -280,10 +279,11 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[10939] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 100,
 			["teaches"] = 7793,
 		},
 		[7795] = {
+			["craftedItemId"] = 6339,
 			["difficulty"] = {
 				1,
 				65,
@@ -297,7 +297,7 @@ addon.recipeDB[333] = {
 				[10939] = 3,
 				[10940] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 100,
 			["teaches"] = 7795,
 		},
 		[7857] = {
@@ -313,7 +313,7 @@ addon.recipeDB[333] = {
 				[10940] = 4,
 				[10998] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 120,
 			["teaches"] = 7857,
 		},
 		[7859] = {
@@ -328,7 +328,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[10998] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 120,
 			["teaches"] = 7859,
 		},
 		[7861] = {
@@ -344,7 +344,7 @@ addon.recipeDB[333] = {
 				[6371] = 1,
 				[10998] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 125,
 			["teaches"] = 7861,
 		},
 		[7863] = {
@@ -359,7 +359,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[10940] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 125,
 			["teaches"] = 7863,
 		},
 		[7867] = {
@@ -375,7 +375,7 @@ addon.recipeDB[333] = {
 				[10940] = 6,
 				[10998] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 125,
 			["teaches"] = 7867,
 		},
 		[13378] = {
@@ -391,7 +391,7 @@ addon.recipeDB[333] = {
 				[10940] = 2,
 				[10998] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 105,
 			["teaches"] = 13378,
 		},
 		[13380] = {
@@ -407,7 +407,7 @@ addon.recipeDB[333] = {
 				[10940] = 6,
 				[10998] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 110,
 			["teaches"] = 13380,
 		},
 		[13419] = {
@@ -422,7 +422,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[10998] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 110,
 			["teaches"] = 13419,
 		},
 		[13421] = {
@@ -438,7 +438,7 @@ addon.recipeDB[333] = {
 				[10940] = 6,
 				[10978] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 115,
 			["teaches"] = 13421,
 		},
 		[13464] = {
@@ -455,7 +455,7 @@ addon.recipeDB[333] = {
 				[10978] = 1,
 				[10998] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 115,
 			["teaches"] = 13464,
 		},
 		[13485] = {
@@ -471,7 +471,7 @@ addon.recipeDB[333] = {
 				[10940] = 4,
 				[10998] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 130,
 			["teaches"] = 13485,
 		},
 		[13501] = {
@@ -486,7 +486,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11083] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 130,
 			["teaches"] = 13501,
 		},
 		[13503] = {
@@ -502,7 +502,7 @@ addon.recipeDB[333] = {
 				[11083] = 2,
 				[11084] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 140,
 			["teaches"] = 13503,
 		},
 		[13522] = {
@@ -518,7 +518,7 @@ addon.recipeDB[333] = {
 				[6048] = 1,
 				[11082] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 135,
 			["teaches"] = 13522,
 		},
 		[13529] = {
@@ -534,7 +534,7 @@ addon.recipeDB[333] = {
 				[11083] = 3,
 				[11084] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 145,
 			["teaches"] = 13529,
 		},
 		[13536] = {
@@ -549,7 +549,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11083] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 140,
 			["teaches"] = 13536,
 		},
 		[13538] = {
@@ -566,7 +566,7 @@ addon.recipeDB[333] = {
 				[11082] = 1,
 				[11084] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 140,
 			["teaches"] = 13538,
 		},
 		[13607] = {
@@ -582,7 +582,7 @@ addon.recipeDB[333] = {
 				[10998] = 2,
 				[11082] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 145,
 			["teaches"] = 13607,
 		},
 		[13612] = {
@@ -598,7 +598,7 @@ addon.recipeDB[333] = {
 				[2772] = 3,
 				[11083] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 145,
 			["teaches"] = 13612,
 		},
 		[13617] = {
@@ -614,7 +614,7 @@ addon.recipeDB[333] = {
 				[3356] = 3,
 				[11083] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 145,
 			["teaches"] = 13617,
 		},
 		[13620] = {
@@ -630,7 +630,7 @@ addon.recipeDB[333] = {
 				[6370] = 3,
 				[11083] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 145,
 			["teaches"] = 13620,
 		},
 		[13622] = {
@@ -645,7 +645,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11082] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 150,
 			["teaches"] = 13622,
 		},
 		[13626] = {
@@ -662,10 +662,11 @@ addon.recipeDB[333] = {
 				[11083] = 1,
 				[11084] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 150,
 			["teaches"] = 13626,
 		},
 		[13628] = {
+			["craftedItemId"] = 11130,
 			["difficulty"] = {
 				1,
 				88,
@@ -680,7 +681,7 @@ addon.recipeDB[333] = {
 				[11083] = 2,
 				[11128] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 150,
 			["teaches"] = 13628,
 		},
 		[13631] = {
@@ -696,7 +697,7 @@ addon.recipeDB[333] = {
 				[11083] = 1,
 				[11134] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 155,
 			["teaches"] = 13631,
 		},
 		[13635] = {
@@ -712,7 +713,7 @@ addon.recipeDB[333] = {
 				[11083] = 3,
 				[11138] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 155,
 			["teaches"] = 13635,
 		},
 		[13637] = {
@@ -728,7 +729,7 @@ addon.recipeDB[333] = {
 				[11083] = 1,
 				[11134] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 160,
 			["teaches"] = 13637,
 		},
 		[13640] = {
@@ -743,7 +744,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11083] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 160,
 			["teaches"] = 13640,
 		},
 		[13642] = {
@@ -758,7 +759,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11134] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 165,
 			["teaches"] = 13642,
 		},
 		[13644] = {
@@ -773,7 +774,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11083] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 170,
 			["teaches"] = 13644,
 		},
 		[13646] = {
@@ -789,7 +790,7 @@ addon.recipeDB[333] = {
 				[11083] = 2,
 				[11134] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 170,
 			["teaches"] = 13646,
 		},
 		[13648] = {
@@ -804,7 +805,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11083] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 170,
 			["teaches"] = 13648,
 		},
 		[13653] = {
@@ -821,7 +822,7 @@ addon.recipeDB[333] = {
 				[11134] = 1,
 				[11138] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 175,
 			["teaches"] = 13653,
 		},
 		[13655] = {
@@ -838,7 +839,7 @@ addon.recipeDB[333] = {
 				[11134] = 1,
 				[11138] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 175,
 			["teaches"] = 13655,
 		},
 		[13657] = {
@@ -854,7 +855,7 @@ addon.recipeDB[333] = {
 				[7068] = 1,
 				[11134] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 175,
 			["teaches"] = 13657,
 		},
 		[13659] = {
@@ -870,7 +871,7 @@ addon.recipeDB[333] = {
 				[11135] = 1,
 				[11137] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 180,
 			["teaches"] = 13659,
 		},
 		[13661] = {
@@ -885,7 +886,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11137] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 180,
 			["teaches"] = 13661,
 		},
 		[13663] = {
@@ -900,7 +901,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11135] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 185,
 			["teaches"] = 13663,
 		},
 		[13687] = {
@@ -916,7 +917,7 @@ addon.recipeDB[333] = {
 				[11134] = 2,
 				[11135] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 190,
 			["teaches"] = 13687,
 		},
 		[13689] = {
@@ -933,7 +934,7 @@ addon.recipeDB[333] = {
 				[11137] = 2,
 				[11139] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 195,
 			["teaches"] = 13689,
 		},
 		[13693] = {
@@ -949,7 +950,7 @@ addon.recipeDB[333] = {
 				[11135] = 2,
 				[11139] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 195,
 			["teaches"] = 13693,
 		},
 		[13695] = {
@@ -965,7 +966,7 @@ addon.recipeDB[333] = {
 				[11137] = 4,
 				[11139] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 200,
 			["teaches"] = 13695,
 		},
 		[13698] = {
@@ -981,7 +982,7 @@ addon.recipeDB[333] = {
 				[7392] = 3,
 				[11137] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 200,
 			["teaches"] = 13698,
 		},
 		[13700] = {
@@ -998,10 +999,11 @@ addon.recipeDB[333] = {
 				[11137] = 2,
 				[11139] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 200,
 			["teaches"] = 13700,
 		},
 		[13702] = {
+			["craftedItemId"] = 11145,
 			["difficulty"] = {
 				1,
 				110,
@@ -1016,7 +1018,7 @@ addon.recipeDB[333] = {
 				[11137] = 2,
 				[11144] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 200,
 			["teaches"] = 13702,
 		},
 		[13746] = {
@@ -1031,7 +1033,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11137] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 205,
 			["teaches"] = 13746,
 		},
 		[13794] = {
@@ -1046,7 +1048,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11174] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 205,
 			["teaches"] = 13794,
 		},
 		[13815] = {
@@ -1062,7 +1064,7 @@ addon.recipeDB[333] = {
 				[11137] = 1,
 				[11174] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 210,
 			["teaches"] = 13815,
 		},
 		[13817] = {
@@ -1077,7 +1079,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11137] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 210,
 			["teaches"] = 13817,
 		},
 		[13822] = {
@@ -1092,7 +1094,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11174] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 210,
 			["teaches"] = 13822,
 		},
 		[13836] = {
@@ -1107,7 +1109,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11137] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 215,
 			["teaches"] = 13836,
 		},
 		[13841] = {
@@ -1123,7 +1125,7 @@ addon.recipeDB[333] = {
 				[6037] = 3,
 				[11137] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 215,
 			["teaches"] = 13841,
 		},
 		[13846] = {
@@ -1139,7 +1141,7 @@ addon.recipeDB[333] = {
 				[11137] = 1,
 				[11174] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 220,
 			["teaches"] = 13846,
 		},
 		[13858] = {
@@ -1154,7 +1156,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11137] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 220,
 			["teaches"] = 13858,
 		},
 		[13868] = {
@@ -1170,7 +1172,7 @@ addon.recipeDB[333] = {
 				[8838] = 3,
 				[11137] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 13868,
 		},
 		[13882] = {
@@ -1185,7 +1187,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11174] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 13882,
 		},
 		[13887] = {
@@ -1201,7 +1203,7 @@ addon.recipeDB[333] = {
 				[11137] = 3,
 				[11174] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 13887,
 		},
 		[13890] = {
@@ -1218,7 +1220,7 @@ addon.recipeDB[333] = {
 				[11174] = 1,
 				[11177] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 13890,
 		},
 		[13898] = {
@@ -1234,7 +1236,7 @@ addon.recipeDB[333] = {
 				[7078] = 1,
 				[11177] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 265,
 			["teaches"] = 13898,
 		},
 		[13905] = {
@@ -1250,7 +1252,7 @@ addon.recipeDB[333] = {
 				[11175] = 1,
 				[11176] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 230,
 			["teaches"] = 13905,
 		},
 		[13915] = {
@@ -1267,7 +1269,7 @@ addon.recipeDB[333] = {
 				[11176] = 2,
 				[11177] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 230,
 			["teaches"] = 13915,
 		},
 		[13917] = {
@@ -1283,7 +1285,7 @@ addon.recipeDB[333] = {
 				[11174] = 2,
 				[11175] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 230,
 			["teaches"] = 13917,
 		},
 		[13931] = {
@@ -1299,7 +1301,7 @@ addon.recipeDB[333] = {
 				[11175] = 1,
 				[11176] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 235,
 			["teaches"] = 13931,
 		},
 		[13933] = {
@@ -1315,7 +1317,7 @@ addon.recipeDB[333] = {
 				[3829] = 1,
 				[11178] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 235,
 			["teaches"] = 13933,
 		},
 		[13935] = {
@@ -1330,7 +1332,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11175] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 235,
 			["teaches"] = 13935,
 		},
 		[13937] = {
@@ -1346,7 +1348,7 @@ addon.recipeDB[333] = {
 				[11176] = 2,
 				[11178] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 240,
 			["teaches"] = 13937,
 		},
 		[13939] = {
@@ -1362,7 +1364,7 @@ addon.recipeDB[333] = {
 				[11175] = 1,
 				[11176] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 240,
 			["teaches"] = 13939,
 		},
 		[13941] = {
@@ -1379,7 +1381,7 @@ addon.recipeDB[333] = {
 				[11176] = 3,
 				[11178] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 245,
 			["teaches"] = 13941,
 		},
 		[13943] = {
@@ -1395,7 +1397,7 @@ addon.recipeDB[333] = {
 				[11175] = 2,
 				[11178] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 245,
 			["teaches"] = 13943,
 		},
 		[13945] = {
@@ -1410,7 +1412,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11176] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 245,
 			["teaches"] = 13945,
 		},
 		[13947] = {
@@ -1426,7 +1428,7 @@ addon.recipeDB[333] = {
 				[11176] = 3,
 				[11178] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 13947,
 		},
 		[13948] = {
@@ -1442,10 +1444,11 @@ addon.recipeDB[333] = {
 				[8153] = 2,
 				[11178] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 13948,
 		},
 		[14293] = {
+			["craftedItemId"] = 11287,
 			["difficulty"] = {
 				1,
 				38,
@@ -1457,10 +1460,11 @@ addon.recipeDB[333] = {
 				[4470] = 1,
 				[10938] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 10,
 			["teaches"] = 14293,
 		},
 		[14807] = {
+			["craftedItemId"] = 11288,
 			["difficulty"] = {
 				1,
 				55,
@@ -1472,10 +1476,11 @@ addon.recipeDB[333] = {
 				[4470] = 1,
 				[10939] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 70,
 			["teaches"] = 14807,
 		},
 		[14809] = {
+			["craftedItemId"] = 11289,
 			["difficulty"] = {
 				1,
 				88,
@@ -1488,10 +1493,11 @@ addon.recipeDB[333] = {
 				[11134] = 1,
 				[11291] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 155,
 			["teaches"] = 14809,
 		},
 		[14810] = {
+			["craftedItemId"] = 11290,
 			["difficulty"] = {
 				1,
 				98,
@@ -1504,10 +1510,11 @@ addon.recipeDB[333] = {
 				[11137] = 1,
 				[11291] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 175,
 			["teaches"] = 14810,
 		},
 		[15596] = {
+			["craftedItemId"] = 11811,
 			["difficulty"] = {
 				1,
 				143,
@@ -1520,10 +1527,11 @@ addon.recipeDB[333] = {
 				[7078] = 3,
 				[14343] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 265,
 			["teaches"] = 15596,
 		},
 		[17180] = {
+			["craftedItemId"] = 12655,
 			["difficulty"] = {
 				1,
 				125,
@@ -1535,10 +1543,11 @@ addon.recipeDB[333] = {
 				[11176] = 3,
 				[12359] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 17180,
 		},
 		[17181] = {
+			["craftedItemId"] = 12810,
 			["difficulty"] = {
 				1,
 				125,
@@ -1550,7 +1559,7 @@ addon.recipeDB[333] = {
 				[8170] = 1,
 				[16202] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 17181,
 		},
 		[20008] = {
@@ -1565,7 +1574,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[16202] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 255,
 			["teaches"] = 20008,
 		},
 		[20009] = {
@@ -1581,7 +1590,7 @@ addon.recipeDB[333] = {
 				[11176] = 4,
 				[16202] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 270,
 			["teaches"] = 20009,
 		},
 		[20010] = {
@@ -1597,7 +1606,7 @@ addon.recipeDB[333] = {
 				[16203] = 2,
 				[16204] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 295,
 			["teaches"] = 20010,
 		},
 		[20011] = {
@@ -1612,7 +1621,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[16204] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 20011,
 		},
 		[20012] = {
@@ -1628,7 +1637,7 @@ addon.recipeDB[333] = {
 				[16202] = 2,
 				[16204] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 270,
 			["teaches"] = 20012,
 		},
 		[20013] = {
@@ -1644,7 +1653,7 @@ addon.recipeDB[333] = {
 				[16202] = 4,
 				[16204] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 295,
 			["teaches"] = 20013,
 		},
 		[20014] = {
@@ -1663,7 +1672,7 @@ addon.recipeDB[333] = {
 				[7081] = 1,
 				[7972] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 265,
 			["teaches"] = 20014,
 		},
 		[20015] = {
@@ -1678,7 +1687,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[16204] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 285,
 			["teaches"] = 20015,
 		},
 		[20016] = {
@@ -1694,7 +1703,7 @@ addon.recipeDB[333] = {
 				[16203] = 1,
 				[16204] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 280,
 			["teaches"] = 20016,
 		},
 		[20017] = {
@@ -1709,7 +1718,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11176] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 265,
 			["teaches"] = 20017,
 		},
 		[20020] = {
@@ -1724,7 +1733,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11176] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 260,
 			["teaches"] = 20020,
 		},
 		[20023] = {
@@ -1740,7 +1749,7 @@ addon.recipeDB[333] = {
 				[8153] = 2,
 				[16202] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 295,
 			["teaches"] = 20023,
 		},
 		[20024] = {
@@ -1755,7 +1764,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[16203] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 20024,
 		},
 		[20025] = {
@@ -1771,7 +1780,7 @@ addon.recipeDB[333] = {
 				[14344] = 2,
 				[16204] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 20025,
 		},
 		[20026] = {
@@ -1786,7 +1795,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[14343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 20026,
 		},
 		[20028] = {
@@ -1801,7 +1810,7 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[16204] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 20028,
 		},
 		[20029] = {
@@ -1819,7 +1828,7 @@ addon.recipeDB[333] = {
 				[13467] = 1,
 				[14343] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 285,
 			["teaches"] = 20029,
 		},
 		[20030] = {
@@ -1835,7 +1844,7 @@ addon.recipeDB[333] = {
 				[14344] = 4,
 				[16204] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 295,
 			["teaches"] = 20030,
 		},
 		[20031] = {
@@ -1851,7 +1860,7 @@ addon.recipeDB[333] = {
 				[14344] = 2,
 				[16203] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 20031,
 		},
 		[20032] = {
@@ -1868,7 +1877,7 @@ addon.recipeDB[333] = {
 				[12808] = 4,
 				[14344] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 20032,
 		},
 		[20033] = {
@@ -1884,7 +1893,7 @@ addon.recipeDB[333] = {
 				[12808] = 4,
 				[14344] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 295,
 			["teaches"] = 20033,
 		},
 		[20034] = {
@@ -1900,7 +1909,7 @@ addon.recipeDB[333] = {
 				[12811] = 2,
 				[14344] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 20034,
 		},
 		[20035] = {
@@ -1916,7 +1925,7 @@ addon.recipeDB[333] = {
 				[14344] = 2,
 				[16203] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 20035,
 		},
 		[20036] = {
@@ -1932,10 +1941,11 @@ addon.recipeDB[333] = {
 				[14344] = 2,
 				[16203] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 20036,
 		},
 		[20051] = {
+			["craftedItemId"] = 16207,
 			["difficulty"] = {
 				1,
 				153,
@@ -1951,7 +1961,7 @@ addon.recipeDB[333] = {
 				[16204] = 10,
 				[16206] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 20051,
 		},
 		[21931] = {
@@ -1969,10 +1979,11 @@ addon.recipeDB[333] = {
 				[11137] = 3,
 				[11139] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 190,
 			["teaches"] = 21931,
 		},
 		[22434] = {
+			["craftedItemId"] = 17968,
 			["difficulty"] = {
 				1,
 				160,
@@ -1985,7 +1996,6 @@ addon.recipeDB[333] = {
 				[16204] = 2,
 				[17967] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 22434,
 		},
 		[22749] = {
@@ -2002,7 +2012,7 @@ addon.recipeDB[333] = {
 				[14344] = 4,
 				[16203] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 22749,
 		},
 		[22750] = {
@@ -2019,7 +2029,7 @@ addon.recipeDB[333] = {
 				[14344] = 4,
 				[16203] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 22750,
 		},
 		[23799] = {
@@ -2035,7 +2045,7 @@ addon.recipeDB[333] = {
 				[7076] = 4,
 				[14344] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 23799,
 		},
 		[23800] = {
@@ -2051,7 +2061,7 @@ addon.recipeDB[333] = {
 				[7082] = 4,
 				[14344] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 23800,
 		},
 		[23801] = {
@@ -2068,7 +2078,7 @@ addon.recipeDB[333] = {
 				[16202] = 4,
 				[16204] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 23801,
 		},
 		[23802] = {
@@ -2085,7 +2095,7 @@ addon.recipeDB[333] = {
 				[16202] = 4,
 				[16204] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 23802,
 		},
 		[23803] = {
@@ -2102,7 +2112,7 @@ addon.recipeDB[333] = {
 				[16203] = 4,
 				[16204] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 23803,
 		},
 		[23804] = {
@@ -2119,7 +2129,7 @@ addon.recipeDB[333] = {
 				[16203] = 5,
 				[16204] = 20,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 23804,
 		},
 		[25072] = {
@@ -2137,7 +2147,7 @@ addon.recipeDB[333] = {
 				[22446] = 2,
 				[22448] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25072,
 		},
 		[25073] = {
@@ -2154,7 +2164,7 @@ addon.recipeDB[333] = {
 				[14344] = 10,
 				[22448] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25073,
 		},
 		[25074] = {
@@ -2171,7 +2181,7 @@ addon.recipeDB[333] = {
 				[14344] = 10,
 				[22448] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25074,
 		},
 		[25078] = {
@@ -2188,7 +2198,7 @@ addon.recipeDB[333] = {
 				[14344] = 10,
 				[22448] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25078,
 		},
 		[25079] = {
@@ -2205,7 +2215,7 @@ addon.recipeDB[333] = {
 				[14344] = 8,
 				[22448] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25079,
 		},
 		[25080] = {
@@ -2222,7 +2232,7 @@ addon.recipeDB[333] = {
 				[22448] = 3,
 				[22451] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25080,
 		},
 		[25081] = {
@@ -2239,7 +2249,7 @@ addon.recipeDB[333] = {
 				[22446] = 3,
 				[22448] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25081,
 		},
 		[25082] = {
@@ -2256,7 +2266,7 @@ addon.recipeDB[333] = {
 				[22446] = 3,
 				[22448] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25082,
 		},
 		[25083] = {
@@ -2273,7 +2283,7 @@ addon.recipeDB[333] = {
 				[22448] = 3,
 				[22794] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25083,
 		},
 		[25084] = {
@@ -2290,7 +2300,7 @@ addon.recipeDB[333] = {
 				[22448] = 4,
 				[22456] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25084,
 		},
 		[25086] = {
@@ -2307,10 +2317,11 @@ addon.recipeDB[333] = {
 				[22448] = 3,
 				[22452] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25086,
 		},
 		[25124] = {
+			["craftedItemId"] = 20744,
 			["difficulty"] = {
 				1,
 				28,
@@ -2323,10 +2334,11 @@ addon.recipeDB[333] = {
 				[3371] = 1,
 				[10940] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 45,
 			["teaches"] = 25124,
 		},
 		[25125] = {
+			["craftedItemId"] = 20745,
 			["difficulty"] = {
 				1,
 				80,
@@ -2339,10 +2351,11 @@ addon.recipeDB[333] = {
 				[3371] = 1,
 				[11083] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 150,
 			["teaches"] = 25125,
 		},
 		[25126] = {
+			["craftedItemId"] = 20746,
 			["difficulty"] = {
 				1,
 				105,
@@ -2355,10 +2368,11 @@ addon.recipeDB[333] = {
 				[3371] = 1,
 				[11137] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 200,
 			["teaches"] = 25126,
 		},
 		[25127] = {
+			["craftedItemId"] = 20747,
 			["difficulty"] = {
 				1,
 				130,
@@ -2372,10 +2386,11 @@ addon.recipeDB[333] = {
 				[8831] = 2,
 				[11176] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 25127,
 		},
 		[25128] = {
+			["craftedItemId"] = 20750,
 			["difficulty"] = {
 				1,
 				143,
@@ -2389,10 +2404,11 @@ addon.recipeDB[333] = {
 				[4625] = 2,
 				[16204] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 25128,
 		},
 		[25129] = {
+			["craftedItemId"] = 20749,
 			["difficulty"] = {
 				1,
 				155,
@@ -2406,10 +2422,11 @@ addon.recipeDB[333] = {
 				[4625] = 3,
 				[14344] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25129,
 		},
 		[25130] = {
+			["craftedItemId"] = 20748,
 			["difficulty"] = {
 				1,
 				155,
@@ -2423,7 +2440,7 @@ addon.recipeDB[333] = {
 				[8831] = 3,
 				[14344] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 25130,
 		},
 		[27837] = {
@@ -2439,7 +2456,7 @@ addon.recipeDB[333] = {
 				[7082] = 4,
 				[14344] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 27837,
 		},
 		[27899] = {
@@ -2450,11 +2467,12 @@ addon.recipeDB[333] = {
 				345,
 			},
 			["itemId"] = 35420,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Bracer - Brawn",
 			["reagents"] = {
 				[22445] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 305,
 			["teaches"] = 27899,
 		},
 		[27905] = {
@@ -2465,12 +2483,13 @@ addon.recipeDB[333] = {
 				355,
 			},
 			["itemId"] = 35426,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Bracer - Stats",
 			["reagents"] = {
 				[22445] = 6,
 				[22447] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 315,
 			["teaches"] = 27905,
 		},
 		[27906] = {
@@ -2481,12 +2500,13 @@ addon.recipeDB[333] = {
 				360,
 			},
 			["itemId"] = 22530,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Bracer - Greater Dodge",
 			["reagents"] = {
 				[22445] = 10,
 				[22448] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 320,
 			["teaches"] = 27906,
 		},
 		[27911] = {
@@ -2497,12 +2517,13 @@ addon.recipeDB[333] = {
 				365,
 			},
 			["itemId"] = 22531,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Bracer - Superior Healing",
 			["reagents"] = {
 				[21886] = 4,
 				[22446] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 325,
 			["teaches"] = 27911,
 		},
 		[27913] = {
@@ -2513,11 +2534,12 @@ addon.recipeDB[333] = {
 				375,
 			},
 			["itemId"] = 22532,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Bracer - Restore Mana Prime",
 			["reagents"] = {
 				[22446] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 335,
 			["teaches"] = 27913,
 		},
 		[27914] = {
@@ -2528,13 +2550,14 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 22533,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Bracer - Fortitude",
 			["reagents"] = {
 				[22445] = 20,
 				[22446] = 10,
 				[22449] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 27914,
 		},
 		[27917] = {
@@ -2545,13 +2568,14 @@ addon.recipeDB[333] = {
 				400,
 			},
 			["itemId"] = 22534,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Bracer - Spellpower",
 			["reagents"] = {
 				[21884] = 6,
 				[21885] = 6,
 				[22449] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 27917,
 		},
 		[27920] = {
@@ -2562,12 +2586,13 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 22535,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Ring - Striking",
 			["reagents"] = {
 				[22445] = 6,
 				[22449] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 27920,
 		},
 		[27924] = {
@@ -2578,11 +2603,12 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 22536,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Ring - Minor Intellect",
 			["reagents"] = {
 				[22446] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 27924,
 		},
 		[27926] = {
@@ -2593,6 +2619,7 @@ addon.recipeDB[333] = {
 				390,
 			},
 			["itemId"] = 22537,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Ring - Healing Power",
 			["phase"] = 4,
 			["reagents"] = {
@@ -2600,7 +2627,7 @@ addon.recipeDB[333] = {
 				[22446] = 3,
 				[22449] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 370,
 			["teaches"] = 27926,
 		},
 		[27927] = {
@@ -2611,12 +2638,13 @@ addon.recipeDB[333] = {
 				390,
 			},
 			["itemId"] = 22538,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Ring - Stats",
 			["reagents"] = {
 				[22449] = 2,
 				[22450] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 27927,
 		},
 		[27944] = {
@@ -2627,12 +2655,13 @@ addon.recipeDB[333] = {
 				350,
 			},
 			["itemId"] = 38904,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Shield - Lesser Dodge",
 			["reagents"] = {
 				[22445] = 6,
 				[22452] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 310,
 			["teaches"] = 27944,
 		},
 		[27945] = {
@@ -2643,11 +2672,12 @@ addon.recipeDB[333] = {
 				365,
 			},
 			["itemId"] = 22539,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Shield - Intellect",
 			["reagents"] = {
 				[22446] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 325,
 			["teaches"] = 27945,
 		},
 		[27946] = {
@@ -2658,13 +2688,14 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 22540,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Shield - Parry",
 			["reagents"] = {
 				[22445] = 12,
 				[22446] = 4,
 				[22452] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 340,
 			["teaches"] = 27946,
 		},
 		[27947] = {
@@ -2675,6 +2706,7 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 22541,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Shield - Resistance",
 			["reagents"] = {
 				[22449] = 2,
@@ -2683,7 +2715,7 @@ addon.recipeDB[333] = {
 				[22574] = 1,
 				[22578] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 27947,
 		},
 		[27948] = {
@@ -2694,6 +2726,7 @@ addon.recipeDB[333] = {
 				345,
 			},
 			["itemId"] = 22542,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Boots - Vitality",
 			["phase"] = 4,
 			["reagents"] = {
@@ -2701,7 +2734,7 @@ addon.recipeDB[333] = {
 				[13446] = 4,
 				[22445] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 305,
 			["teaches"] = 27948,
 		},
 		[27950] = {
@@ -2712,11 +2745,12 @@ addon.recipeDB[333] = {
 				360,
 			},
 			["itemId"] = 22543,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Boots - Fortitude",
 			["reagents"] = {
 				[22445] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 320,
 			["teaches"] = 27950,
 		},
 		[27951] = {
@@ -2727,12 +2761,13 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 22544,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Boots - Dexterity",
 			["reagents"] = {
 				[22445] = 8,
 				[22446] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 340,
 			["teaches"] = 27951,
 		},
 		[27954] = {
@@ -2743,12 +2778,13 @@ addon.recipeDB[333] = {
 				390,
 			},
 			["itemId"] = 22545,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Boots - Surefooted",
 			["reagents"] = {
 				[22449] = 4,
 				[22450] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 370,
 			["teaches"] = 27954,
 		},
 		[27957] = {
@@ -2759,13 +2795,14 @@ addon.recipeDB[333] = {
 				355,
 			},
 			["itemId"] = 35428,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Chest - Exceptional Health",
 			["reagents"] = {
 				[13446] = 4,
 				[14344] = 2,
 				[22445] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 315,
 			["teaches"] = 27957,
 		},
 		[27958] = {
@@ -2775,12 +2812,13 @@ addon.recipeDB[333] = {
 				375,
 				385,
 			},
-			["itemId"] = 22546,
+			["itemId"] = 38912,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Chest - Exceptional Mana",
 			["reagents"] = {
 				[34054] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 27958,
 		},
 		[27960] = {
@@ -2791,13 +2829,14 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 22547,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Chest - Exceptional Stats",
 			["reagents"] = {
 				[22445] = 4,
 				[22446] = 4,
 				[22449] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 345,
 			["teaches"] = 27960,
 		},
 		[27961] = {
@@ -2808,11 +2847,12 @@ addon.recipeDB[333] = {
 				350,
 			},
 			["itemId"] = 35437,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Cloak - Major Armor",
 			["reagents"] = {
 				[22445] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 310,
 			["teaches"] = 27961,
 		},
 		[27962] = {
@@ -2823,6 +2863,7 @@ addon.recipeDB[333] = {
 				370,
 			},
 			["itemId"] = 22548,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Cloak - Major Resistance",
 			["reagents"] = {
 				[21884] = 4,
@@ -2831,7 +2872,7 @@ addon.recipeDB[333] = {
 				[22451] = 4,
 				[22452] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 330,
 			["teaches"] = 27962,
 		},
 		[27967] = {
@@ -2842,6 +2883,7 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 22552,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Major Striking",
 			["phase"] = 3,
 			["reagents"] = {
@@ -2849,7 +2891,7 @@ addon.recipeDB[333] = {
 				[22446] = 6,
 				[22449] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 340,
 			["teaches"] = 27967,
 		},
 		[27968] = {
@@ -2860,12 +2902,13 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 22551,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Major Intellect",
 			["reagents"] = {
 				[22446] = 10,
 				[22449] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 340,
 			["teaches"] = 27968,
 		},
 		[27971] = {
@@ -2876,12 +2919,13 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 22554,
+			["minExpansion"] = 2,
 			["name"] = "Enchant 2H Weapon - Savagery",
 			["reagents"] = {
 				[22445] = 40,
 				[22449] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 27971,
 		},
 		[27972] = {
@@ -2892,13 +2936,14 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 22553,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Potency",
 			["reagents"] = {
 				[22445] = 20,
 				[22446] = 5,
 				[22449] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 27972,
 		},
 		[27975] = {
@@ -2909,12 +2954,13 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 22555,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Major Spellpower",
 			["reagents"] = {
 				[22446] = 8,
 				[22449] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 27975,
 		},
 		[27977] = {
@@ -2925,13 +2971,14 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 22556,
+			["minExpansion"] = 2,
 			["name"] = "Enchant 2H Weapon - Major Agility",
 			["reagents"] = {
 				[22445] = 20,
 				[22446] = 6,
 				[22449] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 27977,
 		},
 		[27981] = {
@@ -2942,6 +2989,7 @@ addon.recipeDB[333] = {
 				390,
 			},
 			["itemId"] = 22560,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Sunfire",
 			["reagents"] = {
 				[21884] = 6,
@@ -2950,7 +2998,7 @@ addon.recipeDB[333] = {
 				[22450] = 12,
 				[23571] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 27981,
 		},
 		[27982] = {
@@ -2961,6 +3009,7 @@ addon.recipeDB[333] = {
 				390,
 			},
 			["itemId"] = 22561,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Soulfrost",
 			["reagents"] = {
 				[21885] = 6,
@@ -2969,7 +3018,7 @@ addon.recipeDB[333] = {
 				[22450] = 12,
 				[22456] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 27982,
 		},
 		[27984] = {
@@ -2980,6 +3029,7 @@ addon.recipeDB[333] = {
 				390,
 			},
 			["itemId"] = 22559,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Mongoose",
 			["reagents"] = {
 				[22445] = 40,
@@ -2987,7 +3037,7 @@ addon.recipeDB[333] = {
 				[22449] = 10,
 				[22450] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 27984,
 		},
 		[28003] = {
@@ -2998,13 +3048,14 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 22558,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Spellsurge",
 			["reagents"] = {
 				[22445] = 20,
 				[22446] = 10,
 				[22449] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 28003,
 		},
 		[28004] = {
@@ -3015,16 +3066,18 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 22557,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Battlemaster",
 			["reagents"] = {
 				[21885] = 2,
 				[22449] = 8,
 				[22450] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 28004,
 		},
 		[28016] = {
+			["craftedItemId"] = 22521,
 			["difficulty"] = {
 				1,
 				155,
@@ -3032,16 +3085,18 @@ addon.recipeDB[333] = {
 				330,
 			},
 			["itemId"] = 22562,
+			["minExpansion"] = 2,
 			["name"] = "Superior Mana Oil",
 			["reagents"] = {
 				[3371] = 1,
 				[22445] = 3,
 				[22791] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 310,
 			["teaches"] = 28016,
 		},
 		[28019] = {
+			["craftedItemId"] = 22522,
 			["difficulty"] = {
 				1,
 				170,
@@ -3049,16 +3104,18 @@ addon.recipeDB[333] = {
 				360,
 			},
 			["itemId"] = 22563,
+			["minExpansion"] = 2,
 			["name"] = "Superior Wizard Oil",
 			["reagents"] = {
 				[3371] = 1,
 				[22445] = 3,
 				[22792] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 340,
 			["teaches"] = 28019,
 		},
 		[28021] = {
+			["craftedItemId"] = 22445,
 			["difficulty"] = {
 				1,
 				168,
@@ -3066,14 +3123,16 @@ addon.recipeDB[333] = {
 				355,
 			},
 			["itemId"] = 22564,
+			["minExpansion"] = 2,
 			["name"] = "Arcane Dust",
 			["reagents"] = {
 				[12363] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 325,
 			["teaches"] = 28021,
 		},
 		[28022] = {
+			["craftedItemId"] = 22449,
 			["difficulty"] = {
 				1,
 				3,
@@ -3081,48 +3140,55 @@ addon.recipeDB[333] = {
 				10,
 			},
 			["itemId"] = 22565,
+			["minExpansion"] = 2,
 			["name"] = "Large Prismatic Shard",
 			["reagents"] = {
 				[22448] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 335,
 			["teaches"] = 28022,
 		},
 		[28027] = {
+			["craftedItemId"] = 22460,
 			["difficulty"] = {
 				1,
 				163,
 				325,
 				335,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Prismatic Sphere",
 			["reagents"] = {
 				[22449] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 325,
 			["teaches"] = 28027,
 		},
 		[28028] = {
+			["craftedItemId"] = 22459,
 			["difficulty"] = {
 				1,
 				185,
 				370,
 				380,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Void Sphere",
 			["reagents"] = {
 				[22450] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 28028,
 		},
 		[32664] = {
+			["craftedItemId"] = 22461,
 			["difficulty"] = {
 				1,
 				155,
 				310,
 				340,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Runed Fel Iron Rod",
 			["reagents"] = {
 				[14344] = 6,
@@ -3130,10 +3196,11 @@ addon.recipeDB[333] = {
 				[16207] = 1,
 				[25843] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 32664,
 		},
 		[32665] = {
+			["craftedItemId"] = 22462,
 			["difficulty"] = {
 				1,
 				185,
@@ -3141,6 +3208,7 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 25848,
+			["minExpansion"] = 2,
 			["name"] = "Runed Adamantite Rod",
 			["reagents"] = {
 				[22446] = 8,
@@ -3149,10 +3217,11 @@ addon.recipeDB[333] = {
 				[23571] = 1,
 				[25844] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 32665,
 		},
 		[32667] = {
+			["craftedItemId"] = 22463,
 			["difficulty"] = {
 				1,
 				185,
@@ -3160,6 +3229,7 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 25849,
+			["minExpansion"] = 2,
 			["name"] = "Runed Eternium Rod",
 			["reagents"] = {
 				[22445] = 6,
@@ -3167,7 +3237,7 @@ addon.recipeDB[333] = {
 				[22462] = 1,
 				[25845] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 32667,
 		},
 		[33990] = {
@@ -3178,11 +3248,12 @@ addon.recipeDB[333] = {
 				360,
 			},
 			["itemId"] = 35431,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Chest - Major Spirit",
 			["reagents"] = {
 				[22446] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 320,
 			["teaches"] = 33990,
 		},
 		[33991] = {
@@ -3193,12 +3264,13 @@ addon.recipeDB[333] = {
 				340,
 			},
 			["itemId"] = 38929,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Chest - Restore Mana Prime",
 			["reagents"] = {
 				[22445] = 2,
 				[22447] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 33991,
 		},
 		[33992] = {
@@ -3209,12 +3281,13 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 28270,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Chest - Major Resilience",
 			["reagents"] = {
 				[22445] = 10,
 				[22446] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 345,
 			["teaches"] = 33992,
 		},
 		[33993] = {
@@ -3225,12 +3298,13 @@ addon.recipeDB[333] = {
 				345,
 			},
 			["itemId"] = 35439,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Gloves - Blasting",
 			["reagents"] = {
 				[22445] = 4,
 				[22447] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 305,
 			["teaches"] = 33993,
 		},
 		[33994] = {
@@ -3241,13 +3315,14 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 28271,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Gloves - Precise Strikes",
 			["reagents"] = {
 				[22445] = 2,
 				[22446] = 8,
 				[22449] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 33994,
 		},
 		[33995] = {
@@ -3258,12 +3333,13 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 35442,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Gloves - Major Strength",
 			["reagents"] = {
 				[22445] = 12,
 				[22446] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 340,
 			["teaches"] = 33995,
 		},
 		[33996] = {
@@ -3274,11 +3350,12 @@ addon.recipeDB[333] = {
 				350,
 			},
 			["itemId"] = 35438,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Gloves - Assault",
 			["reagents"] = {
 				[22445] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 310,
 			["teaches"] = 33996,
 		},
 		[33997] = {
@@ -3289,13 +3366,14 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 28272,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Gloves - Major Spellpower",
 			["reagents"] = {
 				[22446] = 6,
 				[22449] = 6,
 				[22457] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 33997,
 		},
 		[33999] = {
@@ -3306,6 +3384,7 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 28273,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Gloves - Major Healing",
 			["phase"] = 4,
 			["reagents"] = {
@@ -3313,7 +3392,7 @@ addon.recipeDB[333] = {
 				[22446] = 6,
 				[22449] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 33999,
 		},
 		[34001] = {
@@ -3324,11 +3403,12 @@ addon.recipeDB[333] = {
 				345,
 			},
 			["itemId"] = 35423,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Bracer - Major Intellect",
 			["reagents"] = {
 				[22447] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 305,
 			["teaches"] = 34001,
 		},
 		[34002] = {
@@ -3339,11 +3419,12 @@ addon.recipeDB[333] = {
 				340,
 			},
 			["itemId"] = 38938,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Bracer - Lesser Assault",
 			["reagents"] = {
 				[22445] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 34002,
 		},
 		[34003] = {
@@ -3354,6 +3435,7 @@ addon.recipeDB[333] = {
 				365,
 			},
 			["itemId"] = 28274,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Cloak - PvP Power",
 			["phase"] = 3,
 			["reagents"] = {
@@ -3361,7 +3443,7 @@ addon.recipeDB[333] = {
 				[22446] = 2,
 				[22457] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 325,
 			["teaches"] = 34003,
 		},
 		[34004] = {
@@ -3372,13 +3454,14 @@ addon.recipeDB[333] = {
 				350,
 			},
 			["itemId"] = 35432,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Cloak - Greater Agility",
 			["reagents"] = {
 				[22445] = 4,
 				[22446] = 1,
 				[22451] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 310,
 			["teaches"] = 34004,
 		},
 		[34005] = {
@@ -3389,12 +3472,13 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 28276,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Cloak - Greater Arcane Resistance",
 			["reagents"] = {
 				[22449] = 4,
 				[22457] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 34005,
 		},
 		[34006] = {
@@ -3405,12 +3489,13 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 28277,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Cloak - Greater Shadow Resistance",
 			["reagents"] = {
 				[22449] = 4,
 				[22456] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 34006,
 		},
 		[34007] = {
@@ -3421,13 +3506,14 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 28279,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Boots - Cat's Swiftness",
 			["phase"] = 4,
 			["reagents"] = {
 				[22449] = 8,
 				[22451] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 34007,
 		},
 		[34008] = {
@@ -3438,13 +3524,14 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 28280,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Boots - Boar's Speed",
 			["phase"] = 4,
 			["reagents"] = {
 				[22449] = 8,
 				[22452] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 34008,
 		},
 		[34009] = {
@@ -3455,11 +3542,12 @@ addon.recipeDB[333] = {
 				365,
 			},
 			["itemId"] = 28282,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Shield - Major Stamina",
 			["reagents"] = {
 				[22445] = 15,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 325,
 			["teaches"] = 34009,
 		},
 		[34010] = {
@@ -3470,6 +3558,7 @@ addon.recipeDB[333] = {
 				380,
 			},
 			["itemId"] = 28281,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Major Healing",
 			["phase"] = 4,
 			["reagents"] = {
@@ -3477,35 +3566,39 @@ addon.recipeDB[333] = {
 				[21886] = 8,
 				[22449] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 34010,
 		},
 		[42613] = {
+			["craftedItemId"] = 22448,
 			["difficulty"] = {
 				1,
 				148,
 				295,
 				305,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Nexus Transformation",
 			["reagents"] = {
 				[20725] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 42613,
 		},
 		[42615] = {
+			["craftedItemId"] = 22448,
 			["difficulty"] = {
 				1,
 				158,
 				315,
 				335,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Small Prismatic Shard",
 			["reagents"] = {
 				[22449] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 335,
 			["teaches"] = 42615,
 		},
 		[42620] = {
@@ -3516,6 +3609,7 @@ addon.recipeDB[333] = {
 				375,
 			},
 			["itemId"] = 33165,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Greater Agility",
 			["phase"] = 3,
 			["reagents"] = {
@@ -3524,7 +3618,7 @@ addon.recipeDB[333] = {
 				[22449] = 6,
 				[22451] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 42620,
 		},
 		[42974] = {
@@ -3535,6 +3629,7 @@ addon.recipeDB[333] = {
 				390,
 			},
 			["itemId"] = 33307,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Executioner",
 			["reagents"] = {
 				[22445] = 30,
@@ -3543,7 +3638,7 @@ addon.recipeDB[333] = {
 				[22450] = 6,
 				[22824] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 42974,
 		},
 		[44383] = {
@@ -3554,13 +3649,14 @@ addon.recipeDB[333] = {
 				370,
 			},
 			["itemId"] = 38949,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Shield - Resilience",
 			["phase"] = 3,
 			["reagents"] = {
 				[22447] = 4,
 				[22449] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 330,
 			["teaches"] = 44383,
 		},
 		[44483] = {
@@ -3571,13 +3667,14 @@ addon.recipeDB[333] = {
 				435,
 			},
 			["itemId"] = 37332,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Superior Frost Resistance",
 			["reagents"] = {
 				[34054] = 6,
 				[34055] = 3,
 				[36860] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 44483,
 		},
 		[44484] = {
@@ -3588,11 +3685,12 @@ addon.recipeDB[333] = {
 				435,
 			},
 			["itemId"] = 38951,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Gloves - Expertise",
 			["reagents"] = {
 				[34054] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 405,
 			["teaches"] = 44484,
 		},
 		[44488] = {
@@ -3603,11 +3701,12 @@ addon.recipeDB[333] = {
 				440,
 			},
 			["itemId"] = 38953,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Gloves - Precision",
 			["reagents"] = {
 				[34055] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 410,
 			["teaches"] = 44488,
 		},
 		[44489] = {
@@ -3618,12 +3717,13 @@ addon.recipeDB[333] = {
 				450,
 			},
 			["itemId"] = 38954,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Shield - Dodge",
 			["reagents"] = {
 				[34054] = 6,
 				[35624] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 44489,
 		},
 		[44492] = {
@@ -3634,11 +3734,12 @@ addon.recipeDB[333] = {
 				425,
 			},
 			["itemId"] = 38955,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Chest - Mighty Health",
 			["reagents"] = {
 				[34055] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 395,
 			["teaches"] = 44492,
 		},
 		[44494] = {
@@ -3649,13 +3750,14 @@ addon.recipeDB[333] = {
 				435,
 			},
 			["itemId"] = 37333,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Superior Nature Resistance",
 			["reagents"] = {
 				[34054] = 15,
 				[34055] = 1,
 				[35627] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 44494,
 		},
 		[44500] = {
@@ -3666,11 +3768,12 @@ addon.recipeDB[333] = {
 				425,
 			},
 			["itemId"] = 37335,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Superior Agility",
 			["reagents"] = {
 				[34054] = 9,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 44500,
 		},
 		[44506] = {
@@ -3681,11 +3784,12 @@ addon.recipeDB[333] = {
 				400,
 			},
 			["itemId"] = 38960,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Gloves - Gatherer",
 			["reagents"] = {
 				[34055] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 44506,
 		},
 		[44508] = {
@@ -3696,12 +3800,13 @@ addon.recipeDB[333] = {
 				440,
 			},
 			["itemId"] = 38961,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Boots - Greater Spirit",
 			["reagents"] = {
 				[34054] = 8,
 				[34056] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 410,
 			["teaches"] = 44508,
 		},
 		[44509] = {
@@ -3712,12 +3817,13 @@ addon.recipeDB[333] = {
 				450,
 			},
 			["itemId"] = 38962,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Chest - Greater Mana Restoration",
 			["reagents"] = {
 				[34054] = 4,
 				[34056] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 44509,
 		},
 		[44510] = {
@@ -3728,12 +3834,13 @@ addon.recipeDB[333] = {
 				440,
 			},
 			["itemId"] = 37329,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Exceptional Spirit",
 			["reagents"] = {
 				[34052] = 4,
 				[34054] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 44510,
 		},
 		[44513] = {
@@ -3744,12 +3851,13 @@ addon.recipeDB[333] = {
 				425,
 			},
 			["itemId"] = 37345,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Gloves - Greater Assault",
 			["reagents"] = {
 				[34054] = 6,
 				[34055] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 44513,
 		},
 		[44524] = {
@@ -3760,12 +3868,13 @@ addon.recipeDB[333] = {
 				455,
 			},
 			["itemId"] = 37344,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Icebreaker",
 			["reagents"] = {
 				[34052] = 4,
 				[36860] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 44524,
 		},
 		[44528] = {
@@ -3776,12 +3885,13 @@ addon.recipeDB[333] = {
 				410,
 			},
 			["itemId"] = 38966,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Boots - Greater Fortitude",
 			["reagents"] = {
 				[34054] = 3,
 				[34056] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 385,
 			["teaches"] = 44528,
 		},
 		[44529] = {
@@ -3792,12 +3902,13 @@ addon.recipeDB[333] = {
 				445,
 			},
 			["itemId"] = 38967,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Gloves - Major Agility",
 			["reagents"] = {
 				[34052] = 1,
 				[34056] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 415,
 			["teaches"] = 44529,
 		},
 		[44555] = {
@@ -3808,11 +3919,12 @@ addon.recipeDB[333] = {
 				400,
 			},
 			["itemId"] = 38968,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Bracer - Exceptional Intellect",
 			["reagents"] = {
 				[34054] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 44555,
 		},
 		[44556] = {
@@ -3823,12 +3935,13 @@ addon.recipeDB[333] = {
 				435,
 			},
 			["itemId"] = 37331,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Superior Fire Resistance",
 			["reagents"] = {
 				[34055] = 4,
 				[35622] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 44556,
 		},
 		[44575] = {
@@ -3839,12 +3952,13 @@ addon.recipeDB[333] = {
 				460,
 			},
 			["itemId"] = 44484,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Bracer - Greater Assault",
 			["reagents"] = {
 				[34054] = 24,
 				[34055] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 430,
 			["teaches"] = 44575,
 		},
 		[44576] = {
@@ -3855,12 +3969,13 @@ addon.recipeDB[333] = {
 				455,
 			},
 			["itemId"] = 38972,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Lifeward",
 			["reagents"] = {
 				[34052] = 1,
 				[35625] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 44576,
 		},
 		[44582] = {
@@ -3871,11 +3986,12 @@ addon.recipeDB[333] = {
 				410,
 			},
 			["itemId"] = 38973,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Minor Power",
 			["reagents"] = {
 				[34054] = 15,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 395,
 			["teaches"] = 44582,
 		},
 		[44584] = {
@@ -3886,12 +4002,13 @@ addon.recipeDB[333] = {
 				435,
 			},
 			["itemId"] = 38974,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Boots - Greater Vitality",
 			["reagents"] = {
 				[34054] = 4,
 				[34056] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 405,
 			["teaches"] = 44584,
 		},
 		[44588] = {
@@ -3902,12 +4019,13 @@ addon.recipeDB[333] = {
 				455,
 			},
 			["itemId"] = 37340,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Chest - Exceptional Resilience",
 			["reagents"] = {
 				[34052] = 2,
 				[34055] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 410,
 			["teaches"] = 44588,
 		},
 		[44589] = {
@@ -3918,12 +4036,13 @@ addon.recipeDB[333] = {
 				445,
 			},
 			["itemId"] = 37341,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Boots - Superior Agility",
 			["reagents"] = {
 				[34054] = 6,
 				[34055] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 410,
 			["teaches"] = 44589,
 		},
 		[44590] = {
@@ -3934,13 +4053,14 @@ addon.recipeDB[333] = {
 				435,
 			},
 			["itemId"] = 37334,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Superior Shadow Resistance",
 			["reagents"] = {
 				[34054] = 8,
 				[34056] = 2,
 				[35625] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 44590,
 		},
 		[44591] = {
@@ -3951,13 +4071,14 @@ addon.recipeDB[333] = {
 				465,
 			},
 			["itemId"] = 37347,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Superior Dodge",
 			["reagents"] = {
 				[34052] = 2,
 				[34054] = 8,
 				[41163] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 435,
 			["teaches"] = 44591,
 		},
 		[44592] = {
@@ -3968,12 +4089,13 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 38979,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Gloves - Exceptional Spellpower",
 			["reagents"] = {
 				[34054] = 2,
 				[34056] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 44592,
 		},
 		[44593] = {
@@ -3984,12 +4106,13 @@ addon.recipeDB[333] = {
 				450,
 			},
 			["itemId"] = 37326,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Bracer - Major Spirit",
 			["reagents"] = {
 				[34054] = 4,
 				[34055] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 44593,
 		},
 		[44595] = {
@@ -3999,13 +4122,14 @@ addon.recipeDB[333] = {
 				440,
 				460,
 			},
-			["itemId"] = 37327,
+			["itemId"] = 38981,
+			["minExpansion"] = 3,
 			["name"] = "Enchant 2H Weapon - Scourgebane",
 			["reagents"] = {
 				[34052] = 6,
 				[34054] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 430,
 			["teaches"] = 44595,
 		},
 		[44596] = {
@@ -4016,12 +4140,13 @@ addon.recipeDB[333] = {
 				435,
 			},
 			["itemId"] = 37330,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Superior Arcane Resistance",
 			["reagents"] = {
 				[34054] = 20,
 				[35624] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 44596,
 		},
 		[44598] = {
@@ -4032,12 +4157,13 @@ addon.recipeDB[333] = {
 				445,
 			},
 			["itemId"] = 37346,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Bracer - Expertise",
 			["reagents"] = {
 				[34054] = 12,
 				[34055] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 44598,
 		},
 		[44612] = {
@@ -4048,12 +4174,13 @@ addon.recipeDB[333] = {
 				420,
 			},
 			["itemId"] = 37342,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Gloves - Greater Blasting",
 			["reagents"] = {
 				[34052] = 1,
 				[34054] = 30,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 410,
 			["teaches"] = 44612,
 		},
 		[44616] = {
@@ -4064,12 +4191,13 @@ addon.recipeDB[333] = {
 				430,
 			},
 			["itemId"] = 37337,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Bracer - Greater Stats",
 			["reagents"] = {
 				[34054] = 9,
 				[34055] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 44616,
 		},
 		[44621] = {
@@ -4080,12 +4208,13 @@ addon.recipeDB[333] = {
 				460,
 			},
 			["itemId"] = 37339,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Giant Slayer",
 			["reagents"] = {
 				[34052] = 6,
 				[34055] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 430,
 			["teaches"] = 44621,
 		},
 		[44623] = {
@@ -4096,11 +4225,12 @@ addon.recipeDB[333] = {
 				400,
 			},
 			["itemId"] = 38989,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Chest - Super Stats",
 			["reagents"] = {
 				[34056] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 370,
 			["teaches"] = 44623,
 		},
 		[44625] = {
@@ -4111,12 +4241,13 @@ addon.recipeDB[333] = {
 				465,
 			},
 			["itemId"] = 38990,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Gloves - Armsman",
 			["reagents"] = {
 				[34052] = 2,
 				[35624] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 435,
 			["teaches"] = 44625,
 		},
 		[44629] = {
@@ -4127,12 +4258,13 @@ addon.recipeDB[333] = {
 				425,
 			},
 			["itemId"] = 38991,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Exceptional Spellpower",
 			["reagents"] = {
 				[34054] = 10,
 				[34055] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 395,
 			["teaches"] = 44629,
 		},
 		[44630] = {
@@ -4143,12 +4275,13 @@ addon.recipeDB[333] = {
 				420,
 			},
 			["itemId"] = 37338,
+			["minExpansion"] = 3,
 			["name"] = "Enchant 2H Weapon - Greater Savagery",
 			["reagents"] = {
 				[34054] = 6,
 				[34055] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 410,
 			["teaches"] = 44630,
 		},
 		[44631] = {
@@ -4159,12 +4292,13 @@ addon.recipeDB[333] = {
 				470,
 			},
 			["itemId"] = 37349,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Shadow Armor",
 			["reagents"] = {
 				[34054] = 12,
 				[34057] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 44631,
 		},
 		[44633] = {
@@ -4175,12 +4309,13 @@ addon.recipeDB[333] = {
 				440,
 			},
 			["itemId"] = 37343,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Exceptional Agility",
 			["reagents"] = {
 				[34052] = 4,
 				[35623] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 44633,
 		},
 		[44635] = {
@@ -4191,12 +4326,13 @@ addon.recipeDB[333] = {
 				425,
 			},
 			["itemId"] = 38997,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Bracer - Greater Spellpower",
 			["reagents"] = {
 				[34054] = 8,
 				[34056] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 395,
 			["teaches"] = 44635,
 		},
 		[44636] = {
@@ -4206,11 +4342,12 @@ addon.recipeDB[333] = {
 				400,
 				405,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Enchant Ring - Lesser Intellect",
 			["reagents"] = {
 				[34054] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 44636,
 		},
 		[44645] = {
@@ -4220,14 +4357,16 @@ addon.recipeDB[333] = {
 				400,
 				405,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Enchant Ring - Assault",
 			["reagents"] = {
 				[34054] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 44645,
 		},
 		[45765] = {
+			["craftedItemId"] = 22449,
 			["difficulty"] = {
 				1,
 				180,
@@ -4235,11 +4374,12 @@ addon.recipeDB[333] = {
 				365,
 			},
 			["itemId"] = 34872,
+			["minExpansion"] = 2,
 			["name"] = "Void Shatter",
 			["reagents"] = {
 				[22450] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 45765,
 		},
 		[46578] = {
@@ -4250,12 +4390,13 @@ addon.recipeDB[333] = {
 				365,
 			},
 			["itemId"] = 35498,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Weapon - Deathfrost",
 			["reagents"] = {
 				[21885] = 2,
 				[22456] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 46578,
 		},
 		[46594] = {
@@ -4266,13 +4407,14 @@ addon.recipeDB[333] = {
 				400,
 			},
 			["itemId"] = 35500,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Chest - Dodge",
 			["reagents"] = {
 				[22445] = 8,
 				[22446] = 4,
 				[23427] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 46594,
 		},
 		[47051] = {
@@ -4283,13 +4425,14 @@ addon.recipeDB[333] = {
 				390,
 			},
 			["itemId"] = 35756,
+			["minExpansion"] = 2,
 			["name"] = "Enchant Cloak - Greater Dodge",
 			["phase"] = 4,
 			["reagents"] = {
 				[22446] = 8,
 				[22452] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 47051,
 		},
 		[47672] = {
@@ -4300,12 +4443,13 @@ addon.recipeDB[333] = {
 				460,
 			},
 			["itemId"] = 39001,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Mighty Stamina",
 			["reagents"] = {
 				[34054] = 15,
 				[34055] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 430,
 			["teaches"] = 47672,
 		},
 		[47766] = {
@@ -4316,12 +4460,13 @@ addon.recipeDB[333] = {
 				430,
 			},
 			["itemId"] = 37336,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Chest - Greater Dodge",
 			["reagents"] = {
 				[34054] = 3,
 				[35624] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 47766,
 		},
 		[47898] = {
@@ -4332,12 +4477,13 @@ addon.recipeDB[333] = {
 				460,
 			},
 			["itemId"] = 37348,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Greater Speed",
 			["reagents"] = {
 				[34054] = 16,
 				[34055] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 47898,
 		},
 		[47899] = {
@@ -4348,12 +4494,13 @@ addon.recipeDB[333] = {
 				470,
 			},
 			["itemId"] = 39004,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Wisdom",
 			["reagents"] = {
 				[34055] = 6,
 				[34057] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 47899,
 		},
 		[47900] = {
@@ -4364,12 +4511,13 @@ addon.recipeDB[333] = {
 				455,
 			},
 			["itemId"] = 39005,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Chest - Super Health",
 			["reagents"] = {
 				[34054] = 7,
 				[34056] = 7,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 47900,
 		},
 		[47901] = {
@@ -4380,13 +4528,14 @@ addon.recipeDB[333] = {
 				470,
 			},
 			["itemId"] = 39006,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Boots - Tuskarr's Vitality",
 			["reagents"] = {
 				[34052] = 2,
 				[34054] = 10,
 				[34055] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 47901,
 		},
 		[59619] = {
@@ -4397,6 +4546,7 @@ addon.recipeDB[333] = {
 				470,
 			},
 			["itemId"] = 44496,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Accuracy",
 			["reagents"] = {
 				[34052] = 4,
@@ -4404,7 +4554,7 @@ addon.recipeDB[333] = {
 				[34055] = 4,
 				[34057] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 59619,
 		},
 		[59621] = {
@@ -4415,6 +4565,7 @@ addon.recipeDB[333] = {
 				470,
 			},
 			["itemId"] = 44492,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Berserking",
 			["reagents"] = {
 				[34052] = 4,
@@ -4422,7 +4573,7 @@ addon.recipeDB[333] = {
 				[34055] = 4,
 				[34057] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 59621,
 		},
 		[59625] = {
@@ -4433,13 +4584,14 @@ addon.recipeDB[333] = {
 				470,
 			},
 			["itemId"] = 43987,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Black Magic",
 			["reagents"] = {
 				[34052] = 6,
 				[34055] = 6,
 				[34057] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 59625,
 		},
 		[59636] = {
@@ -4449,11 +4601,12 @@ addon.recipeDB[333] = {
 				400,
 				405,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Enchant Ring - Lesser Stamina",
 			["reagents"] = {
 				[34054] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 59636,
 		},
 		[60606] = {
@@ -4464,12 +4617,13 @@ addon.recipeDB[333] = {
 				405,
 			},
 			["itemId"] = 44449,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Boots - Assault",
 			["reagents"] = {
 				[34054] = 4,
 				[34056] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 60606,
 		},
 		[60609] = {
@@ -4480,11 +4634,12 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 44456,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Speed",
 			["reagents"] = {
 				[34054] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 60609,
 		},
 		[60616] = {
@@ -4495,20 +4650,23 @@ addon.recipeDB[333] = {
 				385,
 			},
 			["itemId"] = 38971,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Bracer - Assault",
 			["reagents"] = {
 				[34054] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 60616,
 		},
 		[60619] = {
+			["craftedItemId"] = 44452,
 			["difficulty"] = {
 				1,
 				218,
 				435,
 				455,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Runed Titanium Rod",
 			["reagents"] = {
 				[22463] = 1,
@@ -4517,7 +4675,7 @@ addon.recipeDB[333] = {
 				[34055] = 4,
 				[41745] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 60619,
 		},
 		[60621] = {
@@ -4528,12 +4686,13 @@ addon.recipeDB[333] = {
 				410,
 			},
 			["itemId"] = 44453,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Greater Potency",
 			["reagents"] = {
 				[34054] = 2,
 				[34056] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 380,
 			["teaches"] = 60621,
 		},
 		[60623] = {
@@ -4544,12 +4703,13 @@ addon.recipeDB[333] = {
 				415,
 			},
 			["itemId"] = 38986,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Boots - Icewalker",
 			["reagents"] = {
 				[34054] = 8,
 				[37705] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 385,
 			["teaches"] = 60623,
 		},
 		[60653] = {
@@ -4560,11 +4720,12 @@ addon.recipeDB[333] = {
 				425,
 			},
 			["itemId"] = 44455,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Shield - Greater Intellect",
 			["reagents"] = {
 				[34054] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 395,
 			["teaches"] = 60653,
 		},
 		[60663] = {
@@ -4575,12 +4736,13 @@ addon.recipeDB[333] = {
 				450,
 			},
 			["itemId"] = 44457,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Cloak - Major Agility",
 			["reagents"] = {
 				[34052] = 3,
 				[34054] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 60663,
 		},
 		[60668] = {
@@ -4591,11 +4753,12 @@ addon.recipeDB[333] = {
 				455,
 			},
 			["itemId"] = 44458,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Gloves - Crusher",
 			["reagents"] = {
 				[34054] = 15,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 60668,
 		},
 		[60691] = {
@@ -4606,13 +4769,14 @@ addon.recipeDB[333] = {
 				460,
 			},
 			["itemId"] = 44463,
+			["minExpansion"] = 3,
 			["name"] = "Enchant 2H Weapon - Massacre",
 			["reagents"] = {
 				[34054] = 40,
 				[34055] = 6,
 				[34057] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 430,
 			["teaches"] = 60691,
 		},
 		[60692] = {
@@ -4623,12 +4787,13 @@ addon.recipeDB[333] = {
 				470,
 			},
 			["itemId"] = 44465,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Chest - Powerful Stats",
 			["reagents"] = {
 				[34052] = 4,
 				[34057] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 60692,
 		},
 		[60707] = {
@@ -4639,6 +4804,7 @@ addon.recipeDB[333] = {
 				465,
 			},
 			["itemId"] = 44466,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Superior Potency",
 			["reagents"] = {
 				[34052] = 2,
@@ -4646,7 +4812,7 @@ addon.recipeDB[333] = {
 				[34055] = 2,
 				[34057] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 435,
 			["teaches"] = 60707,
 		},
 		[60714] = {
@@ -4657,13 +4823,14 @@ addon.recipeDB[333] = {
 				465,
 			},
 			["itemId"] = 44467,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Mighty Spellpower",
 			["reagents"] = {
 				[34052] = 6,
 				[34054] = 30,
 				[34057] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 435,
 			["teaches"] = 60714,
 		},
 		[60763] = {
@@ -4674,12 +4841,13 @@ addon.recipeDB[333] = {
 				470,
 			},
 			["itemId"] = 44469,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Boots - Greater Assault",
 			["reagents"] = {
 				[34052] = 4,
 				[34055] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 60763,
 		},
 		[60767] = {
@@ -4690,13 +4858,14 @@ addon.recipeDB[333] = {
 				470,
 			},
 			["itemId"] = 44470,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Bracer - Superior Spellpower",
 			["reagents"] = {
 				[34052] = 1,
 				[34054] = 6,
 				[34055] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 60767,
 		},
 		[62256] = {
@@ -4707,12 +4876,13 @@ addon.recipeDB[333] = {
 				480,
 			},
 			["itemId"] = 44944,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Bracer - Major Stamina",
 			["reagents"] = {
 				[34055] = 4,
 				[34057] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 62256,
 		},
 		[62257] = {
@@ -4723,12 +4893,13 @@ addon.recipeDB[333] = {
 				480,
 			},
 			["itemId"] = 44945,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Titanguard",
 			["reagents"] = {
 				[34052] = 4,
 				[37663] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 62257,
 		},
 		[62948] = {
@@ -4739,13 +4910,14 @@ addon.recipeDB[333] = {
 				465,
 			},
 			["itemId"] = 45056,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Staff - Greater Spellpower",
 			["reagents"] = {
 				[34052] = 6,
 				[34054] = 40,
 				[34057] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 62948,
 		},
 		[62959] = {
@@ -4756,12 +4928,13 @@ addon.recipeDB[333] = {
 				415,
 			},
 			["itemId"] = 45060,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Staff - Spellpower",
 			["reagents"] = {
 				[34054] = 12,
 				[34055] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 385,
 			["teaches"] = 62959,
 		},
 		[63746] = {
@@ -4772,12 +4945,13 @@ addon.recipeDB[333] = {
 				285,
 			},
 			["itemId"] = 45628,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Boots - Lesser Accuracy",
 			["reagents"] = {
 				[11137] = 4,
 				[11174] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 63746,
 		},
 		[64441] = {
@@ -4788,13 +4962,14 @@ addon.recipeDB[333] = {
 				465,
 			},
 			["itemId"] = 46026,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Blade Ward",
 			["reagents"] = {
 				[34055] = 8,
 				[34057] = 4,
 				[37663] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 64441,
 		},
 		[64579] = {
@@ -4805,13 +4980,14 @@ addon.recipeDB[333] = {
 				465,
 			},
 			["itemId"] = 46098,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Weapon - Blood Draining",
 			["reagents"] = {
 				[34054] = 40,
 				[34057] = 4,
 				[36918] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 64579,
 		},
 		[69412] = {
@@ -4821,11 +4997,12 @@ addon.recipeDB[333] = {
 				400,
 				410,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Abyssal Shatter",
 			["reagents"] = {
 				[34057] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 445,
 			["teaches"] = 69412,
 		},
 		[71692] = {
@@ -4836,12 +5013,13 @@ addon.recipeDB[333] = {
 				400,
 			},
 			["itemId"] = 50406,
+			["minExpansion"] = 3,
 			["name"] = "Enchant Gloves - Angler",
 			["reagents"] = {
 				[34054] = 1,
 				[44958] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 71692,
 		},
 		[74132] = {
@@ -4852,12 +5030,13 @@ addon.recipeDB[333] = {
 				460,
 			},
 			["itemId"] = 52687,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Gloves - Mastery",
 			["reagents"] = {
 				[52555] = 1,
 				[52718] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 74132,
 		},
 		[74189] = {
@@ -4868,11 +5047,12 @@ addon.recipeDB[333] = {
 				460,
 			},
 			["itemId"] = 52743,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Boots - Earthen Vitality",
 			["reagents"] = {
 				[52555] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 74189,
 		},
 		[74191] = {
@@ -4883,11 +5063,12 @@ addon.recipeDB[333] = {
 				460,
 			},
 			["itemId"] = 52744,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Chest - Mighty Stats",
 			["reagents"] = {
 				[52718] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 74191,
 		},
 		[74192] = {
@@ -4898,11 +5079,12 @@ addon.recipeDB[333] = {
 				470,
 			},
 			["itemId"] = 52745,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Cloak - Lesser Power",
 			["reagents"] = {
 				[52555] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 435,
 			["teaches"] = 74192,
 		},
 		[74193] = {
@@ -4913,12 +5095,13 @@ addon.recipeDB[333] = {
 				470,
 			},
 			["itemId"] = 52746,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Bracer - Speed",
 			["reagents"] = {
 				[52555] = 2,
 				[52718] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 435,
 			["teaches"] = 74193,
 		},
 		[74195] = {
@@ -4929,12 +5112,13 @@ addon.recipeDB[333] = {
 				465,
 			},
 			["itemId"] = 52747,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Weapon - Mending",
 			["reagents"] = {
 				[52555] = 11,
 				[52719] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 74195,
 		},
 		[74197] = {
@@ -4945,12 +5129,13 @@ addon.recipeDB[333] = {
 				465,
 			},
 			["itemId"] = 52748,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Weapon - Avalanche",
 			["reagents"] = {
 				[52555] = 4,
 				[52719] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 74197,
 		},
 		[74198] = {
@@ -4961,12 +5146,13 @@ addon.recipeDB[333] = {
 				485,
 			},
 			["itemId"] = 52749,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Gloves - Haste",
 			["reagents"] = {
 				[52555] = 4,
 				[52718] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 455,
 			["teaches"] = 74198,
 		},
 		[74199] = {
@@ -4977,12 +5163,13 @@ addon.recipeDB[333] = {
 				485,
 			},
 			["itemId"] = 52750,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Boots - Haste",
 			["reagents"] = {
 				[52555] = 2,
 				[52719] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 455,
 			["teaches"] = 74199,
 		},
 		[74200] = {
@@ -4993,12 +5180,13 @@ addon.recipeDB[333] = {
 				490,
 			},
 			["itemId"] = 52751,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Chest - Stamina",
 			["reagents"] = {
 				[52555] = 5,
 				[52718] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 460,
 			["teaches"] = 74200,
 		},
 		[74201] = {
@@ -5009,12 +5197,13 @@ addon.recipeDB[333] = {
 				490,
 			},
 			["itemId"] = 52752,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Bracer - Critical Strike",
 			["reagents"] = {
 				[52555] = 4,
 				[52718] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 460,
 			["teaches"] = 74201,
 		},
 		[74202] = {
@@ -5025,11 +5214,12 @@ addon.recipeDB[333] = {
 				495,
 			},
 			["itemId"] = 52753,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Cloak - Intellect",
 			["reagents"] = {
 				[52555] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 465,
 			["teaches"] = 74202,
 		},
 		[74207] = {
@@ -5040,12 +5230,13 @@ addon.recipeDB[333] = {
 				495,
 			},
 			["itemId"] = 52754,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Shield - Protection",
 			["reagents"] = {
 				[52327] = 15,
 				[52719] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 465,
 			["teaches"] = 74207,
 		},
 		[74211] = {
@@ -5056,13 +5247,14 @@ addon.recipeDB[333] = {
 				500,
 			},
 			["itemId"] = 52755,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Weapon - Elemental Slayer",
 			["reagents"] = {
 				[52555] = 7,
 				[52719] = 2,
 				[52721] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 470,
 			["teaches"] = 74211,
 		},
 		[74212] = {
@@ -5073,12 +5265,13 @@ addon.recipeDB[333] = {
 				500,
 			},
 			["itemId"] = 52756,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Gloves - Exceptional Strength",
 			["reagents"] = {
 				[52555] = 3,
 				[52719] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 470,
 			["teaches"] = 74212,
 		},
 		[74213] = {
@@ -5089,12 +5282,13 @@ addon.recipeDB[333] = {
 				505,
 			},
 			["itemId"] = 52757,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Boots - Major Agility",
 			["reagents"] = {
 				[52555] = 4,
 				[52719] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 475,
 			["teaches"] = 74213,
 		},
 		[74214] = {
@@ -5105,11 +5299,12 @@ addon.recipeDB[333] = {
 				505,
 			},
 			["itemId"] = 52758,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Chest - Mighty Resilience",
 			["reagents"] = {
 				[52555] = 9,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 475,
 			["teaches"] = 74214,
 		},
 		[74215] = {
@@ -5119,11 +5314,12 @@ addon.recipeDB[333] = {
 				455,
 				495,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Enchant Ring - Strength",
 			["reagents"] = {
 				[52721] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 475,
 			["teaches"] = 74215,
 		},
 		[74216] = {
@@ -5133,11 +5329,12 @@ addon.recipeDB[333] = {
 				455,
 				495,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Enchant Ring - Agility",
 			["reagents"] = {
 				[52721] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 475,
 			["teaches"] = 74216,
 		},
 		[74217] = {
@@ -5147,11 +5344,12 @@ addon.recipeDB[333] = {
 				455,
 				495,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Enchant Ring - Intellect",
 			["reagents"] = {
 				[52721] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 475,
 			["teaches"] = 74217,
 		},
 		[74218] = {
@@ -5161,11 +5359,12 @@ addon.recipeDB[333] = {
 				455,
 				495,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Enchant Ring - Stamina",
 			["reagents"] = {
 				[52721] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 475,
 			["teaches"] = 74218,
 		},
 		[74220] = {
@@ -5176,12 +5375,13 @@ addon.recipeDB[333] = {
 				510,
 			},
 			["itemId"] = 52759,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Gloves - Greater Expertise",
 			["reagents"] = {
 				[52555] = 5,
 				[52719] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 480,
 			["teaches"] = 74220,
 		},
 		[74223] = {
@@ -5192,12 +5392,13 @@ addon.recipeDB[333] = {
 				510,
 			},
 			["itemId"] = 52760,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Weapon - Hurricane",
 			["reagents"] = {
 				[52328] = 6,
 				[52721] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 480,
 			["teaches"] = 74223,
 		},
 		[74225] = {
@@ -5208,6 +5409,7 @@ addon.recipeDB[333] = {
 				515,
 			},
 			["itemId"] = 52761,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Weapon - Heartsong",
 			["reagents"] = {
 				[52329] = 3,
@@ -5215,7 +5417,7 @@ addon.recipeDB[333] = {
 				[52719] = 3,
 				[52721] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 485,
 			["teaches"] = 74225,
 		},
 		[74226] = {
@@ -5226,11 +5428,12 @@ addon.recipeDB[333] = {
 				515,
 			},
 			["itemId"] = 52762,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Shield - Mastery",
 			["reagents"] = {
 				[52555] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 485,
 			["teaches"] = 74226,
 		},
 		[74229] = {
@@ -5241,12 +5444,13 @@ addon.recipeDB[333] = {
 				520,
 			},
 			["itemId"] = 52763,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Bracer - Superior Dodge",
 			["reagents"] = {
 				[52328] = 1,
 				[52719] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 490,
 			["teaches"] = 74229,
 		},
 		[74230] = {
@@ -5257,12 +5461,13 @@ addon.recipeDB[333] = {
 				520,
 			},
 			["itemId"] = 52764,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Cloak - Critical Strike",
 			["reagents"] = {
 				[52555] = 8,
 				[52719] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 490,
 			["teaches"] = 74230,
 		},
 		[74231] = {
@@ -5273,12 +5478,13 @@ addon.recipeDB[333] = {
 				525,
 			},
 			["itemId"] = 52765,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Chest - Exceptional Spirit",
 			["reagents"] = {
 				[52555] = 10,
 				[52719] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 495,
 			["teaches"] = 74231,
 		},
 		[74232] = {
@@ -5289,12 +5495,13 @@ addon.recipeDB[333] = {
 				525,
 			},
 			["itemId"] = 52766,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Bracer - Precision",
 			["reagents"] = {
 				[52555] = 12,
 				[52719] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 495,
 			["teaches"] = 74232,
 		},
 		[74234] = {
@@ -5305,12 +5512,13 @@ addon.recipeDB[333] = {
 				530,
 			},
 			["itemId"] = 52767,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Cloak - Protection",
 			["reagents"] = {
 				[52555] = 8,
 				[52719] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 74234,
 		},
 		[74235] = {
@@ -5321,12 +5529,13 @@ addon.recipeDB[333] = {
 				530,
 			},
 			["itemId"] = 52768,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Off-Hand - Superior Intellect",
 			["reagents"] = {
 				[52555] = 6,
 				[52719] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 74235,
 		},
 		[74236] = {
@@ -5337,13 +5546,14 @@ addon.recipeDB[333] = {
 				515,
 			},
 			["itemId"] = 52769,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Boots - Precision",
 			["reagents"] = {
 				[52555] = 2,
 				[52719] = 2,
 				[58094] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 505,
 			["teaches"] = 74236,
 		},
 		[74237] = {
@@ -5354,12 +5564,13 @@ addon.recipeDB[333] = {
 				535,
 			},
 			["itemId"] = 52770,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Bracer - Exceptional Spirit",
 			["reagents"] = {
 				[52555] = 9,
 				[52719] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 505,
 			["teaches"] = 74237,
 		},
 		[74238] = {
@@ -5370,12 +5581,13 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52771,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Boots - Mastery",
 			["reagents"] = {
 				[52555] = 10,
 				[52719] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 510,
 			["teaches"] = 74238,
 		},
 		[74239] = {
@@ -5386,12 +5598,13 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52772,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Bracer - Greater Expertise",
 			["reagents"] = {
 				[52555] = 4,
 				[52719] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 510,
 			["teaches"] = 74239,
 		},
 		[74240] = {
@@ -5402,12 +5615,13 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52773,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Cloak - Greater Intellect",
 			["reagents"] = {
 				[52555] = 9,
 				[52719] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 510,
 			["teaches"] = 74240,
 		},
 		[74242] = {
@@ -5418,13 +5632,14 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52733,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Weapon - Power Torrent",
 			["reagents"] = {
 				[52555] = 14,
 				[52721] = 8,
 				[52722] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74242,
 		},
 		[74244] = {
@@ -5435,13 +5650,14 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52735,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Weapon - Windwalk",
 			["reagents"] = {
 				[52719] = 4,
 				[52721] = 6,
 				[52722] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74244,
 		},
 		[74246] = {
@@ -5452,6 +5668,7 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52736,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Weapon - Landslide",
 			["reagents"] = {
 				[52555] = 6,
@@ -5459,7 +5676,7 @@ addon.recipeDB[333] = {
 				[52721] = 5,
 				[52722] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74246,
 		},
 		[74247] = {
@@ -5470,11 +5687,12 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52737,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Cloak - Greater Critical Strike",
 			["reagents"] = {
 				[52722] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74247,
 		},
 		[74248] = {
@@ -5485,6 +5703,7 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52738,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Bracer - Greater Critical Strike",
 			["reagents"] = {
 				[52555] = 15,
@@ -5492,7 +5711,7 @@ addon.recipeDB[333] = {
 				[52721] = 2,
 				[52722] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74248,
 		},
 		[74250] = {
@@ -5503,12 +5722,13 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52739,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Chest - Peerless Stats",
 			["reagents"] = {
 				[52721] = 3,
 				[52722] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74250,
 		},
 		[74251] = {
@@ -5519,13 +5739,14 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52740,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Chest - Greater Stamina",
 			["reagents"] = {
 				[52555] = 10,
 				[52721] = 4,
 				[52722] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74251,
 		},
 		[74252] = {
@@ -5536,6 +5757,7 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52781,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Boots - Assassin's Step",
 			["reagents"] = {
 				[52555] = 5,
@@ -5543,7 +5765,7 @@ addon.recipeDB[333] = {
 				[52721] = 2,
 				[52722] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74252,
 		},
 		[74253] = {
@@ -5554,13 +5776,14 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52782,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Boots - Lavawalker",
 			["reagents"] = {
 				[52719] = 10,
 				[52721] = 2,
 				[52722] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74253,
 		},
 		[74254] = {
@@ -5571,13 +5794,14 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52783,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Gloves - Mighty Strength",
 			["reagents"] = {
 				[52555] = 4,
 				[52719] = 8,
 				[52722] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74254,
 		},
 		[74255] = {
@@ -5588,13 +5812,14 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52784,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Gloves - Greater Mastery",
 			["reagents"] = {
 				[52555] = 10,
 				[52719] = 5,
 				[52722] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74255,
 		},
 		[74256] = {
@@ -5605,6 +5830,7 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 52785,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Bracer - Greater Speed",
 			["reagents"] = {
 				[52555] = 12,
@@ -5612,10 +5838,11 @@ addon.recipeDB[333] = {
 				[52721] = 2,
 				[52722] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 74256,
 		},
 		[92370] = {
+			["craftedItemId"] = 52723,
 			["difficulty"] = {
 				1,
 				263,
@@ -5623,6 +5850,7 @@ addon.recipeDB[333] = {
 				525,
 			},
 			["itemId"] = 65359,
+			["minExpansion"] = 4,
 			["name"] = "Runed Elementium Rod",
 			["reagents"] = {
 				[44452] = 1,
@@ -5631,10 +5859,11 @@ addon.recipeDB[333] = {
 				[52721] = 6,
 				[65358] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 515,
 			["teaches"] = 92370,
 		},
 		[93841] = {
+			["craftedItemId"] = 67274,
 			["difficulty"] = {
 				1,
 				263,
@@ -5642,16 +5871,18 @@ addon.recipeDB[333] = {
 				525,
 			},
 			["itemId"] = 67308,
+			["minExpansion"] = 4,
 			["name"] = "Enchanted Lantern",
 			["reagents"] = {
 				[52555] = 8,
 				[52721] = 8,
 				[52722] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 93841,
 		},
 		[93843] = {
+			["craftedItemId"] = 67275,
 			["difficulty"] = {
 				1,
 				263,
@@ -5659,13 +5890,14 @@ addon.recipeDB[333] = {
 				525,
 			},
 			["itemId"] = 67312,
+			["minExpansion"] = 4,
 			["name"] = "Magic Lamp",
 			["reagents"] = {
 				[52719] = 4,
 				[52721] = 8,
 				[52722] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 93843,
 		},
 		[95471] = {
@@ -5676,13 +5908,14 @@ addon.recipeDB[333] = {
 				500,
 			},
 			["itemId"] = 68134,
+			["minExpansion"] = 4,
 			["name"] = "Enchant 2H Weapon - Mighty Agility",
 			["reagents"] = {
 				[52555] = 3,
 				[52719] = 3,
 				[52721] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 470,
 			["teaches"] = 95471,
 		},
 		[96261] = {
@@ -5693,13 +5926,14 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 68785,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Bracer - Major Strength",
 			["reagents"] = {
 				[52327] = 25,
 				[52555] = 6,
 				[52722] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 515,
 			["teaches"] = 96261,
 		},
 		[96262] = {
@@ -5710,6 +5944,7 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 68786,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Bracer - Mighty Intellect",
 			["reagents"] = {
 				[52326] = 15,
@@ -5717,7 +5952,7 @@ addon.recipeDB[333] = {
 				[52719] = 4,
 				[52722] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 515,
 			["teaches"] = 96262,
 		},
 		[96264] = {
@@ -5728,13 +5963,14 @@ addon.recipeDB[333] = {
 				540,
 			},
 			["itemId"] = 68784,
+			["minExpansion"] = 4,
 			["name"] = "Enchant Bracer - Agility",
 			["reagents"] = {
 				[52328] = 15,
 				[52555] = 12,
 				[52722] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 515,
 			["teaches"] = 96264,
 		},
 		[103461] = {
@@ -5745,11 +5981,12 @@ addon.recipeDB[333] = {
 				560,
 			},
 			["itemId"] = 84575,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Ring - Greater Agility",
 			["reagents"] = {
 				[74249] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 550,
 			["teaches"] = 103461,
 		},
 		[103462] = {
@@ -5760,11 +5997,12 @@ addon.recipeDB[333] = {
 				560,
 			},
 			["itemId"] = 84576,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Ring - Greater Intellect",
 			["reagents"] = {
 				[74249] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 550,
 			["teaches"] = 103462,
 		},
 		[103463] = {
@@ -5775,11 +6013,12 @@ addon.recipeDB[333] = {
 				560,
 			},
 			["itemId"] = 84577,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Ring - Greater Stamina",
 			["reagents"] = {
 				[74249] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 550,
 			["teaches"] = 103463,
 		},
 		[103465] = {
@@ -5790,11 +6029,12 @@ addon.recipeDB[333] = {
 				560,
 			},
 			["itemId"] = 84578,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Ring - Greater Strength",
 			["reagents"] = {
 				[74249] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 550,
 			["teaches"] = 103465,
 		},
 		[104338] = {
@@ -5805,11 +6045,12 @@ addon.recipeDB[333] = {
 				535,
 			},
 			["itemId"] = 74700,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Bracer - Mastery",
 			["reagents"] = {
 				[74249] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 104338,
 		},
 		[104385] = {
@@ -5820,12 +6061,13 @@ addon.recipeDB[333] = {
 				600,
 			},
 			["itemId"] = 74701,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Bracer - Major Dodge",
 			["reagents"] = {
 				[74249] = 8,
 				[74250] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 104385,
 		},
 		[104389] = {
@@ -5836,11 +6078,12 @@ addon.recipeDB[333] = {
 				615,
 			},
 			["itemId"] = 74703,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Bracer - Super Intellect",
 			["reagents"] = {
 				[74248] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 104389,
 		},
 		[104390] = {
@@ -5851,11 +6094,12 @@ addon.recipeDB[333] = {
 				615,
 			},
 			["itemId"] = 74704,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Bracer - Exceptional Strength",
 			["reagents"] = {
 				[74248] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 104390,
 		},
 		[104391] = {
@@ -5866,11 +6110,12 @@ addon.recipeDB[333] = {
 				615,
 			},
 			["itemId"] = 74705,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Bracer - Greater Agility",
 			["reagents"] = {
 				[74248] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 104391,
 		},
 		[104392] = {
@@ -5881,12 +6126,13 @@ addon.recipeDB[333] = {
 				600,
 			},
 			["itemId"] = 74706,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Chest - Super Resilience",
 			["reagents"] = {
 				[74249] = 3,
 				[74250] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 104392,
 		},
 		[104393] = {
@@ -5897,11 +6143,12 @@ addon.recipeDB[333] = {
 				600,
 			},
 			["itemId"] = 74707,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Chest - Mighty Spirit",
 			["reagents"] = {
 				[74249] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 104393,
 		},
 		[104395] = {
@@ -5912,12 +6159,13 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74708,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Chest - Glorious Stats",
 			["reagents"] = {
 				[74249] = 2,
 				[74250] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 575,
 			["teaches"] = 104395,
 		},
 		[104397] = {
@@ -5928,12 +6176,13 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74709,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Chest - Superior Stamina",
 			["reagents"] = {
 				[74249] = 4,
 				[74250] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 550,
 			["teaches"] = 104397,
 		},
 		[104398] = {
@@ -5944,11 +6193,12 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74710,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Cloak - Accuracy",
 			["reagents"] = {
 				[74249] = 7,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 550,
 			["teaches"] = 104398,
 		},
 		[104401] = {
@@ -5959,11 +6209,12 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74711,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Cloak - Greater Protection",
 			["reagents"] = {
 				[74247] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 575,
 			["teaches"] = 104401,
 		},
 		[104403] = {
@@ -5974,12 +6225,13 @@ addon.recipeDB[333] = {
 				600,
 			},
 			["itemId"] = 74712,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Cloak - Superior Intellect",
 			["reagents"] = {
 				[74249] = 3,
 				[74250] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 104403,
 		},
 		[104404] = {
@@ -5990,11 +6242,12 @@ addon.recipeDB[333] = {
 				535,
 			},
 			["itemId"] = 74713,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Cloak - Superior Critical Strike",
 			["reagents"] = {
 				[74250] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 104404,
 		},
 		[104407] = {
@@ -6005,12 +6258,13 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74715,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Boots - Greater Haste",
 			["reagents"] = {
 				[74249] = 2,
 				[74250] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 550,
 			["teaches"] = 104407,
 		},
 		[104408] = {
@@ -6021,12 +6275,13 @@ addon.recipeDB[333] = {
 				600,
 			},
 			["itemId"] = 74716,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Boots - Greater Precision",
 			["reagents"] = {
 				[74249] = 2,
 				[74250] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 104408,
 		},
 		[104409] = {
@@ -6037,11 +6292,12 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74717,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Boots - Blurred Speed",
 			["reagents"] = {
 				[74247] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 550,
 			["teaches"] = 104409,
 		},
 		[104414] = {
@@ -6052,12 +6308,13 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74718,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Boots - Pandaren's Step",
 			["reagents"] = {
 				[74249] = 4,
 				[74250] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 575,
 			["teaches"] = 104414,
 		},
 		[104416] = {
@@ -6068,11 +6325,12 @@ addon.recipeDB[333] = {
 				600,
 			},
 			["itemId"] = 74719,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Gloves - Greater Haste",
 			["reagents"] = {
 				[74249] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 104416,
 		},
 		[104417] = {
@@ -6083,11 +6341,12 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74720,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Gloves - Superior Expertise",
 			["reagents"] = {
 				[74250] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 550,
 			["teaches"] = 104417,
 		},
 		[104419] = {
@@ -6098,13 +6357,14 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74721,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Gloves - Super Strength",
 			["reagents"] = {
 				[74247] = 1,
 				[74249] = 3,
 				[74250] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 575,
 			["teaches"] = 104419,
 		},
 		[104420] = {
@@ -6115,11 +6375,12 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74722,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Gloves - Superior Mastery",
 			["reagents"] = {
 				[74250] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 575,
 			["teaches"] = 104420,
 		},
 		[104425] = {
@@ -6130,12 +6391,13 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74723,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Weapon - Windsong",
 			["reagents"] = {
 				[74247] = 1,
 				[74249] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 550,
 			["teaches"] = 104425,
 		},
 		[104427] = {
@@ -6146,12 +6408,13 @@ addon.recipeDB[333] = {
 				615,
 			},
 			["itemId"] = 74724,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Weapon - Jade Spirit",
 			["reagents"] = {
 				[74248] = 10,
 				[74250] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 104427,
 		},
 		[104430] = {
@@ -6162,11 +6425,12 @@ addon.recipeDB[333] = {
 				600,
 			},
 			["itemId"] = 74725,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Weapon - Elemental Force",
 			["reagents"] = {
 				[74250] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 104430,
 		},
 		[104434] = {
@@ -6177,12 +6441,13 @@ addon.recipeDB[333] = {
 				615,
 			},
 			["itemId"] = 74726,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Weapon - Dancing Steel",
 			["reagents"] = {
 				[74248] = 10,
 				[74249] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 104434,
 		},
 		[104440] = {
@@ -6193,11 +6458,12 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74727,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Weapon - Colossus",
 			["reagents"] = {
 				[74247] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 575,
 			["teaches"] = 104440,
 		},
 		[104442] = {
@@ -6208,12 +6474,13 @@ addon.recipeDB[333] = {
 				615,
 			},
 			["itemId"] = 74728,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Weapon - River's Song",
 			["reagents"] = {
 				[74250] = 50,
 				[76138] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 104442,
 		},
 		[104445] = {
@@ -6224,28 +6491,32 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 74729,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Off-Hand - Major Intellect",
 			["reagents"] = {
 				[74250] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 575,
 			["teaches"] = 104445,
 		},
 		[104698] = {
+			["craftedItemId"] = 52721,
 			["difficulty"] = {
 				1,
 				233,
 				465,
 				500,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Maelstrom Shatter",
 			["reagents"] = {
 				[52722] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 515,
 			["teaches"] = 104698,
 		},
 		[110955] = {
+			["craftedItemId"] = 24507,
 			["difficulty"] = {
 				1,
 				300,
@@ -6253,93 +6524,99 @@ addon.recipeDB[333] = {
 				600,
 			},
 			["itemId"] = 74622,
+			["minExpansion"] = 5,
 			["name"] = "Release Spirit",
 			["reagents"] = {},
-			["requiredSkill"] = 1,
 			["teaches"] = 110955,
 		},
 		[116497] = {
+			["craftedItemId"] = 74250,
 			["difficulty"] = {
 				1,
 				238,
 				475,
 				500,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Mysterious Essence",
 			["reagents"] = {
 				[74249] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 116497,
 		},
 		[116498] = {
+			["craftedItemId"] = 74247,
 			["difficulty"] = {
 				1,
 				240,
 				480,
 				500,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Ethereal Shard",
 			["reagents"] = {
 				[74250] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 116498,
 		},
 		[116499] = {
+			["craftedItemId"] = 74248,
 			["difficulty"] = {
 				1,
 				243,
 				485,
 				505,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Sha Crystal",
 			["reagents"] = {
 				[74247] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 116499,
 		},
 		[118237] = {
+			["craftedItemId"] = 74249,
 			["difficulty"] = {
 				1,
 				238,
 				475,
 				500,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Mysterious Diffusion",
 			["reagents"] = {
 				[74250] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 118237,
 		},
 		[118238] = {
+			["craftedItemId"] = 74250,
 			["difficulty"] = {
 				1,
 				243,
 				485,
 				500,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Ethereal Shatter",
 			["reagents"] = {
 				[74247] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 118238,
 		},
 		[118239] = {
+			["craftedItemId"] = 74247,
 			["difficulty"] = {
 				1,
 				240,
 				480,
 				500,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Sha Shatter",
 			["reagents"] = {
 				[74248] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 118239,
 		},
 		[130758] = {
@@ -6350,15 +6627,16 @@ addon.recipeDB[333] = {
 				605,
 			},
 			["itemId"] = 89737,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Shield - Greater Parry",
 			["reagents"] = {
 				[74247] = 1,
 				[74250] = 3,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 130758,
 		},
 		[430409] = {
+			["craftedItemId"] = 211848,
 			["difficulty"] = {
 				1,
 				50,
@@ -6371,7 +6649,6 @@ addon.recipeDB[333] = {
 				[10939] = 1,
 				[10940] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 430409,
 		},
 		[435481] = {
@@ -6387,7 +6664,6 @@ addon.recipeDB[333] = {
 				[11174] = 4,
 				[11177] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 435481,
 		},
 		[435903] = {
@@ -6402,10 +6678,10 @@ addon.recipeDB[333] = {
 				[11176] = 2,
 				[11177] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 435903,
 		},
 		[439134] = {
+			["craftedItemId"] = 217287,
 			["difficulty"] = {
 				1,
 				98,
@@ -6418,10 +6694,10 @@ addon.recipeDB[333] = {
 				[11137] = 1,
 				[11291] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 439134,
 		},
 		[439156] = {
+			["craftedItemId"] = 217308,
 			["difficulty"] = {
 				1,
 				113,
@@ -6432,10 +6708,10 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11137] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 439156,
 		},
 		[446243] = {
+			["craftedItemId"] = 221028,
 			["difficulty"] = {
 				1,
 				125,
@@ -6446,10 +6722,10 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[11176] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 446243,
 		},
 		[448624] = {
+			["craftedItemId"] = 220792,
 			["difficulty"] = {
 				1,
 				60,
@@ -6462,10 +6738,11 @@ addon.recipeDB[333] = {
 				[4470] = 1,
 				[10940] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 120,
 			["teaches"] = 448624,
 		},
 		[463866] = {
+			["craftedItemId"] = 228978,
 			["difficulty"] = {
 				1,
 				153,
@@ -6476,10 +6753,10 @@ addon.recipeDB[333] = {
 			["reagents"] = {
 				[16204] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 463866,
 		},
 		[463869] = {
+			["craftedItemId"] = 228980,
 			["difficulty"] = {
 				1,
 				143,
@@ -6492,7 +6769,6 @@ addon.recipeDB[333] = {
 				[8925] = 1,
 				[16204] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 463869,
 		},
 		[463871] = {
@@ -6511,10 +6787,10 @@ addon.recipeDB[333] = {
 				[14344] = 4,
 				[16203] = 12,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 463871,
 		},
 		[471400] = {
+			["craftedItemId"] = 232611,
 			["difficulty"] = {
 				1,
 				155,
@@ -6528,10 +6804,10 @@ addon.recipeDB[333] = {
 				[14344] = 2,
 				[18256] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 471400,
 		},
 		[1213593] = {
+			["craftedItemId"] = 233990,
 			["difficulty"] = {
 				1,
 				160,
@@ -6546,10 +6822,10 @@ addon.recipeDB[333] = {
 				[234006] = 10,
 				[234010] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213593,
 		},
 		[1213595] = {
+			["craftedItemId"] = 233991,
 			["difficulty"] = {
 				1,
 				160,
@@ -6564,10 +6840,10 @@ addon.recipeDB[333] = {
 				[234010] = 10,
 				[234012] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213595,
 		},
 		[1213598] = {
+			["craftedItemId"] = 233992,
 			["difficulty"] = {
 				1,
 				160,
@@ -6582,10 +6858,10 @@ addon.recipeDB[333] = {
 				[234010] = 5,
 				[234011] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213598,
 		},
 		[1213600] = {
+			["craftedItemId"] = 233993,
 			["difficulty"] = {
 				1,
 				160,
@@ -6599,10 +6875,10 @@ addon.recipeDB[333] = {
 				[234003] = 3,
 				[234005] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213600,
 		},
 		[1213603] = {
+			["craftedItemId"] = 233994,
 			["difficulty"] = {
 				1,
 				160,
@@ -6618,10 +6894,10 @@ addon.recipeDB[333] = {
 				[234011] = 10,
 				[234012] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213603,
 		},
 		[1213607] = {
+			["craftedItemId"] = 233995,
 			["difficulty"] = {
 				1,
 				160,
@@ -6633,10 +6909,10 @@ addon.recipeDB[333] = {
 				[14047] = 1,
 				[16203] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213607,
 		},
 		[1213610] = {
+			["craftedItemId"] = 233996,
 			["difficulty"] = {
 				1,
 				160,
@@ -6649,7 +6925,6 @@ addon.recipeDB[333] = {
 				[234011] = 3,
 				[234012] = 3,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213610,
 		},
 		[1213616] = {
@@ -6668,7 +6943,6 @@ addon.recipeDB[333] = {
 				[234010] = 2,
 				[234011] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213616,
 		},
 		[1213622] = {
@@ -6685,7 +6959,6 @@ addon.recipeDB[333] = {
 				[14344] = 5,
 				[20725] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213622,
 		},
 		[1213626] = {
@@ -6701,10 +6974,10 @@ addon.recipeDB[333] = {
 				[14344] = 5,
 				[20725] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213626,
 		},
 		[1213628] = {
+			["craftedItemId"] = 234000,
 			["difficulty"] = {
 				1,
 				160,
@@ -6718,10 +6991,10 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234008] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213628,
 		},
 		[1213633] = {
+			["craftedItemId"] = 234001,
 			["difficulty"] = {
 				1,
 				160,
@@ -6735,10 +7008,10 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234012] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213633,
 		},
 		[1213635] = {
+			["craftedItemId"] = 234002,
 			["difficulty"] = {
 				1,
 				160,
@@ -6753,10 +7026,10 @@ addon.recipeDB[333] = {
 				[234011] = 4,
 				[234012] = 20,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213635,
 		},
 		[1216005] = {
+			["craftedItemId"] = 234477,
 			["difficulty"] = {
 				1,
 				160,
@@ -6770,10 +7043,10 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234008] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1216005,
 		},
 		[1216007] = {
+			["craftedItemId"] = 234475,
 			["difficulty"] = {
 				1,
 				160,
@@ -6787,10 +7060,10 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234008] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1216007,
 		},
 		[1216010] = {
+			["craftedItemId"] = 234476,
 			["difficulty"] = {
 				1,
 				160,
@@ -6804,10 +7077,10 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234008] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1216010,
 		},
 		[1216014] = {
+			["craftedItemId"] = 234480,
 			["difficulty"] = {
 				1,
 				160,
@@ -6821,10 +7094,10 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234012] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1216014,
 		},
 		[1216016] = {
+			["craftedItemId"] = 234478,
 			["difficulty"] = {
 				1,
 				160,
@@ -6838,10 +7111,10 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234012] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1216016,
 		},
 		[1216018] = {
+			["craftedItemId"] = 234479,
 			["difficulty"] = {
 				1,
 				160,
@@ -6855,10 +7128,10 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234012] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1216018,
 		},
 		[1216020] = {
+			["craftedItemId"] = 234474,
 			["difficulty"] = {
 				1,
 				160,
@@ -6873,10 +7146,10 @@ addon.recipeDB[333] = {
 				[234011] = 4,
 				[234012] = 20,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1216020,
 		},
 		[1216022] = {
+			["craftedItemId"] = 234469,
 			["difficulty"] = {
 				1,
 				160,
@@ -6891,10 +7164,10 @@ addon.recipeDB[333] = {
 				[234011] = 4,
 				[234012] = 20,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1216022,
 		},
 		[1216024] = {
+			["craftedItemId"] = 234468,
 			["difficulty"] = {
 				1,
 				160,
@@ -6909,7 +7182,6 @@ addon.recipeDB[333] = {
 				[234011] = 4,
 				[234012] = 20,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1216024,
 		},
 		[1217189] = {
@@ -6929,7 +7201,7 @@ addon.recipeDB[333] = {
 				[16203] = 4,
 				[16204] = 20,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 1217189,
 		},
 		[1217203] = {
@@ -6947,7 +7219,7 @@ addon.recipeDB[333] = {
 				[16204] = 10,
 				[20725] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 1217203,
 		},
 		[1219577] = {
@@ -6963,7 +7235,6 @@ addon.recipeDB[333] = {
 				[16204] = 18,
 				[20725] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1219577,
 		},
 		[1219578] = {
@@ -6979,7 +7250,6 @@ addon.recipeDB[333] = {
 				[16204] = 18,
 				[20725] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1219578,
 		},
 		[1219579] = {
@@ -6996,7 +7266,6 @@ addon.recipeDB[333] = {
 				[14344] = 6,
 				[16204] = 18,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1219579,
 		},
 		[1219580] = {
@@ -7013,7 +7282,6 @@ addon.recipeDB[333] = {
 				[16204] = 24,
 				[20725] = 3,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1219580,
 		},
 		[1219581] = {
@@ -7029,7 +7297,6 @@ addon.recipeDB[333] = {
 				[14344] = 6,
 				[16204] = 18,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1219581,
 		},
 		[1219586] = {
@@ -7045,7 +7312,6 @@ addon.recipeDB[333] = {
 				[16203] = 7,
 				[16204] = 21,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1219586,
 		},
 		[1219587] = {
@@ -7061,7 +7327,6 @@ addon.recipeDB[333] = {
 				[16203] = 3,
 				[16204] = 9,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1219587,
 		},
 		[1220623] = {
@@ -7077,7 +7342,6 @@ addon.recipeDB[333] = {
 				[14344] = 5,
 				[16204] = 15,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1220623,
 		},
 		[1220624] = {
@@ -7094,7 +7358,6 @@ addon.recipeDB[333] = {
 				[16203] = 3,
 				[16204] = 9,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1220624,
 		},
 		[1231128] = {
@@ -7112,7 +7375,7 @@ addon.recipeDB[333] = {
 				[14344] = 5,
 				[20725] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 280,
 			["teaches"] = 1231128,
 		},
 		[1231139] = {
@@ -7130,7 +7393,7 @@ addon.recipeDB[333] = {
 				[14344] = 10,
 				[20725] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 280,
 			["teaches"] = 1231139,
 		},
 		[1231164] = {
@@ -7148,7 +7411,7 @@ addon.recipeDB[333] = {
 				[14344] = 6,
 				[20725] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 280,
 			["teaches"] = 1231164,
 		},
 		[1232172] = {
@@ -7166,7 +7429,7 @@ addon.recipeDB[333] = {
 				[14344] = 10,
 				[20725] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 280,
 			["teaches"] = 1232172,
 		},
 		[1257682] = {
@@ -7177,12 +7440,13 @@ addon.recipeDB[333] = {
 				615,
 			},
 			["itemId"] = 254314,
+			["minExpansion"] = 5,
 			["name"] = "Enchant Weapon - Tyranny",
 			["reagents"] = {
 				[74248] = 10,
 				[74249] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 1257682,
 		},
 	}

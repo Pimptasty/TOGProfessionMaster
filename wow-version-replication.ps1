@@ -33,18 +33,32 @@ foreach ($d in $Destinations) {
 Write-Host "Press Ctrl+C to stop." -ForegroundColor White
 Write-Host ""
 
-# Relative paths matching these patterns are never synced to WoW
+# Relative paths matching these patterns are never synced to WoW.
+# Mirrors the `ignore:` list in .pkgmeta — anything excluded from the
+# CurseForge package should also be excluded from local dev sync, so
+# every WoW client we sync to ends up with the same file set the
+# packaged release would have. Update BOTH this list and .pkgmeta
+# together when adding new dev-only files / directories.
 $SkipPatterns = @(
+    # Dev / version control
     '(^|\\)\.git(\\|$)',
     '(^|\\)\.github(\\|$)',
     '(^|\\)\.vscode(\\|$)',
-    '(^|\\)\.luarc\.json$',
-    '(^|\\)\.markdownlint\.json$',
+    '(^|\\)\.claude(\\|$)',
     '(^|\\)\.gitignore$',
     '(^|\\)\.pkgmeta$',
-    '(^|\\)wow-version-replication\.ps1$',
+    # Dev-only tooling and scripts
+    '(^|\\)tools(\\|$)',
+    '(^|\\)docs(\\|$)',
+    '(^|\\).*\.ps1$',
+    '(^|\\).*\.bat$',
     '(^|\\).*\.code-workspace$',
-    '(^|\\)docs(\\|$)'
+    # Lint config
+    '(^|\\)\.luarc\.json$',
+    '(^|\\)\.markdownlint\.json$',
+    '(^|\\)\.markdownlintignore$',
+    # Project docs not shipped to clients
+    '(^|\\)CLAUDE\.md$'
 )
 
 function Skip-Path([string]$rel) {

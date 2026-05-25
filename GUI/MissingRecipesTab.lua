@@ -269,30 +269,38 @@ local function BuildMissingList(charKey, profId, includeTrainer)
         tbcPhaseLimit = Ace.db.profile.tbcAnniversaryPhase or 2
     end
 
-    -- Per-client max profession skill. Our shipped recipeDB is a UNION across
-    -- every expansion's data (one Data/Recipes/*.lua file is loaded by every
-    -- TOC variant), so a TBC Anniversary player would otherwise see MoP-
-    -- introduced recipes that require ~600 skill — recipes they can never
-    -- learn on their client. Filter on requiredSkill > this cap so each
-    -- client only surfaces recipes within reach of its own progression.
+    -- Per-client expansion index. The shipped recipeDB tags each recipe
+    -- with `minExpansion` = the earliest build (1=Vanilla, 2=TBC, 3=Wrath,
+    -- 4=Cata, 5=MoP) where the spell first appeared in wago.tools
+    -- SkillLineAbility. We hide recipes whose minExpansion > the current
+    -- client's expansion index — that's how Wrath transmute spell 53771
+    -- gets blocked on a TBC client even though its raw difficulty values
+    -- might look TBC-compatible (wago.tools' MoP build inherits every
+    -- spell ever shipped, so a forward-union of all 5 builds means Wrath /
+    -- Cata / MoP spells appear in our DB; the minExpansion tag keeps them
+    -- from displaying on earlier clients).
     --
-    -- Caps are identical across the crafting + secondary professions per
-    -- expansion (Vanilla 300, TBC 375, Wrath 450, Cata 525, MoP 600). When
-    -- the client's expansion can't be identified, default to MoP's cap (no
-    -- filtering) so we degrade to showing everything rather than hiding
-    -- recipes we shouldn't.
-    local clientMaxSkill
-    if     addon.isVanilla then clientMaxSkill = 300
-    elseif addon.isTBC     then clientMaxSkill = 375
-    elseif addon.isWrath   then clientMaxSkill = 450
-    elseif addon.isCata    then clientMaxSkill = 525
-    elseif addon.isMoP     then clientMaxSkill = 600
-    else                        clientMaxSkill = 600
+    -- Also keep the requiredSkill > clientMaxSkill filter as belt-and-
+    -- suspenders — minExpansion is the primary gate but a misclassified
+    -- recipe still gets caught if its required-skill exceeds the cap.
+    local clientExp, clientMaxSkill
+    if     addon.isVanilla then clientExp, clientMaxSkill = 1, 300
+    elseif addon.isTBC     then clientExp, clientMaxSkill = 2, 375
+    elseif addon.isWrath   then clientExp, clientMaxSkill = 3, 450
+    elseif addon.isCata    then clientExp, clientMaxSkill = 4, 525
+    elseif addon.isMoP     then clientExp, clientMaxSkill = 5, 600
+    else                        clientExp, clientMaxSkill = 5, 600
     end
 
     for spellId, data in pairs(recipes) do
         local skip = false
-        if data.requiredSkill and data.requiredSkill > clientMaxSkill then
+        if data.minExpansion and data.minExpansion > clientExp then
+            -- Recipe was first introduced in a later expansion than this
+            -- client supports. Wrath transmute on TBC, Cata recipe on
+            -- Wrath, etc. — never learnable here regardless of phase or
+            -- skill cap. PRIMARY cross-expansion gate.
+            skip = true
+        elseif data.requiredSkill and data.requiredSkill > clientMaxSkill then
             -- Recipe is from a future expansion the current client can't
             -- support. Hide it; the player will see it once they're on a
             -- later TOC variant.
@@ -322,6 +330,31 @@ local function BuildMissingList(charKey, profId, includeTrainer)
             if skillMax >= RANK_CAPS[data.teaches] then
                 skip = true
             end
+        elseif GetSpellInfo and not GetSpellInfo(spellId) then
+            -- The current client doesn't know this spell. Combined with
+            -- "scroll item also doesn't exist on this client" → recipe is
+            -- unreachable and would render either as "? <fallback name>"
+            -- (no itemId) or as "#<itemId> (loading…)" (itemId exists in
+            -- our DB but not in the client's item table — never resolves).
+            -- Common cause: Classic-Era-exclusive recipes (Season of
+            -- Discovery, Anniversary additions) that ship in the unified
+            -- recipeDB because they appear in 1.15.x's SkillLineAbility,
+            -- but the TBC / Wrath / Cata / MoP clients have no record of
+            -- them. Examples:
+            --   spell 427061  "Mantle of the Second War"     itemId nil
+            --   spell 1224639 "Scarlet Soldier's Stompers"   itemId 238329
+            -- GetItemInfoInstant is used to detect "item doesn't exist on
+            -- this client" without false positives from cache misses
+            -- (regular GetItemInfo returns nil for either case but only
+            -- GetItemInfoInstant is synchronous — it pulls from a small
+            -- always-loaded table that has every item the client knows).
+            -- Filter is conservative: requires BOTH spell-unknown AND
+            -- item-unknown, so any recipe with either signal still shows.
+            local itemKnown = data.itemId and GetItemInfoInstant
+                              and GetItemInfoInstant(data.itemId)
+            if not itemKnown then
+                skip = true
+            end
         end
 
         if not skip then
@@ -348,8 +381,15 @@ local function BuildMissingList(charKey, profId, includeTrainer)
                 table.insert(out, {
                     spellId       = spellId,
                     itemId        = data.itemId,  -- recipe-scroll item id (nil for trainer-only)
+                    craftedItemId = data.craftedItemId,  -- crafted (produced) item id; used for icon
                     teaches       = data.teaches,
-                    requiredSkill = data.requiredSkill or 0,
+                    -- requiredSkill: nil when neither the recipe scroll's
+                    -- RequiredSkillRank nor the trainer SQL's ReqSkillRank
+                    -- supplied a value. UI renders "-" so the data gap is
+                    -- visible. Do NOT default to 0 here — that would let
+                    -- the sort treat "unknown" as "lowest skill" and bury
+                    -- those recipes at the top of the list.
+                    requiredSkill = data.requiredSkill,
                     sources       = srcEntry,
                     sourcesText   = FormatSources(srcEntry, includeTrainer),
                 })
@@ -357,9 +397,16 @@ local function BuildMissingList(charKey, profId, includeTrainer)
         end
     end
 
+    -- Sort: known skill ascending, then unknown (nil) recipes last, then
+    -- by spellId for stable ties. Nil-safety matters because most rank
+    -- comparisons will involve at least one nil after the requiredSkill
+    -- field became optional — `nil < number` would error otherwise.
     table.sort(out, function(a, b)
-        if a.requiredSkill ~= b.requiredSkill then
-            return a.requiredSkill < b.requiredSkill
+        local ar, br = a.requiredSkill, b.requiredSkill
+        if ar ~= br then
+            if ar == nil then return false end
+            if br == nil then return true end
+            return ar < br
         end
         return a.spellId < b.spellId
     end)
@@ -868,7 +915,29 @@ function MissingRecipesTab:UpdateVirtualRows()
                                   or (entry.name)
                                   or ("|cffaaaaaaspell:" .. entry.spellId .. "|r")
                 displayName = spellName
-                local spellIcon = GetSpellTexture and GetSpellTexture(entry.spellId)
+                -- Icon resolution priority for trainer-only crafts:
+                --
+                --   1. entry.craftedItemId — the item the spell PRODUCES,
+                --      shipped in addon.recipeDB from SpellEffect[Effect=24]
+                --      data (see tools/build_authoritative_data.py). This
+                --      is the authoritative source for trainer-taught
+                --      craft icons (Heavy Weightstone → item 3241, Coarse
+                --      Sharpening Stone → item 2863, etc.) and works for
+                --      every recipe whose primary effect is Create Item,
+                --      regardless of whether the player has ever seen the
+                --      crafted item.
+                --
+                --   2. GetSpellTexture(spellId) — fallback when no
+                --      craftedItemId was shipped (Enchanting craft spells
+                --      have no produced item, so they correctly fall here
+                --      and render the enchant scroll icon Blizzard
+                --      assigned the spell).
+                local craftedIcon
+                if entry.craftedItemId and GetItemIcon then
+                    craftedIcon = GetItemIcon(entry.craftedItemId)
+                end
+                local spellIcon = craftedIcon
+                              or (GetSpellTexture and GetSpellTexture(entry.spellId))
                 f.icon:SetTexture(spellIcon or 134400)
             end
 
@@ -881,7 +950,11 @@ function MissingRecipesTab:UpdateVirtualRows()
             end
             f.nameLbl:SetText(color and ("|c" .. color .. displayName .. "|r") or displayName)
 
-            f.skillLbl:SetText(tostring(entry.requiredSkill or ""))
+            -- "-" surfaces the data gap when no authoritative source (recipe-
+            -- scroll RequiredSkillRank or trainer SQL ReqSkillRank) supplied
+            -- a value; lets the user / maintainer spot recipes whose
+            -- requirement still needs filling in from emulator data.
+            f.skillLbl:SetText(entry.requiredSkill and tostring(entry.requiredSkill) or "-")
             f.srcLbl:SetText(entry.sourcesText or "")
 
             -- [Bank] button: show only when TOGBankClassic reports stock for

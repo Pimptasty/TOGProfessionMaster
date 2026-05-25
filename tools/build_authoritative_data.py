@@ -29,6 +29,7 @@ force re-download.
 
 import argparse
 import pathlib
+import re
 import sys
 
 SCRIPT_DIR  = pathlib.Path(__file__).resolve().parent
@@ -38,6 +39,7 @@ RECIPES_DIR = ADDON_ROOT / "Data" / "Recipes"
 # Reuse the wago.tools fetch helper from the probe script.
 sys.path.insert(0, str(SCRIPT_DIR))
 from wago_probe import fetch_csv  # type: ignore
+from extract_emulator_trainers import extract_all_skill_ranks  # type: ignore
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -82,6 +84,58 @@ PROF_FILES = {
 # Per-expansion recipe extraction
 # ---------------------------------------------------------------------------
 
+# Patterns that mark a Blizzard internal / non-shippable item name. When
+# ItemEffect maps a recipe spell to multiple items (e.g. the ZZOLD variant
+# kept around for legacy data plus the live version), we must NOT pick the
+# obsolete one as the recipe's `itemId` or the in-game UI displays the bad
+# name (item 41404 = "ZZOLD Design: Bracing Earthsiege Diamond", etc.).
+#
+# These tokens were chosen by scanning every shipped `itemId` against
+# ItemSparse names — they're the discriminators that show up on confirmed
+# obsolete items and never on a live recipe scroll. Conservative on purpose:
+# matches must be word-boundary or unique-bracket forms so the filter never
+# eats a legitimate item.
+_OBSOLETE_NAME_PATTERNS = [
+    re.compile(r"\bTEST\b"),          # "59 TEST Green Shaman Chest"
+    re.compile(r"\bQA\b"),            # internal QA items
+    re.compile(r"\bDEPRECATED\b", re.IGNORECASE),
+    re.compile(r"\bUNUSED\b",     re.IGNORECASE),
+    re.compile(r"^ZZ",            re.IGNORECASE),  # ZZOLD prefix on legacy gems
+    re.compile(r"\[PH\]",         re.IGNORECASE),  # [PH] placeholder marker
+    re.compile(r"\bOLD$",         re.IGNORECASE),  # trailing OLD marker
+]
+
+
+def is_obsolete_item_name(name: str) -> bool:
+    """True if `name` looks like a Blizzard internal / dev / placeholder item.
+    Used to skip such items when picking the `itemId` to ship for a recipe."""
+    if not name:
+        return False
+    for pat in _OBSOLETE_NAME_PATTERNS:
+        if pat.search(name):
+            return True
+    return False
+
+
+# Lazy-loaded trainer-rank cache. Built once (across every source) the first
+# time extract_recipes_for_build needs it. Subsequent builds reuse — the data
+# is build-agnostic (trainers are server-side, not per-client-build).
+_TRAINER_SKILL_RANKS = None
+
+def _load_trainer_skill_ranks() -> dict:
+    global _TRAINER_SKILL_RANKS
+    if _TRAINER_SKILL_RANKS is not None:
+        return _TRAINER_SKILL_RANKS
+    try:
+        _TRAINER_SKILL_RANKS = extract_all_skill_ranks(refresh=False)
+    except Exception as exc:
+        print(f"  trainer skill-ranks extraction failed: {exc}; "
+              f"trainer-taught requiredSkill will fall back to SLA heuristic",
+              file=sys.stderr)
+        _TRAINER_SKILL_RANKS = {}
+    return _TRAINER_SKILL_RANKS
+
+
 def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
     """Pull every recipe for every profession in PROF_FILES from one build.
 
@@ -96,6 +150,42 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
     spell_names  = fetch_csv("SpellName",        build, refresh=refresh)
     spell_reag   = fetch_csv("SpellReagents",    build, refresh=refresh)
     item_effects = fetch_csv("ItemEffect",       build, refresh=refresh)
+    item_sparse  = fetch_csv("ItemSparse",       build, refresh=refresh)
+    spell_effects = fetch_csv("SpellEffect",     build, refresh=refresh)
+
+    # Trainer skill-ranks (build-agnostic; loads from emulator SQL the
+    # first time and caches). Used downstream as the authoritative source
+    # for trainer-taught recipes' requiredSkill.
+    trainer_skill_ranks = _load_trainer_skill_ranks()
+
+    # ItemSparse indices —
+    #   name_by_item:        used to filter obsolete recipe-scroll items
+    #                        (ZZOLD/TEST/DEPRECATED) out of items_by_spell
+    #                        before we pick items[0] as the shipped `itemId`.
+    #   skill_rank_by_item:  RequiredSkillRank from the scroll's
+    #                        ItemSparse row — this IS the literal "Requires
+    #                        Blacksmithing (175)" / "Requires Tailoring
+    #                        (300)" value the in-game tooltip shows. Used
+    #                        downstream to ship an authoritative requiredSkill
+    #                        for scroll-taught recipes; falls back to the
+    #                        SLA TrivialSkillLineRankLow heuristic for
+    #                        trainer-taught recipes that have no scroll.
+    name_by_item = {}
+    skill_rank_by_item = {}
+    for row in item_sparse:
+        try:
+            iid = int(row.get("ID") or 0)
+        except (TypeError, ValueError):
+            continue
+        nm = row.get("Display_lang") or row.get("Name_lang") or ""
+        if iid and nm:
+            name_by_item[iid] = nm
+        try:
+            rank = int(row.get("RequiredSkillRank") or 0)
+            if iid and rank > 0:
+                skill_rank_by_item[iid] = rank
+        except (TypeError, ValueError):
+            continue
 
     # Index by spellId so per-recipe joins are O(1).
     name_by_spell = {}
@@ -122,12 +212,49 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
             continue
 
     items_by_spell: dict[int, set[int]] = {}
+    n_skipped_obsolete = 0
     for row in item_effects:
         try:
             sid = int(row.get("SpellID") or row.get("Spell") or 0)
             iid = int(row.get("ParentItemID") or row.get("ItemID") or 0)
             if sid and iid:
+                # Skip ZZOLD/TEST/DEPRECATED variants — see _OBSOLETE_NAME_PATTERNS.
+                # The live recipe scroll for the same spell stays in the set.
+                if is_obsolete_item_name(name_by_item.get(iid, "")):
+                    n_skipped_obsolete += 1
+                    continue
                 items_by_spell.setdefault(sid, set()).add(iid)
+        except (TypeError, ValueError, KeyError):
+            continue
+    if n_skipped_obsolete:
+        print(f"  skipped {n_skipped_obsolete} obsolete item-teach rows "
+              f"(ZZOLD/TEST/DEPRECATED variants)", file=sys.stderr)
+
+    # SpellEffect[Effect=24] = "Create Item". For each craft spell, the
+    # EffectItemType column gives the item id the spell produces. We ship
+    # this as `craftedItemId` so the runtime UI (icon resolution, tooltip
+    # link, etc.) has a reliable handle to the produced item even for
+    # trainer-taught recipes that have no scroll item. Without it, the
+    # Missing Recipes tab fell back to GetSpellTexture for trainer-only
+    # rows, which Blizzard often assigned generic placeholder textures
+    # (the "funky icon" the user kept seeing for Heavy Weightstone,
+    # Coarse Sharpening Stone, etc.).
+    #
+    # Some spells have multiple Effect=24 rows (multi-output crafts).
+    # Take the first one — that's the primary output. Filter obsolete
+    # items here too so we never tag a craftedItemId pointing at a
+    # ZZOLD/TEST item even when those are the spell's primary output.
+    created_item_by_spell: dict[int, int] = {}
+    for row in spell_effects:
+        try:
+            effect = int(row.get("Effect") or 0)
+            if effect != 24:  # CREATE_ITEM
+                continue
+            sid = int(row.get("SpellID") or 0)
+            iid = int(row.get("EffectItemType") or 0)
+            if sid and iid and sid not in created_item_by_spell:
+                if not is_obsolete_item_name(name_by_item.get(iid, "")):
+                    created_item_by_spell[sid] = iid
         except (TypeError, ValueError, KeyError):
             continue
 
@@ -156,14 +283,48 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
             except (TypeError, ValueError, KeyError):
                 continue
 
+            # requiredSkill — ONLY authoritative sources, in priority order:
+            #
+            # 1. Recipe-scroll ItemSparse.RequiredSkillRank — the LITERAL
+            #    "Requires Blacksmithing (175)" / "Requires Tailoring (300)"
+            #    value the in-game tooltip shows on the scroll. Blizzard
+            #    sets it per-scroll and the game uses it to gate learning.
+            #
+            # 2. Trainer SQL `trainer_spell.ReqSkillRank` — the LITERAL
+            #    "Requires Blacksmithing (100)" value the TRAINER NPC
+            #    enforces when teaching the spell. Sourced from
+            #    AzerothCore Wrath + TrinityCore Cata trainer SQL.
+            #
+            # If neither source has data, requiredSkill = None. The
+            # downstream emitter omits the field and the runtime UI shows
+            # "-" so the gap is visible and we can fill it later. We do
+            # NOT fall back to SLA MinSkillLineRank or
+            # TrivialSkillLineRankLow ("green" threshold) — both run 0-10
+            # points off the real learn requirement for many recipes
+            # (e.g. Coarse Sharpening Stone: MinSkillLineRank=75, trainer
+            # SQL=65; Silver Rod: MinSkillLineRank=1 placeholder,
+            # green=105, trainer SQL=100). Shipping those heuristic
+            # values masks the data gap and produces a false sense of
+            # accuracy in the UI.
+            scroll_items = sorted(items_by_spell.get(spell_id, set()))
+            scroll_rank = None
+            for sid_item in scroll_items:
+                r = skill_rank_by_item.get(sid_item)
+                if r:
+                    scroll_rank = r
+                    break
+            trainer_rank = trainer_skill_ranks.get(spell_id)
+            required_skill = scroll_rank or trainer_rank  # None when unknown
+
             recipes[spell_id] = {
-                "name":          name_by_spell.get(spell_id, ""),
-                "difficulty":    difficulty,
-                "teaches":       spell_id,  # self-teaching; scanner returns spell id
-                "requiredSkill": min_rank,
-                "reagents":      reagents_by_spell.get(spell_id, {}),
-                "items":         sorted(items_by_spell.get(spell_id, set())),
-                "expansion":     build,
+                "name":           name_by_spell.get(spell_id, ""),
+                "difficulty":     difficulty,
+                "teaches":        spell_id,  # self-teaching; scanner returns spell id
+                "requiredSkill":  required_skill,
+                "reagents":       reagents_by_spell.get(spell_id, {}),
+                "items":          sorted(items_by_spell.get(spell_id, set())),
+                "craftedItemId":  created_item_by_spell.get(spell_id),
+                "expansion":      build,
             }
         out[prof_id] = recipes
     return out
@@ -176,16 +337,34 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
 def merge_expansions(per_build_data: list[dict]) -> dict:
     """Union across all expansion builds. Latest expansion wins on field values
     (a Wrath-rebalanced recipe carries Wrath's difficulty into the merged DB;
-    a Cata further rebalance overwrites it; MoP overwrites Cata). The merge
-    order is determined by the order of per_build_data, which matches the
-    EXPANSION_BUILDS list (oldest → newest).
+    a Cata further rebalance overwrites it; MoP overwrites Cata).
+
+    Each recipe also gets a `minExpansion` field — the index of the earliest
+    build (1=Vanilla, 2=TBC, 3=Wrath, 4=Cata, 5=MoP) where the spell first
+    appeared in SkillLineAbility. The addon filters on this at runtime to
+    block cross-expansion bleed: a Wrath-introduced recipe with
+    `minExpansion=3` is hidden on TBC clients (CLIENT_EXP=2) regardless of
+    whatever requiredSkill / phase data it carries. This catches the bug
+    where wago.tools' MoP build inherits every spell ever shipped — a Wrath
+    transmute like 53771 was leaking into TBC's data because we unioned
+    forward but had no per-expansion gate at runtime.
+
+    The merge order is the order of per_build_data, which matches the
+    EXPANSION_BUILDS list (oldest → newest, hence index 1..5).
     """
     merged: dict = {}
-    for build_data in per_build_data:
+    for build_idx, build_data in enumerate(per_build_data, start=1):
         for prof_id, recipes in build_data.items():
             slot = merged.setdefault(prof_id, {})
             for spell_id, entry in recipes.items():
-                slot[spell_id] = entry  # last-wins
+                if spell_id in slot:
+                    # Preserve the earlier minExpansion across the overwrite.
+                    prior_min = slot[spell_id].get("minExpansion", build_idx)
+                    slot[spell_id] = dict(entry)
+                    slot[spell_id]["minExpansion"] = prior_min
+                else:
+                    slot[spell_id] = dict(entry)
+                    slot[spell_id]["minExpansion"] = build_idx
     return merged
 
 
@@ -230,6 +409,26 @@ def lua_value(v, indent_level: int) -> str:
     raise TypeError(f"cannot serialise {type(v).__name__} to Lua")
 
 
+# Hand-curated exclusion list. Recipes in wago.tools / DBC data that were
+# never actually obtainable in the live game across any expansion — planned-
+# but-cut content, leftover dev test entries, etc. Each entry needs a
+# `# source` comment documenting why we know it shouldn't ship. Without
+# the comment the line is just noise; without a citation the next
+# maintainer can't audit whether the entry is still correct.
+#
+# Filter applied at emit time in emit_recipe_file — these spells never
+# appear in any client's recipeDB, so the Missing tab never tries to
+# display them. Add to this list when a user reports a recipe that
+# shouldn't exist; verify against Wowhead / wowwiki / community
+# documentation before adding.
+MANUAL_EXCLUDED_SPELLS = {
+    22430,  # Alchemy "Refined Scale of Onyxia" — planned for Vanilla AQ40
+            # but never implemented (would have bottlenecked Onyxia loot
+            # turn-ins). Verified non-obtainable via Wowhead comments and
+            # community reports. User-reported on TBC Anniversary Phase 2.
+}
+
+
 # Lazy-loaded phase map keyed by spellId -> phase int. Populated from
 # tools/wago_cache/att_phase_map.json (produced by att_extract_phase.py).
 # Currently only TBC entries are present; recipes not in the map have no
@@ -271,7 +470,13 @@ def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
     phase_map = _load_phase_map()
     cleaned = {}
     n_skipped_non_recipe = 0
+    n_skipped_manual_exclude = 0
     for spell_id, entry in recipes.items():
+        # Hand-curated exclusion list (planned-but-never-shipped recipes,
+        # etc.) — see MANUAL_EXCLUDED_SPELLS at top of file.
+        if spell_id in MANUAL_EXCLUDED_SPELLS:
+            n_skipped_manual_exclude += 1
+            continue
         # itemId = first recipe-scroll item that teaches this spell, or nil
         # for trainer-only recipes (no scroll exists in the game). Used by
         # GUI/MissingRecipesTab.lua for tooltip / icon / shift-click link
@@ -298,24 +503,47 @@ def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
             continue
 
         out = {
-            "name":          entry["name"],
-            "difficulty":    entry["difficulty"],
-            "teaches":       entry["teaches"],
-            "requiredSkill": entry["requiredSkill"],
-            "reagents":      reagents,
+            "name":       entry["name"],
+            "difficulty": entry["difficulty"],
+            "teaches":    entry["teaches"],
+            "reagents":   reagents,
         }
+        # requiredSkill is omitted entirely when None — see comment in
+        # extract_recipes_for_build. Runtime treats absent as "unknown"
+        # and renders "-" in the UI so the gap is visible.
+        if entry.get("requiredSkill"):
+            out["requiredSkill"] = entry["requiredSkill"]
         if items:
             out["itemId"] = items[0]
+        # craftedItemId: the item produced BY the craft spell (from
+        # SpellEffect[Effect=24].EffectItemType). Distinct from itemId
+        # (which is the recipe-scroll item). Lets the runtime UI render
+        # the produced item's icon / link for trainer-taught crafts that
+        # have no scroll. Skip when equal to itemId — saves bytes and
+        # prevents downstream code from double-handling the same value.
+        crafted = entry.get("craftedItemId")
+        if crafted and crafted != out.get("itemId"):
+            out["craftedItemId"] = crafted
         phase = phase_map.get(spell_id)
         if phase and phase > 1:
             # Only emit `phase` when it's beyond Phase 1 (the default).
             # Recipes without a phase entry — or tagged Phase 1 — get no
             # field and the addon treats them as always-visible.
             out["phase"] = phase
+        # minExpansion: earliest build index (1=Vanilla..5=MoP) where the
+        # spell first appeared. Set by merge_expansions. Emit only when
+        # > 1 since Vanilla-origin recipes show on every client by default
+        # and the absent-field check is cheaper than `entry.minExpansion <= 1`.
+        min_exp = entry.get("minExpansion")
+        if min_exp and min_exp > 1:
+            out["minExpansion"] = min_exp
         cleaned[spell_id] = out
     if n_skipped_non_recipe:
         print(f"  {prof_id}: skipped {n_skipped_non_recipe} non-recipe spells "
               f"(rank-ups / specs / utility)", file=sys.stderr)
+    if n_skipped_manual_exclude:
+        print(f"  {prof_id}: skipped {n_skipped_manual_exclude} manually-excluded "
+              f"spells (never-implemented content)", file=sys.stderr)
     body = lua_value(cleaned, 1)
     target = RECIPES_DIR / f"{filename}.lua"
     target.parent.mkdir(parents=True, exist_ok=True)

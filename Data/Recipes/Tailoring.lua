@@ -2,6 +2,7 @@ local _, addon = ...
 
 addon.recipeDB[197] = {
 		[2385] = {
+			["craftedItemId"] = 2568,
 			["difficulty"] = {
 				1,
 				23,
@@ -13,10 +14,11 @@ addon.recipeDB[197] = {
 				[2320] = 1,
 				[2996] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 10,
 			["teaches"] = 2385,
 		},
 		[2386] = {
+			["craftedItemId"] = 2569,
 			["difficulty"] = {
 				1,
 				45,
@@ -29,10 +31,11 @@ addon.recipeDB[197] = {
 				[2320] = 1,
 				[2996] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 65,
 			["teaches"] = 2386,
 		},
 		[2387] = {
+			["craftedItemId"] = 2570,
 			["difficulty"] = {
 				1,
 				18,
@@ -44,10 +47,10 @@ addon.recipeDB[197] = {
 				[2320] = 1,
 				[2996] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 2387,
 		},
 		[2389] = {
+			["craftedItemId"] = 2572,
 			["difficulty"] = {
 				1,
 				33,
@@ -61,10 +64,11 @@ addon.recipeDB[197] = {
 				[2604] = 2,
 				[2996] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 40,
 			["teaches"] = 2389,
 		},
 		[2392] = {
+			["craftedItemId"] = 2575,
 			["difficulty"] = {
 				1,
 				33,
@@ -77,10 +81,11 @@ addon.recipeDB[197] = {
 				[2604] = 1,
 				[2996] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 40,
 			["teaches"] = 2392,
 		},
 		[2393] = {
+			["craftedItemId"] = 2576,
 			["difficulty"] = {
 				1,
 				18,
@@ -97,6 +102,7 @@ addon.recipeDB[197] = {
 			["teaches"] = 2393,
 		},
 		[2394] = {
+			["craftedItemId"] = 2577,
 			["difficulty"] = {
 				1,
 				33,
@@ -109,10 +115,11 @@ addon.recipeDB[197] = {
 				[2996] = 2,
 				[6260] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 40,
 			["teaches"] = 2394,
 		},
 		[2395] = {
+			["craftedItemId"] = 2578,
 			["difficulty"] = {
 				1,
 				48,
@@ -125,10 +132,11 @@ addon.recipeDB[197] = {
 				[2321] = 1,
 				[2996] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 70,
 			["teaches"] = 2395,
 		},
 		[2396] = {
+			["craftedItemId"] = 2579,
 			["difficulty"] = {
 				1,
 				48,
@@ -141,10 +149,11 @@ addon.recipeDB[197] = {
 				[2605] = 1,
 				[2996] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 70,
 			["teaches"] = 2396,
 		},
 		[2397] = {
+			["craftedItemId"] = 2580,
 			["difficulty"] = {
 				1,
 				43,
@@ -156,10 +165,11 @@ addon.recipeDB[197] = {
 				[2320] = 3,
 				[2996] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 60,
 			["teaches"] = 2397,
 		},
 		[2399] = {
+			["craftedItemId"] = 2582,
 			["difficulty"] = {
 				1,
 				55,
@@ -172,10 +182,11 @@ addon.recipeDB[197] = {
 				[2605] = 1,
 				[2997] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 85,
 			["teaches"] = 2399,
 		},
 		[2401] = {
+			["craftedItemId"] = 2583,
 			["difficulty"] = {
 				1,
 				60,
@@ -188,10 +199,11 @@ addon.recipeDB[197] = {
 				[2321] = 2,
 				[2997] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 95,
 			["teaches"] = 2401,
 		},
 		[2402] = {
+			["craftedItemId"] = 2584,
 			["difficulty"] = {
 				1,
 				50,
@@ -203,10 +215,11 @@ addon.recipeDB[197] = {
 				[2321] = 1,
 				[2997] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 75,
 			["teaches"] = 2402,
 		},
 		[2403] = {
+			["craftedItemId"] = 2585,
 			["difficulty"] = {
 				1,
 				65,
@@ -220,10 +233,11 @@ addon.recipeDB[197] = {
 				[2997] = 4,
 				[4340] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 105,
 			["teaches"] = 2403,
 		},
 		[2406] = {
+			["craftedItemId"] = 2587,
 			["difficulty"] = {
 				1,
 				55,
@@ -236,10 +250,11 @@ addon.recipeDB[197] = {
 				[2997] = 2,
 				[4340] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 100,
 			["teaches"] = 2406,
 		},
 		[2963] = {
+			["craftedItemId"] = 2996,
 			["difficulty"] = {
 				1,
 				13,
@@ -250,10 +265,10 @@ addon.recipeDB[197] = {
 			["reagents"] = {
 				[2589] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 2963,
 		},
 		[2964] = {
+			["craftedItemId"] = 2997,
 			["difficulty"] = {
 				1,
 				45,
@@ -264,10 +279,11 @@ addon.recipeDB[197] = {
 			["reagents"] = {
 				[2592] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 75,
 			["teaches"] = 2964,
 		},
 		[3755] = {
+			["craftedItemId"] = 4238,
 			["difficulty"] = {
 				1,
 				35,
@@ -279,10 +295,11 @@ addon.recipeDB[197] = {
 				[2320] = 3,
 				[2996] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 45,
 			["teaches"] = 3755,
 		},
 		[3757] = {
+			["craftedItemId"] = 4240,
 			["difficulty"] = {
 				1,
 				53,
@@ -294,10 +311,11 @@ addon.recipeDB[197] = {
 				[2321] = 1,
 				[2997] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 80,
 			["teaches"] = 3757,
 		},
 		[3758] = {
+			["craftedItemId"] = 4241,
 			["difficulty"] = {
 				1,
 				60,
@@ -311,10 +329,11 @@ addon.recipeDB[197] = {
 				[2605] = 1,
 				[2997] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 95,
 			["teaches"] = 3758,
 		},
 		[3813] = {
+			["craftedItemId"] = 4245,
 			["difficulty"] = {
 				1,
 				85,
@@ -327,10 +346,11 @@ addon.recipeDB[197] = {
 				[4234] = 2,
 				[4305] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 150,
 			["teaches"] = 3813,
 		},
 		[3839] = {
+			["craftedItemId"] = 4305,
 			["difficulty"] = {
 				1,
 				68,
@@ -341,10 +361,11 @@ addon.recipeDB[197] = {
 			["reagents"] = {
 				[4306] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 125,
 			["teaches"] = 3839,
 		},
 		[3840] = {
+			["craftedItemId"] = 4307,
 			["difficulty"] = {
 				1,
 				30,
@@ -356,10 +377,11 @@ addon.recipeDB[197] = {
 				[2320] = 1,
 				[2996] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 35,
 			["teaches"] = 3840,
 		},
 		[3841] = {
+			["craftedItemId"] = 4308,
 			["difficulty"] = {
 				1,
 				43,
@@ -372,10 +394,11 @@ addon.recipeDB[197] = {
 				[2605] = 1,
 				[2996] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 60,
 			["teaches"] = 3841,
 		},
 		[3842] = {
+			["craftedItemId"] = 4309,
 			["difficulty"] = {
 				1,
 				48,
@@ -387,10 +410,11 @@ addon.recipeDB[197] = {
 				[2321] = 2,
 				[2996] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 70,
 			["teaches"] = 3842,
 		},
 		[3843] = {
+			["craftedItemId"] = 4310,
 			["difficulty"] = {
 				1,
 				55,
@@ -402,10 +426,11 @@ addon.recipeDB[197] = {
 				[2321] = 1,
 				[2997] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 85,
 			["teaches"] = 3843,
 		},
 		[3844] = {
+			["craftedItemId"] = 4311,
 			["difficulty"] = {
 				1,
 				63,
@@ -419,10 +444,11 @@ addon.recipeDB[197] = {
 				[2997] = 3,
 				[5498] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 100,
 			["teaches"] = 3844,
 		},
 		[3845] = {
+			["craftedItemId"] = 4312,
 			["difficulty"] = {
 				1,
 				53,
@@ -435,10 +461,11 @@ addon.recipeDB[197] = {
 				[2321] = 1,
 				[2996] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 80,
 			["teaches"] = 3845,
 		},
 		[3847] = {
+			["craftedItemId"] = 4313,
 			["difficulty"] = {
 				1,
 				60,
@@ -453,10 +480,11 @@ addon.recipeDB[197] = {
 				[2604] = 2,
 				[2997] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 95,
 			["teaches"] = 3847,
 		},
 		[3848] = {
+			["craftedItemId"] = 4314,
 			["difficulty"] = {
 				1,
 				68,
@@ -468,10 +496,11 @@ addon.recipeDB[197] = {
 				[2321] = 2,
 				[2997] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 110,
 			["teaches"] = 3848,
 		},
 		[3849] = {
+			["craftedItemId"] = 4315,
 			["difficulty"] = {
 				1,
 				73,
@@ -485,10 +514,11 @@ addon.recipeDB[197] = {
 				[2321] = 2,
 				[2997] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 120,
 			["teaches"] = 3849,
 		},
 		[3850] = {
+			["craftedItemId"] = 4316,
 			["difficulty"] = {
 				1,
 				68,
@@ -500,10 +530,11 @@ addon.recipeDB[197] = {
 				[2321] = 4,
 				[2997] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 110,
 			["teaches"] = 3850,
 		},
 		[3851] = {
+			["craftedItemId"] = 4317,
 			["difficulty"] = {
 				1,
 				75,
@@ -517,10 +548,11 @@ addon.recipeDB[197] = {
 				[2997] = 6,
 				[5500] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 125,
 			["teaches"] = 3851,
 		},
 		[3852] = {
+			["craftedItemId"] = 4318,
 			["difficulty"] = {
 				1,
 				75,
@@ -533,10 +565,11 @@ addon.recipeDB[197] = {
 				[2997] = 4,
 				[3383] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 130,
 			["teaches"] = 3852,
 		},
 		[3854] = {
+			["craftedItemId"] = 4319,
 			["difficulty"] = {
 				1,
 				83,
@@ -551,10 +584,11 @@ addon.recipeDB[197] = {
 				[4305] = 3,
 				[6260] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 145,
 			["teaches"] = 3854,
 		},
 		[3855] = {
+			["craftedItemId"] = 4320,
 			["difficulty"] = {
 				1,
 				75,
@@ -568,10 +602,11 @@ addon.recipeDB[197] = {
 				[4305] = 2,
 				[5500] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 125,
 			["teaches"] = 3855,
 		},
 		[3856] = {
+			["craftedItemId"] = 4321,
 			["difficulty"] = {
 				1,
 				80,
@@ -585,10 +620,11 @@ addon.recipeDB[197] = {
 				[3182] = 1,
 				[4305] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 140,
 			["teaches"] = 3856,
 		},
 		[3857] = {
+			["craftedItemId"] = 4322,
 			["difficulty"] = {
 				1,
 				93,
@@ -602,10 +638,11 @@ addon.recipeDB[197] = {
 				[4305] = 3,
 				[4337] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 165,
 			["teaches"] = 3857,
 		},
 		[3858] = {
+			["craftedItemId"] = 4323,
 			["difficulty"] = {
 				1,
 				95,
@@ -619,10 +656,11 @@ addon.recipeDB[197] = {
 				[4291] = 1,
 				[4305] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 170,
 			["teaches"] = 3858,
 		},
 		[3859] = {
+			["craftedItemId"] = 4324,
 			["difficulty"] = {
 				1,
 				85,
@@ -634,10 +672,11 @@ addon.recipeDB[197] = {
 				[4305] = 5,
 				[6260] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 150,
 			["teaches"] = 3859,
 		},
 		[3860] = {
+			["craftedItemId"] = 4325,
 			["difficulty"] = {
 				1,
 				98,
@@ -651,10 +690,11 @@ addon.recipeDB[197] = {
 				[4305] = 4,
 				[4337] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 175,
 			["teaches"] = 3860,
 		},
 		[3861] = {
+			["craftedItemId"] = 4326,
 			["difficulty"] = {
 				1,
 				103,
@@ -667,10 +707,11 @@ addon.recipeDB[197] = {
 				[4291] = 1,
 				[4305] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 185,
 			["teaches"] = 3861,
 		},
 		[3862] = {
+			["craftedItemId"] = 4327,
 			["difficulty"] = {
 				1,
 				110,
@@ -685,10 +726,11 @@ addon.recipeDB[197] = {
 				[4337] = 2,
 				[4339] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 200,
 			["teaches"] = 3862,
 		},
 		[3863] = {
+			["craftedItemId"] = 4328,
 			["difficulty"] = {
 				1,
 				100,
@@ -702,10 +744,11 @@ addon.recipeDB[197] = {
 				[4337] = 2,
 				[7071] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 180,
 			["teaches"] = 3863,
 		},
 		[3864] = {
+			["craftedItemId"] = 4329,
 			["difficulty"] = {
 				1,
 				110,
@@ -721,10 +764,11 @@ addon.recipeDB[197] = {
 				[4339] = 4,
 				[7071] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 200,
 			["teaches"] = 3864,
 		},
 		[3865] = {
+			["craftedItemId"] = 4339,
 			["difficulty"] = {
 				1,
 				90,
@@ -735,10 +779,11 @@ addon.recipeDB[197] = {
 			["reagents"] = {
 				[4338] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 175,
 			["teaches"] = 3865,
 		},
 		[3866] = {
+			["craftedItemId"] = 4330,
 			["difficulty"] = {
 				1,
 				68,
@@ -751,10 +796,11 @@ addon.recipeDB[197] = {
 				[2604] = 2,
 				[2997] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 110,
 			["teaches"] = 3866,
 		},
 		[3868] = {
+			["craftedItemId"] = 4331,
 			["difficulty"] = {
 				1,
 				75,
@@ -769,10 +815,11 @@ addon.recipeDB[197] = {
 				[2997] = 4,
 				[5500] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 125,
 			["teaches"] = 3868,
 		},
 		[3869] = {
+			["craftedItemId"] = 4332,
 			["difficulty"] = {
 				1,
 				73,
@@ -786,10 +833,11 @@ addon.recipeDB[197] = {
 				[4305] = 1,
 				[4341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 135,
 			["teaches"] = 3869,
 		},
 		[3870] = {
+			["craftedItemId"] = 4333,
 			["difficulty"] = {
 				1,
 				83,
@@ -803,10 +851,11 @@ addon.recipeDB[197] = {
 				[4305] = 2,
 				[4340] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 155,
 			["teaches"] = 3870,
 		},
 		[3871] = {
+			["craftedItemId"] = 4334,
 			["difficulty"] = {
 				1,
 				90,
@@ -819,10 +868,11 @@ addon.recipeDB[197] = {
 				[2324] = 2,
 				[4305] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 170,
 			["teaches"] = 3871,
 		},
 		[3872] = {
+			["craftedItemId"] = 4335,
 			["difficulty"] = {
 				1,
 				98,
@@ -836,10 +886,11 @@ addon.recipeDB[197] = {
 				[4305] = 4,
 				[4342] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 185,
 			["teaches"] = 3872,
 		},
 		[3873] = {
+			["craftedItemId"] = 4336,
 			["difficulty"] = {
 				1,
 				105,
@@ -853,10 +904,11 @@ addon.recipeDB[197] = {
 				[4291] = 1,
 				[4305] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 200,
 			["teaches"] = 3873,
 		},
 		[3914] = {
+			["craftedItemId"] = 4343,
 			["difficulty"] = {
 				1,
 				28,
@@ -868,10 +920,11 @@ addon.recipeDB[197] = {
 				[2320] = 1,
 				[2996] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 30,
 			["teaches"] = 3914,
 		},
 		[3915] = {
+			["craftedItemId"] = 4344,
 			["difficulty"] = {
 				1,
 				18,
@@ -887,6 +940,7 @@ addon.recipeDB[197] = {
 			["teaches"] = 3915,
 		},
 		[6521] = {
+			["craftedItemId"] = 5542,
 			["difficulty"] = {
 				1,
 				58,
@@ -899,10 +953,11 @@ addon.recipeDB[197] = {
 				[2997] = 3,
 				[5498] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 90,
 			["teaches"] = 6521,
 		},
 		[6686] = {
+			["craftedItemId"] = 5762,
 			["difficulty"] = {
 				1,
 				48,
@@ -916,10 +971,11 @@ addon.recipeDB[197] = {
 				[2604] = 1,
 				[2996] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 70,
 			["teaches"] = 6686,
 		},
 		[6688] = {
+			["craftedItemId"] = 5763,
 			["difficulty"] = {
 				1,
 				70,
@@ -933,10 +989,11 @@ addon.recipeDB[197] = {
 				[2604] = 1,
 				[2997] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 115,
 			["teaches"] = 6688,
 		},
 		[6690] = {
+			["craftedItemId"] = 5766,
 			["difficulty"] = {
 				1,
 				78,
@@ -949,10 +1006,11 @@ addon.recipeDB[197] = {
 				[3182] = 2,
 				[4305] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 135,
 			["teaches"] = 6690,
 		},
 		[6692] = {
+			["craftedItemId"] = 5770,
 			["difficulty"] = {
 				1,
 				85,
@@ -966,10 +1024,11 @@ addon.recipeDB[197] = {
 				[3182] = 2,
 				[4305] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 150,
 			["teaches"] = 6692,
 		},
 		[6693] = {
+			["craftedItemId"] = 5764,
 			["difficulty"] = {
 				1,
 				98,
@@ -984,10 +1043,11 @@ addon.recipeDB[197] = {
 				[4234] = 3,
 				[4305] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 175,
 			["teaches"] = 6693,
 		},
 		[6695] = {
+			["craftedItemId"] = 5765,
 			["difficulty"] = {
 				1,
 				103,
@@ -1002,10 +1062,11 @@ addon.recipeDB[197] = {
 				[2325] = 1,
 				[4305] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 185,
 			["teaches"] = 6695,
 		},
 		[7623] = {
+			["craftedItemId"] = 6238,
 			["difficulty"] = {
 				1,
 				28,
@@ -1017,10 +1078,11 @@ addon.recipeDB[197] = {
 				[2320] = 1,
 				[2996] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 30,
 			["teaches"] = 7623,
 		},
 		[7624] = {
+			["craftedItemId"] = 6241,
 			["difficulty"] = {
 				1,
 				28,
@@ -1033,10 +1095,11 @@ addon.recipeDB[197] = {
 				[2324] = 1,
 				[2996] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 30,
 			["teaches"] = 7624,
 		},
 		[7629] = {
+			["craftedItemId"] = 6239,
 			["difficulty"] = {
 				1,
 				40,
@@ -1050,10 +1113,11 @@ addon.recipeDB[197] = {
 				[2604] = 1,
 				[2996] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 55,
 			["teaches"] = 7629,
 		},
 		[7630] = {
+			["craftedItemId"] = 6240,
 			["difficulty"] = {
 				1,
 				40,
@@ -1067,10 +1131,11 @@ addon.recipeDB[197] = {
 				[2996] = 3,
 				[6260] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 55,
 			["teaches"] = 7630,
 		},
 		[7633] = {
+			["craftedItemId"] = 6242,
 			["difficulty"] = {
 				1,
 				48,
@@ -1084,10 +1149,11 @@ addon.recipeDB[197] = {
 				[2996] = 4,
 				[6260] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 70,
 			["teaches"] = 7633,
 		},
 		[7636] = {
+			["craftedItemId"] = 6243,
 			["difficulty"] = {
 				1,
 				58,
@@ -1101,10 +1167,11 @@ addon.recipeDB[197] = {
 				[2605] = 1,
 				[2997] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 90,
 			["teaches"] = 7636,
 		},
 		[7639] = {
+			["craftedItemId"] = 6263,
 			["difficulty"] = {
 				1,
 				63,
@@ -1118,10 +1185,11 @@ addon.recipeDB[197] = {
 				[2997] = 4,
 				[6260] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 100,
 			["teaches"] = 7639,
 		},
 		[7643] = {
+			["craftedItemId"] = 6264,
 			["difficulty"] = {
 				1,
 				70,
@@ -1135,10 +1203,11 @@ addon.recipeDB[197] = {
 				[2604] = 3,
 				[2997] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 115,
 			["teaches"] = 7643,
 		},
 		[7892] = {
+			["craftedItemId"] = 6384,
 			["difficulty"] = {
 				1,
 				73,
@@ -1153,10 +1222,11 @@ addon.recipeDB[197] = {
 				[4340] = 1,
 				[6260] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 120,
 			["teaches"] = 7892,
 		},
 		[7893] = {
+			["craftedItemId"] = 6385,
 			["difficulty"] = {
 				1,
 				73,
@@ -1171,10 +1241,11 @@ addon.recipeDB[197] = {
 				[2997] = 4,
 				[4340] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 120,
 			["teaches"] = 7893,
 		},
 		[8465] = {
+			["craftedItemId"] = 6786,
 			["difficulty"] = {
 				1,
 				33,
@@ -1188,10 +1259,11 @@ addon.recipeDB[197] = {
 				[2996] = 2,
 				[6260] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 40,
 			["teaches"] = 8465,
 		},
 		[8467] = {
+			["craftedItemId"] = 6787,
 			["difficulty"] = {
 				1,
 				68,
@@ -1204,10 +1276,11 @@ addon.recipeDB[197] = {
 				[2324] = 4,
 				[2997] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 110,
 			["teaches"] = 8467,
 		},
 		[8483] = {
+			["craftedItemId"] = 6795,
 			["difficulty"] = {
 				1,
 				85,
@@ -1220,10 +1293,11 @@ addon.recipeDB[197] = {
 				[4291] = 1,
 				[4305] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 160,
 			["teaches"] = 8483,
 		},
 		[8489] = {
+			["craftedItemId"] = 6796,
 			["difficulty"] = {
 				1,
 				93,
@@ -1236,10 +1310,11 @@ addon.recipeDB[197] = {
 				[4291] = 1,
 				[4305] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 175,
 			["teaches"] = 8489,
 		},
 		[8758] = {
+			["craftedItemId"] = 7046,
 			["difficulty"] = {
 				1,
 				80,
@@ -1252,10 +1327,11 @@ addon.recipeDB[197] = {
 				[4305] = 4,
 				[6260] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 140,
 			["teaches"] = 8758,
 		},
 		[8760] = {
+			["craftedItemId"] = 7048,
 			["difficulty"] = {
 				1,
 				78,
@@ -1268,10 +1344,11 @@ addon.recipeDB[197] = {
 				[4305] = 2,
 				[6260] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 145,
 			["teaches"] = 8760,
 		},
 		[8762] = {
+			["craftedItemId"] = 7050,
 			["difficulty"] = {
 				1,
 				85,
@@ -1283,10 +1360,11 @@ addon.recipeDB[197] = {
 				[2321] = 2,
 				[4305] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 160,
 			["teaches"] = 8762,
 		},
 		[8764] = {
+			["craftedItemId"] = 7051,
 			["difficulty"] = {
 				1,
 				95,
@@ -1299,10 +1377,11 @@ addon.recipeDB[197] = {
 				[4305] = 3,
 				[7067] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 170,
 			["teaches"] = 8764,
 		},
 		[8766] = {
+			["craftedItemId"] = 7052,
 			["difficulty"] = {
 				1,
 				98,
@@ -1317,10 +1396,11 @@ addon.recipeDB[197] = {
 				[7070] = 1,
 				[7071] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 175,
 			["teaches"] = 8766,
 		},
 		[8770] = {
+			["craftedItemId"] = 7054,
 			["difficulty"] = {
 				1,
 				105,
@@ -1336,10 +1416,11 @@ addon.recipeDB[197] = {
 				[7069] = 2,
 				[7070] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 190,
 			["teaches"] = 8770,
 		},
 		[8772] = {
+			["craftedItemId"] = 7055,
 			["difficulty"] = {
 				1,
 				98,
@@ -1353,10 +1434,11 @@ addon.recipeDB[197] = {
 				[4305] = 4,
 				[7071] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 175,
 			["teaches"] = 8772,
 		},
 		[8774] = {
+			["craftedItemId"] = 7057,
 			["difficulty"] = {
 				1,
 				100,
@@ -1368,10 +1450,11 @@ addon.recipeDB[197] = {
 				[4291] = 2,
 				[4305] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 180,
 			["teaches"] = 8774,
 		},
 		[8776] = {
+			["craftedItemId"] = 7026,
 			["difficulty"] = {
 				1,
 				25,
@@ -1383,10 +1466,11 @@ addon.recipeDB[197] = {
 				[2320] = 1,
 				[2996] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 15,
 			["teaches"] = 8776,
 		},
 		[8778] = {
+			["craftedItemId"] = 7027,
 			["difficulty"] = {
 				1,
 				80,
@@ -1401,10 +1485,11 @@ addon.recipeDB[197] = {
 				[4305] = 3,
 				[6048] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 140,
 			["teaches"] = 8778,
 		},
 		[8780] = {
+			["craftedItemId"] = 7047,
 			["difficulty"] = {
 				1,
 				83,
@@ -1419,10 +1504,11 @@ addon.recipeDB[197] = {
 				[4305] = 3,
 				[6048] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 145,
 			["teaches"] = 8780,
 		},
 		[8782] = {
+			["craftedItemId"] = 7049,
 			["difficulty"] = {
 				1,
 				85,
@@ -1437,10 +1523,11 @@ addon.recipeDB[197] = {
 				[4234] = 2,
 				[4305] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 150,
 			["teaches"] = 8782,
 		},
 		[8784] = {
+			["craftedItemId"] = 7065,
 			["difficulty"] = {
 				1,
 				93,
@@ -1454,10 +1541,11 @@ addon.recipeDB[197] = {
 				[4291] = 1,
 				[4305] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 165,
 			["teaches"] = 8784,
 		},
 		[8786] = {
+			["craftedItemId"] = 7053,
 			["difficulty"] = {
 				1,
 				98,
@@ -1471,10 +1559,11 @@ addon.recipeDB[197] = {
 				[4305] = 3,
 				[6260] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 175,
 			["teaches"] = 8786,
 		},
 		[8789] = {
+			["craftedItemId"] = 7056,
 			["difficulty"] = {
 				1,
 				100,
@@ -1489,10 +1578,11 @@ addon.recipeDB[197] = {
 				[4305] = 5,
 				[6371] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 180,
 			["teaches"] = 8789,
 		},
 		[8791] = {
+			["craftedItemId"] = 7058,
 			["difficulty"] = {
 				1,
 				103,
@@ -1505,10 +1595,11 @@ addon.recipeDB[197] = {
 				[2604] = 2,
 				[4305] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 185,
 			["teaches"] = 8791,
 		},
 		[8793] = {
+			["craftedItemId"] = 7059,
 			["difficulty"] = {
 				1,
 				105,
@@ -1523,10 +1614,11 @@ addon.recipeDB[197] = {
 				[4305] = 5,
 				[6371] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 190,
 			["teaches"] = 8793,
 		},
 		[8795] = {
+			["craftedItemId"] = 7060,
 			["difficulty"] = {
 				1,
 				105,
@@ -1541,10 +1633,11 @@ addon.recipeDB[197] = {
 				[6260] = 2,
 				[7072] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 190,
 			["teaches"] = 8795,
 		},
 		[8797] = {
+			["craftedItemId"] = 7061,
 			["difficulty"] = {
 				1,
 				108,
@@ -1560,10 +1653,11 @@ addon.recipeDB[197] = {
 				[7067] = 4,
 				[7071] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 195,
 			["teaches"] = 8797,
 		},
 		[8799] = {
+			["craftedItemId"] = 7062,
 			["difficulty"] = {
 				1,
 				108,
@@ -1576,10 +1670,11 @@ addon.recipeDB[197] = {
 				[4291] = 2,
 				[4305] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 195,
 			["teaches"] = 8799,
 		},
 		[8802] = {
+			["craftedItemId"] = 7063,
 			["difficulty"] = {
 				1,
 				110,
@@ -1595,10 +1690,11 @@ addon.recipeDB[197] = {
 				[4305] = 8,
 				[7068] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 205,
 			["teaches"] = 8802,
 		},
 		[8804] = {
+			["craftedItemId"] = 7064,
 			["difficulty"] = {
 				1,
 				113,
@@ -1614,10 +1710,11 @@ addon.recipeDB[197] = {
 				[6371] = 2,
 				[7068] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 210,
 			["teaches"] = 8804,
 		},
 		[12044] = {
+			["craftedItemId"] = 10045,
 			["difficulty"] = {
 				1,
 				18,
@@ -1629,10 +1726,10 @@ addon.recipeDB[197] = {
 				[2320] = 1,
 				[2996] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 12044,
 		},
 		[12045] = {
+			["craftedItemId"] = 10046,
 			["difficulty"] = {
 				1,
 				25,
@@ -1645,10 +1742,11 @@ addon.recipeDB[197] = {
 				[2320] = 1,
 				[2996] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 20,
 			["teaches"] = 12045,
 		},
 		[12046] = {
+			["craftedItemId"] = 10047,
 			["difficulty"] = {
 				1,
 				50,
@@ -1660,10 +1758,11 @@ addon.recipeDB[197] = {
 				[2321] = 1,
 				[2996] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 75,
 			["teaches"] = 12046,
 		},
 		[12047] = {
+			["craftedItemId"] = 10048,
 			["difficulty"] = {
 				1,
 				73,
@@ -1677,10 +1776,11 @@ addon.recipeDB[197] = {
 				[2604] = 3,
 				[2997] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 120,
 			["teaches"] = 12047,
 		},
 		[12048] = {
+			["craftedItemId"] = 9998,
 			["difficulty"] = {
 				1,
 				110,
@@ -1692,10 +1792,11 @@ addon.recipeDB[197] = {
 				[4291] = 3,
 				[4339] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 205,
 			["teaches"] = 12048,
 		},
 		[12049] = {
+			["craftedItemId"] = 9999,
 			["difficulty"] = {
 				1,
 				110,
@@ -1707,10 +1808,11 @@ addon.recipeDB[197] = {
 				[4291] = 3,
 				[4339] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 205,
 			["teaches"] = 12049,
 		},
 		[12050] = {
+			["craftedItemId"] = 10001,
 			["difficulty"] = {
 				1,
 				113,
@@ -1722,10 +1824,11 @@ addon.recipeDB[197] = {
 				[4339] = 3,
 				[8343] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 210,
 			["teaches"] = 12050,
 		},
 		[12052] = {
+			["craftedItemId"] = 10002,
 			["difficulty"] = {
 				1,
 				113,
@@ -1738,10 +1841,11 @@ addon.recipeDB[197] = {
 				[8343] = 1,
 				[10285] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 210,
 			["teaches"] = 12052,
 		},
 		[12053] = {
+			["craftedItemId"] = 10003,
 			["difficulty"] = {
 				1,
 				115,
@@ -1753,10 +1857,11 @@ addon.recipeDB[197] = {
 				[4339] = 2,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 215,
 			["teaches"] = 12053,
 		},
 		[12055] = {
+			["craftedItemId"] = 10004,
 			["difficulty"] = {
 				1,
 				115,
@@ -1769,10 +1874,11 @@ addon.recipeDB[197] = {
 				[8343] = 1,
 				[10285] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 215,
 			["teaches"] = 12055,
 		},
 		[12056] = {
+			["craftedItemId"] = 10007,
 			["difficulty"] = {
 				1,
 				115,
@@ -1786,10 +1892,11 @@ addon.recipeDB[197] = {
 				[4339] = 3,
 				[8343] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 215,
 			["teaches"] = 12056,
 		},
 		[12059] = {
+			["craftedItemId"] = 10008,
 			["difficulty"] = {
 				1,
 				110,
@@ -1803,10 +1910,11 @@ addon.recipeDB[197] = {
 				[4339] = 1,
 				[8343] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 215,
 			["teaches"] = 12059,
 		},
 		[12060] = {
+			["craftedItemId"] = 10009,
 			["difficulty"] = {
 				1,
 				115,
@@ -1820,10 +1928,11 @@ addon.recipeDB[197] = {
 				[4339] = 3,
 				[8343] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 215,
 			["teaches"] = 12060,
 		},
 		[12061] = {
+			["craftedItemId"] = 10056,
 			["difficulty"] = {
 				1,
 				110,
@@ -1836,10 +1945,11 @@ addon.recipeDB[197] = {
 				[6261] = 1,
 				[8343] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 215,
 			["teaches"] = 12061,
 		},
 		[12062] = {
+			["craftedItemId"] = 10010,
 			["difficulty"] = {
 				1,
 				118,
@@ -1853,10 +1963,11 @@ addon.recipeDB[197] = {
 				[7079] = 2,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 220,
 			["teaches"] = 12062,
 		},
 		[12063] = {
+			["craftedItemId"] = 10011,
 			["difficulty"] = {
 				1,
 				118,
@@ -1870,10 +1981,11 @@ addon.recipeDB[197] = {
 				[7079] = 2,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 220,
 			["teaches"] = 12063,
 		},
 		[12064] = {
+			["craftedItemId"] = 10052,
 			["difficulty"] = {
 				1,
 				113,
@@ -1887,10 +1999,11 @@ addon.recipeDB[197] = {
 				[6261] = 2,
 				[8343] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 220,
 			["teaches"] = 12064,
 		},
 		[12065] = {
+			["craftedItemId"] = 10050,
 			["difficulty"] = {
 				1,
 				120,
@@ -1902,10 +2015,11 @@ addon.recipeDB[197] = {
 				[4291] = 2,
 				[4339] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 12065,
 		},
 		[12066] = {
+			["craftedItemId"] = 10018,
 			["difficulty"] = {
 				1,
 				120,
@@ -1919,10 +2033,11 @@ addon.recipeDB[197] = {
 				[4339] = 3,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 12066,
 		},
 		[12067] = {
+			["craftedItemId"] = 10019,
 			["difficulty"] = {
 				1,
 				120,
@@ -1936,10 +2051,11 @@ addon.recipeDB[197] = {
 				[8343] = 2,
 				[10286] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 12067,
 		},
 		[12068] = {
+			["craftedItemId"] = 10020,
 			["difficulty"] = {
 				1,
 				120,
@@ -1953,10 +2069,11 @@ addon.recipeDB[197] = {
 				[7079] = 3,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 12068,
 		},
 		[12069] = {
+			["craftedItemId"] = 10042,
 			["difficulty"] = {
 				1,
 				120,
@@ -1969,10 +2086,11 @@ addon.recipeDB[197] = {
 				[7077] = 2,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 12069,
 		},
 		[12070] = {
+			["craftedItemId"] = 10021,
 			["difficulty"] = {
 				1,
 				120,
@@ -1986,10 +2104,11 @@ addon.recipeDB[197] = {
 				[8343] = 2,
 				[10286] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 12070,
 		},
 		[12071] = {
+			["craftedItemId"] = 10023,
 			["difficulty"] = {
 				1,
 				120,
@@ -2002,10 +2121,11 @@ addon.recipeDB[197] = {
 				[8343] = 2,
 				[10285] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 12071,
 		},
 		[12072] = {
+			["craftedItemId"] = 10024,
 			["difficulty"] = {
 				1,
 				123,
@@ -2017,10 +2137,11 @@ addon.recipeDB[197] = {
 				[4339] = 3,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 230,
 			["teaches"] = 12072,
 		},
 		[12073] = {
+			["craftedItemId"] = 10026,
 			["difficulty"] = {
 				1,
 				123,
@@ -2033,10 +2154,11 @@ addon.recipeDB[197] = {
 				[4339] = 3,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 230,
 			["teaches"] = 12073,
 		},
 		[12074] = {
+			["craftedItemId"] = 10027,
 			["difficulty"] = {
 				1,
 				123,
@@ -2048,10 +2170,11 @@ addon.recipeDB[197] = {
 				[4339] = 3,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 230,
 			["teaches"] = 12074,
 		},
 		[12075] = {
+			["craftedItemId"] = 10054,
 			["difficulty"] = {
 				1,
 				118,
@@ -2065,10 +2188,11 @@ addon.recipeDB[197] = {
 				[4342] = 2,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 230,
 			["teaches"] = 12075,
 		},
 		[12076] = {
+			["craftedItemId"] = 10028,
 			["difficulty"] = {
 				1,
 				125,
@@ -2081,10 +2205,11 @@ addon.recipeDB[197] = {
 				[8343] = 2,
 				[10285] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 235,
 			["teaches"] = 12076,
 		},
 		[12077] = {
+			["craftedItemId"] = 10053,
 			["difficulty"] = {
 				1,
 				120,
@@ -2098,10 +2223,11 @@ addon.recipeDB[197] = {
 				[4339] = 3,
 				[8343] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 235,
 			["teaches"] = 12077,
 		},
 		[12078] = {
+			["craftedItemId"] = 10029,
 			["difficulty"] = {
 				1,
 				125,
@@ -2115,10 +2241,11 @@ addon.recipeDB[197] = {
 				[4339] = 4,
 				[8343] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 235,
 			["teaches"] = 12078,
 		},
 		[12079] = {
+			["craftedItemId"] = 10051,
 			["difficulty"] = {
 				1,
 				125,
@@ -2131,10 +2258,11 @@ addon.recipeDB[197] = {
 				[4339] = 4,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 235,
 			["teaches"] = 12079,
 		},
 		[12080] = {
+			["craftedItemId"] = 10055,
 			["difficulty"] = {
 				1,
 				120,
@@ -2148,10 +2276,11 @@ addon.recipeDB[197] = {
 				[8343] = 1,
 				[10290] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 235,
 			["teaches"] = 12080,
 		},
 		[12081] = {
+			["craftedItemId"] = 10030,
 			["difficulty"] = {
 				1,
 				128,
@@ -2164,10 +2293,11 @@ addon.recipeDB[197] = {
 				[4339] = 5,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 240,
 			["teaches"] = 12081,
 		},
 		[12082] = {
+			["craftedItemId"] = 10031,
 			["difficulty"] = {
 				1,
 				128,
@@ -2181,10 +2311,11 @@ addon.recipeDB[197] = {
 				[8343] = 3,
 				[10285] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 240,
 			["teaches"] = 12082,
 		},
 		[12083] = {
+			["craftedItemId"] = 10032,
 			["difficulty"] = {
 				1,
 				128,
@@ -2198,10 +2329,11 @@ addon.recipeDB[197] = {
 				[7079] = 4,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 240,
 			["teaches"] = 12083,
 		},
 		[12084] = {
+			["craftedItemId"] = 10033,
 			["difficulty"] = {
 				1,
 				128,
@@ -2215,10 +2347,11 @@ addon.recipeDB[197] = {
 				[4339] = 4,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 240,
 			["teaches"] = 12084,
 		},
 		[12085] = {
+			["craftedItemId"] = 10034,
 			["difficulty"] = {
 				1,
 				123,
@@ -2231,10 +2364,11 @@ addon.recipeDB[197] = {
 				[4339] = 4,
 				[8343] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 240,
 			["teaches"] = 12085,
 		},
 		[12086] = {
+			["craftedItemId"] = 10025,
 			["difficulty"] = {
 				1,
 				130,
@@ -2248,10 +2382,11 @@ addon.recipeDB[197] = {
 				[8343] = 2,
 				[10285] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 245,
 			["teaches"] = 12086,
 		},
 		[12087] = {
+			["craftedItemId"] = 10038,
 			["difficulty"] = {
 				1,
 				130,
@@ -2265,10 +2400,11 @@ addon.recipeDB[197] = {
 				[7079] = 6,
 				[8343] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 245,
 			["teaches"] = 12087,
 		},
 		[12088] = {
+			["craftedItemId"] = 10044,
 			["difficulty"] = {
 				1,
 				130,
@@ -2280,10 +2416,11 @@ addon.recipeDB[197] = {
 				[4339] = 5,
 				[8343] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 245,
 			["teaches"] = 12088,
 		},
 		[12089] = {
+			["craftedItemId"] = 10035,
 			["difficulty"] = {
 				1,
 				125,
@@ -2296,10 +2433,11 @@ addon.recipeDB[197] = {
 				[4339] = 4,
 				[8343] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 245,
 			["teaches"] = 12089,
 		},
 		[12090] = {
+			["craftedItemId"] = 10039,
 			["difficulty"] = {
 				1,
 				133,
@@ -2314,10 +2452,11 @@ addon.recipeDB[197] = {
 				[7079] = 6,
 				[8343] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 12090,
 		},
 		[12091] = {
+			["craftedItemId"] = 10040,
 			["difficulty"] = {
 				1,
 				128,
@@ -2331,10 +2470,11 @@ addon.recipeDB[197] = {
 				[4339] = 5,
 				[8343] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 12091,
 		},
 		[12092] = {
+			["craftedItemId"] = 10041,
 			["difficulty"] = {
 				1,
 				133,
@@ -2350,10 +2490,11 @@ addon.recipeDB[197] = {
 				[8343] = 3,
 				[10286] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 12092,
 		},
 		[12093] = {
+			["craftedItemId"] = 10036,
 			["difficulty"] = {
 				1,
 				133,
@@ -2366,10 +2507,11 @@ addon.recipeDB[197] = {
 				[4339] = 5,
 				[8343] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 12093,
 		},
 		[18401] = {
+			["craftedItemId"] = 14048,
 			["difficulty"] = {
 				1,
 				128,
@@ -2380,10 +2522,11 @@ addon.recipeDB[197] = {
 			["reagents"] = {
 				[14047] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 18401,
 		},
 		[18402] = {
+			["craftedItemId"] = 13856,
 			["difficulty"] = {
 				1,
 				135,
@@ -2395,10 +2538,11 @@ addon.recipeDB[197] = {
 				[14048] = 3,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 255,
 			["teaches"] = 18402,
 		},
 		[18403] = {
+			["craftedItemId"] = 13869,
 			["difficulty"] = {
 				1,
 				135,
@@ -2412,10 +2556,11 @@ addon.recipeDB[197] = {
 				[14048] = 5,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 255,
 			["teaches"] = 18403,
 		},
 		[18404] = {
+			["craftedItemId"] = 13868,
 			["difficulty"] = {
 				1,
 				135,
@@ -2429,10 +2574,11 @@ addon.recipeDB[197] = {
 				[14048] = 5,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 255,
 			["teaches"] = 18404,
 		},
 		[18405] = {
+			["craftedItemId"] = 14046,
 			["difficulty"] = {
 				1,
 				138,
@@ -2446,10 +2592,11 @@ addon.recipeDB[197] = {
 				[14048] = 5,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 260,
 			["teaches"] = 18405,
 		},
 		[18406] = {
+			["craftedItemId"] = 13858,
 			["difficulty"] = {
 				1,
 				138,
@@ -2463,10 +2610,11 @@ addon.recipeDB[197] = {
 				[14227] = 1,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 260,
 			["teaches"] = 18406,
 		},
 		[18407] = {
+			["craftedItemId"] = 13857,
 			["difficulty"] = {
 				1,
 				138,
@@ -2480,10 +2628,11 @@ addon.recipeDB[197] = {
 				[14227] = 1,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 260,
 			["teaches"] = 18407,
 		},
 		[18408] = {
+			["craftedItemId"] = 14042,
 			["difficulty"] = {
 				1,
 				138,
@@ -2497,10 +2646,11 @@ addon.recipeDB[197] = {
 				[14048] = 5,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 260,
 			["teaches"] = 18408,
 		},
 		[18409] = {
+			["craftedItemId"] = 13860,
 			["difficulty"] = {
 				1,
 				140,
@@ -2513,10 +2663,11 @@ addon.recipeDB[197] = {
 				[14048] = 4,
 				[14227] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 265,
 			["teaches"] = 18409,
 		},
 		[18410] = {
+			["craftedItemId"] = 14143,
 			["difficulty"] = {
 				1,
 				140,
@@ -2529,10 +2680,11 @@ addon.recipeDB[197] = {
 				[9210] = 2,
 				[14048] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 265,
 			["teaches"] = 18410,
 		},
 		[18411] = {
+			["craftedItemId"] = 13870,
 			["difficulty"] = {
 				1,
 				140,
@@ -2546,10 +2698,11 @@ addon.recipeDB[197] = {
 				[14048] = 5,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 265,
 			["teaches"] = 18411,
 		},
 		[18412] = {
+			["craftedItemId"] = 14043,
 			["difficulty"] = {
 				1,
 				143,
@@ -2563,10 +2716,11 @@ addon.recipeDB[197] = {
 				[14048] = 4,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 270,
 			["teaches"] = 18412,
 		},
 		[18413] = {
+			["craftedItemId"] = 14142,
 			["difficulty"] = {
 				1,
 				143,
@@ -2579,10 +2733,11 @@ addon.recipeDB[197] = {
 				[9210] = 2,
 				[14048] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 270,
 			["teaches"] = 18413,
 		},
 		[18414] = {
+			["craftedItemId"] = 14100,
 			["difficulty"] = {
 				1,
 				143,
@@ -2595,10 +2750,11 @@ addon.recipeDB[197] = {
 				[3577] = 2,
 				[14048] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 270,
 			["teaches"] = 18414,
 		},
 		[18415] = {
+			["craftedItemId"] = 14101,
 			["difficulty"] = {
 				1,
 				143,
@@ -2611,10 +2767,11 @@ addon.recipeDB[197] = {
 				[3577] = 2,
 				[14048] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 270,
 			["teaches"] = 18415,
 		},
 		[18416] = {
+			["craftedItemId"] = 14141,
 			["difficulty"] = {
 				1,
 				145,
@@ -2627,10 +2784,11 @@ addon.recipeDB[197] = {
 				[9210] = 3,
 				[14048] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 18416,
 		},
 		[18417] = {
+			["craftedItemId"] = 13863,
 			["difficulty"] = {
 				1,
 				145,
@@ -2643,10 +2801,11 @@ addon.recipeDB[197] = {
 				[14048] = 5,
 				[14341] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 18417,
 		},
 		[18418] = {
+			["craftedItemId"] = 14044,
 			["difficulty"] = {
 				1,
 				145,
@@ -2660,10 +2819,11 @@ addon.recipeDB[197] = {
 				[14048] = 5,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 18418,
 		},
 		[18419] = {
+			["craftedItemId"] = 14107,
 			["difficulty"] = {
 				1,
 				145,
@@ -2677,10 +2837,11 @@ addon.recipeDB[197] = {
 				[14256] = 2,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 18419,
 		},
 		[18420] = {
+			["craftedItemId"] = 14103,
 			["difficulty"] = {
 				1,
 				145,
@@ -2693,10 +2854,11 @@ addon.recipeDB[197] = {
 				[3577] = 2,
 				[14048] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 18420,
 		},
 		[18421] = {
+			["craftedItemId"] = 14132,
 			["difficulty"] = {
 				1,
 				145,
@@ -2710,10 +2872,11 @@ addon.recipeDB[197] = {
 				[14048] = 4,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 18421,
 		},
 		[18422] = {
+			["craftedItemId"] = 14134,
 			["difficulty"] = {
 				1,
 				145,
@@ -2729,10 +2892,11 @@ addon.recipeDB[197] = {
 				[14048] = 6,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 18422,
 		},
 		[18423] = {
+			["craftedItemId"] = 13864,
 			["difficulty"] = {
 				1,
 				148,
@@ -2746,10 +2910,11 @@ addon.recipeDB[197] = {
 				[14048] = 4,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 280,
 			["teaches"] = 18423,
 		},
 		[18424] = {
+			["craftedItemId"] = 13871,
 			["difficulty"] = {
 				1,
 				148,
@@ -2763,10 +2928,11 @@ addon.recipeDB[197] = {
 				[14048] = 6,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 280,
 			["teaches"] = 18424,
 		},
 		[18434] = {
+			["craftedItemId"] = 14045,
 			["difficulty"] = {
 				1,
 				148,
@@ -2780,10 +2946,11 @@ addon.recipeDB[197] = {
 				[14048] = 6,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 280,
 			["teaches"] = 18434,
 		},
 		[18436] = {
+			["craftedItemId"] = 14136,
 			["difficulty"] = {
 				1,
 				150,
@@ -2799,10 +2966,11 @@ addon.recipeDB[197] = {
 				[14256] = 12,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 285,
 			["teaches"] = 18436,
 		},
 		[18437] = {
+			["craftedItemId"] = 14108,
 			["difficulty"] = {
 				1,
 				150,
@@ -2817,10 +2985,11 @@ addon.recipeDB[197] = {
 				[14256] = 2,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 285,
 			["teaches"] = 18437,
 		},
 		[18438] = {
+			["craftedItemId"] = 13865,
 			["difficulty"] = {
 				1,
 				150,
@@ -2834,10 +3003,11 @@ addon.recipeDB[197] = {
 				[14227] = 2,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 285,
 			["teaches"] = 18438,
 		},
 		[18439] = {
+			["craftedItemId"] = 14104,
 			["difficulty"] = {
 				1,
 				153,
@@ -2850,10 +3020,11 @@ addon.recipeDB[197] = {
 				[3577] = 4,
 				[14048] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 18439,
 		},
 		[18440] = {
+			["craftedItemId"] = 14137,
 			["difficulty"] = {
 				1,
 				153,
@@ -2867,10 +3038,11 @@ addon.recipeDB[197] = {
 				[14341] = 1,
 				[14342] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 18440,
 		},
 		[18441] = {
+			["craftedItemId"] = 14144,
 			["difficulty"] = {
 				1,
 				153,
@@ -2883,10 +3055,11 @@ addon.recipeDB[197] = {
 				[9210] = 4,
 				[14048] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 18441,
 		},
 		[18442] = {
+			["craftedItemId"] = 14111,
 			["difficulty"] = {
 				1,
 				153,
@@ -2900,10 +3073,11 @@ addon.recipeDB[197] = {
 				[14256] = 2,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 18442,
 		},
 		[18444] = {
+			["craftedItemId"] = 13866,
 			["difficulty"] = {
 				1,
 				155,
@@ -2916,10 +3090,11 @@ addon.recipeDB[197] = {
 				[14048] = 6,
 				[14341] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 295,
 			["teaches"] = 18444,
 		},
 		[18445] = {
+			["craftedItemId"] = 14155,
 			["difficulty"] = {
 				1,
 				158,
@@ -2933,10 +3108,11 @@ addon.recipeDB[197] = {
 				[14341] = 1,
 				[14342] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18445,
 		},
 		[18446] = {
+			["craftedItemId"] = 14128,
 			["difficulty"] = {
 				1,
 				158,
@@ -2950,10 +3126,11 @@ addon.recipeDB[197] = {
 				[14048] = 8,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18446,
 		},
 		[18447] = {
+			["craftedItemId"] = 14138,
 			["difficulty"] = {
 				1,
 				158,
@@ -2967,10 +3144,11 @@ addon.recipeDB[197] = {
 				[14341] = 1,
 				[14342] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18447,
 		},
 		[18448] = {
+			["craftedItemId"] = 14139,
 			["difficulty"] = {
 				1,
 				158,
@@ -2984,10 +3162,11 @@ addon.recipeDB[197] = {
 				[14341] = 1,
 				[14342] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18448,
 		},
 		[18449] = {
+			["craftedItemId"] = 13867,
 			["difficulty"] = {
 				1,
 				158,
@@ -3002,10 +3181,11 @@ addon.recipeDB[197] = {
 				[14227] = 2,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18449,
 		},
 		[18450] = {
+			["craftedItemId"] = 14130,
 			["difficulty"] = {
 				1,
 				158,
@@ -3020,10 +3200,11 @@ addon.recipeDB[197] = {
 				[14048] = 6,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18450,
 		},
 		[18451] = {
+			["craftedItemId"] = 14106,
 			["difficulty"] = {
 				1,
 				158,
@@ -3038,10 +3219,11 @@ addon.recipeDB[197] = {
 				[14256] = 3,
 				[14341] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18451,
 		},
 		[18452] = {
+			["craftedItemId"] = 14140,
 			["difficulty"] = {
 				1,
 				158,
@@ -3057,10 +3239,11 @@ addon.recipeDB[197] = {
 				[14341] = 2,
 				[14342] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18452,
 		},
 		[18453] = {
+			["craftedItemId"] = 14112,
 			["difficulty"] = {
 				1,
 				158,
@@ -3076,10 +3259,11 @@ addon.recipeDB[197] = {
 				[14256] = 3,
 				[14341] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18453,
 		},
 		[18454] = {
+			["craftedItemId"] = 14146,
 			["difficulty"] = {
 				1,
 				158,
@@ -3097,10 +3281,11 @@ addon.recipeDB[197] = {
 				[14341] = 2,
 				[14342] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18454,
 		},
 		[18455] = {
+			["craftedItemId"] = 14156,
 			["difficulty"] = {
 				1,
 				158,
@@ -3116,10 +3301,11 @@ addon.recipeDB[197] = {
 				[14344] = 2,
 				[17012] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18455,
 		},
 		[18456] = {
+			["craftedItemId"] = 14154,
 			["difficulty"] = {
 				1,
 				158,
@@ -3136,10 +3322,11 @@ addon.recipeDB[197] = {
 				[14341] = 2,
 				[14342] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18456,
 		},
 		[18457] = {
+			["craftedItemId"] = 14152,
 			["difficulty"] = {
 				1,
 				158,
@@ -3156,10 +3343,11 @@ addon.recipeDB[197] = {
 				[14048] = 12,
 				[14341] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18457,
 		},
 		[18458] = {
+			["craftedItemId"] = 14153,
 			["difficulty"] = {
 				1,
 				158,
@@ -3176,10 +3364,11 @@ addon.recipeDB[197] = {
 				[14256] = 40,
 				[14341] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 18458,
 		},
 		[18560] = {
+			["craftedItemId"] = 14342,
 			["difficulty"] = {
 				1,
 				145,
@@ -3191,10 +3380,11 @@ addon.recipeDB[197] = {
 			["reagents"] = {
 				[14256] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 18560,
 		},
 		[19435] = {
+			["craftedItemId"] = 15802,
 			["difficulty"] = {
 				1,
 				148,
@@ -3208,10 +3398,10 @@ addon.recipeDB[197] = {
 				[14341] = 1,
 				[14342] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 19435,
 		},
 		[20848] = {
+			["craftedItemId"] = 16980,
 			["difficulty"] = {
 				1,
 				158,
@@ -3227,10 +3417,11 @@ addon.recipeDB[197] = {
 				[17010] = 4,
 				[17011] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 20848,
 		},
 		[20849] = {
+			["craftedItemId"] = 16979,
 			["difficulty"] = {
 				1,
 				158,
@@ -3246,10 +3437,11 @@ addon.recipeDB[197] = {
 				[14341] = 2,
 				[17010] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 20849,
 		},
 		[21945] = {
+			["craftedItemId"] = 17723,
 			["difficulty"] = {
 				1,
 				100,
@@ -3263,10 +3455,11 @@ addon.recipeDB[197] = {
 				[4291] = 1,
 				[4305] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 190,
 			["teaches"] = 21945,
 		},
 		[22759] = {
+			["craftedItemId"] = 18263,
 			["difficulty"] = {
 				1,
 				160,
@@ -3282,10 +3475,11 @@ addon.recipeDB[197] = {
 				[14342] = 6,
 				[17010] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 22759,
 		},
 		[22813] = {
+			["craftedItemId"] = 18258,
 			["difficulty"] = {
 				1,
 				143,
@@ -3299,10 +3493,10 @@ addon.recipeDB[197] = {
 				[14341] = 1,
 				[18240] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 22813,
 		},
 		[22866] = {
+			["craftedItemId"] = 18405,
 			["difficulty"] = {
 				1,
 				158,
@@ -3320,10 +3514,11 @@ addon.recipeDB[197] = {
 				[14342] = 10,
 				[14344] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 22866,
 		},
 		[22867] = {
+			["craftedItemId"] = 18407,
 			["difficulty"] = {
 				1,
 				158,
@@ -3339,10 +3534,11 @@ addon.recipeDB[197] = {
 				[14256] = 20,
 				[14341] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 22867,
 		},
 		[22868] = {
+			["craftedItemId"] = 18408,
 			["difficulty"] = {
 				1,
 				158,
@@ -3357,10 +3553,11 @@ addon.recipeDB[197] = {
 				[14048] = 12,
 				[14341] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 22868,
 		},
 		[22869] = {
+			["craftedItemId"] = 18409,
 			["difficulty"] = {
 				1,
 				158,
@@ -3375,10 +3572,11 @@ addon.recipeDB[197] = {
 				[14341] = 2,
 				[14342] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 22869,
 		},
 		[22870] = {
+			["craftedItemId"] = 18413,
 			["difficulty"] = {
 				1,
 				158,
@@ -3393,10 +3591,11 @@ addon.recipeDB[197] = {
 				[14048] = 12,
 				[14341] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 22870,
 		},
 		[22902] = {
+			["craftedItemId"] = 18486,
 			["difficulty"] = {
 				1,
 				158,
@@ -3411,10 +3610,11 @@ addon.recipeDB[197] = {
 				[14341] = 2,
 				[14342] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 22902,
 		},
 		[23662] = {
+			["craftedItemId"] = 19047,
 			["difficulty"] = {
 				1,
 				153,
@@ -3429,10 +3629,11 @@ addon.recipeDB[197] = {
 				[14048] = 8,
 				[14227] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 23662,
 		},
 		[23663] = {
+			["craftedItemId"] = 19050,
 			["difficulty"] = {
 				1,
 				158,
@@ -3447,10 +3648,11 @@ addon.recipeDB[197] = {
 				[14227] = 2,
 				[14342] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 23663,
 		},
 		[23664] = {
+			["craftedItemId"] = 19056,
 			["difficulty"] = {
 				1,
 				153,
@@ -3466,10 +3668,11 @@ addon.recipeDB[197] = {
 				[14048] = 6,
 				[14227] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 23664,
 		},
 		[23665] = {
+			["craftedItemId"] = 19059,
 			["difficulty"] = {
 				1,
 				158,
@@ -3483,10 +3686,11 @@ addon.recipeDB[197] = {
 				[14227] = 2,
 				[14342] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 23665,
 		},
 		[23666] = {
+			["craftedItemId"] = 19156,
 			["difficulty"] = {
 				1,
 				158,
@@ -3502,10 +3706,11 @@ addon.recipeDB[197] = {
 				[17010] = 2,
 				[17011] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 23666,
 		},
 		[23667] = {
+			["craftedItemId"] = 19165,
 			["difficulty"] = {
 				1,
 				158,
@@ -3521,10 +3726,11 @@ addon.recipeDB[197] = {
 				[17010] = 5,
 				[17011] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 23667,
 		},
 		[24091] = {
+			["craftedItemId"] = 19682,
 			["difficulty"] = {
 				1,
 				158,
@@ -3538,10 +3744,11 @@ addon.recipeDB[197] = {
 				[14227] = 2,
 				[14342] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 24091,
 		},
 		[24092] = {
+			["craftedItemId"] = 19683,
 			["difficulty"] = {
 				1,
 				158,
@@ -3555,10 +3762,11 @@ addon.recipeDB[197] = {
 				[14227] = 2,
 				[14342] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 24092,
 		},
 		[24093] = {
+			["craftedItemId"] = 19684,
 			["difficulty"] = {
 				1,
 				158,
@@ -3571,10 +3779,11 @@ addon.recipeDB[197] = {
 				[14227] = 2,
 				[14342] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 24093,
 		},
 		[24901] = {
+			["craftedItemId"] = 20538,
 			["difficulty"] = {
 				1,
 				158,
@@ -3589,10 +3798,11 @@ addon.recipeDB[197] = {
 				[14256] = 6,
 				[20520] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 24901,
 		},
 		[24902] = {
+			["craftedItemId"] = 20539,
 			["difficulty"] = {
 				1,
 				158,
@@ -3608,10 +3818,11 @@ addon.recipeDB[197] = {
 				[14256] = 2,
 				[20520] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 24902,
 		},
 		[24903] = {
+			["craftedItemId"] = 20537,
 			["difficulty"] = {
 				1,
 				158,
@@ -3627,10 +3838,11 @@ addon.recipeDB[197] = {
 				[14256] = 4,
 				[20520] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 24903,
 		},
 		[26085] = {
+			["craftedItemId"] = 21340,
 			["difficulty"] = {
 				1,
 				138,
@@ -3645,10 +3857,11 @@ addon.recipeDB[197] = {
 				[14048] = 6,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 260,
 			["teaches"] = 26085,
 		},
 		[26086] = {
+			["craftedItemId"] = 21341,
 			["difficulty"] = {
 				1,
 				150,
@@ -3663,10 +3876,11 @@ addon.recipeDB[197] = {
 				[14256] = 12,
 				[20520] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 285,
 			["teaches"] = 26086,
 		},
 		[26087] = {
+			["craftedItemId"] = 21342,
 			["difficulty"] = {
 				1,
 				158,
@@ -3681,10 +3895,11 @@ addon.recipeDB[197] = {
 				[14256] = 20,
 				[17012] = 16,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 26087,
 		},
 		[26403] = {
+			["craftedItemId"] = 21154,
 			["difficulty"] = {
 				1,
 				133,
@@ -3699,10 +3914,11 @@ addon.recipeDB[197] = {
 				[14048] = 4,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 26403,
 		},
 		[26407] = {
+			["craftedItemId"] = 21542,
 			["difficulty"] = {
 				1,
 				133,
@@ -3717,39 +3933,44 @@ addon.recipeDB[197] = {
 				[14048] = 4,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 26407,
 		},
 		[26745] = {
+			["craftedItemId"] = 21840,
 			["difficulty"] = {
 				1,
 				153,
 				305,
 				325,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Bolt of Netherweave",
 			["reagents"] = {
 				[21877] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 26745,
 		},
 		[26746] = {
+			["craftedItemId"] = 21841,
 			["difficulty"] = {
 				1,
 				160,
 				320,
 				340,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Netherweave Bag",
 			["reagents"] = {
 				[14341] = 1,
 				[21840] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 315,
 			["teaches"] = 26746,
 		},
 		[26747] = {
+			["craftedItemId"] = 21842,
 			["difficulty"] = {
 				1,
 				165,
@@ -3757,15 +3978,17 @@ addon.recipeDB[197] = {
 				340,
 			},
 			["itemId"] = 21892,
+			["minExpansion"] = 2,
 			["name"] = "Bolt of Imbued Netherweave",
 			["reagents"] = {
 				[21840] = 3,
 				[22445] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 325,
 			["teaches"] = 26747,
 		},
 		[26749] = {
+			["craftedItemId"] = 21843,
 			["difficulty"] = {
 				1,
 				170,
@@ -3773,16 +3996,18 @@ addon.recipeDB[197] = {
 				350,
 			},
 			["itemId"] = 21893,
+			["minExpansion"] = 2,
 			["name"] = "Imbued Netherweave Bag",
 			["reagents"] = {
 				[21842] = 4,
 				[21881] = 2,
 				[22446] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 340,
 			["teaches"] = 26749,
 		},
 		[26750] = {
+			["craftedItemId"] = 21844,
 			["difficulty"] = {
 				1,
 				173,
@@ -3790,15 +4015,17 @@ addon.recipeDB[197] = {
 				355,
 			},
 			["itemId"] = 21894,
+			["minExpansion"] = 2,
 			["name"] = "Bolt of Soulcloth",
 			["reagents"] = {
 				[21840] = 1,
 				[21882] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 345,
 			["teaches"] = 26750,
 		},
 		[26751] = {
+			["craftedItemId"] = 21845,
 			["difficulty"] = {
 				1,
 				175,
@@ -3806,16 +4033,18 @@ addon.recipeDB[197] = {
 				360,
 			},
 			["itemId"] = 21895,
+			["minExpansion"] = 2,
 			["name"] = "Primal Mooncloth",
 			["reagents"] = {
 				[21842] = 1,
 				[21885] = 1,
 				[21886] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 26751,
 		},
 		[26752] = {
+			["craftedItemId"] = 21846,
 			["difficulty"] = {
 				1,
 				183,
@@ -3823,16 +4052,18 @@ addon.recipeDB[197] = {
 				375,
 			},
 			["itemId"] = 21908,
+			["minExpansion"] = 2,
 			["name"] = "Spellfire Belt",
 			["reagents"] = {
 				[21881] = 2,
 				[21884] = 10,
 				[24271] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 355,
 			["teaches"] = 26752,
 		},
 		[26753] = {
+			["craftedItemId"] = 21847,
 			["difficulty"] = {
 				1,
 				188,
@@ -3840,16 +4071,18 @@ addon.recipeDB[197] = {
 				385,
 			},
 			["itemId"] = 21909,
+			["minExpansion"] = 2,
 			["name"] = "Spellfire Gloves",
 			["reagents"] = {
 				[21881] = 4,
 				[21884] = 12,
 				[24271] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 26753,
 		},
 		[26754] = {
+			["craftedItemId"] = 21848,
 			["difficulty"] = {
 				1,
 				193,
@@ -3857,16 +4090,18 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 21910,
+			["minExpansion"] = 2,
 			["name"] = "Spellfire Robe",
 			["reagents"] = {
 				[21881] = 4,
 				[21884] = 16,
 				[24271] = 14,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 26754,
 		},
 		[26755] = {
+			["craftedItemId"] = 21858,
 			["difficulty"] = {
 				1,
 				193,
@@ -3874,16 +4109,18 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 21911,
+			["minExpansion"] = 2,
 			["name"] = "Spellfire Bag",
 			["reagents"] = {
 				[21881] = 4,
 				[22446] = 4,
 				[24271] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 26755,
 		},
 		[26756] = {
+			["craftedItemId"] = 21869,
 			["difficulty"] = {
 				1,
 				183,
@@ -3891,16 +4128,18 @@ addon.recipeDB[197] = {
 				375,
 			},
 			["itemId"] = 21912,
+			["minExpansion"] = 2,
 			["name"] = "Frozen Shadoweave Shoulders",
 			["reagents"] = {
 				[21881] = 2,
 				[21885] = 10,
 				[24272] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 355,
 			["teaches"] = 26756,
 		},
 		[26757] = {
+			["craftedItemId"] = 21870,
 			["difficulty"] = {
 				1,
 				188,
@@ -3908,16 +4147,18 @@ addon.recipeDB[197] = {
 				385,
 			},
 			["itemId"] = 21914,
+			["minExpansion"] = 2,
 			["name"] = "Frozen Shadoweave Boots",
 			["reagents"] = {
 				[21881] = 2,
 				[21885] = 12,
 				[24272] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 26757,
 		},
 		[26758] = {
+			["craftedItemId"] = 21871,
 			["difficulty"] = {
 				1,
 				193,
@@ -3925,16 +4166,18 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 21913,
+			["minExpansion"] = 2,
 			["name"] = "Frozen Shadoweave Robe",
 			["reagents"] = {
 				[21881] = 4,
 				[21885] = 16,
 				[24272] = 14,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 26758,
 		},
 		[26759] = {
+			["craftedItemId"] = 21872,
 			["difficulty"] = {
 				1,
 				193,
@@ -3942,15 +4185,17 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 21915,
+			["minExpansion"] = 2,
 			["name"] = "Ebon Shadowbag",
 			["reagents"] = {
 				[21881] = 4,
 				[24272] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 26759,
 		},
 		[26760] = {
+			["craftedItemId"] = 21873,
 			["difficulty"] = {
 				1,
 				183,
@@ -3958,16 +4203,18 @@ addon.recipeDB[197] = {
 				375,
 			},
 			["itemId"] = 21916,
+			["minExpansion"] = 2,
 			["name"] = "Primal Mooncloth Belt",
 			["reagents"] = {
 				[21845] = 4,
 				[21881] = 2,
 				[21886] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 355,
 			["teaches"] = 26760,
 		},
 		[26761] = {
+			["craftedItemId"] = 21874,
 			["difficulty"] = {
 				1,
 				188,
@@ -3975,16 +4222,18 @@ addon.recipeDB[197] = {
 				385,
 			},
 			["itemId"] = 21918,
+			["minExpansion"] = 2,
 			["name"] = "Primal Mooncloth Shoulders",
 			["reagents"] = {
 				[21845] = 8,
 				[21881] = 2,
 				[21886] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 26761,
 		},
 		[26762] = {
+			["craftedItemId"] = 21875,
 			["difficulty"] = {
 				1,
 				193,
@@ -3992,16 +4241,18 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 21917,
+			["minExpansion"] = 2,
 			["name"] = "Primal Mooncloth Robe",
 			["reagents"] = {
 				[21845] = 14,
 				[21881] = 4,
 				[22457] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 26762,
 		},
 		[26763] = {
+			["craftedItemId"] = 21876,
 			["difficulty"] = {
 				1,
 				193,
@@ -4009,92 +4260,104 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 21919,
+			["minExpansion"] = 2,
 			["name"] = "Primal Mooncloth Bag",
 			["reagents"] = {
 				[21845] = 8,
 				[21881] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 26763,
 		},
 		[26764] = {
+			["craftedItemId"] = 21849,
 			["difficulty"] = {
 				1,
 				160,
 				320,
 				330,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Netherweave Bracers",
 			["reagents"] = {
 				[14341] = 1,
 				[21840] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 310,
 			["teaches"] = 26764,
 		},
 		[26765] = {
+			["craftedItemId"] = 21850,
 			["difficulty"] = {
 				1,
 				160,
 				320,
 				330,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Netherweave Belt",
 			["reagents"] = {
 				[14341] = 1,
 				[21840] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 310,
 			["teaches"] = 26765,
 		},
 		[26770] = {
+			["craftedItemId"] = 21851,
 			["difficulty"] = {
 				1,
 				165,
 				330,
 				340,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Netherweave Gloves",
 			["reagents"] = {
 				[14341] = 1,
 				[21840] = 4,
 				[21887] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 320,
 			["teaches"] = 26770,
 		},
 		[26771] = {
+			["craftedItemId"] = 21852,
 			["difficulty"] = {
 				1,
 				168,
 				335,
 				345,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Netherweave Pants",
 			["reagents"] = {
 				[14341] = 1,
 				[21840] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 325,
 			["teaches"] = 26771,
 		},
 		[26772] = {
+			["craftedItemId"] = 21853,
 			["difficulty"] = {
 				1,
 				173,
 				345,
 				355,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Netherweave Boots",
 			["reagents"] = {
 				[14341] = 1,
 				[21840] = 6,
 				[21887] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 335,
 			["teaches"] = 26772,
 		},
 		[26773] = {
+			["craftedItemId"] = 21854,
 			["difficulty"] = {
 				1,
 				175,
@@ -4102,15 +4365,17 @@ addon.recipeDB[197] = {
 				360,
 			},
 			["itemId"] = 21896,
+			["minExpansion"] = 2,
 			["name"] = "Netherweave Robe",
 			["reagents"] = {
 				[14341] = 2,
 				[21840] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 340,
 			["teaches"] = 26773,
 		},
 		[26774] = {
+			["craftedItemId"] = 21855,
 			["difficulty"] = {
 				1,
 				178,
@@ -4118,15 +4383,17 @@ addon.recipeDB[197] = {
 				365,
 			},
 			["itemId"] = 21897,
+			["minExpansion"] = 2,
 			["name"] = "Netherweave Tunic",
 			["reagents"] = {
 				[14341] = 2,
 				[21840] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 345,
 			["teaches"] = 26774,
 		},
 		[26775] = {
+			["craftedItemId"] = 21859,
 			["difficulty"] = {
 				1,
 				175,
@@ -4134,16 +4401,18 @@ addon.recipeDB[197] = {
 				360,
 			},
 			["itemId"] = 21898,
+			["minExpansion"] = 2,
 			["name"] = "Imbued Netherweave Pants",
 			["reagents"] = {
 				[14341] = 1,
 				[21842] = 5,
 				[21881] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 340,
 			["teaches"] = 26775,
 		},
 		[26776] = {
+			["craftedItemId"] = 21860,
 			["difficulty"] = {
 				1,
 				180,
@@ -4151,6 +4420,7 @@ addon.recipeDB[197] = {
 				370,
 			},
 			["itemId"] = 21899,
+			["minExpansion"] = 2,
 			["name"] = "Imbued Netherweave Boots",
 			["reagents"] = {
 				[14341] = 1,
@@ -4158,10 +4428,11 @@ addon.recipeDB[197] = {
 				[21881] = 2,
 				[21887] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 26776,
 		},
 		[26777] = {
+			["craftedItemId"] = 21861,
 			["difficulty"] = {
 				1,
 				185,
@@ -4169,16 +4440,18 @@ addon.recipeDB[197] = {
 				380,
 			},
 			["itemId"] = 21900,
+			["minExpansion"] = 2,
 			["name"] = "Imbued Netherweave Robe",
 			["reagents"] = {
 				[14341] = 1,
 				[21842] = 6,
 				[21881] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 26777,
 		},
 		[26778] = {
+			["craftedItemId"] = 21862,
 			["difficulty"] = {
 				1,
 				185,
@@ -4186,16 +4459,18 @@ addon.recipeDB[197] = {
 				380,
 			},
 			["itemId"] = 21901,
+			["minExpansion"] = 2,
 			["name"] = "Imbued Netherweave Tunic",
 			["reagents"] = {
 				[14341] = 1,
 				[21842] = 6,
 				[21881] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 26778,
 		},
 		[26779] = {
+			["craftedItemId"] = 21863,
 			["difficulty"] = {
 				1,
 				183,
@@ -4203,16 +4478,18 @@ addon.recipeDB[197] = {
 				375,
 			},
 			["itemId"] = 21902,
+			["minExpansion"] = 2,
 			["name"] = "Soulcloth Gloves",
 			["reagents"] = {
 				[14341] = 4,
 				[21844] = 5,
 				[21887] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 355,
 			["teaches"] = 26779,
 		},
 		[26780] = {
+			["craftedItemId"] = 21864,
 			["difficulty"] = {
 				1,
 				188,
@@ -4220,15 +4497,17 @@ addon.recipeDB[197] = {
 				385,
 			},
 			["itemId"] = 21903,
+			["minExpansion"] = 2,
 			["name"] = "Soulcloth Shoulders",
 			["reagents"] = {
 				[14341] = 4,
 				[21844] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 26780,
 		},
 		[26781] = {
+			["craftedItemId"] = 21865,
 			["difficulty"] = {
 				1,
 				190,
@@ -4236,15 +4515,17 @@ addon.recipeDB[197] = {
 				385,
 			},
 			["itemId"] = 21904,
+			["minExpansion"] = 2,
 			["name"] = "Soulcloth Vest",
 			["reagents"] = {
 				[14341] = 4,
 				[21844] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 26781,
 		},
 		[26782] = {
+			["craftedItemId"] = 21866,
 			["difficulty"] = {
 				1,
 				180,
@@ -4252,16 +4533,18 @@ addon.recipeDB[197] = {
 				370,
 			},
 			["itemId"] = 21905,
+			["minExpansion"] = 2,
 			["name"] = "Arcanoweave Bracers",
 			["reagents"] = {
 				[14341] = 2,
 				[21840] = 6,
 				[22445] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 26782,
 		},
 		[26783] = {
+			["craftedItemId"] = 21867,
 			["difficulty"] = {
 				1,
 				185,
@@ -4269,16 +4552,18 @@ addon.recipeDB[197] = {
 				380,
 			},
 			["itemId"] = 21906,
+			["minExpansion"] = 2,
 			["name"] = "Arcanoweave Boots",
 			["reagents"] = {
 				[14341] = 2,
 				[21840] = 8,
 				[22445] = 16,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 26783,
 		},
 		[26784] = {
+			["craftedItemId"] = 21868,
 			["difficulty"] = {
 				1,
 				190,
@@ -4286,16 +4571,18 @@ addon.recipeDB[197] = {
 				390,
 			},
 			["itemId"] = 21907,
+			["minExpansion"] = 2,
 			["name"] = "Arcanoweave Robe",
 			["reagents"] = {
 				[14341] = 2,
 				[21840] = 12,
 				[22445] = 20,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 370,
 			["teaches"] = 26784,
 		},
 		[27658] = {
+			["craftedItemId"] = 22246,
 			["difficulty"] = {
 				1,
 				120,
@@ -4309,10 +4596,11 @@ addon.recipeDB[197] = {
 				[8343] = 2,
 				[11137] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 225,
 			["teaches"] = 27658,
 		},
 		[27659] = {
+			["craftedItemId"] = 22248,
 			["difficulty"] = {
 				1,
 				145,
@@ -4326,10 +4614,11 @@ addon.recipeDB[197] = {
 				[14341] = 2,
 				[16203] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 27659,
 		},
 		[27660] = {
+			["craftedItemId"] = 22249,
 			["difficulty"] = {
 				1,
 				158,
@@ -4344,10 +4633,11 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[14344] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 27660,
 		},
 		[27724] = {
+			["craftedItemId"] = 22251,
 			["difficulty"] = {
 				1,
 				145,
@@ -4361,10 +4651,11 @@ addon.recipeDB[197] = {
 				[14048] = 5,
 				[14341] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 275,
 			["teaches"] = 27724,
 		},
 		[27725] = {
+			["craftedItemId"] = 22252,
 			["difficulty"] = {
 				1,
 				158,
@@ -4379,10 +4670,11 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[14342] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 27725,
 		},
 		[28205] = {
+			["craftedItemId"] = 22654,
 			["difficulty"] = {
 				1,
 				158,
@@ -4397,10 +4689,11 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[22682] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 28205,
 		},
 		[28207] = {
+			["craftedItemId"] = 22652,
 			["difficulty"] = {
 				1,
 				158,
@@ -4415,10 +4708,11 @@ addon.recipeDB[197] = {
 				[14227] = 8,
 				[22682] = 7,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 28207,
 		},
 		[28208] = {
+			["craftedItemId"] = 22658,
 			["difficulty"] = {
 				1,
 				158,
@@ -4433,10 +4727,11 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[22682] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 28208,
 		},
 		[28209] = {
+			["craftedItemId"] = 22655,
 			["difficulty"] = {
 				1,
 				158,
@@ -4451,10 +4746,11 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[22682] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 28209,
 		},
 		[28210] = {
+			["craftedItemId"] = 22660,
 			["difficulty"] = {
 				1,
 				158,
@@ -4468,10 +4764,11 @@ addon.recipeDB[197] = {
 				[14048] = 3,
 				[14227] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 28210,
 		},
 		[28480] = {
+			["craftedItemId"] = 22756,
 			["difficulty"] = {
 				1,
 				158,
@@ -4485,10 +4782,11 @@ addon.recipeDB[197] = {
 				[14048] = 4,
 				[14227] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 28480,
 		},
 		[28481] = {
+			["craftedItemId"] = 22757,
 			["difficulty"] = {
 				1,
 				158,
@@ -4503,10 +4801,11 @@ addon.recipeDB[197] = {
 				[14227] = 2,
 				[14342] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 28481,
 		},
 		[28482] = {
+			["craftedItemId"] = 22758,
 			["difficulty"] = {
 				1,
 				158,
@@ -4520,10 +4819,11 @@ addon.recipeDB[197] = {
 				[14048] = 2,
 				[14227] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 28482,
 		},
 		[31373] = {
+			["craftedItemId"] = 24271,
 			["difficulty"] = {
 				1,
 				175,
@@ -4531,16 +4831,18 @@ addon.recipeDB[197] = {
 				360,
 			},
 			["itemId"] = 24316,
+			["minExpansion"] = 2,
 			["name"] = "Spellcloth",
 			["reagents"] = {
 				[21842] = 1,
 				[21884] = 1,
 				[22457] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 31373,
 		},
 		[31430] = {
+			["craftedItemId"] = 24273,
 			["difficulty"] = {
 				1,
 				173,
@@ -4548,15 +4850,17 @@ addon.recipeDB[197] = {
 				355,
 			},
 			["itemId"] = 24292,
+			["minExpansion"] = 2,
 			["name"] = "Mystic Spellthread",
 			["reagents"] = {
 				[14341] = 1,
 				[22457] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 335,
 			["teaches"] = 31430,
 		},
 		[31431] = {
+			["craftedItemId"] = 24275,
 			["difficulty"] = {
 				1,
 				173,
@@ -4564,15 +4868,17 @@ addon.recipeDB[197] = {
 				355,
 			},
 			["itemId"] = 24293,
+			["minExpansion"] = 2,
 			["name"] = "Silver Spellthread",
 			["reagents"] = {
 				[14341] = 1,
 				[21886] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 335,
 			["teaches"] = 31431,
 		},
 		[31432] = {
+			["craftedItemId"] = 24274,
 			["difficulty"] = {
 				1,
 				193,
@@ -4580,16 +4886,18 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 24294,
+			["minExpansion"] = 2,
 			["name"] = "Runic Spellthread",
 			["reagents"] = {
 				[14341] = 1,
 				[22457] = 10,
 				[23572] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 31432,
 		},
 		[31433] = {
+			["craftedItemId"] = 24276,
 			["difficulty"] = {
 				1,
 				193,
@@ -4597,16 +4905,18 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 24295,
+			["minExpansion"] = 2,
 			["name"] = "Golden Spellthread",
 			["reagents"] = {
 				[14341] = 1,
 				[21886] = 10,
 				[23572] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 31433,
 		},
 		[31434] = {
+			["craftedItemId"] = 24249,
 			["difficulty"] = {
 				1,
 				180,
@@ -4614,16 +4924,18 @@ addon.recipeDB[197] = {
 				370,
 			},
 			["itemId"] = 24296,
+			["minExpansion"] = 2,
 			["name"] = "Unyielding Bracers",
 			["phase"] = 4,
 			["reagents"] = {
 				[21842] = 4,
 				[22452] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 31434,
 		},
 		[31435] = {
+			["craftedItemId"] = 24250,
 			["difficulty"] = {
 				1,
 				180,
@@ -4631,16 +4943,18 @@ addon.recipeDB[197] = {
 				370,
 			},
 			["itemId"] = 24297,
+			["minExpansion"] = 2,
 			["name"] = "Bracers of Havok",
 			["reagents"] = {
 				[21842] = 4,
 				[22452] = 4,
 				[22456] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 31435,
 		},
 		[31437] = {
+			["craftedItemId"] = 24251,
 			["difficulty"] = {
 				1,
 				180,
@@ -4648,15 +4962,17 @@ addon.recipeDB[197] = {
 				370,
 			},
 			["itemId"] = 24298,
+			["minExpansion"] = 2,
 			["name"] = "Blackstrike Bracers",
 			["reagents"] = {
 				[21842] = 4,
 				[21884] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 31437,
 		},
 		[31438] = {
+			["craftedItemId"] = 24252,
 			["difficulty"] = {
 				1,
 				180,
@@ -4664,16 +4980,18 @@ addon.recipeDB[197] = {
 				370,
 			},
 			["itemId"] = 24299,
+			["minExpansion"] = 2,
 			["name"] = "Cloak of the Black Void",
 			["reagents"] = {
 				[21842] = 6,
 				[22456] = 3,
 				[22457] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 31438,
 		},
 		[31440] = {
+			["craftedItemId"] = 24253,
 			["difficulty"] = {
 				1,
 				180,
@@ -4681,15 +4999,17 @@ addon.recipeDB[197] = {
 				370,
 			},
 			["itemId"] = 24300,
+			["minExpansion"] = 2,
 			["name"] = "Cloak of Eternity",
 			["reagents"] = {
 				[21842] = 6,
 				[22452] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 31440,
 		},
 		[31441] = {
+			["craftedItemId"] = 24254,
 			["difficulty"] = {
 				1,
 				180,
@@ -4697,15 +5017,17 @@ addon.recipeDB[197] = {
 				370,
 			},
 			["itemId"] = 24301,
+			["minExpansion"] = 2,
 			["name"] = "White Remedy Cape",
 			["reagents"] = {
 				[21842] = 6,
 				[21886] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 31441,
 		},
 		[31442] = {
+			["craftedItemId"] = 24255,
 			["difficulty"] = {
 				1,
 				188,
@@ -4713,6 +5035,7 @@ addon.recipeDB[197] = {
 				385,
 			},
 			["itemId"] = 24302,
+			["minExpansion"] = 2,
 			["name"] = "Unyielding Girdle",
 			["phase"] = 4,
 			["reagents"] = {
@@ -4720,10 +5043,11 @@ addon.recipeDB[197] = {
 				[22452] = 16,
 				[23572] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 31442,
 		},
 		[31443] = {
+			["craftedItemId"] = 24256,
 			["difficulty"] = {
 				1,
 				188,
@@ -4731,16 +5055,18 @@ addon.recipeDB[197] = {
 				385,
 			},
 			["itemId"] = 24303,
+			["minExpansion"] = 2,
 			["name"] = "Girdle of Ruination",
 			["reagents"] = {
 				[21884] = 16,
 				[23572] = 1,
 				[24272] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 31443,
 		},
 		[31444] = {
+			["craftedItemId"] = 24257,
 			["difficulty"] = {
 				1,
 				188,
@@ -4748,16 +5074,18 @@ addon.recipeDB[197] = {
 				385,
 			},
 			["itemId"] = 24304,
+			["minExpansion"] = 2,
 			["name"] = "Black Belt of Knowledge",
 			["reagents"] = {
 				[21842] = 6,
 				[22457] = 14,
 				[23572] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 31444,
 		},
 		[31448] = {
+			["craftedItemId"] = 24258,
 			["difficulty"] = {
 				1,
 				188,
@@ -4765,16 +5093,18 @@ addon.recipeDB[197] = {
 				385,
 			},
 			["itemId"] = 24305,
+			["minExpansion"] = 2,
 			["name"] = "Resolute Cape",
 			["reagents"] = {
 				[21845] = 10,
 				[22452] = 12,
 				[23572] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 31448,
 		},
 		[31449] = {
+			["craftedItemId"] = 24259,
 			["difficulty"] = {
 				1,
 				188,
@@ -4782,16 +5112,18 @@ addon.recipeDB[197] = {
 				385,
 			},
 			["itemId"] = 24306,
+			["minExpansion"] = 2,
 			["name"] = "Vengeance Wrap",
 			["reagents"] = {
 				[22451] = 14,
 				[23572] = 1,
 				[24272] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 31449,
 		},
 		[31450] = {
+			["craftedItemId"] = 24260,
 			["difficulty"] = {
 				1,
 				188,
@@ -4799,16 +5131,18 @@ addon.recipeDB[197] = {
 				385,
 			},
 			["itemId"] = 24307,
+			["minExpansion"] = 2,
 			["name"] = "Manaweave Cloak",
 			["reagents"] = {
 				[22457] = 12,
 				[23572] = 1,
 				[24271] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 31450,
 		},
 		[31451] = {
+			["craftedItemId"] = 24261,
 			["difficulty"] = {
 				1,
 				193,
@@ -4816,16 +5150,18 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 24308,
+			["minExpansion"] = 2,
 			["name"] = "Whitemend Pants",
 			["reagents"] = {
 				[21845] = 10,
 				[23571] = 5,
 				[23572] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 31451,
 		},
 		[31452] = {
+			["craftedItemId"] = 24262,
 			["difficulty"] = {
 				1,
 				193,
@@ -4833,16 +5169,18 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 24309,
+			["minExpansion"] = 2,
 			["name"] = "Spellstrike Pants",
 			["reagents"] = {
 				[23571] = 5,
 				[23572] = 1,
 				[24271] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 31452,
 		},
 		[31453] = {
+			["craftedItemId"] = 24263,
 			["difficulty"] = {
 				1,
 				193,
@@ -4850,16 +5188,18 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 24310,
+			["minExpansion"] = 2,
 			["name"] = "Battlecast Pants",
 			["reagents"] = {
 				[21842] = 12,
 				[23571] = 8,
 				[23572] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 31453,
 		},
 		[31454] = {
+			["craftedItemId"] = 24264,
 			["difficulty"] = {
 				1,
 				193,
@@ -4867,16 +5207,18 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 24311,
+			["minExpansion"] = 2,
 			["name"] = "Whitemend Hood",
 			["reagents"] = {
 				[21845] = 10,
 				[23571] = 5,
 				[23572] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 31454,
 		},
 		[31455] = {
+			["craftedItemId"] = 24266,
 			["difficulty"] = {
 				1,
 				193,
@@ -4884,16 +5226,18 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 24312,
+			["minExpansion"] = 2,
 			["name"] = "Spellstrike Hood",
 			["reagents"] = {
 				[23571] = 5,
 				[23572] = 1,
 				[24271] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 31455,
 		},
 		[31456] = {
+			["craftedItemId"] = 24267,
 			["difficulty"] = {
 				1,
 				193,
@@ -4901,16 +5245,18 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 24313,
+			["minExpansion"] = 2,
 			["name"] = "Battlecast Hood",
 			["reagents"] = {
 				[21842] = 12,
 				[23571] = 8,
 				[23572] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 31456,
 		},
 		[31459] = {
+			["craftedItemId"] = 24270,
 			["difficulty"] = {
 				1,
 				175,
@@ -4918,30 +5264,34 @@ addon.recipeDB[197] = {
 				360,
 			},
 			["itemId"] = 24314,
+			["minExpansion"] = 2,
 			["name"] = "Bag of Jewels",
 			["phase"] = 3,
 			["reagents"] = {
 				[21842] = 6,
 				[21887] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 340,
 			["teaches"] = 31459,
 		},
 		[31460] = {
+			["craftedItemId"] = 24268,
 			["difficulty"] = {
 				1,
 				150,
 				300,
 				320,
 			},
+			["minExpansion"] = 2,
 			["name"] = "Netherweave Net",
 			["reagents"] = {
 				[21877] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 31460,
 		},
 		[31461] = {
+			["craftedItemId"] = 24269,
 			["difficulty"] = {
 				1,
 				163,
@@ -4949,14 +5299,16 @@ addon.recipeDB[197] = {
 				335,
 			},
 			["itemId"] = 24315,
+			["minExpansion"] = 2,
 			["name"] = "Heavy Netherweave Net",
 			["reagents"] = {
 				[21877] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 325,
 			["teaches"] = 31461,
 		},
 		[36315] = {
+			["craftedItemId"] = 30038,
 			["difficulty"] = {
 				1,
 				193,
@@ -4964,6 +5316,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 30280,
+			["minExpansion"] = 2,
 			["name"] = "Belt of Blasting",
 			["phase"] = 2,
 			["reagents"] = {
@@ -4972,10 +5325,11 @@ addon.recipeDB[197] = {
 				[21884] = 15,
 				[30183] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 36315,
 		},
 		[36316] = {
+			["craftedItemId"] = 30036,
 			["difficulty"] = {
 				1,
 				193,
@@ -4983,6 +5337,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 30281,
+			["minExpansion"] = 2,
 			["name"] = "Belt of the Long Road",
 			["phase"] = 2,
 			["reagents"] = {
@@ -4992,10 +5347,11 @@ addon.recipeDB[197] = {
 				[21886] = 10,
 				[30183] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 36316,
 		},
 		[36317] = {
+			["craftedItemId"] = 30037,
 			["difficulty"] = {
 				1,
 				193,
@@ -5003,6 +5359,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 30282,
+			["minExpansion"] = 2,
 			["name"] = "Boots of Blasting",
 			["phase"] = 2,
 			["reagents"] = {
@@ -5011,10 +5368,11 @@ addon.recipeDB[197] = {
 				[24271] = 4,
 				[24272] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 36317,
 		},
 		[36318] = {
+			["craftedItemId"] = 30035,
 			["difficulty"] = {
 				1,
 				193,
@@ -5022,6 +5380,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 30283,
+			["minExpansion"] = 2,
 			["name"] = "Boots of the Long Road",
 			["phase"] = 2,
 			["reagents"] = {
@@ -5030,10 +5389,11 @@ addon.recipeDB[197] = {
 				[23572] = 2,
 				[24271] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 36318,
 		},
 		[36665] = {
+			["craftedItemId"] = 30459,
 			["difficulty"] = {
 				1,
 				183,
@@ -5041,6 +5401,7 @@ addon.recipeDB[197] = {
 				375,
 			},
 			["itemId"] = 30469,
+			["minExpansion"] = 2,
 			["name"] = "Netherflame Robe",
 			["reagents"] = {
 				[21840] = 10,
@@ -5048,10 +5409,11 @@ addon.recipeDB[197] = {
 				[21884] = 5,
 				[22456] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 355,
 			["teaches"] = 36665,
 		},
 		[36667] = {
+			["craftedItemId"] = 30460,
 			["difficulty"] = {
 				1,
 				183,
@@ -5059,6 +5421,7 @@ addon.recipeDB[197] = {
 				375,
 			},
 			["itemId"] = 30470,
+			["minExpansion"] = 2,
 			["name"] = "Netherflame Belt",
 			["reagents"] = {
 				[21840] = 6,
@@ -5067,10 +5430,11 @@ addon.recipeDB[197] = {
 				[21887] = 4,
 				[22456] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 355,
 			["teaches"] = 36667,
 		},
 		[36668] = {
+			["craftedItemId"] = 30461,
 			["difficulty"] = {
 				1,
 				183,
@@ -5078,6 +5442,7 @@ addon.recipeDB[197] = {
 				375,
 			},
 			["itemId"] = 30471,
+			["minExpansion"] = 2,
 			["name"] = "Netherflame Boots",
 			["reagents"] = {
 				[21840] = 6,
@@ -5086,10 +5451,11 @@ addon.recipeDB[197] = {
 				[21887] = 4,
 				[22456] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 355,
 			["teaches"] = 36668,
 		},
 		[36669] = {
+			["craftedItemId"] = 30465,
 			["difficulty"] = {
 				1,
 				183,
@@ -5097,6 +5463,7 @@ addon.recipeDB[197] = {
 				375,
 			},
 			["itemId"] = 30472,
+			["minExpansion"] = 2,
 			["name"] = "Lifeblood Leggings",
 			["reagents"] = {
 				[21840] = 10,
@@ -5104,10 +5471,11 @@ addon.recipeDB[197] = {
 				[21885] = 5,
 				[21886] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 355,
 			["teaches"] = 36669,
 		},
 		[36670] = {
+			["craftedItemId"] = 30463,
 			["difficulty"] = {
 				1,
 				183,
@@ -5115,6 +5483,7 @@ addon.recipeDB[197] = {
 				375,
 			},
 			["itemId"] = 30473,
+			["minExpansion"] = 2,
 			["name"] = "Lifeblood Belt",
 			["reagents"] = {
 				[21840] = 6,
@@ -5123,10 +5492,11 @@ addon.recipeDB[197] = {
 				[21886] = 3,
 				[21887] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 355,
 			["teaches"] = 36670,
 		},
 		[36672] = {
+			["craftedItemId"] = 30464,
 			["difficulty"] = {
 				1,
 				183,
@@ -5134,6 +5504,7 @@ addon.recipeDB[197] = {
 				375,
 			},
 			["itemId"] = 30474,
+			["minExpansion"] = 2,
 			["name"] = "Lifeblood Bracers",
 			["reagents"] = {
 				[21840] = 4,
@@ -5142,10 +5513,11 @@ addon.recipeDB[197] = {
 				[21886] = 2,
 				[21887] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 355,
 			["teaches"] = 36672,
 		},
 		[36686] = {
+			["craftedItemId"] = 24272,
 			["difficulty"] = {
 				1,
 				175,
@@ -5153,16 +5525,18 @@ addon.recipeDB[197] = {
 				360,
 			},
 			["itemId"] = 30483,
+			["minExpansion"] = 2,
 			["name"] = "Shadowcloth",
 			["reagents"] = {
 				[21842] = 1,
 				[21884] = 1,
 				[22456] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 36686,
 		},
 		[37873] = {
+			["craftedItemId"] = 30831,
 			["difficulty"] = {
 				1,
 				180,
@@ -5170,6 +5544,7 @@ addon.recipeDB[197] = {
 				370,
 			},
 			["itemId"] = 30833,
+			["minExpansion"] = 2,
 			["name"] = "Cloak of Arcane Evasion",
 			["reagents"] = {
 				[21842] = 4,
@@ -5177,10 +5552,11 @@ addon.recipeDB[197] = {
 				[21886] = 3,
 				[22457] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 37873,
 		},
 		[37882] = {
+			["craftedItemId"] = 30837,
 			["difficulty"] = {
 				1,
 				180,
@@ -5188,16 +5564,18 @@ addon.recipeDB[197] = {
 				370,
 			},
 			["itemId"] = 30842,
+			["minExpansion"] = 2,
 			["name"] = "Flameheart Bracers",
 			["reagents"] = {
 				[14341] = 2,
 				[21840] = 5,
 				[21884] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 37882,
 		},
 		[37883] = {
+			["craftedItemId"] = 30838,
 			["difficulty"] = {
 				1,
 				185,
@@ -5205,16 +5583,18 @@ addon.recipeDB[197] = {
 				380,
 			},
 			["itemId"] = 30843,
+			["minExpansion"] = 2,
 			["name"] = "Flameheart Gloves",
 			["reagents"] = {
 				[14341] = 2,
 				[21840] = 7,
 				[21884] = 7,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 37883,
 		},
 		[37884] = {
+			["craftedItemId"] = 30839,
 			["difficulty"] = {
 				1,
 				190,
@@ -5222,16 +5602,18 @@ addon.recipeDB[197] = {
 				390,
 			},
 			["itemId"] = 30844,
+			["minExpansion"] = 2,
 			["name"] = "Flameheart Vest",
 			["reagents"] = {
 				[14341] = 2,
 				[21840] = 9,
 				[21884] = 9,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 370,
 			["teaches"] = 37884,
 		},
 		[40020] = {
+			["craftedItemId"] = 32391,
 			["difficulty"] = {
 				1,
 				193,
@@ -5239,6 +5621,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 32437,
+			["minExpansion"] = 2,
 			["name"] = "Soulguard Slippers",
 			["phase"] = 3,
 			["reagents"] = {
@@ -5248,10 +5631,11 @@ addon.recipeDB[197] = {
 				[22456] = 4,
 				[32428] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 40020,
 		},
 		[40021] = {
+			["craftedItemId"] = 32392,
 			["difficulty"] = {
 				1,
 				193,
@@ -5259,6 +5643,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 32438,
+			["minExpansion"] = 2,
 			["name"] = "Soulguard Bracers",
 			["phase"] = 3,
 			["reagents"] = {
@@ -5268,10 +5653,11 @@ addon.recipeDB[197] = {
 				[22456] = 2,
 				[32428] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 40021,
 		},
 		[40023] = {
+			["craftedItemId"] = 32389,
 			["difficulty"] = {
 				1,
 				193,
@@ -5279,6 +5665,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 32439,
+			["minExpansion"] = 2,
 			["name"] = "Soulguard Leggings",
 			["phase"] = 3,
 			["reagents"] = {
@@ -5288,10 +5675,11 @@ addon.recipeDB[197] = {
 				[22456] = 6,
 				[32428] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 40023,
 		},
 		[40024] = {
+			["craftedItemId"] = 32390,
 			["difficulty"] = {
 				1,
 				193,
@@ -5299,6 +5687,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 32440,
+			["minExpansion"] = 2,
 			["name"] = "Soulguard Girdle",
 			["phase"] = 3,
 			["reagents"] = {
@@ -5308,10 +5697,11 @@ addon.recipeDB[197] = {
 				[22456] = 4,
 				[32428] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 40024,
 		},
 		[40060] = {
+			["craftedItemId"] = 32420,
 			["difficulty"] = {
 				1,
 				193,
@@ -5319,6 +5709,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 32447,
+			["minExpansion"] = 2,
 			["name"] = "Night's End",
 			["phase"] = 3,
 			["reagents"] = {
@@ -5328,10 +5719,11 @@ addon.recipeDB[197] = {
 				[22456] = 2,
 				[32428] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 40060,
 		},
 		[41205] = {
+			["craftedItemId"] = 32586,
 			["difficulty"] = {
 				1,
 				193,
@@ -5339,6 +5731,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 32754,
+			["minExpansion"] = 2,
 			["name"] = "Bracers of Nimble Thought",
 			["phase"] = 3,
 			["reagents"] = {
@@ -5347,10 +5740,11 @@ addon.recipeDB[197] = {
 				[24271] = 4,
 				[32428] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 41205,
 		},
 		[41206] = {
+			["craftedItemId"] = 32587,
 			["difficulty"] = {
 				1,
 				193,
@@ -5358,6 +5752,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 32755,
+			["minExpansion"] = 2,
 			["name"] = "Mantle of Nimble Thought",
 			["phase"] = 3,
 			["reagents"] = {
@@ -5366,10 +5761,11 @@ addon.recipeDB[197] = {
 				[24271] = 2,
 				[32428] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 41206,
 		},
 		[41207] = {
+			["craftedItemId"] = 32584,
 			["difficulty"] = {
 				1,
 				193,
@@ -5377,6 +5773,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 32752,
+			["minExpansion"] = 2,
 			["name"] = "Swiftheal Wraps",
 			["phase"] = 3,
 			["reagents"] = {
@@ -5385,10 +5782,11 @@ addon.recipeDB[197] = {
 				[21886] = 8,
 				[32428] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 41207,
 		},
 		[41208] = {
+			["craftedItemId"] = 32585,
 			["difficulty"] = {
 				1,
 				193,
@@ -5396,6 +5794,7 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 32753,
+			["minExpansion"] = 2,
 			["name"] = "Swiftheal Mantle",
 			["phase"] = 3,
 			["reagents"] = {
@@ -5404,10 +5803,11 @@ addon.recipeDB[197] = {
 				[21886] = 6,
 				[32428] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 41208,
 		},
 		[44950] = {
+			["craftedItemId"] = 34087,
 			["difficulty"] = {
 				1,
 				125,
@@ -5415,6 +5815,7 @@ addon.recipeDB[197] = {
 				250,
 			},
 			["itemId"] = 34261,
+			["minExpansion"] = 2,
 			["name"] = "Green Winter Clothes",
 			["reagents"] = {
 				[2605] = 2,
@@ -5422,10 +5823,11 @@ addon.recipeDB[197] = {
 				[14048] = 4,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 44950,
 		},
 		[44958] = {
+			["craftedItemId"] = 34085,
 			["difficulty"] = {
 				1,
 				125,
@@ -5433,6 +5835,7 @@ addon.recipeDB[197] = {
 				250,
 			},
 			["itemId"] = 34319,
+			["minExpansion"] = 2,
 			["name"] = "Red Winter Clothes",
 			["reagents"] = {
 				[2604] = 2,
@@ -5440,10 +5843,11 @@ addon.recipeDB[197] = {
 				[14048] = 4,
 				[14341] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 44958,
 		},
 		[46128] = {
+			["craftedItemId"] = 34366,
 			["difficulty"] = {
 				1,
 				188,
@@ -5451,6 +5855,7 @@ addon.recipeDB[197] = {
 				410,
 			},
 			["itemId"] = 35204,
+			["minExpansion"] = 2,
 			["name"] = "Sunfire Handwraps",
 			["phase"] = 4,
 			["reagents"] = {
@@ -5458,10 +5863,11 @@ addon.recipeDB[197] = {
 				[24272] = 10,
 				[34664] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 46128,
 		},
 		[46129] = {
+			["craftedItemId"] = 34367,
 			["difficulty"] = {
 				1,
 				188,
@@ -5469,6 +5875,7 @@ addon.recipeDB[197] = {
 				410,
 			},
 			["itemId"] = 35205,
+			["minExpansion"] = 2,
 			["name"] = "Hands of Eternal Light",
 			["phase"] = 4,
 			["reagents"] = {
@@ -5477,10 +5884,11 @@ addon.recipeDB[197] = {
 				[21886] = 12,
 				[34664] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 46129,
 		},
 		[46130] = {
+			["craftedItemId"] = 34364,
 			["difficulty"] = {
 				1,
 				188,
@@ -5488,6 +5896,7 @@ addon.recipeDB[197] = {
 				410,
 			},
 			["itemId"] = 35206,
+			["minExpansion"] = 2,
 			["name"] = "Sunfire Robe",
 			["phase"] = 4,
 			["reagents"] = {
@@ -5495,10 +5904,11 @@ addon.recipeDB[197] = {
 				[24271] = 12,
 				[24272] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 46130,
 		},
 		[46131] = {
+			["craftedItemId"] = 34365,
 			["difficulty"] = {
 				1,
 				188,
@@ -5506,16 +5916,18 @@ addon.recipeDB[197] = {
 				410,
 			},
 			["itemId"] = 35207,
+			["minExpansion"] = 2,
 			["name"] = "Robe of Eternal Light",
 			["phase"] = 4,
 			["reagents"] = {
 				[21845] = 20,
 				[23572] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 365,
 			["teaches"] = 46131,
 		},
 		[49677] = {
+			["craftedItemId"] = 6836,
 			["difficulty"] = {
 				1,
 				128,
@@ -5523,15 +5935,17 @@ addon.recipeDB[197] = {
 				285,
 			},
 			["itemId"] = 37915,
+			["minExpansion"] = 2,
 			["name"] = "Dress Shoes",
 			["reagents"] = {
 				[4304] = 2,
 				[4339] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 49677,
 		},
 		[50194] = {
+			["craftedItemId"] = 38225,
 			["difficulty"] = {
 				1,
 				193,
@@ -5539,15 +5953,17 @@ addon.recipeDB[197] = {
 				395,
 			},
 			["itemId"] = 38229,
+			["minExpansion"] = 2,
 			["name"] = "Mycah's Botanical Bag",
 			["reagents"] = {
 				[21845] = 4,
 				[22794] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 50194,
 		},
 		[50644] = {
+			["craftedItemId"] = 38277,
 			["difficulty"] = {
 				1,
 				133,
@@ -5555,6 +5971,7 @@ addon.recipeDB[197] = {
 				295,
 			},
 			["itemId"] = 38327,
+			["minExpansion"] = 2,
 			["name"] = "Haliscan Jacket",
 			["reagents"] = {
 				[2325] = 2,
@@ -5562,10 +5979,11 @@ addon.recipeDB[197] = {
 				[4339] = 5,
 				[8343] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 50644,
 		},
 		[50647] = {
+			["craftedItemId"] = 38278,
 			["difficulty"] = {
 				1,
 				125,
@@ -5573,13 +5991,14 @@ addon.recipeDB[197] = {
 				260,
 			},
 			["itemId"] = 38328,
+			["minExpansion"] = 2,
 			["name"] = "Haliscan Pantaloons",
 			["reagents"] = {
 				[2325] = 3,
 				[4339] = 4,
 				[8343] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 245,
 			["teaches"] = 50647,
 		},
 		[55642] = {
@@ -5589,11 +6008,12 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Lightweave Embroidery",
 			["reagents"] = {
 				[38426] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 55642,
 		},
 		[55769] = {
@@ -5603,11 +6023,12 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Darkglow Embroidery",
 			["reagents"] = {
 				[38426] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 55769,
 		},
 		[55777] = {
@@ -5617,363 +6038,411 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Swordguard Embroidery",
 			["reagents"] = {
 				[38426] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 55777,
 		},
 		[55898] = {
+			["craftedItemId"] = 41509,
 			["difficulty"] = {
 				1,
 				185,
 				370,
 				380,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostweave Net",
 			["reagents"] = {
 				[33470] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 55898,
 		},
 		[55899] = {
+			["craftedItemId"] = 41510,
 			["difficulty"] = {
 				1,
 				185,
 				370,
 				375,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Bolt of Frostweave",
 			["reagents"] = {
 				[33470] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 55899,
 		},
 		[55900] = {
+			["craftedItemId"] = 41511,
 			["difficulty"] = {
 				1,
 				200,
 				400,
 				405,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Bolt of Imbued Frostweave",
 			["reagents"] = {
 				[34054] = 2,
 				[41510] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 55900,
 		},
 		[55901] = {
+			["craftedItemId"] = 41548,
 			["difficulty"] = {
 				1,
 				203,
 				405,
 				415,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Duskweave Leggings",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 395,
 			["teaches"] = 55901,
 		},
 		[55902] = {
+			["craftedItemId"] = 41513,
 			["difficulty"] = {
 				1,
 				180,
 				360,
 				380,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostwoven Shoulders",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 55902,
 		},
 		[55903] = {
+			["craftedItemId"] = 41515,
 			["difficulty"] = {
 				1,
 				185,
 				370,
 				390,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostwoven Robe",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 55903,
 		},
 		[55904] = {
+			["craftedItemId"] = 44211,
 			["difficulty"] = {
 				1,
 				185,
 				370,
 				390,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostwoven Gloves",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 360,
 			["teaches"] = 55904,
 		},
 		[55906] = {
+			["craftedItemId"] = 41520,
 			["difficulty"] = {
 				1,
 				193,
 				385,
 				405,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostwoven Boots",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 375,
 			["teaches"] = 55906,
 		},
 		[55907] = {
+			["craftedItemId"] = 41521,
 			["difficulty"] = {
 				1,
 				195,
 				390,
 				410,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostwoven Cowl",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 380,
 			["teaches"] = 55907,
 		},
 		[55908] = {
+			["craftedItemId"] = 41522,
 			["difficulty"] = {
 				1,
 				190,
 				380,
 				400,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostwoven Belt",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 370,
 			["teaches"] = 55908,
 		},
 		[55910] = {
+			["craftedItemId"] = 41523,
 			["difficulty"] = {
 				1,
 				198,
 				395,
 				415,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Mystic Frostwoven Shoulders",
 			["reagents"] = {
 				[36783] = 1,
 				[38426] = 4,
 				[41510] = 7,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 385,
 			["teaches"] = 55910,
 		},
 		[55911] = {
+			["craftedItemId"] = 41525,
 			["difficulty"] = {
 				1,
 				200,
 				400,
 				420,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Mystic Frostwoven Robe",
 			["reagents"] = {
 				[36783] = 1,
 				[38426] = 4,
 				[41510] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 390,
 			["teaches"] = 55911,
 		},
 		[55913] = {
+			["craftedItemId"] = 41528,
 			["difficulty"] = {
 				1,
 				198,
 				395,
 				415,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Mystic Frostwoven Wristwraps",
 			["reagents"] = {
 				[36783] = 2,
 				[38426] = 4,
 				[41510] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 385,
 			["teaches"] = 55913,
 		},
 		[55914] = {
+			["craftedItemId"] = 41543,
 			["difficulty"] = {
 				1,
 				200,
 				400,
 				410,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Duskweave Belt",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 7,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 395,
 			["teaches"] = 55914,
 		},
 		[55919] = {
+			["craftedItemId"] = 41546,
 			["difficulty"] = {
 				1,
 				203,
 				405,
 				415,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Duskweave Cowl",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 395,
 			["teaches"] = 55919,
 		},
 		[55920] = {
+			["craftedItemId"] = 41551,
 			["difficulty"] = {
 				1,
 				205,
 				410,
 				420,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Duskweave Wristwraps",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 55920,
 		},
 		[55921] = {
+			["craftedItemId"] = 41549,
 			["difficulty"] = {
 				1,
 				208,
 				415,
 				425,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Duskweave Robe",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 405,
 			["teaches"] = 55921,
 		},
 		[55922] = {
+			["craftedItemId"] = 41545,
 			["difficulty"] = {
 				1,
 				208,
 				415,
 				425,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Duskweave Gloves",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 9,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 405,
 			["teaches"] = 55922,
 		},
 		[55923] = {
+			["craftedItemId"] = 41550,
 			["difficulty"] = {
 				1,
 				210,
 				420,
 				430,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Duskweave Shoulders",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 410,
 			["teaches"] = 55923,
 		},
 		[55924] = {
+			["craftedItemId"] = 41544,
 			["difficulty"] = {
 				1,
 				210,
 				420,
 				430,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Duskweave Boots",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 410,
 			["teaches"] = 55924,
 		},
 		[55925] = {
+			["craftedItemId"] = 41553,
 			["difficulty"] = {
 				1,
 				213,
 				425,
 				435,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Black Duskweave Leggings",
 			["reagents"] = {
 				[38426] = 2,
 				[41511] = 5,
 				[42253] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 415,
 			["teaches"] = 55925,
 		},
 		[55941] = {
+			["craftedItemId"] = 41554,
 			["difficulty"] = {
 				1,
 				215,
 				430,
 				440,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Black Duskweave Robe",
 			["reagents"] = {
 				[38426] = 2,
 				[41511] = 5,
 				[42253] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 55941,
 		},
 		[55943] = {
+			["craftedItemId"] = 41555,
 			["difficulty"] = {
 				1,
 				213,
 				425,
 				435,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Black Duskweave Wristwraps",
 			["reagents"] = {
 				[38426] = 2,
 				[41511] = 4,
 				[42253] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 415,
 			["teaches"] = 55943,
 		},
 		[55993] = {
+			["craftedItemId"] = 41248,
 			["difficulty"] = {
 				1,
 				200,
@@ -5981,15 +6450,17 @@ addon.recipeDB[197] = {
 				410,
 			},
 			["itemId"] = 42172,
+			["minExpansion"] = 3,
 			["name"] = "Red Lumberjack Shirt",
 			["reagents"] = {
 				[2604] = 1,
 				[41510] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 55993,
 		},
 		[55994] = {
+			["craftedItemId"] = 41249,
 			["difficulty"] = {
 				1,
 				200,
@@ -5997,15 +6468,17 @@ addon.recipeDB[197] = {
 				410,
 			},
 			["itemId"] = 42173,
+			["minExpansion"] = 3,
 			["name"] = "Blue Lumberjack Shirt",
 			["reagents"] = {
 				[6260] = 1,
 				[41510] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 55994,
 		},
 		[55995] = {
+			["craftedItemId"] = 41251,
 			["difficulty"] = {
 				1,
 				200,
@@ -6013,15 +6486,17 @@ addon.recipeDB[197] = {
 				410,
 			},
 			["itemId"] = 42174,
+			["minExpansion"] = 3,
 			["name"] = "Yellow Lumberjack Shirt",
 			["reagents"] = {
 				[4341] = 1,
 				[41510] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 55995,
 		},
 		[55996] = {
+			["craftedItemId"] = 41250,
 			["difficulty"] = {
 				1,
 				200,
@@ -6029,15 +6504,17 @@ addon.recipeDB[197] = {
 				410,
 			},
 			["itemId"] = 42175,
+			["minExpansion"] = 3,
 			["name"] = "Green Lumberjack Shirt",
 			["reagents"] = {
 				[2605] = 1,
 				[41510] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 55996,
 		},
 		[55997] = {
+			["craftedItemId"] = 41252,
 			["difficulty"] = {
 				1,
 				200,
@@ -6045,15 +6522,17 @@ addon.recipeDB[197] = {
 				410,
 			},
 			["itemId"] = 42177,
+			["minExpansion"] = 3,
 			["name"] = "Red Workman's Shirt",
 			["reagents"] = {
 				[2604] = 1,
 				[41510] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 55997,
 		},
 		[55998] = {
+			["craftedItemId"] = 41253,
 			["difficulty"] = {
 				1,
 				200,
@@ -6061,15 +6540,17 @@ addon.recipeDB[197] = {
 				410,
 			},
 			["itemId"] = 42176,
+			["minExpansion"] = 3,
 			["name"] = "Blue Workman's Shirt",
 			["reagents"] = {
 				[6260] = 1,
 				[41510] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 55998,
 		},
 		[55999] = {
+			["craftedItemId"] = 41254,
 			["difficulty"] = {
 				1,
 				200,
@@ -6077,15 +6558,17 @@ addon.recipeDB[197] = {
 				410,
 			},
 			["itemId"] = 42178,
+			["minExpansion"] = 3,
 			["name"] = "Rustic Workman's Shirt",
 			["reagents"] = {
 				[4341] = 1,
 				[41510] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 55999,
 		},
 		[56000] = {
+			["craftedItemId"] = 41255,
 			["difficulty"] = {
 				1,
 				200,
@@ -6093,15 +6576,17 @@ addon.recipeDB[197] = {
 				410,
 			},
 			["itemId"] = 42179,
+			["minExpansion"] = 3,
 			["name"] = "Green Workman's Shirt",
 			["reagents"] = {
 				[2605] = 1,
 				[41510] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 56000,
 		},
 		[56001] = {
+			["craftedItemId"] = 41594,
 			["difficulty"] = {
 				1,
 				213,
@@ -6109,15 +6594,17 @@ addon.recipeDB[197] = {
 				435,
 			},
 			["itemId"] = 42181,
+			["minExpansion"] = 3,
 			["name"] = "Moonshroud",
 			["reagents"] = {
 				[35625] = 2,
 				[41511] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 415,
 			["teaches"] = 56001,
 		},
 		[56002] = {
+			["craftedItemId"] = 41593,
 			["difficulty"] = {
 				1,
 				213,
@@ -6125,15 +6612,17 @@ addon.recipeDB[197] = {
 				435,
 			},
 			["itemId"] = 42180,
+			["minExpansion"] = 3,
 			["name"] = "Ebonweave",
 			["reagents"] = {
 				[35627] = 2,
 				[41511] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 415,
 			["teaches"] = 56002,
 		},
 		[56003] = {
+			["craftedItemId"] = 41595,
 			["difficulty"] = {
 				1,
 				213,
@@ -6141,15 +6630,17 @@ addon.recipeDB[197] = {
 				435,
 			},
 			["itemId"] = 42182,
+			["minExpansion"] = 3,
 			["name"] = "Spellweave",
 			["reagents"] = {
 				[36860] = 2,
 				[41511] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 415,
 			["teaches"] = 56003,
 		},
 		[56004] = {
+			["craftedItemId"] = 41597,
 			["difficulty"] = {
 				1,
 				220,
@@ -6157,16 +6648,18 @@ addon.recipeDB[197] = {
 				450,
 			},
 			["itemId"] = 42183,
+			["minExpansion"] = 3,
 			["name"] = "Abyssal Bag",
 			["reagents"] = {
 				[38426] = 1,
 				[41593] = 4,
 				[41595] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 435,
 			["teaches"] = 56004,
 		},
 		[56005] = {
+			["craftedItemId"] = 41600,
 			["difficulty"] = {
 				1,
 				225,
@@ -6174,16 +6667,18 @@ addon.recipeDB[197] = {
 				460,
 			},
 			["itemId"] = 42184,
+			["minExpansion"] = 3,
 			["name"] = "Glacial Bag",
 			["reagents"] = {
 				[38426] = 1,
 				[41593] = 4,
 				[41594] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 445,
 			["teaches"] = 56005,
 		},
 		[56006] = {
+			["craftedItemId"] = 41598,
 			["difficulty"] = {
 				1,
 				223,
@@ -6191,16 +6686,18 @@ addon.recipeDB[197] = {
 				455,
 			},
 			["itemId"] = 42185,
+			["minExpansion"] = 3,
 			["name"] = "Mysterious Bag",
 			["reagents"] = {
 				[38426] = 1,
 				[41594] = 2,
 				[41595] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 56006,
 		},
 		[56007] = {
+			["craftedItemId"] = 41599,
 			["difficulty"] = {
 				1,
 				215,
@@ -6208,30 +6705,34 @@ addon.recipeDB[197] = {
 				450,
 			},
 			["itemId"] = 42186,
+			["minExpansion"] = 3,
 			["name"] = "Frostweave Bag",
 			["reagents"] = {
 				[38426] = 2,
 				[41511] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 410,
 			["teaches"] = 56007,
 		},
 		[56008] = {
+			["craftedItemId"] = 41601,
 			["difficulty"] = {
 				1,
 				200,
 				400,
 				410,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Shining Spellthread",
 			["reagents"] = {
 				[37704] = 2,
 				[42253] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 56008,
 		},
 		[56009] = {
+			["craftedItemId"] = 41602,
 			["difficulty"] = {
 				1,
 				218,
@@ -6239,31 +6740,35 @@ addon.recipeDB[197] = {
 				445,
 			},
 			["itemId"] = 42187,
+			["minExpansion"] = 3,
 			["name"] = "Brilliant Spellthread",
 			["reagents"] = {
 				[35625] = 4,
 				[42253] = 4,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 430,
 			["teaches"] = 56009,
 		},
 		[56010] = {
+			["craftedItemId"] = 41603,
 			["difficulty"] = {
 				1,
 				200,
 				400,
 				410,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Azure Spellthread",
 			["reagents"] = {
 				[37702] = 2,
 				[42253] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 56010,
 		},
 		[56011] = {
+			["craftedItemId"] = 41604,
 			["difficulty"] = {
 				1,
 				218,
@@ -6271,46 +6776,52 @@ addon.recipeDB[197] = {
 				445,
 			},
 			["itemId"] = 42188,
+			["minExpansion"] = 3,
 			["name"] = "Sapphire Spellthread",
 			["reagents"] = {
 				[36860] = 4,
 				[42253] = 4,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 430,
 			["teaches"] = 56011,
 		},
 		[56014] = {
+			["craftedItemId"] = 41607,
 			["difficulty"] = {
 				1,
 				198,
 				395,
 				405,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Cloak of the Moon",
 			["reagents"] = {
 				[36783] = 1,
 				[41510] = 7,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 390,
 			["teaches"] = 56014,
 		},
 		[56015] = {
+			["craftedItemId"] = 41608,
 			["difficulty"] = {
 				1,
 				200,
 				400,
 				410,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Cloak of Frozen Spirits",
 			["reagents"] = {
 				[36783] = 1,
 				[41510] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 395,
 			["teaches"] = 56015,
 		},
 		[56016] = {
+			["craftedItemId"] = 41609,
 			["difficulty"] = {
 				1,
 				218,
@@ -6318,6 +6829,7 @@ addon.recipeDB[197] = {
 				455,
 			},
 			["itemId"] = 42189,
+			["minExpansion"] = 3,
 			["name"] = "Wispcloak",
 			["reagents"] = {
 				[35622] = 4,
@@ -6326,10 +6838,11 @@ addon.recipeDB[197] = {
 				[41511] = 5,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 415,
 			["teaches"] = 56016,
 		},
 		[56017] = {
+			["craftedItemId"] = 41610,
 			["difficulty"] = {
 				1,
 				218,
@@ -6337,6 +6850,7 @@ addon.recipeDB[197] = {
 				455,
 			},
 			["itemId"] = 42190,
+			["minExpansion"] = 3,
 			["name"] = "Deathchill Cloak",
 			["reagents"] = {
 				[35627] = 4,
@@ -6345,10 +6859,11 @@ addon.recipeDB[197] = {
 				[41511] = 5,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 56017,
 		},
 		[56018] = {
+			["craftedItemId"] = 41984,
 			["difficulty"] = {
 				1,
 				218,
@@ -6356,6 +6871,7 @@ addon.recipeDB[197] = {
 				445,
 			},
 			["itemId"] = 42191,
+			["minExpansion"] = 3,
 			["name"] = "Hat of Wintry Doom",
 			["reagents"] = {
 				[38426] = 1,
@@ -6363,10 +6879,11 @@ addon.recipeDB[197] = {
 				[41593] = 1,
 				[42253] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 56018,
 		},
 		[56019] = {
+			["craftedItemId"] = 41985,
 			["difficulty"] = {
 				1,
 				215,
@@ -6374,6 +6891,7 @@ addon.recipeDB[197] = {
 				450,
 			},
 			["itemId"] = 42192,
+			["minExpansion"] = 3,
 			["name"] = "Silky Iceshard Boots",
 			["reagents"] = {
 				[38425] = 2,
@@ -6382,10 +6900,11 @@ addon.recipeDB[197] = {
 				[41595] = 1,
 				[42253] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 56019,
 		},
 		[56020] = {
+			["craftedItemId"] = 41986,
 			["difficulty"] = {
 				1,
 				215,
@@ -6393,6 +6912,7 @@ addon.recipeDB[197] = {
 				450,
 			},
 			["itemId"] = 42193,
+			["minExpansion"] = 3,
 			["name"] = "Deep Frozen Cord",
 			["reagents"] = {
 				[38426] = 1,
@@ -6400,10 +6920,11 @@ addon.recipeDB[197] = {
 				[41595] = 1,
 				[42253] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 56020,
 		},
 		[56021] = {
+			["craftedItemId"] = 42093,
 			["difficulty"] = {
 				1,
 				218,
@@ -6411,6 +6932,7 @@ addon.recipeDB[197] = {
 				445,
 			},
 			["itemId"] = 42194,
+			["minExpansion"] = 3,
 			["name"] = "Frostmoon Pants",
 			["reagents"] = {
 				[38426] = 1,
@@ -6418,10 +6940,11 @@ addon.recipeDB[197] = {
 				[41594] = 1,
 				[42253] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 56021,
 		},
 		[56022] = {
+			["craftedItemId"] = 42095,
 			["difficulty"] = {
 				1,
 				215,
@@ -6429,6 +6952,7 @@ addon.recipeDB[197] = {
 				450,
 			},
 			["itemId"] = 42195,
+			["minExpansion"] = 3,
 			["name"] = "Light Blessed Mittens",
 			["reagents"] = {
 				[38426] = 1,
@@ -6436,10 +6960,11 @@ addon.recipeDB[197] = {
 				[41594] = 1,
 				[42253] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 56022,
 		},
 		[56023] = {
+			["craftedItemId"] = 42096,
 			["difficulty"] = {
 				1,
 				215,
@@ -6447,6 +6972,7 @@ addon.recipeDB[197] = {
 				450,
 			},
 			["itemId"] = 42196,
+			["minExpansion"] = 3,
 			["name"] = "Aurora Slippers",
 			["reagents"] = {
 				[38425] = 2,
@@ -6455,10 +6981,11 @@ addon.recipeDB[197] = {
 				[41594] = 1,
 				[42253] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 56023,
 		},
 		[56024] = {
+			["craftedItemId"] = 42100,
 			["difficulty"] = {
 				1,
 				225,
@@ -6466,6 +6993,7 @@ addon.recipeDB[197] = {
 				460,
 			},
 			["itemId"] = 42197,
+			["minExpansion"] = 3,
 			["name"] = "Moonshroud Robe",
 			["reagents"] = {
 				[38426] = 1,
@@ -6473,10 +7001,11 @@ addon.recipeDB[197] = {
 				[41594] = 8,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 56024,
 		},
 		[56025] = {
+			["craftedItemId"] = 42103,
 			["difficulty"] = {
 				1,
 				223,
@@ -6484,6 +7013,7 @@ addon.recipeDB[197] = {
 				455,
 			},
 			["itemId"] = 42198,
+			["minExpansion"] = 3,
 			["name"] = "Moonshroud Gloves",
 			["reagents"] = {
 				[38426] = 1,
@@ -6491,10 +7021,11 @@ addon.recipeDB[197] = {
 				[41594] = 4,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 56025,
 		},
 		[56026] = {
+			["craftedItemId"] = 42101,
 			["difficulty"] = {
 				1,
 				225,
@@ -6502,6 +7033,7 @@ addon.recipeDB[197] = {
 				460,
 			},
 			["itemId"] = 42199,
+			["minExpansion"] = 3,
 			["name"] = "Ebonweave Robe",
 			["reagents"] = {
 				[38426] = 1,
@@ -6509,10 +7041,11 @@ addon.recipeDB[197] = {
 				[41593] = 8,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 56026,
 		},
 		[56027] = {
+			["craftedItemId"] = 42111,
 			["difficulty"] = {
 				1,
 				223,
@@ -6520,6 +7053,7 @@ addon.recipeDB[197] = {
 				455,
 			},
 			["itemId"] = 42200,
+			["minExpansion"] = 3,
 			["name"] = "Ebonweave Gloves",
 			["reagents"] = {
 				[38426] = 1,
@@ -6527,10 +7061,11 @@ addon.recipeDB[197] = {
 				[41593] = 4,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 56027,
 		},
 		[56028] = {
+			["craftedItemId"] = 42102,
 			["difficulty"] = {
 				1,
 				225,
@@ -6538,6 +7073,7 @@ addon.recipeDB[197] = {
 				460,
 			},
 			["itemId"] = 42201,
+			["minExpansion"] = 3,
 			["name"] = "Spellweave Robe",
 			["reagents"] = {
 				[38426] = 1,
@@ -6545,10 +7081,11 @@ addon.recipeDB[197] = {
 				[41595] = 8,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 56028,
 		},
 		[56029] = {
+			["craftedItemId"] = 42113,
 			["difficulty"] = {
 				1,
 				223,
@@ -6556,6 +7093,7 @@ addon.recipeDB[197] = {
 				455,
 			},
 			["itemId"] = 42202,
+			["minExpansion"] = 3,
 			["name"] = "Spellweave Gloves",
 			["reagents"] = {
 				[38426] = 1,
@@ -6563,37 +7101,41 @@ addon.recipeDB[197] = {
 				[41595] = 4,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 440,
 			["teaches"] = 56029,
 		},
 		[56030] = {
+			["craftedItemId"] = 41519,
 			["difficulty"] = {
 				1,
 				195,
 				390,
 				410,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostwoven Leggings",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 380,
 			["teaches"] = 56030,
 		},
 		[56031] = {
+			["craftedItemId"] = 41512,
 			["difficulty"] = {
 				1,
 				180,
 				360,
 				380,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostwoven Wristwraps",
 			["reagents"] = {
 				[38426] = 1,
 				[41510] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 350,
 			["teaches"] = 56031,
 		},
 		[56034] = {
@@ -6603,11 +7145,12 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Master's Spellthread",
 			["reagents"] = {
 				[38426] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 405,
 			["teaches"] = 56034,
 		},
 		[56039] = {
@@ -6617,26 +7160,28 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Sanctified Spellthread",
 			["reagents"] = {
 				[38426] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 405,
 			["teaches"] = 56039,
 		},
 		[56048] = {
+			["craftedItemId"] = 41544,
 			["difficulty"] = {
 				1,
 				200,
 				400,
 				420,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Duskweave Boots",
 			["reagents"] = {
 				[37703] = 2,
 				[41520] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 56048,
 		},
 		[59390] = {
@@ -6647,18 +7192,21 @@ addon.recipeDB[197] = {
 				0,
 			},
 			["itemId"] = 43876,
+			["minExpansion"] = 3,
 			["name"] = "Northern Cloth Scavenging",
 			["reagents"] = {},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 325,
 			["teaches"] = 59390,
 		},
 		[59582] = {
+			["craftedItemId"] = 43969,
 			["difficulty"] = {
 				1,
 				213,
 				425,
 				445,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostsavage Belt",
 			["reagents"] = {
 				[37701] = 3,
@@ -6666,16 +7214,18 @@ addon.recipeDB[197] = {
 				[38426] = 2,
 				[41511] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 415,
 			["teaches"] = 59582,
 		},
 		[59583] = {
+			["craftedItemId"] = 43974,
 			["difficulty"] = {
 				1,
 				213,
 				425,
 				445,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostsavage Bracers",
 			["reagents"] = {
 				[37701] = 3,
@@ -6683,16 +7233,18 @@ addon.recipeDB[197] = {
 				[38426] = 2,
 				[41511] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 415,
 			["teaches"] = 59583,
 		},
 		[59584] = {
+			["craftedItemId"] = 43973,
 			["difficulty"] = {
 				1,
 				215,
 				430,
 				450,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostsavage Shoulders",
 			["reagents"] = {
 				[37701] = 4,
@@ -6700,16 +7252,18 @@ addon.recipeDB[197] = {
 				[38426] = 2,
 				[41511] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 59584,
 		},
 		[59585] = {
+			["craftedItemId"] = 43970,
 			["difficulty"] = {
 				1,
 				215,
 				430,
 				450,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostsavage Boots",
 			["reagents"] = {
 				[37701] = 4,
@@ -6717,16 +7271,18 @@ addon.recipeDB[197] = {
 				[38426] = 2,
 				[41511] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 59585,
 		},
 		[59586] = {
+			["craftedItemId"] = 41516,
 			["difficulty"] = {
 				1,
 				215,
 				430,
 				450,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostsavage Gloves",
 			["reagents"] = {
 				[37701] = 4,
@@ -6734,16 +7290,18 @@ addon.recipeDB[197] = {
 				[38426] = 2,
 				[41511] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 59586,
 		},
 		[59587] = {
+			["craftedItemId"] = 43972,
 			["difficulty"] = {
 				1,
 				215,
 				430,
 				450,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostsavage Robe",
 			["reagents"] = {
 				[37701] = 5,
@@ -6751,16 +7309,18 @@ addon.recipeDB[197] = {
 				[38426] = 2,
 				[41511] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 59587,
 		},
 		[59588] = {
+			["craftedItemId"] = 43975,
 			["difficulty"] = {
 				1,
 				215,
 				430,
 				450,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostsavage Leggings",
 			["reagents"] = {
 				[37701] = 5,
@@ -6768,16 +7328,18 @@ addon.recipeDB[197] = {
 				[38426] = 2,
 				[41511] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 59588,
 		},
 		[59589] = {
+			["craftedItemId"] = 43971,
 			["difficulty"] = {
 				1,
 				215,
 				430,
 				450,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostsavage Cowl",
 			["reagents"] = {
 				[37701] = 5,
@@ -6785,16 +7347,18 @@ addon.recipeDB[197] = {
 				[38426] = 2,
 				[41511] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 59589,
 		},
 		[60969] = {
+			["craftedItemId"] = 44554,
 			["difficulty"] = {
 				1,
 				170,
 				340,
 				350,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Flying Carpet",
 			["reagents"] = {
 				[8343] = 5,
@@ -6802,16 +7366,18 @@ addon.recipeDB[197] = {
 				[22445] = 4,
 				[23112] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 300,
 			["teaches"] = 60969,
 		},
 		[60971] = {
+			["craftedItemId"] = 44558,
 			["difficulty"] = {
 				1,
 				218,
 				435,
 				455,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Magnificent Flying Carpet",
 			["reagents"] = {
 				[2604] = 4,
@@ -6820,16 +7386,18 @@ addon.recipeDB[197] = {
 				[41511] = 12,
 				[42253] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 60971,
 		},
 		[60990] = {
+			["craftedItemId"] = 43584,
 			["difficulty"] = {
 				1,
 				215,
 				430,
 				450,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Glacial Waistband",
 			["reagents"] = {
 				[35622] = 2,
@@ -6838,16 +7406,18 @@ addon.recipeDB[197] = {
 				[41511] = 4,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 60990,
 		},
 		[60993] = {
+			["craftedItemId"] = 43583,
 			["difficulty"] = {
 				1,
 				218,
 				435,
 				455,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Glacial Robe",
 			["reagents"] = {
 				[35622] = 3,
@@ -6856,16 +7426,18 @@ addon.recipeDB[197] = {
 				[41511] = 6,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 60993,
 		},
 		[60994] = {
+			["craftedItemId"] = 43585,
 			["difficulty"] = {
 				1,
 				215,
 				430,
 				450,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Glacial Slippers",
 			["reagents"] = {
 				[35622] = 2,
@@ -6874,10 +7446,11 @@ addon.recipeDB[197] = {
 				[41511] = 4,
 				[43102] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 420,
 			["teaches"] = 60994,
 		},
 		[63203] = {
+			["craftedItemId"] = 45557,
 			["difficulty"] = {
 				1,
 				228,
@@ -6885,16 +7458,18 @@ addon.recipeDB[197] = {
 				465,
 			},
 			["itemId"] = 45102,
+			["minExpansion"] = 3,
 			["name"] = "Sash of Ancient Power",
 			["reagents"] = {
 				[41593] = 4,
 				[41595] = 4,
 				[45087] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 63203,
 		},
 		[63204] = {
+			["craftedItemId"] = 45566,
 			["difficulty"] = {
 				1,
 				228,
@@ -6902,16 +7477,18 @@ addon.recipeDB[197] = {
 				465,
 			},
 			["itemId"] = 45103,
+			["minExpansion"] = 3,
 			["name"] = "Spellslinger's Slippers",
 			["reagents"] = {
 				[41593] = 4,
 				[41595] = 4,
 				[45087] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 63204,
 		},
 		[63205] = {
+			["craftedItemId"] = 45558,
 			["difficulty"] = {
 				1,
 				228,
@@ -6919,15 +7496,17 @@ addon.recipeDB[197] = {
 				465,
 			},
 			["itemId"] = 45104,
+			["minExpansion"] = 3,
 			["name"] = "Cord of the White Dawn",
 			["reagents"] = {
 				[41594] = 8,
 				[45087] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 63205,
 		},
 		[63206] = {
+			["craftedItemId"] = 45567,
 			["difficulty"] = {
 				1,
 				228,
@@ -6935,31 +7514,35 @@ addon.recipeDB[197] = {
 				465,
 			},
 			["itemId"] = 45105,
+			["minExpansion"] = 3,
 			["name"] = "Savior's Slippers",
 			["reagents"] = {
 				[41594] = 8,
 				[45087] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 63206,
 		},
 		[63742] = {
+			["craftedItemId"] = 45626,
 			["difficulty"] = {
 				1,
 				75,
 				150,
 				185,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Spidersilk Drape",
 			["reagents"] = {
 				[2321] = 2,
 				[3182] = 6,
 				[4305] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 125,
 			["teaches"] = 63742,
 		},
 		[63924] = {
+			["craftedItemId"] = 45773,
 			["difficulty"] = {
 				1,
 				220,
@@ -6967,47 +7550,53 @@ addon.recipeDB[197] = {
 				450,
 			},
 			["itemId"] = 45774,
+			["minExpansion"] = 3,
 			["name"] = "Emerald Bag",
 			["reagents"] = {
 				[36908] = 6,
 				[41594] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 435,
 			["teaches"] = 63924,
 		},
 		[64729] = {
+			["craftedItemId"] = 45811,
 			["difficulty"] = {
 				1,
 				203,
 				405,
 				415,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Frostguard Drape",
 			["reagents"] = {
 				[35624] = 4,
 				[41511] = 4,
 				[42253] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 400,
 			["teaches"] = 64729,
 		},
 		[64730] = {
+			["craftedItemId"] = 45810,
 			["difficulty"] = {
 				1,
 				205,
 				410,
 				420,
 			},
+			["minExpansion"] = 3,
 			["name"] = "Cloak of Crimson Snow",
 			["reagents"] = {
 				[35627] = 4,
 				[41511] = 4,
 				[42253] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 405,
 			["teaches"] = 64730,
 		},
 		[67064] = {
+			["craftedItemId"] = 47605,
 			["difficulty"] = {
 				1,
 				230,
@@ -7015,16 +7604,18 @@ addon.recipeDB[197] = {
 				475,
 			},
 			["itemId"] = 47657,
+			["minExpansion"] = 3,
 			["name"] = "Royal Moonshroud Robe",
 			["reagents"] = {
 				[36922] = 2,
 				[41594] = 20,
 				[47556] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 67064,
 		},
 		[67065] = {
+			["craftedItemId"] = 47587,
 			["difficulty"] = {
 				1,
 				230,
@@ -7032,15 +7623,17 @@ addon.recipeDB[197] = {
 				475,
 			},
 			["itemId"] = 47656,
+			["minExpansion"] = 3,
 			["name"] = "Royal Moonshroud Bracers",
 			["reagents"] = {
 				[41594] = 12,
 				[47556] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 67065,
 		},
 		[67066] = {
+			["craftedItemId"] = 47603,
 			["difficulty"] = {
 				1,
 				230,
@@ -7048,6 +7641,7 @@ addon.recipeDB[197] = {
 				475,
 			},
 			["itemId"] = 47655,
+			["minExpansion"] = 3,
 			["name"] = "Merlin's Robe",
 			["reagents"] = {
 				[34052] = 8,
@@ -7055,10 +7649,11 @@ addon.recipeDB[197] = {
 				[41595] = 8,
 				[47556] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 67066,
 		},
 		[67079] = {
+			["craftedItemId"] = 47585,
 			["difficulty"] = {
 				1,
 				230,
@@ -7066,6 +7661,7 @@ addon.recipeDB[197] = {
 				475,
 			},
 			["itemId"] = 47654,
+			["minExpansion"] = 3,
 			["name"] = "Bejeweled Wizard's Bracers",
 			["reagents"] = {
 				[36919] = 1,
@@ -7074,10 +7670,11 @@ addon.recipeDB[197] = {
 				[41595] = 8,
 				[47556] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 67079,
 		},
 		[67144] = {
+			["craftedItemId"] = 47606,
 			["difficulty"] = {
 				1,
 				230,
@@ -7085,16 +7682,18 @@ addon.recipeDB[197] = {
 				475,
 			},
 			["itemId"] = 47636,
+			["minExpansion"] = 3,
 			["name"] = "Royal Moonshroud Robe",
 			["reagents"] = {
 				[36922] = 2,
 				[41594] = 20,
 				[47556] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 67144,
 		},
 		[67145] = {
+			["craftedItemId"] = 47586,
 			["difficulty"] = {
 				1,
 				230,
@@ -7102,6 +7701,7 @@ addon.recipeDB[197] = {
 				475,
 			},
 			["itemId"] = 47639,
+			["minExpansion"] = 3,
 			["name"] = "Bejeweled Wizard's Bracers",
 			["reagents"] = {
 				[36919] = 1,
@@ -7110,10 +7710,11 @@ addon.recipeDB[197] = {
 				[41595] = 8,
 				[47556] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 67145,
 		},
 		[67146] = {
+			["craftedItemId"] = 47604,
 			["difficulty"] = {
 				1,
 				230,
@@ -7121,6 +7722,7 @@ addon.recipeDB[197] = {
 				475,
 			},
 			["itemId"] = 47638,
+			["minExpansion"] = 3,
 			["name"] = "Merlin's Robe",
 			["reagents"] = {
 				[34052] = 8,
@@ -7128,10 +7730,11 @@ addon.recipeDB[197] = {
 				[41595] = 8,
 				[47556] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 67146,
 		},
 		[67147] = {
+			["craftedItemId"] = 47588,
 			["difficulty"] = {
 				1,
 				230,
@@ -7139,15 +7742,17 @@ addon.recipeDB[197] = {
 				475,
 			},
 			["itemId"] = 47637,
+			["minExpansion"] = 3,
 			["name"] = "Royal Moonshroud Bracers",
 			["reagents"] = {
 				[41594] = 12,
 				[47556] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 67147,
 		},
 		[70550] = {
+			["craftedItemId"] = 49891,
 			["difficulty"] = {
 				1,
 				238,
@@ -7155,16 +7760,18 @@ addon.recipeDB[197] = {
 				500,
 			},
 			["itemId"] = 49953,
+			["minExpansion"] = 3,
 			["name"] = "Leggings of Woven Death",
 			["reagents"] = {
 				[41593] = 10,
 				[41595] = 10,
 				[49908] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 70550,
 		},
 		[70551] = {
+			["craftedItemId"] = 49890,
 			["difficulty"] = {
 				1,
 				238,
@@ -7172,16 +7779,18 @@ addon.recipeDB[197] = {
 				500,
 			},
 			["itemId"] = 49954,
+			["minExpansion"] = 3,
 			["name"] = "Deathfrost Boots",
 			["reagents"] = {
 				[41593] = 6,
 				[41595] = 6,
 				[49908] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 70551,
 		},
 		[70552] = {
+			["craftedItemId"] = 49892,
 			["difficulty"] = {
 				1,
 				238,
@@ -7189,15 +7798,17 @@ addon.recipeDB[197] = {
 				500,
 			},
 			["itemId"] = 49955,
+			["minExpansion"] = 3,
 			["name"] = "Lightweave Leggings",
 			["reagents"] = {
 				[41594] = 20,
 				[49908] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 70552,
 		},
 		[70553] = {
+			["craftedItemId"] = 49893,
 			["difficulty"] = {
 				1,
 				238,
@@ -7205,101 +7816,114 @@ addon.recipeDB[197] = {
 				500,
 			},
 			["itemId"] = 49956,
+			["minExpansion"] = 3,
 			["name"] = "Sandals of Consecration",
 			["reagents"] = {
 				[41594] = 10,
 				[49908] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 70553,
 		},
 		[74964] = {
+			["craftedItemId"] = 53643,
 			["difficulty"] = {
 				1,
 				220,
 				440,
 				450,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Bolt of Embersilk Cloth",
 			["reagents"] = {
 				[53010] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 74964,
 		},
 		[75141] = {
+			["craftedItemId"] = 54440,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Dream of Skywall",
 			["reagents"] = {
 				[52328] = 30,
 				[53643] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 515,
 			["teaches"] = 75141,
 		},
 		[75142] = {
+			["craftedItemId"] = 54440,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Dream of Deepholm",
 			["reagents"] = {
 				[52327] = 30,
 				[53643] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 505,
 			["teaches"] = 75142,
 		},
 		[75144] = {
+			["craftedItemId"] = 54440,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Dream of Hyjal",
 			["reagents"] = {
 				[52329] = 30,
 				[53643] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 75144,
 		},
 		[75145] = {
+			["craftedItemId"] = 54440,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Dream of Ragnaros",
 			["reagents"] = {
 				[52325] = 30,
 				[53643] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 510,
 			["teaches"] = 75145,
 		},
 		[75146] = {
+			["craftedItemId"] = 54440,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Dream of Azshara",
 			["reagents"] = {
 				[52326] = 30,
 				[53643] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 75146,
 		},
 		[75154] = {
@@ -7309,11 +7933,12 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Master's Spellthread",
 			["reagents"] = {
 				[38426] = 2,
 			},
-			["requiredSkill"] = 500,
+			["requiredSkill"] = 475,
 			["teaches"] = 75154,
 		},
 		[75155] = {
@@ -7323,11 +7948,12 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Sanctified Spellthread",
 			["reagents"] = {
 				[38426] = 2,
 			},
-			["requiredSkill"] = 500,
+			["requiredSkill"] = 475,
 			["teaches"] = 75155,
 		},
 		[75172] = {
@@ -7337,6 +7963,7 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Lightweave Embroidery",
 			["reagents"] = {
 				[38426] = 2,
@@ -7351,6 +7978,7 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Darkglow Embroidery",
 			["reagents"] = {
 				[38426] = 2,
@@ -7365,6 +7993,7 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Swordguard Embroidery",
 			["reagents"] = {
 				[38426] = 2,
@@ -7373,281 +8002,319 @@ addon.recipeDB[197] = {
 			["teaches"] = 75178,
 		},
 		[75247] = {
+			["craftedItemId"] = 54442,
 			["difficulty"] = {
 				1,
 				218,
 				435,
 				455,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Embersilk Net",
 			["reagents"] = {
 				[53010] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 75247,
 		},
 		[75248] = {
+			["craftedItemId"] = 54471,
 			["difficulty"] = {
 				1,
 				228,
 				455,
 				465,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Deathsilk Belt",
 			["reagents"] = {
 				[38426] = 2,
 				[53643] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 445,
 			["teaches"] = 75248,
 		},
 		[75249] = {
+			["craftedItemId"] = 54473,
 			["difficulty"] = {
 				1,
 				228,
 				455,
 				465,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Deathsilk Bracers",
 			["reagents"] = {
 				[38426] = 2,
 				[53643] = 2,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 445,
 			["teaches"] = 75249,
 		},
 		[75250] = {
+			["craftedItemId"] = 54447,
 			["difficulty"] = {
 				1,
 				233,
 				465,
 				470,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Enchanted Spellthread",
 			["reagents"] = {
 				[52325] = 6,
 				[53643] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 450,
 			["teaches"] = 75250,
 		},
 		[75251] = {
+			["craftedItemId"] = 54474,
 			["difficulty"] = {
 				1,
 				230,
 				460,
 				470,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Deathsilk Shoulders",
 			["reagents"] = {
 				[38426] = 2,
 				[53643] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 455,
 			["teaches"] = 75251,
 		},
 		[75252] = {
+			["craftedItemId"] = 54477,
 			["difficulty"] = {
 				1,
 				230,
 				460,
 				470,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Deathsilk Boots",
 			["reagents"] = {
 				[38426] = 2,
 				[53643] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 455,
 			["teaches"] = 75252,
 		},
 		[75253] = {
+			["craftedItemId"] = 54478,
 			["difficulty"] = {
 				1,
 				235,
 				470,
 				475,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Deathsilk Gloves",
 			["reagents"] = {
 				[52325] = 4,
 				[53643] = 7,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 460,
 			["teaches"] = 75253,
 		},
 		[75254] = {
+			["craftedItemId"] = 54472,
 			["difficulty"] = {
 				1,
 				233,
 				465,
 				475,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Deathsilk Leggings",
 			["reagents"] = {
 				[38426] = 2,
 				[53643] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 460,
 			["teaches"] = 75254,
 		},
 		[75255] = {
+			["craftedItemId"] = 54449,
 			["difficulty"] = {
 				1,
 				235,
 				470,
 				475,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Ghostly Spellthread",
 			["reagents"] = {
 				[52326] = 6,
 				[53643] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 460,
 			["teaches"] = 75255,
 		},
 		[75256] = {
+			["craftedItemId"] = 54476,
 			["difficulty"] = {
 				1,
 				235,
 				470,
 				480,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Deathsilk Cowl",
 			["reagents"] = {
 				[38426] = 2,
 				[53643] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 465,
 			["teaches"] = 75256,
 		},
 		[75257] = {
+			["craftedItemId"] = 54475,
 			["difficulty"] = {
 				1,
 				238,
 				475,
 				480,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Deathsilk Robe",
 			["reagents"] = {
 				[52325] = 5,
 				[53643] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 465,
 			["teaches"] = 75257,
 		},
 		[75258] = {
+			["craftedItemId"] = 54481,
 			["difficulty"] = {
 				1,
 				238,
 				475,
 				485,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Spiritmend Belt",
 			["reagents"] = {
 				[38426] = 2,
 				[53643] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 470,
 			["teaches"] = 75258,
 		},
 		[75259] = {
+			["craftedItemId"] = 54480,
 			["difficulty"] = {
 				1,
 				238,
 				475,
 				485,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Spiritmend Bracers",
 			["reagents"] = {
 				[38426] = 2,
 				[53643] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 470,
 			["teaches"] = 75259,
 		},
 		[75260] = {
+			["craftedItemId"] = 54479,
 			["difficulty"] = {
 				1,
 				243,
 				485,
 				490,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Spiritmend Shoulders",
 			["reagents"] = {
 				[52326] = 5,
 				[53643] = 9,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 475,
 			["teaches"] = 75260,
 		},
 		[75261] = {
+			["craftedItemId"] = 54482,
 			["difficulty"] = {
 				1,
 				240,
 				480,
 				490,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Spiritmend Boots",
 			["reagents"] = {
 				[38426] = 2,
 				[53643] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 475,
 			["teaches"] = 75261,
 		},
 		[75262] = {
+			["craftedItemId"] = 54484,
 			["difficulty"] = {
 				1,
 				243,
 				485,
 				495,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Spiritmend Gloves",
 			["reagents"] = {
 				[38426] = 2,
 				[53643] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 480,
 			["teaches"] = 75262,
 		},
 		[75263] = {
+			["craftedItemId"] = 54483,
 			["difficulty"] = {
 				1,
 				243,
 				485,
 				495,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Spiritmend Leggings",
 			["reagents"] = {
 				[38426] = 2,
 				[53643] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 480,
 			["teaches"] = 75263,
 		},
 		[75264] = {
+			["craftedItemId"] = 54443,
 			["difficulty"] = {
 				1,
 				245,
 				490,
 				495,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Embersilk Bag",
 			["reagents"] = {
 				[52555] = 15,
 				[53643] = 15,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 480,
 			["teaches"] = 75264,
 		},
 		[75265] = {
+			["craftedItemId"] = 54445,
 			["difficulty"] = {
 				1,
 				245,
 				490,
 				495,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Otherworldly Bag",
 			["reagents"] = {
 				[34052] = 1,
@@ -7655,87 +8322,98 @@ addon.recipeDB[197] = {
 				[52555] = 8,
 				[53643] = 9,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 480,
 			["teaches"] = 75265,
 		},
 		[75266] = {
+			["craftedItemId"] = 54485,
 			["difficulty"] = {
 				1,
 				250,
 				500,
 				505,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Spiritmend Cowl",
 			["reagents"] = {
 				[52326] = 6,
 				[53643] = 15,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 485,
 			["teaches"] = 75266,
 		},
 		[75267] = {
+			["craftedItemId"] = 54486,
 			["difficulty"] = {
 				1,
 				250,
 				500,
 				505,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Spiritmend Robe",
 			["reagents"] = {
 				[38426] = 2,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 485,
 			["teaches"] = 75267,
 		},
 		[75268] = {
+			["craftedItemId"] = 54446,
 			["difficulty"] = {
 				1,
 				250,
 				500,
 				505,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Hyjal Expedition Bag",
 			["reagents"] = {
 				[52329] = 40,
 				[53643] = 20,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 490,
 			["teaches"] = 75268,
 		},
 		[75269] = {
+			["craftedItemId"] = 70052,
 			["difficulty"] = {
 				1,
 				258,
 				515,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Fireweave Belt",
 			["reagents"] = {
 				[52325] = 3,
 				[52328] = 3,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 510,
 			["teaches"] = 75269,
 		},
 		[75270] = {
+			["craftedItemId"] = 70063,
 			["difficulty"] = {
 				1,
 				253,
 				505,
 				515,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Embersilk Bracers",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 75270,
 		},
 		[75288] = {
+			["craftedItemId"] = 54441,
 			["difficulty"] = {
 				1,
 				253,
@@ -7743,6 +8421,7 @@ addon.recipeDB[197] = {
 				515,
 			},
 			["itemId"] = 68199,
+			["minExpansion"] = 4,
 			["name"] = "Black Embersilk Gown",
 			["reagents"] = {
 				[38426] = 8,
@@ -7750,10 +8429,11 @@ addon.recipeDB[197] = {
 				[52325] = 8,
 				[53643] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 75288,
 		},
 		[75289] = {
+			["craftedItemId"] = 54451,
 			["difficulty"] = {
 				1,
 				265,
@@ -7761,6 +8441,7 @@ addon.recipeDB[197] = {
 				540,
 			},
 			["itemId"] = 67541,
+			["minExpansion"] = 4,
 			["name"] = "High Society Top Hat",
 			["reagents"] = {
 				[2321] = 4,
@@ -7768,138 +8449,155 @@ addon.recipeDB[197] = {
 				[2605] = 1,
 				[54440] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 75289,
 		},
 		[75290] = {
+			["craftedItemId"] = 70054,
 			["difficulty"] = {
 				1,
 				253,
 				505,
 				515,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Fireweave Bracers",
 			["reagents"] = {
 				[52325] = 3,
 				[52328] = 3,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 75290,
 		},
 		[75291] = {
+			["craftedItemId"] = 70064,
 			["difficulty"] = {
 				1,
 				255,
 				510,
 				520,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Embersilk Shoulders",
 			["reagents"] = {
 				[52325] = 3,
 				[52326] = 3,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 505,
 			["teaches"] = 75291,
 		},
 		[75292] = {
+			["craftedItemId"] = 70059,
 			["difficulty"] = {
 				1,
 				258,
 				515,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Fireweave Shoulders",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 510,
 			["teaches"] = 75292,
 		},
 		[75293] = {
+			["craftedItemId"] = 70062,
 			["difficulty"] = {
 				1,
 				258,
 				515,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Embersilk Belt",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 510,
 			["teaches"] = 75293,
 		},
 		[75294] = {
+			["craftedItemId"] = 70053,
 			["difficulty"] = {
 				1,
 				260,
 				520,
 				530,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Fireweave Boots",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 515,
 			["teaches"] = 75294,
 		},
 		[75295] = {
+			["craftedItemId"] = 70065,
 			["difficulty"] = {
 				1,
 				260,
 				520,
 				530,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Embersilk Gloves",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 515,
 			["teaches"] = 75295,
 		},
 		[75296] = {
+			["craftedItemId"] = 70056,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Fireweave Gloves",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 520,
 			["teaches"] = 75296,
 		},
 		[75297] = {
+			["craftedItemId"] = 70061,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Embersilk Boots",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 520,
 			["teaches"] = 75297,
 		},
 		[75298] = {
+			["craftedItemId"] = 54504,
 			["difficulty"] = {
 				1,
 				263,
@@ -7907,14 +8605,16 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54601,
+			["minExpansion"] = 4,
 			["name"] = "Belt of the Depths",
 			["reagents"] = {
 				[54440] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75298,
 		},
 		[75299] = {
+			["craftedItemId"] = 54503,
 			["difficulty"] = {
 				1,
 				263,
@@ -7922,14 +8622,16 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54602,
+			["minExpansion"] = 4,
 			["name"] = "Dreamless Belt",
 			["reagents"] = {
 				[54440] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75299,
 		},
 		[75300] = {
+			["craftedItemId"] = 54505,
 			["difficulty"] = {
 				1,
 				263,
@@ -7937,14 +8639,16 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54603,
+			["minExpansion"] = 4,
 			["name"] = "Breeches of Mended Nightmares",
 			["reagents"] = {
 				[54440] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75300,
 		},
 		[75301] = {
+			["craftedItemId"] = 54506,
 			["difficulty"] = {
 				1,
 				263,
@@ -7952,14 +8656,16 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54604,
+			["minExpansion"] = 4,
 			["name"] = "Flame-Ascended Pantaloons",
 			["reagents"] = {
 				[54440] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75301,
 		},
 		[75302] = {
+			["craftedItemId"] = 70057,
 			["difficulty"] = {
 				1,
 				263,
@@ -7967,16 +8673,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54597,
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Fireweave Pants",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75302,
 		},
 		[75303] = {
+			["craftedItemId"] = 70058,
 			["difficulty"] = {
 				1,
 				263,
@@ -7984,16 +8692,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54598,
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Fireweave Robe",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75303,
 		},
 		[75304] = {
+			["craftedItemId"] = 70055,
 			["difficulty"] = {
 				1,
 				263,
@@ -8001,16 +8711,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54596,
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Fireweave Cowl",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75304,
 		},
 		[75305] = {
+			["craftedItemId"] = 70060,
 			["difficulty"] = {
 				1,
 				263,
@@ -8018,16 +8730,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54595,
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Embersilk Robe",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75305,
 		},
 		[75306] = {
+			["craftedItemId"] = 70067,
 			["difficulty"] = {
 				1,
 				263,
@@ -8035,16 +8749,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54593,
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Embersilk Cowl",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75306,
 		},
 		[75307] = {
+			["craftedItemId"] = 70066,
 			["difficulty"] = {
 				1,
 				263,
@@ -8052,16 +8768,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54594,
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Embersilk Pants",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75307,
 		},
 		[75308] = {
+			["craftedItemId"] = 54444,
 			["difficulty"] = {
 				1,
 				263,
@@ -8069,14 +8787,16 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54605,
+			["minExpansion"] = 4,
 			["name"] = "Illusionary Bag",
 			["reagents"] = {
 				[54440] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75308,
 		},
 		[75309] = {
+			["craftedItemId"] = 54448,
 			["difficulty"] = {
 				1,
 				263,
@@ -8084,14 +8804,16 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54599,
+			["minExpansion"] = 4,
 			["name"] = "Powerful Enchanted Spellthread",
 			["reagents"] = {
 				[54440] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75309,
 		},
 		[75310] = {
+			["craftedItemId"] = 54450,
 			["difficulty"] = {
 				1,
 				263,
@@ -8099,14 +8821,16 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 54600,
+			["minExpansion"] = 4,
 			["name"] = "Powerful Ghostly Spellthread",
 			["reagents"] = {
 				[54440] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 75310,
 		},
 		[75597] = {
+			["craftedItemId"] = 54797,
 			["difficulty"] = {
 				1,
 				218,
@@ -8114,6 +8838,7 @@ addon.recipeDB[197] = {
 				455,
 			},
 			["itemId"] = 54798,
+			["minExpansion"] = 3,
 			["name"] = "Frosty Flying Carpet",
 			["reagents"] = {
 				[41593] = 1,
@@ -8121,25 +8846,28 @@ addon.recipeDB[197] = {
 				[41595] = 1,
 				[43102] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 425,
 			["teaches"] = 75597,
 		},
 		[94743] = {
+			["craftedItemId"] = 54440,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Dream of Destruction",
 			["reagents"] = {
 				[52078] = 4,
 				[53643] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 94743,
 		},
 		[99448] = {
+			["craftedItemId"] = 69944,
 			["difficulty"] = {
 				1,
 				263,
@@ -8147,15 +8875,17 @@ addon.recipeDB[197] = {
 				530,
 			},
 			["itemId"] = 69965,
+			["minExpansion"] = 4,
 			["name"] = "Grips of Altered Reality",
 			["reagents"] = {
 				[54440] = 8,
 				[69237] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 99448,
 		},
 		[99449] = {
+			["craftedItemId"] = 69945,
 			["difficulty"] = {
 				1,
 				263,
@@ -8163,15 +8893,17 @@ addon.recipeDB[197] = {
 				530,
 			},
 			["itemId"] = 69966,
+			["minExpansion"] = 4,
 			["name"] = "Don Tayo's Inferno Mittens",
 			["reagents"] = {
 				[54440] = 8,
 				[69237] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 99449,
 		},
 		[99459] = {
+			["craftedItemId"] = 69953,
 			["difficulty"] = {
 				1,
 				263,
@@ -8179,15 +8911,17 @@ addon.recipeDB[197] = {
 				530,
 			},
 			["itemId"] = 69975,
+			["minExpansion"] = 4,
 			["name"] = "Endless Dream Walkers",
 			["reagents"] = {
 				[54440] = 8,
 				[69237] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 99459,
 		},
 		[99460] = {
+			["craftedItemId"] = 69954,
 			["difficulty"] = {
 				1,
 				263,
@@ -8195,31 +8929,35 @@ addon.recipeDB[197] = {
 				530,
 			},
 			["itemId"] = 69976,
+			["minExpansion"] = 4,
 			["name"] = "Boots of the Black Flame",
 			["reagents"] = {
 				[54440] = 8,
 				[69237] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 99460,
 		},
 		[99537] = {
+			["craftedItemId"] = 75065,
 			["difficulty"] = {
 				1,
 				250,
 				500,
 				505,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Vicious Embersilk Cape",
 			["reagents"] = {
 				[52325] = 6,
 				[52326] = 6,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 490,
 			["teaches"] = 99537,
 		},
 		[100585] = {
+			["craftedItemId"] = 70138,
 			["difficulty"] = {
 				1,
 				245,
@@ -8227,14 +8965,16 @@ addon.recipeDB[197] = {
 				495,
 			},
 			["itemId"] = 70176,
+			["minExpansion"] = 4,
 			["name"] = "Luxurious Silk Gem Bag",
 			["reagents"] = {
 				[54440] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 515,
 			["teaches"] = 100585,
 		},
 		[101920] = {
+			["craftedItemId"] = 71981,
 			["difficulty"] = {
 				1,
 				263,
@@ -8242,15 +8982,17 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 72000,
+			["minExpansion"] = 4,
 			["name"] = "World Mender's Pants",
 			["reagents"] = {
 				[54440] = 8,
 				[71998] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 101920,
 		},
 		[101921] = {
+			["craftedItemId"] = 71980,
 			["difficulty"] = {
 				1,
 				263,
@@ -8258,15 +9000,17 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 72002,
+			["minExpansion"] = 4,
 			["name"] = "Lavaquake Legwraps",
 			["reagents"] = {
 				[54440] = 8,
 				[71998] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 101921,
 		},
 		[101922] = {
+			["craftedItemId"] = 71990,
 			["difficulty"] = {
 				1,
 				263,
@@ -8274,15 +9018,17 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 72003,
+			["minExpansion"] = 4,
 			["name"] = "Dreamwraps of the Light",
 			["reagents"] = {
 				[54440] = 8,
 				[71998] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 101922,
 		},
 		[101923] = {
+			["craftedItemId"] = 71989,
 			["difficulty"] = {
 				1,
 				263,
@@ -8290,15 +9036,17 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 72004,
+			["minExpansion"] = 4,
 			["name"] = "Bracers of Unconquered Power",
 			["reagents"] = {
 				[54440] = 5,
 				[71998] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 101923,
 		},
 		[102171] = {
+			["craftedItemId"] = 72101,
 			["difficulty"] = {
 				1,
 				85,
@@ -8306,15 +9054,17 @@ addon.recipeDB[197] = {
 				200,
 			},
 			["itemId"] = 72102,
+			["minExpansion"] = 4,
 			["name"] = "Black Silk Vest",
 			["reagents"] = {
 				[2325] = 4,
 				[4305] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 150,
 			["teaches"] = 102171,
 		},
 		[110955] = {
+			["craftedItemId"] = 24507,
 			["difficulty"] = {
 				1,
 				300,
@@ -8322,9 +9072,9 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 74622,
+			["minExpansion"] = 5,
 			["name"] = "Release Spirit",
 			["reagents"] = {},
-			["requiredSkill"] = 1,
 			["teaches"] = 110955,
 		},
 		[125481] = {
@@ -8334,11 +9084,11 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Lightweave Embroidery",
 			["reagents"] = {
 				[38426] = 3,
 			},
-			["requiredSkill"] = 550,
 			["teaches"] = 125481,
 		},
 		[125482] = {
@@ -8348,11 +9098,11 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Darkglow Embroidery",
 			["reagents"] = {
 				[38426] = 3,
 			},
-			["requiredSkill"] = 550,
 			["teaches"] = 125482,
 		},
 		[125483] = {
@@ -8362,11 +9112,11 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Swordguard Embroidery",
 			["reagents"] = {
 				[38426] = 3,
 			},
-			["requiredSkill"] = 550,
 			["teaches"] = 125483,
 		},
 		[125496] = {
@@ -8376,11 +9126,11 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Master's Spellthread",
 			["reagents"] = {
 				[38426] = 3,
 			},
-			["requiredSkill"] = 550,
 			["teaches"] = 125496,
 		},
 		[125497] = {
@@ -8390,11 +9140,11 @@ addon.recipeDB[197] = {
 				1,
 				1,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Sanctified Spellthread",
 			["reagents"] = {
 				[38426] = 3,
 			},
-			["requiredSkill"] = 550,
 			["teaches"] = 125497,
 		},
 		[125523] = {
@@ -8405,11 +9155,12 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86344,
+			["minExpansion"] = 5,
 			["name"] = "Windwool Hood",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 550,
 			["teaches"] = 125523,
 		},
 		[125524] = {
@@ -8420,11 +9171,12 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86345,
+			["minExpansion"] = 5,
 			["name"] = "Windwool Shoulders",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 535,
 			["teaches"] = 125524,
 		},
 		[125525] = {
@@ -8435,11 +9187,12 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86346,
+			["minExpansion"] = 5,
 			["name"] = "Windwool Tunic",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 550,
 			["teaches"] = 125525,
 		},
 		[125526] = {
@@ -8450,11 +9203,12 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86347,
+			["minExpansion"] = 5,
 			["name"] = "Windwool Gloves",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 125526,
 		},
 		[125527] = {
@@ -8465,11 +9219,12 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86348,
+			["minExpansion"] = 5,
 			["name"] = "Windwool Pants",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 125527,
 		},
 		[125528] = {
@@ -8480,11 +9235,12 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86349,
+			["minExpansion"] = 5,
 			["name"] = "Windwool Bracers",
 			["reagents"] = {
 				[82441] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 125528,
 		},
 		[125529] = {
@@ -8495,11 +9251,12 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86350,
+			["minExpansion"] = 5,
 			["name"] = "Windwool Boots",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 125529,
 		},
 		[125530] = {
@@ -8510,14 +9267,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86351,
+			["minExpansion"] = 5,
 			["name"] = "Windwool Belt",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 125530,
 		},
 		[125531] = {
+			["craftedItemId"] = 82421,
 			["difficulty"] = {
 				1,
 				300,
@@ -8525,14 +9284,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86352,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Silk Cowl",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 590,
 			["teaches"] = 125531,
 		},
 		[125532] = {
+			["craftedItemId"] = 82422,
 			["difficulty"] = {
 				1,
 				300,
@@ -8540,14 +9301,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86353,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Silk Amice",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 575,
 			["teaches"] = 125532,
 		},
 		[125533] = {
+			["craftedItemId"] = 82423,
 			["difficulty"] = {
 				1,
 				300,
@@ -8555,14 +9318,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86354,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Silk Raiment",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 590,
 			["teaches"] = 125533,
 		},
 		[125534] = {
+			["craftedItemId"] = 82424,
 			["difficulty"] = {
 				1,
 				300,
@@ -8570,14 +9335,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86355,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Silk Handwraps",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 565,
 			["teaches"] = 125534,
 		},
 		[125535] = {
+			["craftedItemId"] = 82425,
 			["difficulty"] = {
 				1,
 				300,
@@ -8585,14 +9352,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86356,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Silk Pants",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 565,
 			["teaches"] = 125535,
 		},
 		[125536] = {
+			["craftedItemId"] = 82426,
 			["difficulty"] = {
 				1,
 				300,
@@ -8600,14 +9369,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86357,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Silk Cuffs",
 			["reagents"] = {
 				[82441] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 555,
 			["teaches"] = 125536,
 		},
 		[125537] = {
+			["craftedItemId"] = 82427,
 			["difficulty"] = {
 				1,
 				300,
@@ -8615,14 +9386,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86358,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Silk Footwraps",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 565,
 			["teaches"] = 125537,
 		},
 		[125538] = {
+			["craftedItemId"] = 82428,
 			["difficulty"] = {
 				1,
 				300,
@@ -8630,14 +9403,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86359,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Silk Belt",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 565,
 			["teaches"] = 125538,
 		},
 		[125539] = {
+			["craftedItemId"] = 82429,
 			["difficulty"] = {
 				1,
 				300,
@@ -8645,14 +9420,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86360,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Satin Cowl",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 590,
 			["teaches"] = 125539,
 		},
 		[125540] = {
+			["craftedItemId"] = 82430,
 			["difficulty"] = {
 				1,
 				300,
@@ -8660,14 +9437,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86361,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Satin Amice",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 575,
 			["teaches"] = 125540,
 		},
 		[125541] = {
+			["craftedItemId"] = 82431,
 			["difficulty"] = {
 				1,
 				300,
@@ -8675,14 +9454,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86362,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Satin Raiment",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 590,
 			["teaches"] = 125541,
 		},
 		[125542] = {
+			["craftedItemId"] = 82432,
 			["difficulty"] = {
 				1,
 				300,
@@ -8690,14 +9471,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86363,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Satin Handwraps",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 565,
 			["teaches"] = 125542,
 		},
 		[125543] = {
+			["craftedItemId"] = 82433,
 			["difficulty"] = {
 				1,
 				300,
@@ -8705,14 +9488,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86364,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Satin Pants",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 565,
 			["teaches"] = 125543,
 		},
 		[125544] = {
+			["craftedItemId"] = 82434,
 			["difficulty"] = {
 				1,
 				300,
@@ -8720,14 +9505,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86365,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Satin Cuffs",
 			["reagents"] = {
 				[82441] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 555,
 			["teaches"] = 125544,
 		},
 		[125545] = {
+			["craftedItemId"] = 82435,
 			["difficulty"] = {
 				1,
 				300,
@@ -8735,14 +9522,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86366,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Satin Footwraps",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 565,
 			["teaches"] = 125545,
 		},
 		[125546] = {
+			["craftedItemId"] = 82436,
 			["difficulty"] = {
 				1,
 				300,
@@ -8750,14 +9539,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86367,
+			["minExpansion"] = 5,
 			["name"] = "Contender's Satin Belt",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 565,
 			["teaches"] = 125546,
 		},
 		[125547] = {
+			["craftedItemId"] = 82437,
 			["difficulty"] = {
 				1,
 				300,
@@ -8765,14 +9556,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86368,
+			["minExpansion"] = 5,
 			["name"] = "Spelltwister's Grand Robe",
 			["reagents"] = {
 				[82447] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 125547,
 		},
 		[125548] = {
+			["craftedItemId"] = 82438,
 			["difficulty"] = {
 				1,
 				300,
@@ -8780,14 +9573,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86369,
+			["minExpansion"] = 5,
 			["name"] = "Spelltwister's Gloves",
 			["reagents"] = {
 				[82447] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 125548,
 		},
 		[125549] = {
+			["craftedItemId"] = 82439,
 			["difficulty"] = {
 				1,
 				300,
@@ -8795,14 +9590,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86370,
+			["minExpansion"] = 5,
 			["name"] = "Robes of Creation",
 			["reagents"] = {
 				[82447] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 125549,
 		},
 		[125550] = {
+			["craftedItemId"] = 82440,
 			["difficulty"] = {
 				1,
 				300,
@@ -8810,14 +9607,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86371,
+			["minExpansion"] = 5,
 			["name"] = "Gloves of Creation",
 			["reagents"] = {
 				[82447] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 125550,
 		},
 		[125551] = {
+			["craftedItemId"] = 82441,
 			["difficulty"] = {
 				1,
 				263,
@@ -8825,14 +9624,16 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 86372,
+			["minExpansion"] = 5,
 			["name"] = "Bolt of Windwool Cloth",
 			["reagents"] = {
 				[72988] = 5,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 500,
 			["teaches"] = 125551,
 		},
 		[125552] = {
+			["craftedItemId"] = 82442,
 			["difficulty"] = {
 				1,
 				275,
@@ -8840,14 +9641,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86373,
+			["minExpansion"] = 5,
 			["name"] = "Pearlescent Spellthread",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 540,
 			["teaches"] = 125552,
 		},
 		[125553] = {
+			["craftedItemId"] = 82443,
 			["difficulty"] = {
 				1,
 				280,
@@ -8855,14 +9658,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86374,
+			["minExpansion"] = 5,
 			["name"] = "Cerulean Spellthread",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 540,
 			["teaches"] = 125553,
 		},
 		[125554] = {
+			["craftedItemId"] = 82444,
 			["difficulty"] = {
 				1,
 				300,
@@ -8870,14 +9675,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86375,
+			["minExpansion"] = 5,
 			["name"] = "Greater Pearlescent Spellthread",
 			["reagents"] = {
 				[82447] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 575,
 			["teaches"] = 125554,
 		},
 		[125555] = {
+			["craftedItemId"] = 82445,
 			["difficulty"] = {
 				1,
 				300,
@@ -8885,14 +9692,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86376,
+			["minExpansion"] = 5,
 			["name"] = "Greater Cerulean Spellthread",
 			["reagents"] = {
 				[82447] = 1,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 575,
 			["teaches"] = 125555,
 		},
 		[125556] = {
+			["craftedItemId"] = 82446,
 			["difficulty"] = {
 				1,
 				300,
@@ -8900,14 +9709,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86377,
+			["minExpansion"] = 5,
 			["name"] = "Royal Satchel",
 			["reagents"] = {
 				[82447] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 125556,
 		},
 		[125557] = {
+			["craftedItemId"] = 92960,
 			["difficulty"] = {
 				1,
 				285,
@@ -8915,14 +9726,16 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86378,
+			["minExpansion"] = 5,
 			["name"] = "Imperial Silk",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 125557,
 		},
 		[125558] = {
+			["craftedItemId"] = 86311,
 			["difficulty"] = {
 				1,
 				300,
@@ -8930,15 +9743,17 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86379,
+			["minExpansion"] = 5,
 			["name"] = "Robe of Eternal Rule",
 			["reagents"] = {
 				[80433] = 8,
 				[82447] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 125558,
 		},
 		[125559] = {
+			["craftedItemId"] = 86313,
 			["difficulty"] = {
 				1,
 				300,
@@ -8946,15 +9761,17 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86380,
+			["minExpansion"] = 5,
 			["name"] = "Imperial Silk Gloves",
 			["reagents"] = {
 				[80433] = 5,
 				[82447] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 125559,
 		},
 		[125560] = {
+			["craftedItemId"] = 86312,
 			["difficulty"] = {
 				1,
 				300,
@@ -8962,15 +9779,17 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86381,
+			["minExpansion"] = 5,
 			["name"] = "Legacy of the Emperor",
 			["reagents"] = {
 				[80433] = 8,
 				[82447] = 6,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 125560,
 		},
 		[125561] = {
+			["craftedItemId"] = 86314,
 			["difficulty"] = {
 				1,
 				300,
@@ -8978,1199 +9797,1285 @@ addon.recipeDB[197] = {
 				600,
 			},
 			["itemId"] = 86382,
+			["minExpansion"] = 5,
 			["name"] = "Touch of the Light",
 			["reagents"] = {
 				[80433] = 5,
 				[82447] = 4,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 600,
 			["teaches"] = 125561,
 		},
 		[130325] = {
+			["craftedItemId"] = 82447,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Song of Harmony",
 			["reagents"] = {
 				[76061] = 3,
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 130325,
 		},
 		[134585] = {
+			["craftedItemId"] = 92726,
 			["difficulty"] = {
 				1,
 				260,
 				520,
 				530,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Bipsi's Gloves",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 134585,
 		},
 		[137907] = {
+			["craftedItemId"] = 93420,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Cape of Cruelty",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137907,
 		},
 		[137908] = {
+			["craftedItemId"] = 93421,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Cape of Prowess",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137908,
 		},
 		[137909] = {
+			["craftedItemId"] = 93428,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Cord of Cruelty",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137909,
 		},
 		[137910] = {
+			["craftedItemId"] = 93429,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Cord of Accuracy",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137910,
 		},
 		[137911] = {
+			["craftedItemId"] = 93430,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Cord of Meditation",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137911,
 		},
 		[137912] = {
+			["craftedItemId"] = 93431,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Treads of Cruelty",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137912,
 		},
 		[137913] = {
+			["craftedItemId"] = 93432,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Treads of Alacrity",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137913,
 		},
 		[137914] = {
+			["craftedItemId"] = 93433,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Treads of Meditation",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137914,
 		},
 		[137915] = {
+			["craftedItemId"] = 93434,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Cuffs of Accuracy",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137915,
 		},
 		[137916] = {
+			["craftedItemId"] = 93435,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Cuffs of Prowess",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137916,
 		},
 		[137917] = {
+			["craftedItemId"] = 93436,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Cuffs of Meditation",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137917,
 		},
 		[137918] = {
+			["craftedItemId"] = 93437,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Drape of Cruelty",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137918,
 		},
 		[137919] = {
+			["craftedItemId"] = 93438,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Drape of Prowess",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137919,
 		},
 		[137920] = {
+			["craftedItemId"] = 93439,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Drape of Meditation",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137920,
 		},
 		[137921] = {
+			["craftedItemId"] = 93499,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Silk Handguards",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137921,
 		},
 		[137922] = {
+			["craftedItemId"] = 93500,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Silk Cowl",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137922,
 		},
 		[137923] = {
+			["craftedItemId"] = 93501,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Silk Trousers",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137923,
 		},
 		[137924] = {
+			["craftedItemId"] = 93502,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Silk Robe",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137924,
 		},
 		[137925] = {
+			["craftedItemId"] = 93503,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Silk Amice",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137925,
 		},
 		[137926] = {
+			["craftedItemId"] = 93550,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Mooncloth Gloves",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137926,
 		},
 		[137927] = {
+			["craftedItemId"] = 93551,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Mooncloth Helm",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137927,
 		},
 		[137928] = {
+			["craftedItemId"] = 93552,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Mooncloth Leggings",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137928,
 		},
 		[137929] = {
+			["craftedItemId"] = 93553,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Mooncloth Robe",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137929,
 		},
 		[137930] = {
+			["craftedItemId"] = 93554,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Mooncloth Mantle",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137930,
 		},
 		[137931] = {
+			["craftedItemId"] = 93555,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Satin Gloves",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137931,
 		},
 		[137932] = {
+			["craftedItemId"] = 93556,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Satin Hood",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137932,
 		},
 		[137933] = {
+			["craftedItemId"] = 93557,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Satin Leggings",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137933,
 		},
 		[137934] = {
+			["craftedItemId"] = 93558,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Satin Robe",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137934,
 		},
 		[137935] = {
+			["craftedItemId"] = 93559,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Satin Mantle",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137935,
 		},
 		[137936] = {
+			["craftedItemId"] = 93607,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Cloak of Alacrity",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137936,
 		},
 		[137937] = {
+			["craftedItemId"] = 93608,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Cloak of Prowess",
 			["reagents"] = {
 				[82441] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137937,
 		},
 		[137938] = {
+			["craftedItemId"] = 93615,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Felweave Handguards",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137938,
 		},
 		[137939] = {
+			["craftedItemId"] = 93616,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Felweave Cowl",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137939,
 		},
 		[137940] = {
+			["craftedItemId"] = 93617,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Felweave Trousers",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137940,
 		},
 		[137941] = {
+			["craftedItemId"] = 93618,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Felweave Raiment",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137941,
 		},
 		[137942] = {
+			["craftedItemId"] = 93619,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Dreadful Gladiator's Felweave Amice",
 			["reagents"] = {
 				[82441] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 137942,
 		},
 		[138597] = {
+			["craftedItemId"] = 94277,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Falling Blossom Treads",
 			["reagents"] = {
 				[82447] = 4,
 				[94289] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 138597,
 		},
 		[138598] = {
+			["craftedItemId"] = 94278,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Falling Blossom Cowl",
 			["reagents"] = {
 				[82447] = 6,
 				[94289] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 138598,
 		},
 		[138599] = {
+			["craftedItemId"] = 94279,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Falling Blossom Sandals",
 			["reagents"] = {
 				[82447] = 4,
 				[94289] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 138599,
 		},
 		[138600] = {
+			["craftedItemId"] = 94280,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Falling Blossom Hood",
 			["reagents"] = {
 				[82447] = 6,
 				[94289] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 138600,
 		},
 		[142951] = {
+			["craftedItemId"] = 98599,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				608,
 			},
+			["minExpansion"] = 5,
 			["name"] = "White Cloud Leggings",
 			["reagents"] = {
 				[98619] = 28,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 142951,
 		},
 		[142955] = {
+			["craftedItemId"] = 98603,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				608,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Leggings of the Night Sky",
 			["reagents"] = {
 				[98619] = 28,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 142955,
 		},
 		[142960] = {
+			["craftedItemId"] = 98608,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				608,
 			},
+			["minExpansion"] = 5,
 			["name"] = "White Cloud Belt",
 			["reagents"] = {
 				[98619] = 21,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 142960,
 		},
 		[142964] = {
+			["craftedItemId"] = 98612,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				608,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Belt of the Night Sky",
 			["reagents"] = {
 				[98619] = 21,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 142964,
 		},
 		[143011] = {
+			["craftedItemId"] = 98619,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Celestial Cloth",
 			["reagents"] = {
 				[82441] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143011,
 		},
 		[143053] = {
+			["craftedItemId"] = 98756,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Cape of Cruelty",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143053,
 		},
 		[143054] = {
+			["craftedItemId"] = 98757,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Cape of Prowess",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143054,
 		},
 		[143055] = {
+			["craftedItemId"] = 98763,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Cord of Cruelty",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143055,
 		},
 		[143056] = {
+			["craftedItemId"] = 98764,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Cord of Accuracy",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143056,
 		},
 		[143057] = {
+			["craftedItemId"] = 98765,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Cord of Meditation",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143057,
 		},
 		[143058] = {
+			["craftedItemId"] = 98766,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Treads of Cruelty",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143058,
 		},
 		[143059] = {
+			["craftedItemId"] = 98767,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Treads of Alacrity",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143059,
 		},
 		[143060] = {
+			["craftedItemId"] = 98768,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Treads of Meditation",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143060,
 		},
 		[143061] = {
+			["craftedItemId"] = 98769,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Cuffs of Accuracy",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143061,
 		},
 		[143062] = {
+			["craftedItemId"] = 98770,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Cuffs of Prowess",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143062,
 		},
 		[143063] = {
+			["craftedItemId"] = 98771,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Cuffs of Meditation",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143063,
 		},
 		[143064] = {
+			["craftedItemId"] = 98772,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Drape of Cruelty",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143064,
 		},
 		[143065] = {
+			["craftedItemId"] = 98773,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Drape of Prowess",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143065,
 		},
 		[143066] = {
+			["craftedItemId"] = 98774,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Drape of Meditation",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143066,
 		},
 		[143067] = {
+			["craftedItemId"] = 98825,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Silk Handguards",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143067,
 		},
 		[143068] = {
+			["craftedItemId"] = 98826,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Silk Cowl",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143068,
 		},
 		[143069] = {
+			["craftedItemId"] = 98827,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Silk Trousers",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143069,
 		},
 		[143070] = {
+			["craftedItemId"] = 98828,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Silk Robe",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143070,
 		},
 		[143071] = {
+			["craftedItemId"] = 98829,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Silk Amice",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143071,
 		},
 		[143072] = {
+			["craftedItemId"] = 98865,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Mooncloth Gloves",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143072,
 		},
 		[143073] = {
+			["craftedItemId"] = 98866,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Mooncloth Helm",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143073,
 		},
 		[143074] = {
+			["craftedItemId"] = 98867,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Mooncloth Leggings",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143074,
 		},
 		[143075] = {
+			["craftedItemId"] = 98868,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Mooncloth Robe",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143075,
 		},
 		[143076] = {
+			["craftedItemId"] = 98869,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Mooncloth Mantle",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143076,
 		},
 		[143077] = {
+			["craftedItemId"] = 98870,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Satin Gloves",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143077,
 		},
 		[143078] = {
+			["craftedItemId"] = 98871,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Satin Hood",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143078,
 		},
 		[143079] = {
+			["craftedItemId"] = 98872,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Satin Leggings",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143079,
 		},
 		[143080] = {
+			["craftedItemId"] = 98873,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Satin Robe",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143080,
 		},
 		[143081] = {
+			["craftedItemId"] = 98874,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Satin Mantle",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143081,
 		},
 		[143082] = {
+			["craftedItemId"] = 98913,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Cloak of Alacrity",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143082,
 		},
 		[143083] = {
+			["craftedItemId"] = 98914,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Cloak of Prowess",
 			["reagents"] = {
 				[82441] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143083,
 		},
 		[143084] = {
+			["craftedItemId"] = 98921,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Felweave Handguards",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143084,
 		},
 		[143085] = {
+			["craftedItemId"] = 98922,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Felweave Cowl",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143085,
 		},
 		[143086] = {
+			["craftedItemId"] = 98923,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Felweave Trousers",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143086,
 		},
 		[143087] = {
+			["craftedItemId"] = 98924,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Felweave Raiment",
 			["reagents"] = {
 				[82441] = 8,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143087,
 		},
 		[143088] = {
+			["craftedItemId"] = 98925,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				606,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Crafted Malevolent Gladiator's Felweave Amice",
 			["reagents"] = {
 				[82441] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 143088,
 		},
 		[146925] = {
+			["craftedItemId"] = 98619,
 			["difficulty"] = {
 				1,
 				300,
 				600,
 				605,
 			},
+			["minExpansion"] = 5,
 			["name"] = "Accelerated Celestial Cloth",
 			["reagents"] = {
 				[82441] = 10,
 				[102218] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 146925,
 		},
 		[428424] = {
+			["craftedItemId"] = 210781,
 			["difficulty"] = {
 				1,
 				63,
@@ -10183,10 +11088,10 @@ addon.recipeDB[197] = {
 				[2321] = 2,
 				[2997] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 428424,
 		},
 		[429351] = {
+			["craftedItemId"] = 210795,
 			["difficulty"] = {
 				1,
 				75,
@@ -10198,10 +11103,10 @@ addon.recipeDB[197] = {
 				[4320] = 1,
 				[211422] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 429351,
 		},
 		[435610] = {
+			["craftedItemId"] = 215111,
 			["difficulty"] = {
 				1,
 				113,
@@ -10216,10 +11121,10 @@ addon.recipeDB[197] = {
 				[213372] = 1,
 				[213379] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 435610,
 		},
 		[435827] = {
+			["craftedItemId"] = 213379,
 			["difficulty"] = {
 				1,
 				100,
@@ -10232,10 +11137,10 @@ addon.recipeDB[197] = {
 				[8343] = 5,
 				[213378] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 435827,
 		},
 		[435841] = {
+			["craftedItemId"] = 215366,
 			["difficulty"] = {
 				1,
 				85,
@@ -10249,10 +11154,10 @@ addon.recipeDB[197] = {
 				[4305] = 3,
 				[4340] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 435841,
 		},
 		[435848] = {
+			["craftedItemId"] = 215365,
 			["difficulty"] = {
 				1,
 				85,
@@ -10266,10 +11171,10 @@ addon.recipeDB[197] = {
 				[4340] = 4,
 				[6260] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 435848,
 		},
 		[439085] = {
+			["craftedItemId"] = 217245,
 			["difficulty"] = {
 				1,
 				110,
@@ -10284,10 +11189,10 @@ addon.recipeDB[197] = {
 				[4305] = 8,
 				[7068] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 439085,
 		},
 		[439086] = {
+			["craftedItemId"] = 217246,
 			["difficulty"] = {
 				1,
 				110,
@@ -10299,10 +11204,10 @@ addon.recipeDB[197] = {
 				[4291] = 3,
 				[4339] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 439086,
 		},
 		[439088] = {
+			["craftedItemId"] = 217247,
 			["difficulty"] = {
 				1,
 				110,
@@ -10314,10 +11219,10 @@ addon.recipeDB[197] = {
 				[4291] = 3,
 				[4339] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 439088,
 		},
 		[439091] = {
+			["craftedItemId"] = 217248,
 			["difficulty"] = {
 				1,
 				108,
@@ -10332,10 +11237,10 @@ addon.recipeDB[197] = {
 				[7067] = 4,
 				[7071] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 439091,
 		},
 		[439093] = {
+			["craftedItemId"] = 217250,
 			["difficulty"] = {
 				1,
 				105,
@@ -10349,10 +11254,10 @@ addon.recipeDB[197] = {
 				[4305] = 5,
 				[6371] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 439093,
 		},
 		[439094] = {
+			["craftedItemId"] = 217252,
 			["difficulty"] = {
 				1,
 				103,
@@ -10365,10 +11270,10 @@ addon.recipeDB[197] = {
 				[4291] = 1,
 				[4305] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 439094,
 		},
 		[439097] = {
+			["craftedItemId"] = 217253,
 			["difficulty"] = {
 				1,
 				98,
@@ -10381,10 +11286,10 @@ addon.recipeDB[197] = {
 				[4305] = 4,
 				[4337] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 439097,
 		},
 		[439098] = {
+			["craftedItemId"] = 217255,
 			["difficulty"] = {
 				1,
 				98,
@@ -10398,10 +11303,10 @@ addon.recipeDB[197] = {
 				[4305] = 4,
 				[7071] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 439098,
 		},
 		[439100] = {
+			["craftedItemId"] = 217256,
 			["difficulty"] = {
 				1,
 				95,
@@ -10414,10 +11319,10 @@ addon.recipeDB[197] = {
 				[4305] = 3,
 				[7067] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 439100,
 		},
 		[439102] = {
+			["craftedItemId"] = 217257,
 			["difficulty"] = {
 				1,
 				93,
@@ -10430,10 +11335,10 @@ addon.recipeDB[197] = {
 				[4305] = 3,
 				[4337] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 439102,
 		},
 		[446193] = {
+			["craftedItemId"] = 220750,
 			["difficulty"] = {
 				1,
 				125,
@@ -10447,10 +11352,10 @@ addon.recipeDB[197] = {
 				[220688] = 1,
 				[221021] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 446193,
 		},
 		[446194] = {
+			["craftedItemId"] = 220749,
 			["difficulty"] = {
 				1,
 				125,
@@ -10464,10 +11369,10 @@ addon.recipeDB[197] = {
 				[220688] = 1,
 				[221021] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 446194,
 		},
 		[446195] = {
+			["craftedItemId"] = 220751,
 			["difficulty"] = {
 				1,
 				125,
@@ -10482,10 +11387,10 @@ addon.recipeDB[197] = {
 				[220688] = 1,
 				[221021] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 446195,
 		},
 		[461692] = {
+			["craftedItemId"] = 227855,
 			["difficulty"] = {
 				1,
 				143,
@@ -10499,10 +11404,10 @@ addon.recipeDB[197] = {
 				[14341] = 1,
 				[18240] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 461692,
 		},
 		[461708] = {
+			["craftedItemId"] = 227861,
 			["difficulty"] = {
 				1,
 				158,
@@ -10516,10 +11421,10 @@ addon.recipeDB[197] = {
 				[14341] = 2,
 				[14342] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 461708,
 		},
 		[461727] = {
+			["craftedItemId"] = 227844,
 			["difficulty"] = {
 				1,
 				158,
@@ -10533,10 +11438,10 @@ addon.recipeDB[197] = {
 				[14341] = 1,
 				[15407] = 1,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 461727,
 		},
 		[461747] = {
+			["craftedItemId"] = 227860,
 			["difficulty"] = {
 				1,
 				158,
@@ -10549,10 +11454,10 @@ addon.recipeDB[197] = {
 				[14341] = 1,
 				[14342] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 461747,
 		},
 		[461750] = {
+			["craftedItemId"] = 227863,
 			["difficulty"] = {
 				1,
 				158,
@@ -10567,10 +11472,10 @@ addon.recipeDB[197] = {
 				[14341] = 2,
 				[14342] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 461750,
 		},
 		[461752] = {
+			["craftedItemId"] = 227864,
 			["difficulty"] = {
 				1,
 				153,
@@ -10583,10 +11488,10 @@ addon.recipeDB[197] = {
 				[14341] = 1,
 				[14342] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 461752,
 		},
 		[462282] = {
+			["craftedItemId"] = 228476,
 			["difficulty"] = {
 				1,
 				158,
@@ -10603,10 +11508,10 @@ addon.recipeDB[197] = {
 				[14342] = 10,
 				[14344] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 462282,
 		},
 		[463972] = {
+			["craftedItemId"] = 228994,
 			["difficulty"] = {
 				1,
 				158,
@@ -10621,10 +11526,10 @@ addon.recipeDB[197] = {
 				[14344] = 2,
 				[17012] = 2,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 463972,
 		},
 		[1213527] = {
+			["craftedItemId"] = 233826,
 			["difficulty"] = {
 				1,
 				158,
@@ -10638,10 +11543,10 @@ addon.recipeDB[197] = {
 				[14342] = 8,
 				[234009] = 15,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213527,
 		},
 		[1213530] = {
+			["craftedItemId"] = 233833,
 			["difficulty"] = {
 				1,
 				158,
@@ -10655,10 +11560,10 @@ addon.recipeDB[197] = {
 				[14342] = 8,
 				[234009] = 15,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213530,
 		},
 		[1213532] = {
+			["craftedItemId"] = 233837,
 			["difficulty"] = {
 				1,
 				158,
@@ -10672,10 +11577,10 @@ addon.recipeDB[197] = {
 				[14342] = 12,
 				[234009] = 25,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213532,
 		},
 		[1213534] = {
+			["craftedItemId"] = 233956,
 			["difficulty"] = {
 				1,
 				160,
@@ -10690,10 +11595,10 @@ addon.recipeDB[197] = {
 				[234007] = 8,
 				[234009] = 9,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213534,
 		},
 		[1213536] = {
+			["craftedItemId"] = 233958,
 			["difficulty"] = {
 				1,
 				160,
@@ -10708,10 +11613,10 @@ addon.recipeDB[197] = {
 				[234007] = 8,
 				[234009] = 9,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213536,
 		},
 		[1213538] = {
+			["craftedItemId"] = 233959,
 			["difficulty"] = {
 				1,
 				160,
@@ -10726,10 +11631,10 @@ addon.recipeDB[197] = {
 				[234007] = 8,
 				[234009] = 9,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213538,
 		},
 		[1213540] = {
+			["craftedItemId"] = 233960,
 			["difficulty"] = {
 				1,
 				160,
@@ -10744,10 +11649,10 @@ addon.recipeDB[197] = {
 				[234007] = 8,
 				[234009] = 9,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213540,
 		},
 		[1213740] = {
+			["craftedItemId"] = 234312,
 			["difficulty"] = {
 				1,
 				158,
@@ -10761,10 +11666,10 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[19726] = 3,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213740,
 		},
 		[1213742] = {
+			["craftedItemId"] = 234315,
 			["difficulty"] = {
 				1,
 				158,
@@ -10779,10 +11684,10 @@ addon.recipeDB[197] = {
 				[14342] = 4,
 				[19726] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213742,
 		},
 		[1213744] = {
+			["craftedItemId"] = 234317,
 			["difficulty"] = {
 				1,
 				158,
@@ -10797,10 +11702,10 @@ addon.recipeDB[197] = {
 				[14342] = 4,
 				[19726] = 3,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1213744,
 		},
 		[1214173] = {
+			["craftedItemId"] = 234009,
 			["difficulty"] = {
 				1,
 				158,
@@ -10811,10 +11716,10 @@ addon.recipeDB[197] = {
 			["reagents"] = {
 				[234008] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1214173,
 		},
 		[1214306] = {
+			["craftedItemId"] = 234484,
 			["difficulty"] = {
 				1,
 				160,
@@ -10829,10 +11734,10 @@ addon.recipeDB[197] = {
 				[14342] = 4,
 				[20381] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1214306,
 		},
 		[1214307] = {
+			["craftedItemId"] = 234485,
 			["difficulty"] = {
 				1,
 				160,
@@ -10847,26 +11752,27 @@ addon.recipeDB[197] = {
 				[14342] = 4,
 				[20381] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1214307,
 		},
 		[1216338] = {
+			["craftedItemId"] = 70070,
 			["difficulty"] = {
 				1,
 				250,
 				500,
 				505,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Bloodthirsty Embersilk Cape",
 			["reagents"] = {
 				[52325] = 6,
 				[52326] = 6,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1216338,
 		},
 		[1223760] = {
+			["craftedItemId"] = 236694,
 			["difficulty"] = {
 				1,
 				158,
@@ -10880,10 +11786,10 @@ addon.recipeDB[197] = {
 				[14227] = 8,
 				[236656] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1223760,
 		},
 		[1223762] = {
+			["craftedItemId"] = 236690,
 			["difficulty"] = {
 				1,
 				158,
@@ -10897,10 +11803,10 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[236656] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1223762,
 		},
 		[1223764] = {
+			["craftedItemId"] = 236692,
 			["difficulty"] = {
 				1,
 				158,
@@ -10914,10 +11820,10 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[236656] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1223764,
 		},
 		[1223766] = {
+			["craftedItemId"] = 236693,
 			["difficulty"] = {
 				1,
 				158,
@@ -10931,10 +11837,10 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[236656] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1223766,
 		},
 		[1223768] = {
+			["craftedItemId"] = 236706,
 			["difficulty"] = {
 				1,
 				158,
@@ -10948,10 +11854,10 @@ addon.recipeDB[197] = {
 				[14227] = 8,
 				[236656] = 7,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1223768,
 		},
 		[1223770] = {
+			["craftedItemId"] = 236705,
 			["difficulty"] = {
 				1,
 				158,
@@ -10965,10 +11871,10 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[236656] = 5,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1223770,
 		},
 		[1223772] = {
+			["craftedItemId"] = 236704,
 			["difficulty"] = {
 				1,
 				158,
@@ -10982,58 +11888,61 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[236656] = 4,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1223772,
 		},
 		[1224154] = {
+			["craftedItemId"] = 75096,
 			["difficulty"] = {
 				1,
 				258,
 				515,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Vicious Embersilk Belt",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224154,
 		},
 		[1224155] = {
+			["craftedItemId"] = 75095,
 			["difficulty"] = {
 				1,
 				260,
 				520,
 				530,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Vicious Embersilk Boots",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224155,
 		},
 		[1224156] = {
+			["craftedItemId"] = 75098,
 			["difficulty"] = {
 				1,
 				253,
 				505,
 				515,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Vicious Embersilk Bracers",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224156,
 		},
 		[1224157] = {
+			["craftedItemId"] = 75073,
 			["difficulty"] = {
 				1,
 				263,
@@ -11041,32 +11950,35 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 238068,
+			["minExpansion"] = 4,
 			["name"] = "Vicious Embersilk Cowl",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 1224157,
 		},
 		[1224158] = {
+			["craftedItemId"] = 75070,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Vicious Embersilk Gloves",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224158,
 		},
 		[1224159] = {
+			["craftedItemId"] = 75072,
 			["difficulty"] = {
 				1,
 				263,
@@ -11074,16 +11986,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 238069,
+			["minExpansion"] = 4,
 			["name"] = "Vicious Embersilk Pants",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 1224159,
 		},
 		[1224160] = {
+			["craftedItemId"] = 75093,
 			["difficulty"] = {
 				1,
 				263,
@@ -11091,80 +12005,86 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 238070,
+			["minExpansion"] = 4,
 			["name"] = "Vicious Embersilk Robe",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 1224160,
 		},
 		[1224161] = {
+			["craftedItemId"] = 75064,
 			["difficulty"] = {
 				1,
 				258,
 				515,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Vicious Embersilk Shoulders",
 			["reagents"] = {
 				[52325] = 3,
 				[52326] = 3,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224161,
 		},
 		[1224162] = {
+			["craftedItemId"] = 75086,
 			["difficulty"] = {
 				1,
 				258,
 				515,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Vicious Fireweave Belt",
 			["reagents"] = {
 				[52325] = 3,
 				[52328] = 3,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224162,
 		},
 		[1224163] = {
+			["craftedItemId"] = 75087,
 			["difficulty"] = {
 				1,
 				260,
 				520,
 				530,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Vicious Fireweave Boots",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224163,
 		},
 		[1224164] = {
+			["craftedItemId"] = 75089,
 			["difficulty"] = {
 				1,
 				253,
 				505,
 				515,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Vicious Fireweave Bracers",
 			["reagents"] = {
 				[52325] = 3,
 				[52328] = 3,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224164,
 		},
 		[1224165] = {
+			["craftedItemId"] = 75062,
 			["difficulty"] = {
 				1,
 				263,
@@ -11172,32 +12092,35 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 238071,
+			["minExpansion"] = 4,
 			["name"] = "Vicious Fireweave Cowl",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 1224165,
 		},
 		[1224166] = {
+			["craftedItemId"] = 75063,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Vicious Fireweave Gloves",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224166,
 		},
 		[1224167] = {
+			["craftedItemId"] = 75082,
 			["difficulty"] = {
 				1,
 				263,
@@ -11205,16 +12128,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 238072,
+			["minExpansion"] = 4,
 			["name"] = "Vicious Fireweave Pants",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 1224167,
 		},
 		[1224168] = {
+			["craftedItemId"] = 75088,
 			["difficulty"] = {
 				1,
 				263,
@@ -11222,192 +12147,205 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 238073,
+			["minExpansion"] = 4,
 			["name"] = "Vicious Fireweave Robe",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 1224168,
 		},
 		[1224169] = {
+			["craftedItemId"] = 75091,
 			["difficulty"] = {
 				1,
 				258,
 				515,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Vicious Fireweave Shoulders",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224169,
 		},
 		[1224208] = {
+			["craftedItemId"] = 54489,
 			["difficulty"] = {
 				1,
 				258,
 				515,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Fireweave Belt",
 			["reagents"] = {
 				[52325] = 3,
 				[52328] = 3,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224208,
 		},
 		[1224209] = {
+			["craftedItemId"] = 54501,
 			["difficulty"] = {
 				1,
 				253,
 				505,
 				515,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Emberfire Bracers",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224209,
 		},
 		[1224210] = {
+			["craftedItemId"] = 54488,
 			["difficulty"] = {
 				1,
 				253,
 				505,
 				515,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Fireweave Bracers",
 			["reagents"] = {
 				[52325] = 3,
 				[52328] = 3,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224210,
 		},
 		[1224211] = {
+			["craftedItemId"] = 54502,
 			["difficulty"] = {
 				1,
 				258,
 				515,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Emberfire Shoulders",
 			["reagents"] = {
 				[52325] = 3,
 				[52326] = 3,
 				[53643] = 6,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224211,
 		},
 		[1224212] = {
+			["craftedItemId"] = 54487,
 			["difficulty"] = {
 				1,
 				258,
 				515,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Fireweave Shoulders",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224212,
 		},
 		[1224213] = {
+			["craftedItemId"] = 54500,
 			["difficulty"] = {
 				1,
 				258,
 				515,
 				525,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Emberfire Belt",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224213,
 		},
 		[1224214] = {
+			["craftedItemId"] = 54490,
 			["difficulty"] = {
 				1,
 				260,
 				520,
 				530,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Fireweave Boots",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224214,
 		},
 		[1224215] = {
+			["craftedItemId"] = 54497,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Emberfire Gloves",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224215,
 		},
 		[1224216] = {
+			["craftedItemId"] = 54492,
 			["difficulty"] = {
 				1,
 				263,
 				525,
 				535,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Fireweave Gloves",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224216,
 		},
 		[1224217] = {
+			["craftedItemId"] = 54499,
 			["difficulty"] = {
 				1,
 				260,
 				520,
 				530,
 			},
+			["minExpansion"] = 4,
 			["name"] = "Emberfire Boots",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
 			["teaches"] = 1224217,
 		},
 		[1224218] = {
+			["craftedItemId"] = 54491,
 			["difficulty"] = {
 				1,
 				263,
@@ -11415,16 +12353,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 238127,
+			["minExpansion"] = 4,
 			["name"] = "Fireweave Pants",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 1224218,
 		},
 		[1224219] = {
+			["craftedItemId"] = 54494,
 			["difficulty"] = {
 				1,
 				263,
@@ -11432,16 +12372,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 238128,
+			["minExpansion"] = 4,
 			["name"] = "Fireweave Robe",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 1224219,
 		},
 		[1224220] = {
+			["craftedItemId"] = 54493,
 			["difficulty"] = {
 				1,
 				263,
@@ -11449,16 +12391,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 238126,
+			["minExpansion"] = 4,
 			["name"] = "Fireweave Cowl",
 			["reagents"] = {
 				[52325] = 4,
 				[52328] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 1224220,
 		},
 		[1224221] = {
+			["craftedItemId"] = 54495,
 			["difficulty"] = {
 				1,
 				263,
@@ -11466,16 +12410,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 238125,
+			["minExpansion"] = 4,
 			["name"] = "Emberfire Robe",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 1224221,
 		},
 		[1224222] = {
+			["craftedItemId"] = 54496,
 			["difficulty"] = {
 				1,
 				263,
@@ -11483,16 +12429,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 238123,
+			["minExpansion"] = 4,
 			["name"] = "Emberfire Cowl",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 1224222,
 		},
 		[1224223] = {
+			["craftedItemId"] = 54498,
 			["difficulty"] = {
 				1,
 				263,
@@ -11500,16 +12448,18 @@ addon.recipeDB[197] = {
 				535,
 			},
 			["itemId"] = 238124,
+			["minExpansion"] = 4,
 			["name"] = "Emberfire Pants",
 			["reagents"] = {
 				[52325] = 4,
 				[52326] = 4,
 				[53643] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 525,
 			["teaches"] = 1224223,
 		},
 		[1224607] = {
+			["craftedItemId"] = 238264,
 			["difficulty"] = {
 				1,
 				143,
@@ -11523,10 +12473,11 @@ addon.recipeDB[197] = {
 				[12938] = 1,
 				[14048] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 280,
 			["teaches"] = 1224607,
 		},
 		[1224608] = {
+			["craftedItemId"] = 238265,
 			["difficulty"] = {
 				1,
 				143,
@@ -11539,10 +12490,11 @@ addon.recipeDB[197] = {
 				[12811] = 1,
 				[14048] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 280,
 			["teaches"] = 1224608,
 		},
 		[1224609] = {
+			["craftedItemId"] = 238266,
 			["difficulty"] = {
 				1,
 				143,
@@ -11556,10 +12508,11 @@ addon.recipeDB[197] = {
 				[12938] = 1,
 				[14048] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 280,
 			["teaches"] = 1224609,
 		},
 		[1224610] = {
+			["craftedItemId"] = 238267,
 			["difficulty"] = {
 				1,
 				130,
@@ -11571,10 +12524,11 @@ addon.recipeDB[197] = {
 			["reagents"] = {
 				[14048] = 8,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 1224610,
 		},
 		[1224611] = {
+			["craftedItemId"] = 238268,
 			["difficulty"] = {
 				1,
 				135,
@@ -11587,10 +12541,11 @@ addon.recipeDB[197] = {
 				[12811] = 1,
 				[14048] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 260,
 			["teaches"] = 1224611,
 		},
 		[1224612] = {
+			["craftedItemId"] = 238269,
 			["difficulty"] = {
 				1,
 				130,
@@ -11603,10 +12558,11 @@ addon.recipeDB[197] = {
 				[12811] = 1,
 				[14048] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 1224612,
 		},
 		[1224613] = {
+			["craftedItemId"] = 238270,
 			["difficulty"] = {
 				1,
 				140,
@@ -11620,10 +12576,11 @@ addon.recipeDB[197] = {
 				[12938] = 1,
 				[14048] = 12,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 270,
 			["teaches"] = 1224613,
 		},
 		[1224614] = {
+			["craftedItemId"] = 238271,
 			["difficulty"] = {
 				1,
 				135,
@@ -11636,10 +12593,11 @@ addon.recipeDB[197] = {
 				[12811] = 1,
 				[14048] = 10,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 260,
 			["teaches"] = 1224614,
 		},
 		[1227723] = {
+			["craftedItemId"] = 239147,
 			["difficulty"] = {
 				1,
 				130,
@@ -11654,10 +12612,11 @@ addon.recipeDB[197] = {
 				[14048] = 14,
 				[14227] = 3,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 250,
 			["teaches"] = 1227723,
 		},
 		[1227724] = {
+			["craftedItemId"] = 239148,
 			["difficulty"] = {
 				1,
 				150,
@@ -11673,7 +12632,7 @@ addon.recipeDB[197] = {
 				[12938] = 1,
 				[14048] = 24,
 			},
-			["requiredSkill"] = 1,
+			["requiredSkill"] = 290,
 			["teaches"] = 1227724,
 		},
 	}

@@ -166,6 +166,13 @@ L["MissingSrcTrainer"]          = "Trainer"
 L["MissingSrcOther"]            = "Other"
 L["MissingSrcUnknown"]          = "Unknown"
 
+-- Settings: global item tooltip lines
+L["SettingsTooltipHeader"]          = "Item tooltip"
+L["SettingsTooltipShowCrafters"]    = "Show guild crafters on item tooltips"
+L["SettingsTooltipShowCraftersDesc"]= "Append a [TOGPM] line listing every guildmate who can craft the item you're hovering. Online crafters in white, offline in grey. Bind-on-Pickup items are skipped (can't be traded anyway)."
+L["SettingsTooltipShowIds"]         = "Show item ID / spell ID on item tooltips"
+L["SettingsTooltipShowIdsDesc"]     = "Append a [TOGPM] line with the item ID and (if known) the recipe spell ID. Mostly useful for troubleshooting wrong icons or missing recipes — paste the IDs into Wowhead to verify what the addon is matching against."
+
 -- Settings: TBC Anniversary phase filter
 L["SettingsTBCPhaseHeader"]     = "TBC Anniversary phase"
 L["SettingsTBCPhase"]           = "Current content phase"

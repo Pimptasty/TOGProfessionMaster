@@ -134,6 +134,13 @@ local SETTINGS_DEFAULTS = {
         -- guaranteed populated before we read it.
         ahScanDelay = 0,
 
+        -- Global item tooltip lines. Both on by default. Independent toggles
+        -- so users can keep just the crafters list, just the IDs (for
+        -- troubleshooting), both, or disable the addon's tooltip injection
+        -- entirely. Read in Tooltip.lua's AppendCrafters.
+        tooltipShowCrafters = true,
+        tooltipShowIds      = true,
+
         -- TBC Anniversary content phase. The recipe DB ships with `phase`
         -- field on TBC raid / Shattered-Sun / BT / Hyjal / Sunwell recipes
         -- (sourced from ATT at build time). When the client is TBC, the
@@ -200,6 +207,7 @@ local SLASH_COMMANDS = {
     ["transmutedebug"] = "DumpTransmuteDiag",
     ["forcebroadcast"] = "ForceBroadcast",
     ["backfill"]     = "RunBackfill",
+    ["myalts"]       = "DumpMyAlts",
     ["help"]         = "PrintHelp",
 }
 
@@ -556,6 +564,51 @@ function addon:RunBackfill()
     else
         Ace:Print("|cffff4444Scanner not available yet|r")
     end
+end
+
+--- /togpm myalts — diagnostic: print what the addon thinks are this
+--- account's own characters (the global accountChars set used by every
+--- "My Characters" filter) AND which other guildmate keys leak into the
+--- Missing Recipes character dropdown (a guildmate appearing here means
+--- IsMyCharacter is returning true for them, which is the bug we're
+--- chasing).
+function addon:DumpMyAlts()
+    Ace:Print("|cffda8cff[TOGPM] My Characters diagnostic|r")
+    local ac = addon.guildDb and addon.guildDb.global and addon.guildDb.global.accountChars
+    if not ac then
+        Ace:Print("  global.accountChars: |cffff4444nil|r (db not loaded)")
+        return
+    end
+    -- 1. Raw global.accountChars dump
+    local keys = {}
+    for k, v in pairs(ac) do keys[#keys + 1] = tostring(k) .. " = " .. tostring(v) end
+    table.sort(keys)
+    Ace:Print(("  global.accountChars (%d entries):"):format(#keys))
+    for _, line in ipairs(keys) do Ace:Print("    " .. line) end
+
+    -- 2. Reverse-check: for every charKey we have skill data for across all
+    --    guild buckets, print whether IsMyCharacter returns true. If a
+    --    guildmate's name shows IsMyChar=true, accountChars is polluted.
+    Ace:Print("  IsMyCharacter() result for every known charKey:")
+    local seen = {}
+    addon:ForEachGuildBucket(function(bucket)
+        for ck in pairs(bucket.skills or {})      do seen[ck] = true end
+        for ck in pairs(bucket.cooldowns or {})   do seen[ck] = true end
+        for ck in pairs(bucket.guildData or {})   do seen[ck] = true end
+    end)
+    local sorted = {}
+    for ck in pairs(seen) do sorted[#sorted + 1] = ck end
+    table.sort(sorted)
+    local n_mine, n_others = 0, 0
+    for _, ck in ipairs(sorted) do
+        local is_mine = addon:IsMyCharacter(ck)
+        if is_mine then n_mine = n_mine + 1
+        else            n_others = n_others + 1 end
+        local marker = is_mine and "|cff00ff00MINE|r" or "|cff888888other|r"
+        Ace:Print(string.format("    %s  %s", marker, ck))
+    end
+    Ace:Print(string.format("  Totals: |cff00ff00%d mine|r, |cff888888%d other|r",
+        n_mine, n_others))
 end
 
 --- /togpm dumphashes — print the local L0 hash list for diagnostic comparison.

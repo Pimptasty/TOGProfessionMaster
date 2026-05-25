@@ -80,11 +80,35 @@ SOURCES = [
         },
         "prepare": "trinity_cata_extract",
     },
+    {
+        # CMaNGOS-Classic ships its full DB as a single gzip dump. We
+        # download it once, gunzip, stream-extract just the trainer
+        # tables — same pattern as TrinityCore Cata above.
+        #
+        # Why this source matters for skill-rank coverage: AzerothCore
+        # Wrath and TrinityCore Cata strip out Apprentice-tier Vanilla
+        # recipes from their trainer_spell tables (by Wrath those are
+        # auto-taught when you pick up the profession). CMaNGOS-Classic
+        # is a Vanilla-era emulator and keeps the full apprentice
+        # rosters, so it's the only source that has ReqSkillRank for
+        # recipes like Linen Bandage / Smelt Copper / Light Leather /
+        # Minor Healing Potion.
+        #
+        # Schema is the older flat layout (no normalized trainer_spell
+        # join needed): npc_trainer rows are
+        # (entry, spell, spellcost, reqskill, reqskillvalue, reqlevel,
+        #  condition_id) — entry IS the NPC id, no TrainerId indirection.
+        "name":      "cmangos_classic",
+        "expansion": "vanilla",
+        "layout":    "flat",
+        "files_local": {
+            "npc_trainer":          "cmangos_classic_npc_trainer.sql",
+            "npc_trainer_template": "cmangos_classic_npc_trainer_template.sql",
+        },
+        "prepare": "cmangos_classic_extract",
+    },
     # MoP follows when we locate a current MoP emulator dump (TrinityCore
     # dropped active MoP support; a fork or PandaCore branch likely has it).
-    # Vanilla and TBC via CMaNGOS use the older flat layout (single
-    # npc_trainer table) and need a different parser; tracked for a later
-    # patch since MTSL already covers those expansions reasonably well.
 ]
 
 # Profession ID -> profession name. Used only for log output / debugging.
@@ -124,6 +148,8 @@ def ensure_files(source: dict, refresh: bool = False) -> dict:
         missing = [p for p in out.values() if not p.exists()]
         if missing and source.get("prepare") == "trinity_cata_extract":
             _prepare_trinity_cata(refresh=refresh)
+        if missing and source.get("prepare") == "cmangos_classic_extract":
+            _prepare_cmangos_classic(refresh=refresh)
         # Verify after prepare
         for logical, path in out.items():
             if not path.exists():
@@ -205,6 +231,65 @@ def _prepare_trinity_cata(refresh: bool = False) -> None:
     for tbl, lines in buffers.items():
         out_paths[tbl].write_text("".join(lines), encoding="utf-8")
         print(f"  [trinitycore_cata]   {tbl}: {sum(len(l) for l in lines):,} bytes "
+              f"({len(lines):,} lines)", file=sys.stderr)
+
+
+# CMaNGOS-Classic ships its full world DB as a single gzip-compressed SQL
+# dump. We need just the trainer tables. Same idempotent extract pattern as
+# the TrinityCore Cata prep.
+CMANGOS_CLASSIC_TABLES = (
+    "npc_trainer",
+    "npc_trainer_template",
+)
+
+def _prepare_cmangos_classic(refresh: bool = False) -> None:
+    """Download CMaNGOS-Classic's Full DB (gzipped SQL), gunzip in memory,
+    stream-extract npc_trainer + npc_trainer_template INSERTs into their
+    own cached files. Idempotent."""
+    import gzip
+    import re
+
+    targets = set(CMANGOS_CLASSIC_TABLES)
+    out_paths = {t: CACHE_DIR / f"cmangos_classic_{t}.sql" for t in targets}
+    if all(p.exists() for p in out_paths.values()) and not refresh:
+        print(f"  [cmangos_classic] all {len(targets)} tables already extracted, skipping prep",
+              file=sys.stderr)
+        return
+
+    # CMaNGOS-Classic dump lives at the repo's Full_DB/. Filename includes a
+    # version + zXXXX revision suffix that bumps on dump updates; using the
+    # GitHub API to discover the current filename keeps us future-proof
+    # without hardcoding a stale name.
+    import json
+    api_url = "https://api.github.com/repos/cmangos/classic-db/contents/Full_DB"
+    req = urllib.request.Request(api_url, headers={"User-Agent": "TOGPM-data-port/1.0"})
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        entries = json.loads(resp.read().decode("utf-8"))
+    dump_entry = next((e for e in entries if e["name"].endswith(".sql.gz")), None)
+    if not dump_entry:
+        raise RuntimeError("CMaNGOS-Classic Full_DB has no .sql.gz dump file")
+    dump_url   = dump_entry["download_url"]
+    archive_path = CACHE_DIR / f"cmangos_classic_{dump_entry['name']}"
+    if not archive_path.exists() or refresh:
+        _download(dump_url, archive_path)
+
+    print(f"  [cmangos_classic] streaming {dump_entry['name']} for {sorted(targets)}",
+          file=sys.stderr)
+    buffers = {t: [] for t in targets}
+    current = None
+    insert_re = re.compile(r"INSERT INTO `(\w+)`")
+    with gzip.open(archive_path, "rt", encoding="utf-8", errors="replace") as f:
+        for line in f:
+            m = insert_re.match(line)
+            if m:
+                current = m.group(1) if m.group(1) in targets else None
+            if current:
+                buffers[current].append(line)
+            if line.startswith("--") or line.startswith("CREATE"):
+                current = None
+    for tbl, lines in buffers.items():
+        out_paths[tbl].write_text("".join(lines), encoding="utf-8")
+        print(f"  [cmangos_classic]   {tbl}: {sum(len(l) for l in lines):,} bytes "
               f"({len(lines):,} lines)", file=sys.stderr)
 
 
@@ -388,8 +473,50 @@ def extract_normalized(files: dict, source_label: str):
     return out
 
 
+def extract_flat(files: dict, source_label: str):
+    """Flat schema (CMaNGOS Classic / TBC): a single npc_trainer table where
+    each row is (entry, spell, spellcost, reqskill, reqskillvalue, reqlevel,
+    condition_id). `entry` is the NPC id directly — no TrainerId
+    indirection. Returns {spellId: [npcId, ...]}.
+
+    Also reads npc_trainer_template if present and joins via entry-of-type
+    referenced trainers. CMaNGOS uses entry > 200000 as template references
+    in some places, but the simpler interpretation (entry IS the NPC) works
+    for the vast majority of profession trainers and matches what we need
+    for ReqSkillRank extraction.
+    """
+    npc_to_spells = {}
+    n_rows = 0
+    for tbl_key in ("npc_trainer", "npc_trainer_template"):
+        path = files.get(tbl_key)
+        if not path or not path.exists():
+            continue
+        for cols in parse_insert_rows(path):
+            if len(cols) < 5:
+                continue
+            try:
+                entry      = int(cols[0])
+                spell_id   = int(cols[1])
+                req_skill  = int(cols[3])
+            except ValueError:
+                continue
+            if req_skill == 0:
+                continue  # class spell
+            npc_to_spells.setdefault(entry, []).append(spell_id)
+            n_rows += 1
+    print(f"  [{source_label}] flat-layout rows: {n_rows:,} "
+          f"across {len(npc_to_spells):,} trainer entries", file=sys.stderr)
+
+    out = {}
+    for entry, spells in npc_to_spells.items():
+        for sid in spells:
+            out.setdefault(sid, []).append(entry)
+    return out
+
+
 LAYOUT_EXTRACTORS = {
     "normalized": extract_normalized,
+    "flat":       extract_flat,
 }
 
 
@@ -415,6 +542,86 @@ def extract_all(refresh: bool = False) -> dict:
 
     # Convert sets to sorted lists for deterministic output.
     return {sid: sorted(npcs) for sid, npcs in merged_spell_to_npcs.items()}
+
+
+def extract_all_skill_ranks(refresh: bool = False) -> dict:
+    """Walk every configured trainer source and return the authoritative
+    `{spellId: ReqSkillRank}` map — the literal "Requires Blacksmithing
+    (150)" / "Requires Tailoring (300)" / etc. value the trainer NPC
+    enforces at point-of-learn. Used by build_authoritative_data.py to
+    populate `requiredSkill` for trainer-taught recipes where the DBC's
+    MinSkillLineRank is the placeholder 1.
+
+    When a spell appears in multiple sources (e.g. a Vanilla recipe in
+    AzerothCore Wrath AND TrinityCore Cata), the LATER expansion wins —
+    Blizzard occasionally rebalances trainer requirements between
+    expansions and the newer value matches the current live game state
+    for that content.
+
+    SOURCES is ordered oldest → newest (AzerothCore Wrath → TrinityCore
+    Cata → future MoP), so a straight overwrite as we iterate gives the
+    right precedence.
+    """
+    # Per-layout column indices into a trainer-spell row tuple. Both
+    # layouts have (..., spell_id, ..., req_skill_line, req_skill_rank, ...)
+    # but at different positions:
+    #   normalized (AzerothCore Wrath / TrinityCore Cata trainer_spell):
+    #     (TrainerId, SpellId, MoneyCost, ReqSkillLine, ReqSkillRank, ...)
+    #   flat (CMaNGOS Classic / TBC npc_trainer + npc_trainer_template):
+    #     (entry, spell, spellcost, reqskill, reqskillvalue, reqlevel, ...)
+    LAYOUT_COLS = {
+        "normalized": {"spell": 1, "line": 3, "rank": 4, "files": ("trainer_spell",)},
+        "flat":       {"spell": 1, "line": 3, "rank": 4, "files": ("npc_trainer", "npc_trainer_template")},
+    }
+    skill_ranks: dict[int, int] = {}
+    for source in SOURCES:
+        layout = source["layout"]
+        cols_def = LAYOUT_COLS.get(layout)
+        if not cols_def:
+            continue
+        print(f"[{source['name']}] reading trainer rows for ReqSkillRank "
+              f"(layout={layout})...", file=sys.stderr)
+        files = ensure_files(source, refresh=refresh)
+        n_rows = 0
+        n_skipped_class = 0
+        for tbl_key in cols_def["files"]:
+            tbl_path = files.get(tbl_key)
+            if not tbl_path or not tbl_path.exists():
+                continue
+            for cols in parse_insert_rows(tbl_path):
+                if len(cols) <= cols_def["rank"]:
+                    continue
+                try:
+                    spell_id = int(cols[cols_def["spell"]])
+                    req_line = int(cols[cols_def["line"]])
+                    req_rank = int(cols[cols_def["rank"]])
+                except ValueError:
+                    continue
+                if req_line == 0:
+                    n_skipped_class += 1
+                    continue
+                if req_rank <= 0:
+                    continue
+                # Precedence:
+                #   - Vanilla-era source (CMaNGOS Classic): GAP-FILL ONLY.
+                #     Use setdefault so it never overwrites a value already
+                #     supplied by a later-expansion source. CMaNGOS gives
+                #     us apprentice-tier Vanilla recipes that AzerothCore
+                #     Wrath / TrinityCore Cata strip out; for everything
+                #     else, the later source wins (Blizzard occasionally
+                #     rebalanced trainer requirements between expansions).
+                #   - Later-expansion sources (Wrath / Cata / future MoP):
+                #     overwrite freely — last write wins, source order in
+                #     SOURCES is oldest-non-vanilla → newest.
+                if source.get("expansion") == "vanilla":
+                    skill_ranks.setdefault(spell_id, req_rank)
+                else:
+                    skill_ranks[spell_id] = req_rank
+                n_rows += 1
+        print(f"  [{source['name']}] absorbed {n_rows:,} (spell, rank) entries "
+              f"(skipped {n_skipped_class:,} class-spell rows)", file=sys.stderr)
+    print(f"\nTotal trainer skill-rank entries: {len(skill_ranks):,}", file=sys.stderr)
+    return skill_ranks
 
 
 def main():

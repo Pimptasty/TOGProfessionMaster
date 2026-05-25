@@ -88,6 +88,27 @@ local function isBogusName(n)
     return false
 end
 
+-- True when a name looks like a Blizzard internal/dev/placeholder string
+-- that should never reach the player. Used to catch the spell-id / item-id
+-- namespace collision in MergeCraftersIntoGdb and BackfillBogusRecipeNames:
+-- GetItemInfo(spellId) sometimes returns a real (but obsolete/QA) ItemSparse
+-- entry whose ID happens to match a recipe's spellId. Example: spell 26926
+-- = "Heavy Copper Ring" (Jewelcrafting); item 26926 = "59 TEST Green Shaman
+-- Chest". Without this guard the stub gets cached with the TEST name and
+-- every render shows it. Mirror of _OBSOLETE_NAME_PATTERNS in
+-- tools/build_authoritative_data.py — keep the two in sync.
+local function isObsoleteItemName(n)
+    if type(n) ~= "string" or n == "" then return false end
+    if n:find("%f[%w]TEST%f[%W]")       then return true end  -- "59 TEST ..."
+    if n:find("%f[%w]QA%f[%W]")         then return true end
+    if n:lower():find("%f[%w]deprecated%f[%W]") then return true end
+    if n:lower():find("%f[%w]unused%f[%W]")     then return true end
+    if n:lower():match("^zz")            then return true end  -- "ZZOLD Design: ..."
+    if n:lower():find("%[ph%]", 1, true) then return true end  -- "Manual: ... [PH]"
+    if n:lower():match("%s+old$")        then return true end  -- "Pattern: ... OLD"
+    return false
+end
+
 local function extractNameFromLink(link)
     if type(link) ~= "string" then return nil end
     local name = link:match("%[(.-)%]")
@@ -473,6 +494,15 @@ end)
 hooksecurefunc(Ace, "OnPlayerEnteringWorld", function(_self, _event, isInitialLogin, isReloadingUi)
     if isInitialLogin or isReloadingUi then
         Scanner:InitDeltaSync()
+        -- One-time scrub of obsolete-marker names cached in gdb.recipes by
+        -- pre-v0.5.5 versions of the addon (before the MergeCraftersIntoGdb /
+        -- BackfillBogusRecipeNames / MergeRecipeMetaIntoGdb guards). Runs
+        -- BEFORE the backfill schedule so the backfill sees the cleared
+        -- names and repopulates them via GetSpellInfo. Without this, the
+        -- guards prevent NEW pollution but the OLD pollution (Heavy Copper
+        -- Ring stored as "59 TEST Green Shaman Chest", JC designs stored as
+        -- "ZZOLD Design: ...", etc.) persists in SavedVariables forever.
+        Scanner:ScrubObsoleteRecipeNames()
         -- Both backfills retry several times because GetItemInfo returns nil for
         -- items not yet in the client cache, and the cache fills lazily over the
         -- first ~couple minutes after login.  Each pass only logs when it
@@ -1205,6 +1235,38 @@ function Scanner:BackfillReagentItemIds()
     end
 end
 
+--- One-time PEW scrub: clear any rd.name in gdb.recipes that's a Blizzard
+--- internal / dev / QA / placeholder string (TEST / ZZOLD / DEPRECATED /
+--- UNUSED / [PH] / OLD-suffix). These got cached by pre-v0.5.5 versions of
+--- the addon when MergeCraftersIntoGdb's stub creation called
+--- `GetItemInfo(recipeId)` with what was actually a spell ID — and the
+--- item-ID namespace collides with the spell-ID namespace for many recipes
+--- (e.g. spell 26926 = Heavy Copper Ring; item 26926 = "59 TEST Green
+--- Shaman Chest"), so the stub got stamped with the wrong name and persisted
+--- in SavedVariables. Clearing the name (rather than overwriting it here)
+--- lets BackfillBogusRecipeNames run next and populate it from GetSpellInfo
+--- — which is now guarded against the same collision. Also clears stale
+--- itemLink/icon when they look item-id-derived, so the next backfill picks
+--- up the spell icon instead.
+function Scanner:ScrubObsoleteRecipeNames()
+    local gdb = addon:GetGuildDb()
+    if not gdb or not gdb.recipes then return end
+    local scrubbed = 0
+    for _, profRecipes in pairs(gdb.recipes) do
+        for _, rd in pairs(profRecipes) do
+            if isObsoleteItemName(rd.name) then
+                rd.name     = nil
+                rd.icon     = nil      -- was likely the obsolete item's icon
+                rd.itemLink = nil      -- was likely a link to the obsolete item
+                scrubbed    = scrubbed + 1
+            end
+        end
+    end
+    if scrubbed > 0 then
+        addon:Print(("Scrubbed %d obsolete recipe names (TEST/ZZOLD/DEPRECATED/[PH]) from cache"):format(scrubbed))
+    end
+end
+
 --- Walk gdb.recipes once and recover any missing or placeholder recipe metadata.
 --- Two failure modes this fixes:
 ---   1. Classic Era's GetTradeSkillInfo returns "? <id>" placeholder strings when
@@ -1231,9 +1293,14 @@ function Scanner:BackfillBogusRecipeNames()
             end
             -- Item-keyed recipe (most professions): recipeId IS the crafted item
             -- ID, so GetItemInfo gives us name + icon + a real itemLink.
+            -- Reject the result when it matches a Blizzard internal/dev/QA name
+            -- (TEST / ZZOLD / DEPRECATED / [PH] / OLD) — the item-ID namespace
+            -- collides with the spell-ID namespace for some recipes (e.g. spell
+            -- 26926 = Heavy Copper Ring; item 26926 = "59 TEST Green Shaman
+            -- Chest"), and we don't want the test name leaking into the UI.
             if isBogusName(rd.name) and rd.isSpell ~= true and type(recipeId) == "number" then
                 local nm, link, _, _, _, _, _, _, _, icon = GetItemInfo(recipeId)
-                if nm then
+                if nm and not isObsoleteItemName(nm) then
                     rd.name     = rd.name     and not isBogusName(rd.name)     and rd.name     or nm
                     rd.icon     = rd.icon     or icon
                     rd.itemLink = rd.itemLink or link
@@ -1579,10 +1646,19 @@ function Scanner:MergeRecipeMetaIntoGdb(gdb, profId, meta)
     local profRecipes = gdb.recipes[profId]
     for recipeId, rd in pairs(meta) do
         if type(rd) == "table" then
+            -- Cross-guildmate poison containment: if the sender's gdb is
+            -- still carrying a Blizzard internal/dev/QA name (TEST / ZZOLD /
+            -- DEPRECATED / [PH]) from a pre-v0.5.5 stub, do NOT propagate it
+            -- into ours. Treat the incoming name as missing — the local
+            -- BackfillBogusRecipeNames pass will populate from GetSpellInfo.
+            -- Without this guard, ONE poisoned client's broadcast re-infects
+            -- everyone via MergeRecipeMetaIntoGdb every time they sync.
+            local incomingName = rd.name
+            if isObsoleteItemName(incomingName) then incomingName = nil end
             local existing = profRecipes[recipeId]
             if not existing then
                 profRecipes[recipeId] = {
-                    name       = cleanRecipeName(rd.name, rd.itemLink, rd.recipeLink),
+                    name       = cleanRecipeName(incomingName, rd.itemLink, rd.recipeLink),
                     icon       = rd.icon,
                     isSpell    = rd.isSpell and true or false,
                     spellId    = rd.spellId,
@@ -1592,15 +1668,21 @@ function Scanner:MergeRecipeMetaIntoGdb(gdb, profId, meta)
                     crafters   = {},
                 }
             else
-                -- Self-heal: if the stored name is a "? <id>" placeholder, replace it
-                -- with whatever the new payload (or our existing links) can produce.
-                if isBogusName(existing.name) then
-                    local clean = cleanRecipeName(rd.name,
+                -- Self-heal: if the stored name is a "? <id>" placeholder OR
+                -- an obsolete-marker leftover from a pre-v0.5.5 cache, replace
+                -- it with whatever the new payload (or our existing links)
+                -- can produce.
+                if isBogusName(existing.name) or isObsoleteItemName(existing.name) then
+                    local clean = cleanRecipeName(incomingName,
                         rd.itemLink   or existing.itemLink,
                         rd.recipeLink or existing.recipeLink)
-                    if not isBogusName(clean) then existing.name = clean end
-                elseif rd.name and not existing.name then
-                    existing.name = rd.name
+                    if not isBogusName(clean) and not isObsoleteItemName(clean) then
+                        existing.name = clean
+                    else
+                        existing.name = nil  -- let backfill repopulate via GetSpellInfo
+                    end
+                elseif incomingName and not existing.name then
+                    existing.name = incomingName
                 end
                 if rd.icon    and not existing.icon    then existing.icon    = rd.icon    end
                 if rd.isSpell ~= nil and existing.isSpell == nil then existing.isSpell = rd.isSpell and true or false end
@@ -1644,7 +1726,12 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
                 local stub = { crafters = {} }
                 if type(recipeId) == "number" then
                     local nm, link, _, _, _, _, _, _, _, icon = GetItemInfo(recipeId)
-                    if nm then
+                    -- Reject namespace-collision hits (recipeId is a spell ID
+                    -- but the same numeric value happens to be a TEST / ZZOLD
+                    -- / DEPRECATED / [PH] item in ItemSparse). Falls through
+                    -- to GetSpellInfo below, which is the correct API for a
+                    -- spell-id stub anyway.
+                    if nm and not isObsoleteItemName(nm) then
                         stub.name     = nm
                         stub.icon     = icon
                         stub.itemLink = link

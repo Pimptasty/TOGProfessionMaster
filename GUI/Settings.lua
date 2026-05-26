@@ -346,7 +346,7 @@ local OPTIONS = {
                     Ace.db.char.shoppingAlerts = {}
                     Ace.db.char.cooldownAlerts = {}
                 end
-                addon:Print("All guild data purged.")
+                addon:Print(L["MsgGuildDataPurged"])
                 if addon.MainWindow then addon.MainWindow:Refresh() end
             end,
         },
@@ -377,7 +377,7 @@ local OPTIONS = {
                     gdb.specializations[charKey]  = nil
                     gdb.factions[charKey]         = nil
                 end
-                addon:Print("Your character data purged.")
+                addon:Print(L["MsgOwnDataPurged"])
                 if addon.MainWindow then addon.MainWindow:Refresh() end
             end,
         },

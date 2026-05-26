@@ -528,6 +528,11 @@ MANUAL_EXCLUDED_SPELLS = {
     22434,   # Enchanting "Charged Scale of Onyxia" — sibling never-shipped
              # Onyxia-scale enchant. Same provenance as 22430.
              # User-reported on TBC Anniversary Phase 2 (Galdof, 2026-05).
+    19106,   # Leatherworking "Onyxia Scale Breastplate" — planned matching
+             # chest piece to the shipped "Onyxia Scale Cloak" (spell 19092);
+             # cut before live. Recipe scroll item 15780 and crafted item
+             # 15141 also never shipped. User-reported on Classic Era
+             # (Galdof, 2026-05).
     11447,   # Alchemy "Elixir of Waterwalking" — DBC says Alchemy but Wowhead
              # community confirms this is actually a daily quest reward, not
              # an Alchemy craft. Filtering out so it doesn't pollute the

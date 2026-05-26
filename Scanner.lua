@@ -10,6 +10,7 @@
 
 local _, addon = ...
 local Ace = addon.lib   -- the AceAddon object created in TOGProfessionMaster.lua
+local L   = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 
 -- ---------------------------------------------------------------------------
 -- Module object
@@ -162,14 +163,6 @@ local PROF_NAME_TO_ID = {
     ["Mining"]         = 186,
     ["Skinning"]       = 393,
     ["Tailoring"]      = 197,
-}
-
--- Known specialisation spells per profession (TBC+).
--- { [profId] = { spellId, ... } } — first match wins.
-local SPEC_SPELLS = {
-    [171] = { 28677, 28682, 28683 },   -- Alchemy: Potionmaster, Elixir, Transmutation
-    [202] = { 20219, 20222 },          -- Engineering: Gnomish, Goblin
-    [197] = { 26797, 26801, 26802 },   -- Tailoring: Mooncloth, Shadoweave, Spellfire
 }
 
 -- ---------------------------------------------------------------------------
@@ -544,7 +537,7 @@ function addon:ForceSync()
     Scanner._lastBroadcastAt = 0          -- bypass debounce
     Scanner._lastBroadcastHashes = nil    -- force full hash list (no diff)
     Scanner:BroadcastHashes()
-    addon:Print("Force sync sent.")
+    addon:Print(L["SlashForceSyncSent"])
 end
 
 -- /togpm status — dump comm/sync diagnostic snapshot to chat.
@@ -997,11 +990,6 @@ function Scanner:ScanTradeSkillInto(charKey, isLinked)  --luacheck: ignore isLin
     if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
     gdb.lastScan[charKey][profId] = GetServerTime()
 
-    -- Spec detection is own-character only and only available from TBC onwards.
-    if not isLinked and not addon.isVanilla then
-        self:DetectSpecializations(charKey)
-    end
-
     -- Invalidate the per-profession recipe hash and the guild:recipes roll-up.
     local DS = self.DS
     if DS then
@@ -1191,27 +1179,6 @@ function Scanner:ResolveProfessionId(name)
 
     -- Fall back to the static English map.
     return PROF_NAME_TO_ID[name]
-end
-
--- ---------------------------------------------------------------------------
--- Specialisation detection (TBC+, own character only)
--- ---------------------------------------------------------------------------
-
-function Scanner:DetectSpecializations(charKey)
-    local gdb = addon:GetGuildDb()
-    if not gdb then return end
-    local specs = {}
-    for profId, spellList in pairs(SPEC_SPELLS) do
-        for _, spellId in ipairs(spellList) do
-            if IsSpellKnown(spellId, false) then
-                specs[profId] = spellId
-                break
-            end
-        end
-    end
-    gdb.specializations[charKey] = specs
-    addon:DebugPrint("Scanner: specs for", charKey, "—",
-        (function() local n = 0; for _ in pairs(specs) do n = n + 1 end; return n end)())
 end
 
 -- ---------------------------------------------------------------------------

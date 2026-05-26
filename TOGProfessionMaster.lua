@@ -3,6 +3,7 @@
 -- Guild profession browser, cooldown tracker, and reagent planner for Classic WoW.
 
 local addonName, addon = ...
+local L = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 
 -- ---------------------------------------------------------------------------
 -- Addon global
@@ -374,11 +375,11 @@ end
 -- happens via addon.PROF_AVAILABILITY below; per-tab category filtering
 -- happens via addon.CRAFTING_PROFS.
 addon.PROF_NAMES = {
-    [171] = "Alchemy",       [164] = "Blacksmithing", [185] = "Cooking",
-    [333] = "Enchanting",    [202] = "Engineering",   [129] = "First Aid",
-    [165] = "Leatherworking",[186] = "Mining",        [197] = "Tailoring",
-    [182] = "Herbalism",     [393] = "Skinning",      [755] = "Jewelcrafting",
-    [773] = "Inscription",   [356] = "Fishing",       [374] = "Smelting",
+    [171] = L["ProfAlchemy"],        [164] = L["ProfBlacksmithing"],  [185] = L["ProfCooking"],
+    [333] = L["ProfEnchanting"],     [202] = L["ProfEngineering"],    [129] = L["ProfFirstAid"],
+    [165] = L["ProfLeatherworking"], [186] = L["ProfMining"],         [197] = L["ProfTailoring"],
+    [182] = L["ProfHerbalism"],      [393] = L["ProfSkinning"],       [755] = L["ProfJewelcrafting"],
+    [773] = L["ProfInscription"],    [356] = L["ProfFishing"],        [374] = L["ProfSmelting"],
 }
 
 -- Per-profession version availability. Each entry is a function that
@@ -432,7 +433,6 @@ function addon:OnCrafterCameOnline(charKey)
     if not gdb or not gdb.recipes then return end
 
     local alerted  = false
-    local L        = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
     local shortKey = charKey:match("^(.-)%-") or charKey
 
     for recipeId in pairs(alerts) do
@@ -823,7 +823,7 @@ function addon:ForceBroadcast()
     addon.Scanner._lastBroadcastAt = 0          -- bypass debounce
     addon.Scanner._lastBroadcastHashes = nil    -- force full hash list (no diff)
     addon.Scanner:BroadcastHashes()
-    Ace:Print("Force broadcast sent.")
+    Ace:Print(L["SlashForceBroadcastSent"])
 end
 
 --- /togpm spellcache — dump the spellbook name→id cache to chat for debugging.
@@ -860,7 +860,7 @@ function addon:ToggleDebug(args)
         addon.debug = not addon.debug
     end
     Ace.db.profile.debug = addon.debug
-    Ace:Print("Debug output " .. (addon.debug and "|cff00ff00enabled|r" or "|cffff4444disabled|r"))
+    Ace:Print(string.format(L["SlashDebugToggleFormat"], addon.debug and L["SlashDebugEnabled"] or L["SlashDebugDisabled"]))
 end
 
 --- /togpm versioncheck — broadcast version check and print responses.
@@ -904,16 +904,16 @@ function addon:PrintVersionCheck()
 end
 
 function Ace:PrintHelp()
-    self:Print("|cffda8cffTOG Profession Master|r — commands:")
-    self:Print("  /togpm              — open profession browser")
-    self:Print("  /togpm reagents     — open missing reagents")
-    self:Print("  /togpm minimap      — show minimap button")
-    self:Print("  /togpm purge        — open purge dialog")
-    self:Print("  /togpm sync         — force full guild re-sync")
-    self:Print("  /togpm status       — dump sync/comm diagnostic info")
-    self:Print("  /togpm versioncheck — check addon versions across guild")
-    self:Print("  /togpm debug        — toggle debug output")
-    self:Print("  /togpm help         — show this list")
+    self:Print(L["SlashHelpHeader"])
+    self:Print("  /togpm              \226\128\148 " .. L["SlashHelpOpen"])
+    self:Print("  /togpm reagents     \226\128\148 " .. L["SlashHelpReagents"])
+    self:Print("  /togpm minimap      \226\128\148 " .. L["SlashHelpMinimap"])
+    self:Print("  /togpm purge        \226\128\148 " .. L["SlashHelpPurge"])
+    self:Print("  /togpm sync         \226\128\148 " .. L["SlashHelpSync"])
+    self:Print("  /togpm status       \226\128\148 " .. L["SlashHelpStatus"])
+    self:Print("  /togpm versioncheck \226\128\148 " .. L["SlashHelpVersionCheck"])
+    self:Print("  /togpm debug        \226\128\148 " .. L["SlashHelpDebug"])
+    self:Print("  /togpm help         \226\128\148 " .. L["SlashHelpHelp"])
 end
 
 -- ---------------------------------------------------------------------------

@@ -238,10 +238,7 @@ local function BuildMissingList(charKey, profId, includeTrainer)
     end
 
     -- skillMax for the rank-book filter below — also walks all buckets and
-    -- takes the maximum value, for the same reason as knownByChar. The
-    -- specialisations lookup uses the bucket where the char's skills live
-    -- (specialisations are stored alongside skills by the scanner, so they
-    -- share the same bucket).
+    -- takes the maximum value, for the same reason as knownByChar.
     local skillMax = 0
     for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
         local se = bucket.skills and bucket.skills[charKey] and bucket.skills[charKey][profId]
@@ -249,9 +246,6 @@ local function BuildMissingList(charKey, profId, includeTrainer)
             skillMax = se.skillMax
         end
     end
-    local skillsBucket = addon:FindBucketForChar(charKey, "skills")
-    local specs       = skillsBucket and skillsBucket.specializations and skillsBucket.specializations[charKey]
-    local playerSpec  = specs and specs[profId]
 
     local out = {}
 
@@ -300,6 +294,19 @@ local function BuildMissingList(charKey, profId, includeTrainer)
             -- Wrath, etc. — never learnable here regardless of phase or
             -- skill cap. PRIMARY cross-expansion gate.
             skip = true
+        elseif (not data.minExpansion) and clientExp == 1 and spellId > 25000 then
+            -- Defensive gate for Classic Era against untagged post-Vanilla
+            -- recipes. The build tool tags non-Vanilla recipes with
+            -- minExpansion>=2 but coverage is incomplete (~36% of Cooking,
+            -- ~30% of Leatherworking lack the tag). Every Vanilla recipe
+            -- spell ID is in the 2000-25000 range, so an untagged spellId
+            -- above that on Vanilla is post-Vanilla content the Era client
+            -- can't learn (TBC Crystal Throat Lozenge spell 30047, Cata
+            -- Smoked Redgill 470370, SoD/Anniversary Prowler Steak 1225758,
+            -- etc.). Belt-and-suspenders to the requiredSkill cap below,
+            -- which only catches reqSkill > 300; low-skill TBC recipes
+            -- slip past that check.
+            skip = true
         elseif data.requiredSkill and data.requiredSkill > clientMaxSkill then
             -- Recipe is from a future expansion the current client can't
             -- support. Hide it; the player will see it once they're on a
@@ -312,13 +319,20 @@ local function BuildMissingList(charKey, profId, includeTrainer)
             -- Blizzard advances. Recipes without a `phase` field are
             -- always shown (launch / unidentified content).
             skip = true
-        elseif data.specialization and data.specialization ~= playerSpec then
-            skip = true
         elseif data.season then
             skip = true
         elseif knownByChar(spellId) then
             skip = true
         elseif data.teaches and data.teaches ~= spellId and knownByChar(data.teaches) then
+            skip = true
+        elseif data.craftedItemId and knownByChar(data.craftedItemId) then
+            -- Fallback when rd.spellId is nil in gdb.recipes — Classic Era's
+            -- BuildSpellNameCache walk doesn't enumerate every profession
+            -- recipe as a "spell" spellbook item, so the spellNameCache
+            -- lookup misses and rd.spellId stays nil. Non-Enchanting
+            -- gdb.recipes[profId] is keyed by crafted-item ID; matching on
+            -- data.craftedItemId catches the known set even without spellId
+            -- being populated on the scanner side.
             skip = true
         elseif type(data.teaches) == "string" and RANK_CAPS[data.teaches] then
             -- Rank-up book (e.g. "Expert First Aid" raises max from 150
@@ -747,8 +761,8 @@ function MissingRecipesTab:BuildPool(parent)
         bankBtn:Hide()
         bankBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(bankBtn)
-            GameTooltip:SetText("Request from Bank", 1, 1, 1)
-            GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker for this recipe scroll.", nil, nil, nil, true)
+            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1)
+            GameTooltip:AddLine(L["TooltipBankDescScroll"], nil, nil, nil, true)
             GameTooltip:Show()
         end)
         bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -769,8 +783,8 @@ function MissingRecipesTab:BuildPool(parent)
         ahBtn:Hide()
         ahBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(ahBtn)
-            GameTooltip:SetText("Search Auction House", 1, 1, 1)
-            GameTooltip:AddLine("Open this recipe scroll in the AH browse search.", nil, nil, nil, true)
+            GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1)
+            GameTooltip:AddLine(L["TooltipAHDescScroll"], nil, nil, nil, true)
             GameTooltip:Show()
         end)
         ahBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)

@@ -7,6 +7,7 @@
 
 local _, addon = ...
 local Ace = addon.lib
+local L   = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 
 -- ---------------------------------------------------------------------------
 -- LDB data object
@@ -38,9 +39,9 @@ local dataObj = LDB:NewDataObject("TOGProfessionMaster", {
     OnTooltipShow = function(tt)
         tt:AddLine("|cffda8cffTOG Profession Master|r")
         tt:AddLine(" ")
-        tt:AddLine("|cffffd100Left-click|r to toggle profession browser")
-        tt:AddLine("|cffffd100Right-click|r to toggle reagents")
-        tt:AddLine("|cffffd100Shift+Left|r to open settings")
+        tt:AddLine(L["MinimapTooltipLeftClick"])
+        tt:AddLine(L["MinimapTooltipRightClick"])
+        tt:AddLine(L["MinimapTooltipShiftLeft"])
     end,
 })
 
@@ -81,7 +82,7 @@ function addon:ShowMinimapButton()
     if icon then
         icon:Show("TOGProfessionMaster")
     end
-    addon:Print("Minimap button shown.")
+    addon:Print(L["MinimapButtonShown"])
 end
 
 -- ---------------------------------------------------------------------------

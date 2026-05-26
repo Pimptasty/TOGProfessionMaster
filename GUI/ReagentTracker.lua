@@ -8,6 +8,7 @@
 
 local _, addon = ...
 local Ace = addon.lib
+local L   = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 
 -- ---------------------------------------------------------------------------
 -- Module
@@ -109,8 +110,8 @@ function RT:GetRow(idx)
     bankBtn:Hide()
     bankBtn:SetScript("OnEnter", function()
         addon.Tooltip.Owner(bankBtn)
-        GameTooltip:SetText("Request from Bank", 1, 1, 1)
-        GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker.", nil, nil, nil, true)
+        GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1)
+        GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
         GameTooltip:Show()
     end)
     bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)

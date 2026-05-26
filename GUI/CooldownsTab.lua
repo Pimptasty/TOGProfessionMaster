@@ -718,7 +718,7 @@ if not StaticPopupDialogs["TOGPM_SPLIT_STACK"] then
                 if emptyBag then break end
             end
             if not emptyBag then
-                DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r No empty bag slot to split into.")
+                DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. L["MailMsgNoEmptyBag"])
                 return
             end
             if C_Container then
@@ -746,11 +746,11 @@ end
 --- Open mailbox, attach reagents, pre-fill recipient/subject/body.
 local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, reagentId, reagentQty)
     if not MailFrame or not MailFrame:IsShown() then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r Open a mailbox first.")
+        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. L["MailMsgOpenMailbox"])
         return
     end
     if GetSendMailItem(1) then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r Mail already has items attached — send or clear them first.")
+        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. L["MailMsgHasItems"])
         return
     end
     local reagentName = GetItemInfo(reagentId) or ("item:" .. reagentId)
@@ -761,7 +761,7 @@ local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, re
     end
     local plan = CdMail_CalculateFulfillmentPlan(stacks, reagentQty, totalInBags)
     if not plan.canFulfill then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. (plan.reason or "Cannot fulfill."))
+        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. (plan.reason or L["MailMsgCannotFulfill"]))
         return
     end
     if plan.splitStack then
@@ -788,20 +788,18 @@ local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, re
         attachSlot = attachSlot + 1
     end
     if attached == 0 then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r Could not attach items.")
+        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. L["MailMsgCouldNotAttach"])
         return
     end
     local baseName = playerName:match("^([^%-]+)") or playerName
     if SendMailNameEditBox then SendMailNameEditBox:SetText(baseName) end
-    if SendMailSubjectEditBox then SendMailSubjectEditBox:SetText("Cooldown supply: " .. cooldownName) end
+    if SendMailSubjectEditBox then SendMailSubjectEditBox:SetText(string.format(L["MailSubjectFormat"], cooldownName)) end
     local bodyBox = MailEditBox or SendMailBodyEditBox
     if bodyBox then
-        bodyBox:SetText(string.format(
-            "Hi %s! Please use these materials to make %s. Please send me the %s when you have time to craft it. Thanks!",
-            baseName, outputName, outputName))
+        bodyBox:SetText(string.format(L["MailBodyFormat"], baseName, outputName, outputName))
     end
-    DEFAULT_CHAT_FRAME:AddMessage(string.format(
-        "|cFF88CCCCTOG Profession Master:|r Attached %dx %s for %s.", attached, reagentName, baseName))
+    DEFAULT_CHAT_FRAME:AddMessage("|cFF88CCCCTOG Profession Master:|r " ..
+        string.format(L["MailMsgAttachedFormat"], attached, reagentName, baseName))
 end
 
 -- ---------------------------------------------------------------------------
@@ -1281,7 +1279,7 @@ function CooldownsTab:DrawRow(parent, row, now)
     charLbl:SetCallback("OnEnter", function(_widget)
         addon.Tooltip.Owner(_widget.frame)
         GameTooltip:SetText(row.shortName, 1, 1, 1)
-        GameTooltip:AddLine("Right-click to whisper", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L["TooltipWhisperRightClick"], 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     charLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
@@ -1376,9 +1374,9 @@ function CooldownsTab:DrawRow(parent, row, now)
         cdNameLbl:SetCallback("OnEnter", function(_widget)
             addon.Tooltip.Owner(_widget.frame)
             if row.isTransmuteGroup then
-                GameTooltip:AddLine("Click to see transmutes", 1, 1, 1)
+                GameTooltip:AddLine(L["TooltipClickTransmutes"], 1, 1, 1)
             else
-                GameTooltip:AddLine("Click to see " .. (row.cdName or "details"), 1, 1, 1)
+                GameTooltip:AddLine(string.format(L["TooltipClickDetailsFormat"], row.cdName or L["TooltipClickDetailsFallback"]), 1, 1, 1)
             end
             GameTooltip:Show()
         end)
@@ -1451,8 +1449,8 @@ function CooldownsTab:DrawRow(parent, row, now)
             end)
             ahBtn:SetCallback("OnEnter", function(_widget)
                 addon.Tooltip.Owner(_widget.frame)
-                GameTooltip:SetText("Search Auction House", 1, 1, 1)
-                GameTooltip:AddLine("Open this reagent in the AH browse search.", nil, nil, nil, true)
+                GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1)
+                GameTooltip:AddLine(L["TooltipAHDescReagent"], nil, nil, nil, true)
                 GameTooltip:Show()
             end)
             ahBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
@@ -1472,8 +1470,8 @@ function CooldownsTab:DrawRow(parent, row, now)
             end)
             bankBtn:SetCallback("OnEnter", function(_widget)
                 addon.Tooltip.Owner(_widget.frame)
-                GameTooltip:SetText("Request from Bank", 1, 1, 1)
-                GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker.", nil, nil, nil, true)
+                GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1)
+                GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
                 GameTooltip:Show()
             end)
             bankBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
@@ -1803,8 +1801,8 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
                 end)
                 ahBtn:SetScript("OnEnter", function()
                     addon.Tooltip.Owner(ahBtn)
-                    GameTooltip:SetText("Search Auction House", 1, 1, 1)
-                    GameTooltip:AddLine("Open this reagent in the AH browse search.", nil, nil, nil, true)
+                    GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1)
+                    GameTooltip:AddLine(L["TooltipAHDescReagent"], nil, nil, nil, true)
                     showAbovePopup()
                 end)
                 ahBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1836,8 +1834,8 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
                 end)
                 bankBtn:SetScript("OnEnter", function()
                     addon.Tooltip.Owner(bankBtn)
-                    GameTooltip:SetText("Request from Bank", 1, 1, 1)
-                    GameTooltip:AddLine("Send a request to a TOGBankClassic guild banker.", nil, nil, nil, true)
+                    GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1)
+                    GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
                     showAbovePopup()
                 end)
                 bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)

@@ -21,6 +21,7 @@
 
 local _, addon = ...
 local Ace = addon.lib
+local L   = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 
 local AH = {}
 addon.AH = AH
@@ -104,7 +105,7 @@ end
 function AH.SearchFor(itemName)
     if type(itemName) ~= "string" or itemName == "" then return false end
     if not AH.IsOpen() then
-        addon:Print("Open the auction house to search.")
+        addon:Print(L["AHScannerOpenAH"])
         return false
     end
 

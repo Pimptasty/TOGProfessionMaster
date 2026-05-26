@@ -322,11 +322,8 @@ function MainWindow:Open(tabKey)
     gearIcon:SetScript("OnEnter", function(self_)
         addon.Tooltip.Owner(self_)
         local brandColor = addon.BrandColor or "ffFF8000"
-        GameTooltip:SetText("|c" .. brandColor .. "Settings|r", 1, 1, 1)
-        GameTooltip:AddLine("Open the TOG Profession Master settings panel " ..
-            "(|cffffd700ESC > Options > AddOns > TOG Profession Master|r). " ..
-            "Same target as |cffffd700/togpm settings|r and Shift+left-click on the minimap button.",
-            nil, nil, nil, true)
+        GameTooltip:SetText("|c" .. brandColor .. L["TooltipSettingsTitle"] .. "|r", 1, 1, 1)
+        GameTooltip:AddLine(L["TooltipSettingsDesc"], nil, nil, nil, true)
         GameTooltip:Show()
     end)
     gearIcon:SetScript("OnLeave", function() GameTooltip:Hide() end)

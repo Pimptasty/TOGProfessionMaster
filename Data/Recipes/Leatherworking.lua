@@ -3210,25 +3210,6 @@ addon.recipeDB[165] = {
 			["requiredSkill"] = 300,
 			["teaches"] = 19104,
 		},
-		[19106] = {
-			["craftedItemId"] = 15141,
-			["difficulty"] = {
-				1,
-				160,
-				320,
-				340,
-			},
-			["itemId"] = 15780,
-			["name"] = "Onyxia Scale Breastplate",
-			["reagents"] = {
-				[8170] = 40,
-				[14341] = 2,
-				[15410] = 12,
-				[15416] = 60,
-			},
-			["requiredSkill"] = 300,
-			["teaches"] = 19106,
-		},
 		[19107] = {
 			["craftedItemId"] = 15052,
 			["difficulty"] = {

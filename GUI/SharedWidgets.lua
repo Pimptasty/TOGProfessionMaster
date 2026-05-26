@@ -320,9 +320,9 @@ function addon.GUI.MakeScanAHButton(opts)
         })
         if not ok then
             if reason == "ah-closed" then
-                addon:Print("Open the auction house first.")
+                addon:Print(L["AHOpenFirst"])
             elseif reason == "no-items" then
-                addon:Print(opts.noItemsError or "No items to scan in the current view.")
+                addon:Print(opts.noItemsError or L["AHNoItemsToScan"])
             end
         end
         refreshTabButton(opts.tabName)

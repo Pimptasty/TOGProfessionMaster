@@ -139,9 +139,11 @@ L["MissingAddToWatchTooltip"]   = "Watch this recipe scroll"
 L["MissingAddToWatchDesc"]      = "Add the recipe scroll to your Reagent Watch list so you'll see it the moment it lands in your bags."
 L["MissingRemoveFromWatch"]     = "\226\156\147"
 L["MissingRemoveFromWatchTooltip"] = "Already on Reagent Watch \226\128\148 click to stop watching"
-L["MissingCountFormat"]         = "%d Missing %s"
-L["MissingCountSingular"]       = "Recipe"
-L["MissingCountPlural"]         = "Recipes"
+-- Format intentionally "%d %s" so the inflected adjective travels with the
+-- singular/plural noun phrase (German adjective endings differ; English doesn't).
+L["MissingCountFormat"]         = "%d %s"
+L["MissingCountSingular"]       = "Missing Recipe"
+L["MissingCountPlural"]         = "Missing Recipes"
 L["MissingTruncatedHint"]       = "(showing first %d \226\128\148 type in the search box to narrow the list)"
 L["MissingCharTooltipTitle"]    = "Character Filter"
 L["MissingCharTooltipDesc"]     = "Pick which of your characters to view missing recipes for. Defaults to the currently logged-in character."
@@ -261,3 +263,101 @@ L["SettingsAHHeader"]                      = "Auction House"
 L["SettingsAHScanDelay"]                   = "AH scan delay (seconds)"
 L["SettingsAHScanDelayDesc"]               = "Seconds between AH scan queries. Empty / 0 / 'off' uses the version default (1.5s on Classic Era and Anniversary; 3.0s on TBC, Wrath, Cata, MoP — those servers throttle stricter). Lower it for faster scans, raise it if scans stall. Valid range: 0.5–10 seconds."
 L["SettingsAHScanDelayInvalid"]            = "Enter a number from 0.5 to 10, or 'off'."
+
+-- ---------------------------------------------------------------------------
+-- Tooltips & button hover-text (column headers, action buttons)
+-- ---------------------------------------------------------------------------
+L["TooltipRecipeTitle"]          = "Recipe"
+L["TooltipRecipeDesc"]           = "The name of the craftable item or spell."
+L["TooltipCraftersTitle"]        = "Crafters"
+L["TooltipCraftersDesc"]         = "Guild members who know this recipe. Click a recipe for the full list."
+L["CraftersColHeader"]           = "Crafters"
+L["TooltipBankTitle"]            = "Request from Bank"
+L["TooltipBankDescScroll"]       = "Send a request to a TOGBankClassic guild banker for this recipe scroll."
+L["TooltipBankDescGeneric"]      = "Send a request to a TOGBankClassic guild banker."
+L["TooltipAHTitle"]              = "Search Auction House"
+L["TooltipAHDescScroll"]         = "Open this recipe scroll in the AH browse search."
+L["TooltipAHDescReagent"]        = "Open this reagent in the AH browse search."
+L["TooltipSettingsTitle"]        = "Settings"
+L["TooltipSettingsDesc"]         = "Open the TOG Profession Master settings panel (|cffffd700ESC > Options > AddOns > TOG Profession Master|r). Same target as |cffffd700/togpm settings|r and Shift+left-click on the minimap button."
+L["TooltipWhisperRightClick"]    = "Right-click to whisper"
+L["TooltipClickTransmutes"]      = "Click to see transmutes"
+L["TooltipClickDetailsFormat"]   = "Click to see %s"
+L["TooltipClickDetailsFallback"] = "details"
+
+-- ---------------------------------------------------------------------------
+-- Mail composer (Cooldowns tab supply-mail flow)
+-- ---------------------------------------------------------------------------
+L["MailSubjectFormat"]      = "Cooldown supply: %s"
+L["MailBodyFormat"]         = "Hi %s! Please use these materials to make %s. Please send me the %s when you have time to craft it. Thanks!"
+L["MailMsgNoEmptyBag"]      = "No empty bag slot to split into."
+L["MailMsgOpenMailbox"]     = "Open a mailbox first."
+L["MailMsgHasItems"]        = "Mail already has items attached \226\128\148 send or clear them first."
+L["MailMsgCannotFulfill"]   = "Cannot fulfill."
+L["MailMsgCouldNotAttach"]  = "Could not attach items."
+L["MailMsgAttachedFormat"]  = "Attached %dx %s for %s."
+
+-- ---------------------------------------------------------------------------
+-- Minimap button tooltip (LDB)
+-- ---------------------------------------------------------------------------
+L["MinimapTooltipLeftClick"]   = "|cffffd100Left-click|r to toggle profession browser"
+L["MinimapTooltipRightClick"]  = "|cffffd100Right-click|r to toggle reagents"
+L["MinimapTooltipShiftLeft"]   = "|cffffd100Shift+Left|r to open settings"
+L["MinimapButtonShown"]        = "Minimap button shown."
+
+-- ---------------------------------------------------------------------------
+-- Slash command help (/togpm help)
+-- Command names (/togpm, reagents, sync, etc.) are NOT translated.
+-- ---------------------------------------------------------------------------
+L["SlashHelpHeader"]        = "|cffda8cffTOG Profession Master|r \226\128\148 commands:"
+L["SlashHelpOpen"]          = "open profession browser"
+L["SlashHelpReagents"]      = "open missing reagents"
+L["SlashHelpMinimap"]       = "show minimap button"
+L["SlashHelpPurge"]         = "open purge dialog"
+L["SlashHelpSync"]          = "force full guild re-sync"
+L["SlashHelpStatus"]        = "dump sync/comm diagnostic info"
+L["SlashHelpVersionCheck"]  = "check addon versions across guild"
+L["SlashHelpDebug"]         = "toggle debug output"
+L["SlashHelpHelp"]          = "show this list"
+L["SlashForceSyncSent"]     = "Force sync sent."
+L["AHScannerOpenAH"]        = "Open the auction house to search."
+L["AHOpenFirst"]            = "Open the auction house first."
+L["AHNoItemsToScan"]        = "No items to scan in the current view."
+
+-- ---------------------------------------------------------------------------
+-- Bank request dialog (Compat.lua)
+-- ---------------------------------------------------------------------------
+L["BankDialogTitle"]        = "Request from Guild Bank"
+L["BankDialogBanker"]       = "Banker:"
+L["BankDialogQty"]          = "Qty:"
+L["BankDialogSend"]         = "Send Request"
+L["BankDialogCancel"]       = "Cancel"
+
+-- ---------------------------------------------------------------------------
+-- Purge confirmations & misc slash output
+-- ---------------------------------------------------------------------------
+L["MsgGuildDataPurged"]      = "All guild data purged."
+L["MsgOwnDataPurged"]        = "Your character data purged."
+L["SlashForceBroadcastSent"] = "Force broadcast sent."
+L["SlashDebugEnabled"]       = "|cff00ff00enabled|r"
+L["SlashDebugDisabled"]      = "|cffff4444disabled|r"
+L["SlashDebugToggleFormat"]  = "Debug output %s"
+
+-- ---------------------------------------------------------------------------
+-- Profession display names (feeds addon.PROF_NAMES in TOGProfessionMaster.lua)
+-- ---------------------------------------------------------------------------
+L["ProfAlchemy"]        = "Alchemy"
+L["ProfBlacksmithing"]  = "Blacksmithing"
+L["ProfCooking"]        = "Cooking"
+L["ProfEnchanting"]     = "Enchanting"
+L["ProfEngineering"]    = "Engineering"
+L["ProfFirstAid"]       = "First Aid"
+L["ProfLeatherworking"] = "Leatherworking"
+L["ProfMining"]         = "Mining"
+L["ProfTailoring"]      = "Tailoring"
+L["ProfHerbalism"]      = "Herbalism"
+L["ProfSkinning"]       = "Skinning"
+L["ProfJewelcrafting"]  = "Jewelcrafting"
+L["ProfInscription"]    = "Inscription"
+L["ProfFishing"]        = "Fishing"
+L["ProfSmelting"]       = "Smelting"

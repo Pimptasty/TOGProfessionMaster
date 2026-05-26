@@ -4,6 +4,7 @@
 -- no other module ever needs to branch on C_Container, C_AddOns, etc.
 
 local _, addon = ...
+local L = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 
 -- ---------------------------------------------------------------------------
 -- Version flags
@@ -235,7 +236,7 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
 
         local titleText = d:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         titleText:SetPoint("TOP", 0, -16)
-        titleText:SetText("Request from Guild Bank")
+        titleText:SetText(L["BankDialogTitle"])
 
         local closeBtn = CreateFrame("Button", nil, d, "UIPanelCloseButton")
         closeBtn:SetPoint("TOPRIGHT", -5, -5)
@@ -270,7 +271,7 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
 
         local bankLbl = d:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         bankLbl:SetPoint("TOPLEFT", 18, -70)
-        bankLbl:SetText("Banker:")
+        bankLbl:SetText(L["BankDialogBanker"])
         bankLbl:SetTextColor(0.8, 0.8, 0.8)
         d.bankLbl = bankLbl
 
@@ -286,7 +287,7 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
 
         local qtyLbl = d:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         qtyLbl:SetPoint("TOPLEFT", 18, -102)
-        qtyLbl:SetText("Qty:")
+        qtyLbl:SetText(L["BankDialogQty"])
         qtyLbl:SetTextColor(0.8, 0.8, 0.8)
 
         local qtyBox = CreateFrame("EditBox", "TOGPMBankQtyBox", d, "InputBoxTemplate")
@@ -305,13 +306,13 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
         local sendBtn = CreateFrame("Button", nil, d, "UIPanelButtonTemplate")
         sendBtn:SetSize(120, 22)
         sendBtn:SetPoint("BOTTOMLEFT", 18, 14)
-        sendBtn:SetText("Send Request")
+        sendBtn:SetText(L["BankDialogSend"])
         d.sendBtn = sendBtn
 
         local cancelBtn = CreateFrame("Button", nil, d, "UIPanelButtonTemplate")
         cancelBtn:SetSize(80, 22)
         cancelBtn:SetPoint("BOTTOMRIGHT", -18, 14)
-        cancelBtn:SetText("Cancel")
+        cancelBtn:SetText(L["BankDialogCancel"])
         cancelBtn:SetScript("OnClick", function() d:Hide() end)
 
         _bankDialog = d

@@ -15,6 +15,7 @@ addon.recipeDB[171] = {
 				[2449] = 1,
 				[3371] = 1,
 			},
+			["requiredSkill"] = 1,
 			["teaches"] = 2329,
 		},
 		[2330] = {
@@ -31,6 +32,7 @@ addon.recipeDB[171] = {
 				[2447] = 1,
 				[3371] = 1,
 			},
+			["requiredSkill"] = 1,
 			["teaches"] = 2330,
 		},
 		[2331] = {
@@ -623,6 +625,7 @@ addon.recipeDB[171] = {
 				[765] = 2,
 				[3371] = 1,
 			},
+			["requiredSkill"] = 1,
 			["teaches"] = 7183,
 		},
 		[7255] = {
@@ -797,22 +800,6 @@ addon.recipeDB[171] = {
 			["requiredSkill"] = 90,
 			["teaches"] = 8240,
 		},
-		[11447] = {
-			["craftedItemId"] = 8827,
-			["difficulty"] = {
-				1,
-				95,
-				190,
-				230,
-			},
-			["name"] = "Elixir of Waterwalking",
-			["reagents"] = {
-				[3357] = 1,
-				[3372] = 1,
-				[6370] = 1,
-			},
-			["teaches"] = 11447,
-		},
 		[11448] = {
 			["craftedItemId"] = 6149,
 			["difficulty"] = {
@@ -895,6 +882,7 @@ addon.recipeDB[171] = {
 				[3821] = 1,
 				[7067] = 1,
 			},
+			["requiredSkill"] = 215,
 			["teaches"] = 11452,
 		},
 		[11453] = {
@@ -1907,6 +1895,7 @@ addon.recipeDB[171] = {
 				[13468] = 1,
 				[19943] = 1,
 			},
+			["requiredSkill"] = 315,
 			["teaches"] = 24266,
 		},
 		[24365] = {
@@ -2608,6 +2597,7 @@ addon.recipeDB[171] = {
 			["reagents"] = {
 				[22456] = 1,
 			},
+			["requiredSkill"] = 385,
 			["teaches"] = 28580,
 		},
 		[28581] = {
@@ -2623,6 +2613,7 @@ addon.recipeDB[171] = {
 			["reagents"] = {
 				[21885] = 1,
 			},
+			["requiredSkill"] = 385,
 			["teaches"] = 28581,
 		},
 		[28582] = {
@@ -2638,6 +2629,7 @@ addon.recipeDB[171] = {
 			["reagents"] = {
 				[22457] = 1,
 			},
+			["requiredSkill"] = 385,
 			["teaches"] = 28582,
 		},
 		[28583] = {
@@ -2653,6 +2645,7 @@ addon.recipeDB[171] = {
 			["reagents"] = {
 				[21884] = 1,
 			},
+			["requiredSkill"] = 385,
 			["teaches"] = 28583,
 		},
 		[28584] = {
@@ -2668,6 +2661,7 @@ addon.recipeDB[171] = {
 			["reagents"] = {
 				[21886] = 1,
 			},
+			["requiredSkill"] = 385,
 			["teaches"] = 28584,
 		},
 		[28585] = {
@@ -2683,6 +2677,7 @@ addon.recipeDB[171] = {
 			["reagents"] = {
 				[22452] = 1,
 			},
+			["requiredSkill"] = 385,
 			["teaches"] = 28585,
 		},
 		[28586] = {
@@ -2701,6 +2696,7 @@ addon.recipeDB[171] = {
 				[22791] = 1,
 				[22793] = 2,
 			},
+			["requiredSkill"] = 390,
 			["teaches"] = 28586,
 		},
 		[28587] = {
@@ -2719,6 +2715,7 @@ addon.recipeDB[171] = {
 				[22793] = 3,
 				[22794] = 1,
 			},
+			["requiredSkill"] = 390,
 			["teaches"] = 28587,
 		},
 		[28588] = {
@@ -2737,6 +2734,7 @@ addon.recipeDB[171] = {
 				[22793] = 3,
 				[22794] = 1,
 			},
+			["requiredSkill"] = 390,
 			["teaches"] = 28588,
 		},
 		[28589] = {
@@ -2755,6 +2753,7 @@ addon.recipeDB[171] = {
 				[22793] = 3,
 				[22794] = 1,
 			},
+			["requiredSkill"] = 390,
 			["teaches"] = 28589,
 		},
 		[28590] = {
@@ -2773,6 +2772,7 @@ addon.recipeDB[171] = {
 				[22793] = 3,
 				[22794] = 1,
 			},
+			["requiredSkill"] = 390,
 			["teaches"] = 28590,
 		},
 		[28591] = {
@@ -2791,6 +2791,7 @@ addon.recipeDB[171] = {
 				[22793] = 3,
 				[22794] = 1,
 			},
+			["requiredSkill"] = 390,
 			["teaches"] = 28591,
 		},
 		[29688] = {
@@ -3110,6 +3111,7 @@ addon.recipeDB[171] = {
 				[22793] = 7,
 				[23782] = 1,
 			},
+			["requiredSkill"] = 360,
 			["teaches"] = 41458,
 		},
 		[41500] = {
@@ -3127,6 +3129,7 @@ addon.recipeDB[171] = {
 				[22793] = 7,
 				[23782] = 1,
 			},
+			["requiredSkill"] = 360,
 			["teaches"] = 41500,
 		},
 		[41501] = {
@@ -3144,6 +3147,7 @@ addon.recipeDB[171] = {
 				[22793] = 7,
 				[23782] = 1,
 			},
+			["requiredSkill"] = 360,
 			["teaches"] = 41501,
 		},
 		[41502] = {
@@ -3161,6 +3165,7 @@ addon.recipeDB[171] = {
 				[22793] = 7,
 				[23782] = 1,
 			},
+			["requiredSkill"] = 360,
 			["teaches"] = 41502,
 		},
 		[41503] = {
@@ -3178,6 +3183,7 @@ addon.recipeDB[171] = {
 				[22793] = 7,
 				[23782] = 1,
 			},
+			["requiredSkill"] = 360,
 			["teaches"] = 41503,
 		},
 		[42736] = {
@@ -6123,6 +6129,7 @@ addon.recipeDB[171] = {
 				[213371] = 1,
 				[215430] = 3,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435971,
 		},
 		[439960] = {
@@ -6157,6 +6164,7 @@ addon.recipeDB[171] = {
 				[220688] = 1,
 				[221021] = 10,
 			},
+			["requiredSkill"] = 250,
 			["teaches"] = 446226,
 		},
 		[446851] = {
@@ -6173,6 +6181,7 @@ addon.recipeDB[171] = {
 				[221021] = 5,
 				[221312] = 5,
 			},
+			["requiredSkill"] = 250,
 			["teaches"] = 446851,
 		},
 		[448085] = {
@@ -6189,6 +6198,7 @@ addon.recipeDB[171] = {
 				[220688] = 1,
 				[221021] = 10,
 			},
+			["requiredSkill"] = 250,
 			["teaches"] = 448085,
 		},
 		[1213544] = {

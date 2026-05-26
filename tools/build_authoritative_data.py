@@ -521,10 +521,26 @@ def lua_value(v, indent_level: int) -> str:
 # shouldn't exist; verify against Wowhead / wowwiki / community
 # documentation before adding.
 MANUAL_EXCLUDED_SPELLS = {
-    22430,  # Alchemy "Refined Scale of Onyxia" — planned for Vanilla AQ40
-            # but never implemented (would have bottlenecked Onyxia loot
-            # turn-ins). Verified non-obtainable via Wowhead comments and
-            # community reports. User-reported on TBC Anniversary Phase 2.
+    22430,   # Alchemy "Refined Scale of Onyxia" — planned for Vanilla AQ40
+             # but never implemented (would have bottlenecked Onyxia loot
+             # turn-ins). Verified non-obtainable via Wowhead comments and
+             # community reports. User-reported on TBC Anniversary Phase 2.
+    22434,   # Enchanting "Charged Scale of Onyxia" — sibling never-shipped
+             # Onyxia-scale enchant. Same provenance as 22430.
+             # User-reported on TBC Anniversary Phase 2 (Galdof, 2026-05).
+    11447,   # Alchemy "Elixir of Waterwalking" — DBC says Alchemy but Wowhead
+             # community confirms this is actually a daily quest reward, not
+             # an Alchemy craft. Filtering out so it doesn't pollute the
+             # Alchemy Missing list. User-reported (Galdof, 2026-05).
+    # Engineering never-implemented recipes — DBC has them but they were
+    # cut before going live. User-reported (Galdof, 2026-05) on TBC Anniversary.
+    12719,   # "Explosive Arrow"
+    12720,   # name truncated in DBC ("Goblin \") — placeholder, never shipped
+    12722,   # "Goblin Radio"
+    12900,   # "Mobile Alarm"
+    12904,   # "Gnomish Ham Radio"
+    30561,   # "Goblin Tonk Controller"
+    30573,   # "Gnomish Tonk Controller"
 }
 
 

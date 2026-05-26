@@ -1,5 +1,41 @@
 # TOG Profession Master Changelog
 
+## [v0.5.7] (2026-05-26) - Per-profession manual curation pass — 100% TBC Phase 2 requiredSkill coverage + 8 expansion-rebalance corrections + 9 never-shipped recipes excluded
+
+### Data Quality
+
+- **TBC Phase 2 visible recipes: 100% authoritative `requiredSkill` coverage across all 10 craftable professions** (2,271 recipes; was 94.9% / 117 gaps in v0.5.6). Filled via a per-profession manual review pass with cited values — every entry in [tools/manual_skill_overrides.json](tools/manual_skill_overrides.json) carries the `reqSkill`, the `source` attribution (Apprentice auto-grant / TRAINER_SHOW capture / Wowhead / quest reward / SoD content / etc.), the `verified_by` user, and the recipe's `name` for human readability when grepping the file. Coverage now stops at the edge of the in-game data — every recipe the player can see in their Missing Recipes tab on TBC Phase 2 has an authoritative skill requirement.
+
+- **8 expansion-rebalance corrections.** TBC Anniversary's trainers enforce HIGHER `ReqSkillRank` values for several Vanilla Mining / Engineering recipes than the emulator SQL (AzerothCore Wrath + TrinityCore Cata) we pull from — Blizzard rebalanced trainer requirements between Vanilla and TBC and the emulators carry the pre-rebalance values. Validated via the v0.5.6 `TRAINER_SHOW` capture on Galdof; corrections now ship via `manual_skill_overrides.json` at top priority over the emulator SQL: Smelt Iron 100→125, Smelt Gold 115→155, Smelt Steel 125→165, Smelt Mithril 150→175, Smelt Truesilver 165→230, Smelt Thorium 200→250, Coarse Blasting Powder 65→75, Coarse Dynamite 65→75.
+
+- **9 never-implemented spells removed from the recipe DB entirely.** Blizzard's DBC retains some planned-but-cut recipes that never shipped in any live patch. Previously these appeared as un-learnable rows in the Missing Recipes tab. Added to `MANUAL_EXCLUDED_SPELLS` at the build pipeline so they're filtered out before emit:
+  - Enchanting: 22434 "Charged Scale of Onyxia" (sibling of the v0.5.5-excluded Refined Scale of Onyxia)
+  - Alchemy: 11447 "Elixir of Waterwalking" (DBC tagged as Alchemy but actually a daily quest reward)
+  - Engineering: 12719 "Explosive Arrow", 12720 (truncated placeholder name), 12722 "Goblin Radio", 12900 "Mobile Alarm", 12904 "Gnomish Ham Radio", 30561 "Goblin Tonk Controller", 30573 "Gnomish Tonk Controller"
+
+- **119 hand-curated requiredSkill entries shipped.** Up from 12 in v0.5.6. Breakdown:
+  - 27 Apprentice auto-grants across all 10 professions (Linen Cloak, Linen Bandage, Bolt of Linen Cloth, Light Leather, Handstitched Leather Boots, Rough Sharpening Stone, Copper Bracers, Smelt Copper, Rough Blasting Powder, Rough Dynamite, Minor Healing Potion, Elixir of Lion's Strength, Charred Wolf Meat, Roasted Boar Meat, Runed Copper Rod, Delicate Copper Wire, etc.) — all reqSkill=1 (Apprentice tier).
+  - 6 Mining smelt rebalance corrections + 2 Engineering powder rebalance corrections (see above).
+  - 11 Vanilla mid-tier Mining / BS / LW / Tailoring / Cooking / Engineering / Alchemy quest / drop / vendor recipes (Smelt Dark Iron 230, Mooncloth Boots 290, Gordok Ogre Suit Tailoring+LW 285, Crafted Light Shot 30, The Mortar: Reloaded 205, Dimensional Ripper - Everlook 285, Ultrasafe Transporter - Gadgetzan 285, Tranquil Mechanical Yeti 250, Goldthorn Tea 175, Smoked Desert Dumplings 285, Crystal Throat Lozenge 300, Restorative Potion 215, Gurubashi Mojo Madness 315, Enchant Bracer - Minor Health 70).
+  - 6 TBC Alchemy primal transmutes (all 385).
+  - 6 TBC Alchemy flasks + Super Rejuvenation Potion (all 390).
+  - 5 TBC Alchemy Major Protection cauldrons — the Discovery-system recipes (all 360).
+  - 47 SoD / Anniversary Phase 1-7 content recipes across all professions — values from Wowhead / community sources, tagged with the SoD phase in the JSON source field.
+
+- **Inscription stays out of TBC visibility scope.** Inscription was introduced in Wrath; its recipes are correctly filtered out by `minExpansion ≥ 3` for TBC clients. The 50.5% Inscription coverage from v0.5.6 doesn't affect what TBC users see (it's all hidden). Future manual curation passes can extend the overrides to Wrath/Cata/MoP-visible recipes as Anniversary advances expansion content.
+
+### Manual Override Workflow (for future maintainers)
+
+When a user reports a missing-skill recipe:
+
+1. Check the Missing Recipes tab — note the spell ID from the `[TOGPM] itemId=... spellId=...` debug line on the tooltip (enable via Settings → Item tooltip).
+2. Look up the real requirement on Wowhead / trainer / in-game.
+3. Add to `tools/manual_skill_overrides.json` with `reqSkill`, `source`, `verified_by`, and `name` fields. Group with the appropriate `_comment_*` separator for readability.
+4. Re-run `python tools/build_authoritative_data.py` and verify with a quick coverage probe.
+5. For recipes that are in DBC but never shipped in live, add to `MANUAL_EXCLUDED_SPELLS` in `build_authoritative_data.py` instead.
+
+---
+
 ## [v0.5.6] (2026-05-25) - Recipe-skill data quality pass — name-match scroll linker + hand-curated overrides + in-game trainer observation capture + tooltip toggles off by default
 
 ### New Features

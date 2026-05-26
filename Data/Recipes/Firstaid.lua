@@ -13,6 +13,7 @@ addon.recipeDB[129] = {
 			["reagents"] = {
 				[2589] = 1,
 			},
+			["requiredSkill"] = 1,
 			["teaches"] = 3275,
 		},
 		[3276] = {

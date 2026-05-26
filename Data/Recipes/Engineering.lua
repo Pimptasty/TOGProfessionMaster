@@ -13,6 +13,7 @@ addon.recipeDB[202] = {
 			["reagents"] = {
 				[2835] = 1,
 			},
+			["requiredSkill"] = 1,
 			["teaches"] = 3918,
 		},
 		[3919] = {
@@ -28,6 +29,7 @@ addon.recipeDB[202] = {
 				[2589] = 1,
 				[4357] = 1,
 			},
+			["requiredSkill"] = 1,
 			["teaches"] = 3919,
 		},
 		[3920] = {
@@ -43,6 +45,7 @@ addon.recipeDB[202] = {
 				[2840] = 1,
 				[4357] = 1,
 			},
+			["requiredSkill"] = 30,
 			["teaches"] = 3920,
 		},
 		[3922] = {
@@ -156,7 +159,7 @@ addon.recipeDB[202] = {
 			["reagents"] = {
 				[2836] = 1,
 			},
-			["requiredSkill"] = 65,
+			["requiredSkill"] = 75,
 			["teaches"] = 3929,
 		},
 		[3930] = {
@@ -188,7 +191,7 @@ addon.recipeDB[202] = {
 				[2589] = 1,
 				[4364] = 1,
 			},
-			["requiredSkill"] = 65,
+			["requiredSkill"] = 75,
 			["teaches"] = 3931,
 		},
 		[3932] = {
@@ -1517,56 +1520,6 @@ addon.recipeDB[202] = {
 			["requiredSkill"] = 205,
 			["teaches"] = 12718,
 		},
-		[12719] = {
-			["craftedItemId"] = 10579,
-			["difficulty"] = {
-				1,
-				105,
-				210,
-				250,
-			},
-			["name"] = "Explosive Arrow",
-			["reagents"] = {
-				[3030] = 100,
-				[3860] = 2,
-				[10505] = 2,
-			},
-			["teaches"] = 12719,
-		},
-		[12720] = {
-			["craftedItemId"] = 10580,
-			["difficulty"] = {
-				1,
-				118,
-				235,
-				255,
-			},
-			["name"] = "Goblin \"Boom\" Box",
-			["reagents"] = {
-				[3860] = 2,
-				[10505] = 2,
-				[10558] = 1,
-				[10561] = 1,
-			},
-			["teaches"] = 12720,
-		},
-		[12722] = {
-			["craftedItemId"] = 10585,
-			["difficulty"] = {
-				1,
-				120,
-				240,
-				260,
-			},
-			["name"] = "Goblin Radio",
-			["reagents"] = {
-				[3860] = 2,
-				[4389] = 1,
-				[10560] = 1,
-				[10561] = 1,
-			},
-			["teaches"] = 12722,
-		},
 		[12749] = {
 			["difficulty"] = {
 				1,
@@ -1723,22 +1676,6 @@ addon.recipeDB[202] = {
 			["requiredSkill"] = 205,
 			["teaches"] = 12899,
 		},
-		[12900] = {
-			["craftedItemId"] = 10719,
-			["difficulty"] = {
-				1,
-				103,
-				205,
-				245,
-			},
-			["name"] = "Mobile Alarm",
-			["reagents"] = {
-				[3860] = 4,
-				[10559] = 1,
-				[10560] = 1,
-			},
-			["teaches"] = 12900,
-		},
 		[12902] = {
 			["craftedItemId"] = 10720,
 			["difficulty"] = {
@@ -1776,23 +1713,6 @@ addon.recipeDB[202] = {
 			},
 			["requiredSkill"] = 215,
 			["teaches"] = 12903,
-		},
-		[12904] = {
-			["craftedItemId"] = 10723,
-			["difficulty"] = {
-				1,
-				120,
-				240,
-				260,
-			},
-			["name"] = "Gnomish Ham Radio",
-			["reagents"] = {
-				[3860] = 2,
-				[4389] = 1,
-				[10560] = 1,
-				[10561] = 1,
-			},
-			["teaches"] = 12904,
 		},
 		[12905] = {
 			["craftedItemId"] = 10724,
@@ -1885,6 +1805,7 @@ addon.recipeDB[202] = {
 				[10505] = 3,
 				[10577] = 1,
 			},
+			["requiredSkill"] = 205,
 			["teaches"] = 13240,
 		},
 		[15255] = {
@@ -2656,6 +2577,7 @@ addon.recipeDB[202] = {
 				[10586] = 1,
 				[18631] = 1,
 			},
+			["requiredSkill"] = 285,
 			["teaches"] = 23486,
 		},
 		[23489] = {
@@ -2675,6 +2597,7 @@ addon.recipeDB[202] = {
 				[9060] = 1,
 				[18631] = 2,
 			},
+			["requiredSkill"] = 285,
 			["teaches"] = 23489,
 		},
 		[23507] = {
@@ -2747,6 +2670,7 @@ addon.recipeDB[202] = {
 				[15994] = 4,
 				[18631] = 2,
 			},
+			["requiredSkill"] = 250,
 			["teaches"] = 26011,
 		},
 		[26416] = {
@@ -3695,23 +3619,6 @@ addon.recipeDB[202] = {
 			["requiredSkill"] = 340,
 			["teaches"] = 30560,
 		},
-		[30561] = {
-			["craftedItemId"] = 23831,
-			["difficulty"] = {
-				1,
-				163,
-				325,
-				335,
-			},
-			["minExpansion"] = 2,
-			["name"] = "Goblin Tonk Controller",
-			["reagents"] = {
-				[10558] = 1,
-				[23782] = 1,
-				[23783] = 4,
-			},
-			["teaches"] = 30561,
-		},
 		[30563] = {
 			["craftedItemId"] = 23836,
 			["difficulty"] = {
@@ -3826,23 +3733,6 @@ addon.recipeDB[202] = {
 			},
 			["requiredSkill"] = 350,
 			["teaches"] = 30570,
-		},
-		[30573] = {
-			["craftedItemId"] = 23832,
-			["difficulty"] = {
-				1,
-				163,
-				325,
-				335,
-			},
-			["minExpansion"] = 2,
-			["name"] = "Gnomish Tonk Controller",
-			["reagents"] = {
-				[10558] = 1,
-				[23782] = 1,
-				[23783] = 4,
-			},
-			["teaches"] = 30573,
 		},
 		[30574] = {
 			["craftedItemId"] = 23828,
@@ -7285,6 +7175,7 @@ addon.recipeDB[202] = {
 				[213379] = 3,
 				[213383] = 3,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435960,
 		},
 		[435964] = {
@@ -7339,6 +7230,7 @@ addon.recipeDB[202] = {
 				[220689] = 1,
 				[221021] = 10,
 			},
+			["requiredSkill"] = 250,
 			["teaches"] = 446236,
 		},
 		[446237] = {
@@ -7357,6 +7249,7 @@ addon.recipeDB[202] = {
 				[220689] = 1,
 				[221021] = 10,
 			},
+			["requiredSkill"] = 250,
 			["teaches"] = 446237,
 		},
 		[446238] = {
@@ -7375,6 +7268,7 @@ addon.recipeDB[202] = {
 				[220689] = 1,
 				[221021] = 10,
 			},
+			["requiredSkill"] = 250,
 			["teaches"] = 446238,
 		},
 		[461710] = {

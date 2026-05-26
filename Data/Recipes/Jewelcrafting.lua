@@ -14,6 +14,7 @@ addon.recipeDB[755] = {
 			["reagents"] = {
 				[2840] = 2,
 			},
+			["requiredSkill"] = 1,
 			["teaches"] = 25255,
 		},
 		[25278] = {
@@ -258,6 +259,7 @@ addon.recipeDB[755] = {
 			["reagents"] = {
 				[20816] = 2,
 			},
+			["requiredSkill"] = 1,
 			["teaches"] = 25493,
 		},
 		[25498] = {
@@ -1032,6 +1034,7 @@ addon.recipeDB[755] = {
 				[2840] = 1,
 				[20816] = 2,
 			},
+			["requiredSkill"] = 1,
 			["teaches"] = 26925,
 		},
 		[26926] = {
@@ -2628,6 +2631,7 @@ addon.recipeDB[755] = {
 			["reagents"] = {
 				[2835] = 8,
 			},
+			["requiredSkill"] = 1,
 			["teaches"] = 32259,
 		},
 		[32801] = {

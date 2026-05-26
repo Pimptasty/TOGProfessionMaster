@@ -535,11 +535,13 @@ addon.recipeDB[186] = {
 				315,
 				330,
 			},
+			["itemId"] = 234278,
 			["name"] = "Smelt Obsidian-Infused Thorium Bar",
 			["reagents"] = {
 				[12655] = 2,
 				[22203] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213638,
 		},
 	}

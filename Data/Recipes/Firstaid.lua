@@ -400,10 +400,12 @@ addon.recipeDB[129] = {
 				315,
 				340,
 			},
+			["itemId"] = 232434,
 			["name"] = "Dense Runecloth Bandage",
 			["reagents"] = {
 				[14530] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 470349,
 		},
 	}

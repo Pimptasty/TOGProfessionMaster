@@ -3964,13 +3964,14 @@ addon.recipeDB[773] = {
 				220,
 				230,
 			},
+			["itemId"] = 104216,
 			["minExpansion"] = 3,
 			["name"] = "Glyph of Havoc",
 			["reagents"] = {
 				[39354] = 1,
 				[43120] = 3,
 			},
-			["requiredSkill"] = 215,
+			["requiredSkill"] = 500,
 			["teaches"] = 57270,
 		},
 		[57271] = {
@@ -4338,12 +4339,14 @@ addon.recipeDB[773] = {
 				155,
 				165,
 			},
+			["itemId"] = 104282,
 			["minExpansion"] = 3,
 			["name"] = "Glyph of the Chameleon",
 			["reagents"] = {
 				[39354] = 1,
 				[43118] = 3,
 			},
+			["requiredSkill"] = 500,
 			["teaches"] = 58287,
 		},
 		[58288] = {

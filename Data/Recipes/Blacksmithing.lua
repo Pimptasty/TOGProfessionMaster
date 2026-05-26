@@ -8997,7 +8997,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
-			["itemId"] = 47640,
+			["itemId"] = 47622,
 			["minExpansion"] = 3,
 			["name"] = "Breastplate of the White Knight",
 			["reagents"] = {
@@ -9017,7 +9017,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
-			["itemId"] = 47641,
+			["itemId"] = 47623,
 			["minExpansion"] = 3,
 			["name"] = "Saronite Swordbreakers",
 			["reagents"] = {
@@ -9036,7 +9036,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
-			["itemId"] = 47644,
+			["itemId"] = 47624,
 			["minExpansion"] = 3,
 			["name"] = "Titanium Razorplate",
 			["reagents"] = {
@@ -9055,7 +9055,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
-			["itemId"] = 47645,
+			["itemId"] = 47625,
 			["minExpansion"] = 3,
 			["name"] = "Titanium Spikeguards",
 			["reagents"] = {
@@ -9074,7 +9074,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
-			["itemId"] = 47643,
+			["itemId"] = 47626,
 			["minExpansion"] = 3,
 			["name"] = "Sunforged Breastplate",
 			["reagents"] = {
@@ -9093,7 +9093,7 @@ addon.recipeDB[164] = {
 				460,
 				475,
 			},
-			["itemId"] = 47642,
+			["itemId"] = 47627,
 			["minExpansion"] = 3,
 			["name"] = "Sunforged Bracers",
 			["reagents"] = {
@@ -9243,13 +9243,14 @@ addon.recipeDB[164] = {
 				460,
 				465,
 			},
+			["itemId"] = 66062,
 			["minExpansion"] = 4,
 			["name"] = "Hardened Obsidium Bracers",
 			["reagents"] = {
 				[18567] = 1,
 				[65365] = 3,
 			},
-			["requiredSkill"] = 440,
+			["requiredSkill"] = 425,
 			["teaches"] = 76179,
 		},
 		[76180] = {
@@ -14490,6 +14491,7 @@ addon.recipeDB[164] = {
 				140,
 				160,
 			},
+			["itemId"] = 210779,
 			["name"] = "Mantle of the Second War",
 			["reagents"] = {
 				[1206] = 2,
@@ -14498,6 +14500,7 @@ addon.recipeDB[164] = {
 				[2842] = 4,
 				[5500] = 2,
 			},
+			["requiredSkill"] = 150,
 			["teaches"] = 427061,
 		},
 		[429348] = {
@@ -14523,11 +14526,13 @@ addon.recipeDB[164] = {
 				100,
 				120,
 			},
+			["itemId"] = 211846,
 			["name"] = "Blackfathom Sharpening Stone",
 			["reagents"] = {
 				[2863] = 1,
 				[10938] = 1,
 			},
+			["requiredSkill"] = 100,
 			["teaches"] = 430397,
 		},
 		[435906] = {
@@ -14538,6 +14543,7 @@ addon.recipeDB[164] = {
 				225,
 				235,
 			},
+			["itemId"] = 215383,
 			["name"] = "Reflective Truesilver Braincage",
 			["reagents"] = {
 				[3860] = 25,
@@ -14545,6 +14551,7 @@ addon.recipeDB[164] = {
 				[213379] = 2,
 				[213383] = 1,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435906,
 		},
 		[435908] = {
@@ -14572,11 +14579,13 @@ addon.recipeDB[164] = {
 				200,
 				220,
 			},
+			["itemId"] = 215384,
 			["name"] = "Low-Background Truesilver Plates",
 			["reagents"] = {
 				[6037] = 1,
 				[213373] = 5,
 			},
+			["requiredSkill"] = 200,
 			["teaches"] = 435910,
 		},
 		[439120] = {
@@ -14587,6 +14596,7 @@ addon.recipeDB[164] = {
 				225,
 				245,
 			},
+			["itemId"] = 9367,
 			["name"] = "Golden Scale Gauntlets",
 			["reagents"] = {
 				[3486] = 4,
@@ -14594,6 +14604,7 @@ addon.recipeDB[164] = {
 				[3859] = 10,
 				[3864] = 1,
 			},
+			["requiredSkill"] = 205,
 			["teaches"] = 439120,
 		},
 		[439122] = {
@@ -14604,6 +14615,7 @@ addon.recipeDB[164] = {
 				225,
 				250,
 			},
+			["itemId"] = 3875,
 			["name"] = "Golden Scale Boots",
 			["reagents"] = {
 				[3486] = 4,
@@ -14611,6 +14623,7 @@ addon.recipeDB[164] = {
 				[3859] = 10,
 				[3864] = 1,
 			},
+			["requiredSkill"] = 200,
 			["teaches"] = 439122,
 		},
 		[439124] = {
@@ -14621,6 +14634,7 @@ addon.recipeDB[164] = {
 				220,
 				245,
 			},
+			["itemId"] = 3873,
 			["name"] = "Golden Scale Cuirass",
 			["reagents"] = {
 				[1529] = 2,
@@ -14628,6 +14642,7 @@ addon.recipeDB[164] = {
 				[3577] = 2,
 				[3859] = 12,
 			},
+			["requiredSkill"] = 195,
 			["teaches"] = 439124,
 		},
 		[439126] = {
@@ -14638,12 +14653,14 @@ addon.recipeDB[164] = {
 				215,
 				240,
 			},
+			["itemId"] = 6047,
 			["name"] = "Golden Scale Coif",
 			["reagents"] = {
 				[3486] = 2,
 				[3577] = 2,
 				[3859] = 8,
 			},
+			["requiredSkill"] = 190,
 			["teaches"] = 439126,
 		},
 		[439128] = {
@@ -14654,6 +14671,7 @@ addon.recipeDB[164] = {
 				205,
 				230,
 			},
+			["itemId"] = 12163,
 			["name"] = "Moonsteel Broadsword",
 			["reagents"] = {
 				[1705] = 3,
@@ -14662,6 +14680,7 @@ addon.recipeDB[164] = {
 				[3859] = 8,
 				[4234] = 3,
 			},
+			["requiredSkill"] = 180,
 			["teaches"] = 439128,
 		},
 		[439130] = {
@@ -14672,12 +14691,14 @@ addon.recipeDB[164] = {
 				200,
 				225,
 			},
+			["itemId"] = 3871,
 			["name"] = "Golden Scale Shoulders",
 			["reagents"] = {
 				[3486] = 1,
 				[3577] = 2,
 				[3859] = 6,
 			},
+			["requiredSkill"] = 175,
 			["teaches"] = 439130,
 		},
 		[439132] = {
@@ -14688,12 +14709,14 @@ addon.recipeDB[164] = {
 				195,
 				220,
 			},
+			["itemId"] = 3872,
 			["name"] = "Golden Scale Leggings",
 			["reagents"] = {
 				[3486] = 1,
 				[3575] = 10,
 				[3577] = 2,
 			},
+			["requiredSkill"] = 170,
 			["teaches"] = 439132,
 		},
 		[446179] = {
@@ -14749,6 +14772,7 @@ addon.recipeDB[164] = {
 				325,
 				350,
 			},
+			["itemId"] = 18592,
 			["name"] = "Sulfuron Hammer",
 			["reagents"] = {
 				[7078] = 25,
@@ -14759,6 +14783,7 @@ addon.recipeDB[164] = {
 				[17011] = 10,
 				[17203] = 8,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 460460,
 		},
 		[461647] = {
@@ -14769,12 +14794,14 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 227905,
 			["name"] = "Skyrider's Masterwork Stormhammer",
 			["reagents"] = {
 				[12360] = 15,
 				[12794] = 1,
 				[18262] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461647,
 		},
 		[461651] = {
@@ -14785,6 +14812,7 @@ addon.recipeDB[164] = {
 				310,
 				330,
 			},
+			["itemId"] = 227909,
 			["name"] = "Fiery Plate Gauntlets of the Hidden Technique",
 			["reagents"] = {
 				[7078] = 2,
@@ -14792,6 +14820,7 @@ addon.recipeDB[164] = {
 				[12359] = 20,
 				[12655] = 6,
 			},
+			["requiredSkill"] = 290,
 			["teaches"] = 461651,
 		},
 		[461667] = {
@@ -14802,11 +14831,13 @@ addon.recipeDB[164] = {
 				305,
 				325,
 			},
+			["itemId"] = 227901,
 			["name"] = "Tempered Dark Iron Plate",
 			["reagents"] = {
 				[7077] = 8,
 				[11371] = 20,
 			},
+			["requiredSkill"] = 285,
 			["teaches"] = 461667,
 		},
 		[461669] = {
@@ -14817,11 +14848,13 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 228117,
 			["name"] = "Refined Arcanite Champion",
 			["reagents"] = {
 				[12790] = 1,
 				[18262] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461669,
 		},
 		[461671] = {
@@ -14832,6 +14865,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 228118,
 			["name"] = "Stronger-hold Gauntlets",
 			["reagents"] = {
 				[7076] = 10,
@@ -14840,6 +14874,7 @@ addon.recipeDB[164] = {
 				[12655] = 20,
 				[12799] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461671,
 		},
 		[461675] = {
@@ -14850,11 +14885,13 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 228114,
 			["name"] = "Refined Arcanite Reaper",
 			["reagents"] = {
 				[12784] = 1,
 				[18262] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461675,
 		},
 		[461712] = {
@@ -14865,11 +14902,13 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 228305,
 			["name"] = "Refined Hammer of the Titans",
 			["reagents"] = {
 				[12796] = 1,
 				[18262] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461712,
 		},
 		[461714] = {
@@ -14880,6 +14919,7 @@ addon.recipeDB[164] = {
 				315,
 				340,
 			},
+			["itemId"] = 228306,
 			["name"] = "Desecration",
 			["reagents"] = {
 				[8170] = 4,
@@ -14890,6 +14930,7 @@ addon.recipeDB[164] = {
 				[12662] = 16,
 				[12808] = 8,
 			},
+			["requiredSkill"] = 290,
 			["teaches"] = 461714,
 		},
 		[461716] = {
@@ -14900,6 +14941,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 228307,
 			["name"] = "Deadly Heartseeker",
 			["reagents"] = {
 				[7910] = 6,
@@ -14910,6 +14952,7 @@ addon.recipeDB[164] = {
 				[12800] = 6,
 				[12810] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461716,
 		},
 		[461718] = {
@@ -14920,6 +14963,7 @@ addon.recipeDB[164] = {
 				310,
 				335,
 			},
+			["itemId"] = 228308,
 			["name"] = "Tranquility",
 			["reagents"] = {
 				[12360] = 2,
@@ -14929,6 +14973,7 @@ addon.recipeDB[164] = {
 				[12799] = 2,
 				[12804] = 4,
 			},
+			["requiredSkill"] = 285,
 			["teaches"] = 461718,
 		},
 		[461730] = {
@@ -14939,11 +14984,13 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 228310,
 			["name"] = "Hardened Frostguard",
 			["reagents"] = {
 				[12797] = 1,
 				[18262] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461730,
 		},
 		[461733] = {
@@ -14954,6 +15001,7 @@ addon.recipeDB[164] = {
 				305,
 				330,
 			},
+			["itemId"] = 228311,
 			["name"] = "Finely-Enchanted Battlehammer",
 			["reagents"] = {
 				[8170] = 4,
@@ -14962,6 +15010,7 @@ addon.recipeDB[164] = {
 				[12655] = 6,
 				[12804] = 4,
 			},
+			["requiredSkill"] = 280,
 			["teaches"] = 461733,
 		},
 		[461735] = {
@@ -14972,6 +15021,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 228312,
 			["name"] = "Invincible Mail",
 			["reagents"] = {
 				[12360] = 30,
@@ -14979,6 +15029,7 @@ addon.recipeDB[164] = {
 				[12655] = 30,
 				[12800] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461735,
 		},
 		[461737] = {
@@ -14989,6 +15040,7 @@ addon.recipeDB[164] = {
 				315,
 				335,
 			},
+			["itemId"] = 228313,
 			["name"] = "Tempest Gauntlets",
 			["reagents"] = {
 				[7080] = 4,
@@ -14996,6 +15048,7 @@ addon.recipeDB[164] = {
 				[12361] = 4,
 				[12655] = 4,
 			},
+			["requiredSkill"] = 295,
 			["teaches"] = 461737,
 		},
 		[461739] = {
@@ -15006,6 +15059,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 228314,
 			["name"] = "Warcrest of the Great Chief",
 			["reagents"] = {
 				[8168] = 60,
@@ -15014,6 +15068,7 @@ addon.recipeDB[164] = {
 				[12655] = 4,
 				[12799] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461739,
 		},
 		[461743] = {
@@ -15024,6 +15079,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 228315,
 			["name"] = "Sageblade of the Archmagus",
 			["reagents"] = {
 				[12360] = 12,
@@ -15031,6 +15087,7 @@ addon.recipeDB[164] = {
 				[13512] = 2,
 				[20725] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461743,
 		},
 		[1213481] = {
@@ -15041,6 +15098,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 234220,
 			["name"] = "Razorspike Headcage",
 			["reagents"] = {
 				[8146] = 10,
@@ -15049,6 +15107,7 @@ addon.recipeDB[164] = {
 				[234003] = 3,
 				[234006] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213481,
 		},
 		[1213484] = {
@@ -15077,6 +15136,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 234222,
 			["name"] = "Razorspike Battleplate",
 			["reagents"] = {
 				[8146] = 10,
@@ -15085,6 +15145,7 @@ addon.recipeDB[164] = {
 				[234003] = 4,
 				[234006] = 8,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213490,
 		},
 		[1213492] = {
@@ -15095,6 +15156,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 234223,
 			["name"] = "Obsidian Reaver",
 			["reagents"] = {
 				[12360] = 40,
@@ -15104,6 +15166,7 @@ addon.recipeDB[164] = {
 				[234003] = 10,
 				[234004] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213492,
 		},
 		[1213498] = {
@@ -15114,6 +15177,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 234224,
 			["name"] = "Obsidian Champion",
 			["reagents"] = {
 				[12360] = 40,
@@ -15123,6 +15187,7 @@ addon.recipeDB[164] = {
 				[234003] = 10,
 				[234004] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213498,
 		},
 		[1213500] = {
@@ -15133,6 +15198,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 234225,
 			["name"] = "Obsidian Destroyer",
 			["reagents"] = {
 				[12360] = 40,
@@ -15142,6 +15208,7 @@ addon.recipeDB[164] = {
 				[234003] = 10,
 				[234004] = 8,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213500,
 		},
 		[1213502] = {
@@ -15152,6 +15219,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 234226,
 			["name"] = "Obsidian Stormhammer",
 			["reagents"] = {
 				[12360] = 30,
@@ -15161,6 +15229,7 @@ addon.recipeDB[164] = {
 				[234003] = 8,
 				[234004] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213502,
 		},
 		[1213504] = {
@@ -15171,6 +15240,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 234227,
 			["name"] = "Obsidian Sageblade",
 			["reagents"] = {
 				[12360] = 30,
@@ -15180,6 +15250,7 @@ addon.recipeDB[164] = {
 				[234003] = 8,
 				[234004] = 3,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213504,
 		},
 		[1213506] = {
@@ -15190,6 +15261,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 234228,
 			["name"] = "Obsidian Defender",
 			["reagents"] = {
 				[12360] = 30,
@@ -15199,6 +15271,7 @@ addon.recipeDB[164] = {
 				[234003] = 8,
 				[234004] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213506,
 		},
 		[1213643] = {
@@ -15209,10 +15282,12 @@ addon.recipeDB[164] = {
 				315,
 				330,
 			},
+			["itemId"] = 234279,
 			["name"] = "Obsidian Grinding Stone",
 			["reagents"] = {
 				[22202] = 5,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213643,
 		},
 		[1213709] = {
@@ -15223,12 +15298,14 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22768,
 			["name"] = "Ironvine Belt",
 			["reagents"] = {
 				[12655] = 8,
 				[12803] = 4,
 				[19726] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213709,
 		},
 		[1213711] = {
@@ -15239,12 +15316,14 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22767,
 			["name"] = "Ironvine Gloves",
 			["reagents"] = {
 				[12655] = 12,
 				[12803] = 2,
 				[19726] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213711,
 		},
 		[1213715] = {
@@ -15255,6 +15334,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22766,
 			["name"] = "Ironvine Breastplate",
 			["reagents"] = {
 				[12360] = 8,
@@ -15262,6 +15342,7 @@ addon.recipeDB[164] = {
 				[12803] = 4,
 				[19726] = 8,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213715,
 		},
 		[1213746] = {
@@ -15272,6 +15353,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22209,
 			["name"] = "Heavy Obsidian Belt",
 			["reagents"] = {
 				[7076] = 2,
@@ -15279,6 +15361,7 @@ addon.recipeDB[164] = {
 				[19726] = 4,
 				[22202] = 14,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213746,
 		},
 		[1213748] = {
@@ -15289,12 +15372,14 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22214,
 			["name"] = "Light Obsidian Belt",
 			["reagents"] = {
 				[12810] = 6,
 				[19726] = 4,
 				[22202] = 14,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213748,
 		},
 		[1214137] = {
@@ -15305,6 +15390,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 234429,
 			["name"] = "Obsidian Heartseeker",
 			["reagents"] = {
 				[12360] = 30,
@@ -15314,6 +15400,7 @@ addon.recipeDB[164] = {
 				[234003] = 8,
 				[234004] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1214137,
 		},
 		[1214257] = {
@@ -15324,6 +15411,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22220,
 			["name"] = "Black Grasp of the Destroyer",
 			["reagents"] = {
 				[12810] = 8,
@@ -15331,6 +15419,7 @@ addon.recipeDB[164] = {
 				[22202] = 24,
 				[22203] = 8,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1214257,
 		},
 		[1214270] = {
@@ -15341,6 +15430,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22219,
 			["name"] = "Jagged Obsidian Shield",
 			["reagents"] = {
 				[7076] = 4,
@@ -15348,6 +15438,7 @@ addon.recipeDB[164] = {
 				[22202] = 24,
 				[22203] = 8,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1214270,
 		},
 		[1214274] = {
@@ -15358,6 +15449,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22221,
 			["name"] = "Obsidian Mail Tunic",
 			["reagents"] = {
 				[12800] = 4,
@@ -15366,6 +15458,7 @@ addon.recipeDB[164] = {
 				[22202] = 36,
 				[22203] = 15,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1214274,
 		},
 		[1214309] = {
@@ -15376,6 +15469,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 234488,
 			["name"] = "Dreamscale Visor",
 			["reagents"] = {
 				[8146] = 8,
@@ -15384,6 +15478,7 @@ addon.recipeDB[164] = {
 				[12810] = 4,
 				[20381] = 8,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1214309,
 		},
 		[1215507] = {
@@ -15394,6 +15489,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22222,
 			["name"] = "Thick Obsidian Breastplate",
 			["reagents"] = {
 				[7076] = 10,
@@ -15402,6 +15498,7 @@ addon.recipeDB[164] = {
 				[22202] = 40,
 				[22203] = 18,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1215507,
 		},
 		[1223787] = {
@@ -15412,6 +15509,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22703,
 			["name"] = "Icebane Breastplate",
 			["reagents"] = {
 				[7080] = 4,
@@ -15419,6 +15517,7 @@ addon.recipeDB[164] = {
 				[12360] = 2,
 				[236656] = 7,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223787,
 		},
 		[1223789] = {
@@ -15429,6 +15528,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22704,
 			["name"] = "Icebane Gauntlets",
 			["reagents"] = {
 				[7080] = 2,
@@ -15436,6 +15536,7 @@ addon.recipeDB[164] = {
 				[12360] = 2,
 				[236656] = 5,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223789,
 		},
 		[1223791] = {
@@ -15446,6 +15547,7 @@ addon.recipeDB[164] = {
 				320,
 				340,
 			},
+			["itemId"] = 22705,
 			["name"] = "Icebane Bracers",
 			["reagents"] = {
 				[7080] = 2,
@@ -15453,6 +15555,7 @@ addon.recipeDB[164] = {
 				[12360] = 2,
 				[236656] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223791,
 		},
 		[1224178] = {

@@ -6080,6 +6080,7 @@ addon.recipeDB[171] = {
 				90,
 				110,
 			},
+			["itemId"] = 210709,
 			["name"] = "Elixir of Coalesced Regret",
 			["reagents"] = {
 				[3369] = 5,
@@ -6087,6 +6088,7 @@ addon.recipeDB[171] = {
 				[3820] = 5,
 				[11083] = 1,
 			},
+			["requiredSkill"] = 90,
 			["teaches"] = 426607,
 		},
 		[435969] = {
@@ -6097,11 +6099,13 @@ addon.recipeDB[171] = {
 				200,
 				220,
 			},
+			["itemId"] = 215433,
 			["name"] = "Insulating Gniodine",
 			["reagents"] = {
 				[3372] = 1,
 				[213371] = 5,
 			},
+			["requiredSkill"] = 200,
 			["teaches"] = 435969,
 		},
 		[435971] = {
@@ -6129,12 +6133,14 @@ addon.recipeDB[171] = {
 				210,
 				215,
 			},
+			["itemId"] = 217399,
 			["name"] = "Lesser Arcane Elixir",
 			["reagents"] = {
 				[3356] = 1,
 				[3821] = 1,
 				[8925] = 1,
 			},
+			["requiredSkill"] = 190,
 			["teaches"] = 439960,
 		},
 		[446226] = {
@@ -6193,6 +6199,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 234252,
 			["name"] = "Flask of Unyielding Sorrow",
 			["reagents"] = {
 				[8925] = 1,
@@ -6200,6 +6207,7 @@ addon.recipeDB[171] = {
 				[16203] = 1,
 				[234012] = 1,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213544,
 		},
 		[1213546] = {
@@ -6210,6 +6218,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 234253,
 			["name"] = "Flask of Ancient Knowledge",
 			["reagents"] = {
 				[8925] = 1,
@@ -6217,6 +6226,7 @@ addon.recipeDB[171] = {
 				[16203] = 1,
 				[234011] = 1,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213546,
 		},
 		[1213548] = {
@@ -6227,6 +6237,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 234255,
 			["name"] = "Flask of the Old Gods",
 			["reagents"] = {
 				[8925] = 1,
@@ -6234,6 +6245,7 @@ addon.recipeDB[171] = {
 				[16203] = 1,
 				[234006] = 1,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213548,
 		},
 		[1213552] = {
@@ -6244,6 +6256,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 234256,
 			["name"] = "Flask of Madness",
 			["reagents"] = {
 				[8925] = 1,
@@ -6251,6 +6264,7 @@ addon.recipeDB[171] = {
 				[16203] = 1,
 				[234010] = 1,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213552,
 		},
 		[1213559] = {
@@ -6261,6 +6275,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 234257,
 			["name"] = "Elixir of the Honey Badger",
 			["reagents"] = {
 				[8925] = 1,
@@ -6268,6 +6283,7 @@ addon.recipeDB[171] = {
 				[234011] = 1,
 				[234012] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213559,
 		},
 		[1213563] = {
@@ -6278,6 +6294,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 234258,
 			["name"] = "Elixir of the Mage-Lord",
 			["reagents"] = {
 				[8925] = 1,
@@ -6285,6 +6302,7 @@ addon.recipeDB[171] = {
 				[234011] = 1,
 				[234012] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213563,
 		},
 		[1213565] = {
@@ -6295,6 +6313,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 234259,
 			["name"] = "Elixir of the Ironside",
 			["reagents"] = {
 				[8925] = 1,
@@ -6302,6 +6321,7 @@ addon.recipeDB[171] = {
 				[234011] = 1,
 				[234012] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213565,
 		},
 		[1213571] = {
@@ -6312,6 +6332,7 @@ addon.recipeDB[171] = {
 				315,
 				330,
 			},
+			["itemId"] = 234260,
 			["name"] = "Elixir of Alacrity",
 			["reagents"] = {
 				[8925] = 1,
@@ -6319,6 +6340,7 @@ addon.recipeDB[171] = {
 				[234011] = 1,
 				[234012] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213571,
 		},
 		[1231583] = {

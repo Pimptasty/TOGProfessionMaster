@@ -144,12 +144,13 @@ local function AppendCraftersNow(tooltip, itemID)
 
     -- Read settings each call — cheap (one table lookup per toggle) and
     -- keeps the toggles reactive without needing to rebuild the hook when
-    -- the user flips them. Defaults to true via SETTINGS_DEFAULTS so a
-    -- missing profile entry still shows both lines.
+    -- the user flips them. Defaults to false via SETTINGS_DEFAULTS — the
+    -- addon stays silent on tooltips until the user opts in via
+    -- ESC → Game Menu → Interface → AddOns → TOG Profession Master.
     local showCrafters = Ace.db and Ace.db.profile and Ace.db.profile.tooltipShowCrafters
     local showIds      = Ace.db and Ace.db.profile and Ace.db.profile.tooltipShowIds
-    if showCrafters == nil then showCrafters = true end
-    if showIds      == nil then showIds      = true end
+    if showCrafters == nil then showCrafters = false end
+    if showIds      == nil then showIds      = false end
     if not showCrafters and not showIds then return end
 
     -- ---- Crafters line (existing) -----------------------------------
@@ -268,7 +269,7 @@ addon.Tooltip.AppendCrafters = AppendCraftersNow
 -- disabling it via Settings hides IDs everywhere consistently.
 local function AppendBrandIdsLine(tooltip, itemID, spellID)
     local showIds = Ace.db and Ace.db.profile and Ace.db.profile.tooltipShowIds
-    if showIds == nil then showIds = true end
+    if showIds == nil then showIds = false end
     if not showIds then return end
     local idParts = {}
     if itemID  then table.insert(idParts, "itemId="  .. tostring(itemID))  end

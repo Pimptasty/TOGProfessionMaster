@@ -1,0 +1,25 @@
+{
+  "_README": [
+    "Hand-curated requiredSkill values for recipes whose data is missing",
+    "from every DBC dump and emulator SQL source we have access to.",
+    "Used as the TOP-PRIORITY source in build_authoritative_data.py — wins",
+    "over scroll RequiredSkillRank and trainer SQL ReqSkillRank when set.",
+    "",
+    "Each entry: spell_id (string key) -> { reqSkill, source, verified_by }.",
+    "Populated per-profession during manual review of TBC-visible gaps.",
+    "",
+    "Source values to date:",
+    "  'Apprentice X auto-grant' — recipe granted on training Apprentice tier",
+    "                              of profession X, no scroll/trainer service",
+    "  'Wowhead'                  — value read from Wowhead's tooltip line",
+    "  'in-game tooltip'          — value read from the user's own client",
+    "",
+    "When adding entries, prefer the most authoritative source available;",
+    "include verified_by so future maintainers know whose call this was."
+  ],
+
+  "25255": { "reqSkill": 1, "source": "Apprentice JC auto-grant", "verified_by": "Galdof", "name": "Delicate Copper Wire" },
+  "25493": { "reqSkill": 1, "source": "Apprentice JC auto-grant", "verified_by": "Galdof", "name": "Braided Copper Ring" },
+  "26925": { "reqSkill": 1, "source": "Apprentice JC auto-grant", "verified_by": "Galdof", "name": "Woven Copper Ring" },
+  "32259": { "reqSkill": 1, "source": "Apprentice JC auto-grant", "verified_by": "Galdof", "name": "Rough Stone Statue" }
+}

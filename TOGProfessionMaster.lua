@@ -89,6 +89,14 @@ local GUILD_DB_DEFAULTS = {
         --   specializations = { ["Name-Realm"] = { [profId] = spellId } }
         --   factions        = { ["Name-Realm"] = "Alliance"|"Horde" }
         --   altGroups       = { ["Name-Realm"] = {"Name-Realm", "Alt-Realm", ...} }
+        --   trainerObservations = { [spellId] = {
+        --       reqSkill, moneyCost, profId, observedBy, observedAt
+        --   } }  -- v0.5.6: TRAINER_SHOW-captured ReqSkillRank values for
+        --        recipes (the literal "Requires Tailoring (100)" trainer
+        --        tooltip line). Lazy-created on first capture in
+        --        Scanner.lua's OnTrainerShow. Eventual extraction script
+        --        feeds this back into the shipped recipe DB to close the
+        --        ~20% requiredSkill gap that emulator SQL doesn't cover.
         -- }
         guilds = {},
         -- Account-wide set of all own characters that have ever logged in with
@@ -134,12 +142,13 @@ local SETTINGS_DEFAULTS = {
         -- guaranteed populated before we read it.
         ahScanDelay = 0,
 
-        -- Global item tooltip lines. Both on by default. Independent toggles
-        -- so users can keep just the crafters list, just the IDs (for
-        -- troubleshooting), both, or disable the addon's tooltip injection
-        -- entirely. Read in Tooltip.lua's AppendCrafters.
-        tooltipShowCrafters = true,
-        tooltipShowIds      = true,
+        -- Global item tooltip lines. Both OFF by default — opt-in via
+        -- Settings to keep the addon's tooltip footprint minimal until the
+        -- user explicitly wants either signal. Independent toggles so users
+        -- can keep just the crafters list, just the IDs (for troubleshooting),
+        -- both, or neither. Read in Tooltip.lua's AppendCrafters.
+        tooltipShowCrafters = false,
+        tooltipShowIds      = false,
 
         -- TBC Anniversary content phase. The recipe DB ships with `phase`
         -- field on TBC raid / Shattered-Sun / BT / Hyjal / Sunwell recipes

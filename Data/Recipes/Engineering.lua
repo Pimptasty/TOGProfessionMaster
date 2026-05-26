@@ -7222,12 +7222,14 @@ addon.recipeDB[202] = {
 				205,
 				215,
 			},
+			["itemId"] = 212230,
 			["name"] = "Soul Vessel",
 			["reagents"] = {
 				[1210] = 4,
 				[9262] = 1,
 				[16583] = 1,
 			},
+			["requiredSkill"] = 205,
 			["teaches"] = 431362,
 		},
 		[435956] = {
@@ -7238,11 +7240,13 @@ addon.recipeDB[202] = {
 				200,
 				220,
 			},
+			["itemId"] = 215429,
 			["name"] = "Polished Truesilver Gears",
 			["reagents"] = {
 				[6037] = 1,
 				[213381] = 5,
 			},
+			["requiredSkill"] = 200,
 			["teaches"] = 435956,
 		},
 		[435958] = {
@@ -7253,6 +7257,7 @@ addon.recipeDB[202] = {
 				225,
 				240,
 			},
+			["itemId"] = 215153,
 			["name"] = "Whirling Truesilver Gearwall",
 			["reagents"] = {
 				[3860] = 15,
@@ -7262,6 +7267,7 @@ addon.recipeDB[202] = {
 				[213376] = 3,
 				[213383] = 5,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435958,
 		},
 		[435960] = {
@@ -7289,12 +7295,14 @@ addon.recipeDB[202] = {
 				225,
 				235,
 			},
+			["itemId"] = 215431,
 			["name"] = "High-Yield Radiation Bomb",
 			["reagents"] = {
 				[3860] = 2,
 				[10505] = 1,
 				[215430] = 1,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435964,
 		},
 		[435966] = {
@@ -7305,12 +7313,14 @@ addon.recipeDB[202] = {
 				225,
 				235,
 			},
+			["itemId"] = 215432,
 			["name"] = "Ez-Thro Radiation Bomb",
 			["reagents"] = {
 				[3860] = 2,
 				[10505] = 2,
 				[215430] = 1,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435966,
 		},
 		[446236] = {
@@ -7375,6 +7385,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 228304,
 			["name"] = "Fiery Core Sharpshooter Rifle",
 			["reagents"] = {
 				[12360] = 6,
@@ -7383,6 +7394,7 @@ addon.recipeDB[202] = {
 				[17010] = 4,
 				[17011] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461710,
 		},
 		[1213573] = {
@@ -7393,12 +7405,14 @@ addon.recipeDB[202] = {
 				315,
 				330,
 			},
+			["itemId"] = 234261,
 			["name"] = "Arcane Megabomb",
 			["reagents"] = {
 				[14047] = 1,
 				[16006] = 1,
 				[20725] = 1,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213573,
 		},
 		[1213576] = {
@@ -7409,12 +7423,14 @@ addon.recipeDB[202] = {
 				315,
 				330,
 			},
+			["itemId"] = 234262,
 			["name"] = "The Fumigator",
 			["reagents"] = {
 				[14047] = 1,
 				[234005] = 2,
 				[234011] = 1,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213576,
 		},
 		[1213578] = {
@@ -7425,6 +7441,7 @@ addon.recipeDB[202] = {
 				315,
 				330,
 			},
+			["itemId"] = 234263,
 			["name"] = "Obsidian Bomb",
 			["reagents"] = {
 				[12365] = 1,
@@ -7432,6 +7449,7 @@ addon.recipeDB[202] = {
 				[234007] = 1,
 				[234008] = 1,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213578,
 		},
 		[1213586] = {
@@ -7442,6 +7460,7 @@ addon.recipeDB[202] = {
 				315,
 				330,
 			},
+			["itemId"] = 234264,
 			["name"] = "G00 DV-1B3 Generator",
 			["reagents"] = {
 				[234005] = 20,
@@ -7451,6 +7470,7 @@ addon.recipeDB[202] = {
 				[234011] = 8,
 				[234012] = 30,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213586,
 		},
 		[1213588] = {
@@ -7461,6 +7481,7 @@ addon.recipeDB[202] = {
 				315,
 				330,
 			},
+			["itemId"] = 234265,
 			["name"] = "Tuned Force Reactive Disk",
 			["reagents"] = {
 				[18168] = 1,
@@ -7468,6 +7489,7 @@ addon.recipeDB[202] = {
 				[234005] = 5,
 				[234007] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213588,
 		},
 		[1213646] = {
@@ -7478,10 +7500,12 @@ addon.recipeDB[202] = {
 				315,
 				330,
 			},
+			["itemId"] = 234280,
 			["name"] = "Obsidian Blasting Powder",
 			["reagents"] = {
 				[22202] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213646,
 		},
 		[1214145] = {
@@ -7492,6 +7516,7 @@ addon.recipeDB[202] = {
 				320,
 				340,
 			},
+			["itemId"] = 234435,
 			["name"] = "Obsidian Shotgun",
 			["reagents"] = {
 				[12360] = 30,
@@ -7501,6 +7526,7 @@ addon.recipeDB[202] = {
 				[20881] = 2,
 				[234003] = 8,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1214145,
 		},
 		[1217207] = {

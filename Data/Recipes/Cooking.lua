@@ -2851,7 +2851,7 @@ addon.recipeDB[185] = {
 				270,
 				295,
 			},
-			["itemId"] = 46806,
+			["itemId"] = 44859,
 			["minExpansion"] = 3,
 			["name"] = "Candied Sweet Potato",
 			["reagents"] = {
@@ -2870,7 +2870,7 @@ addon.recipeDB[185] = {
 				210,
 				235,
 			},
-			["itemId"] = 46805,
+			["itemId"] = 44858,
 			["minExpansion"] = 3,
 			["name"] = "Cranberry Chutney",
 			["reagents"] = {
@@ -2888,7 +2888,7 @@ addon.recipeDB[185] = {
 				150,
 				175,
 			},
-			["itemId"] = 46804,
+			["itemId"] = 44862,
 			["minExpansion"] = 3,
 			["name"] = "Pumpkin Pie",
 			["reagents"] = {
@@ -2906,7 +2906,7 @@ addon.recipeDB[185] = {
 				405,
 				430,
 			},
-			["itemId"] = 46807,
+			["itemId"] = 44861,
 			["minExpansion"] = 3,
 			["name"] = "Slow-Roasted Turkey",
 			["reagents"] = {
@@ -2925,7 +2925,7 @@ addon.recipeDB[185] = {
 				90,
 				115,
 			},
-			["itemId"] = 46803,
+			["itemId"] = 44860,
 			["minExpansion"] = 3,
 			["name"] = "Spice Bread Stuffing",
 			["reagents"] = {
@@ -4094,11 +4094,13 @@ addon.recipeDB[185] = {
 				325,
 				365,
 			},
+			["itemId"] = 232437,
 			["name"] = "Darkclaw Bisque",
 			["reagents"] = {
 				[13888] = 1,
 				[227813] = 1,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 470359,
 		},
 		[470370] = {
@@ -4109,10 +4111,12 @@ addon.recipeDB[185] = {
 				325,
 				365,
 			},
+			["itemId"] = 232443,
 			["name"] = "Smoked Redgill",
 			["reagents"] = {
 				[13758] = 1,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 470370,
 		},
 		[1225758] = {

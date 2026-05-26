@@ -117,6 +117,35 @@ def is_obsolete_item_name(name: str) -> bool:
     return False
 
 
+# Lazy-loaded hand-curated overrides for recipes whose requiredSkill isn't
+# discoverable from any DBC / emulator source (apprentice auto-grants, quest-
+# direct-grants without scroll items, vendor scrolls that fell out of the
+# current DBC extract). Wins over every other source — values are
+# user-verified against the in-game trainer tooltip or Wowhead. See
+# tools/manual_skill_overrides.json for the source-of-truth file.
+_MANUAL_SKILL_OVERRIDES = None
+
+def _load_manual_skill_overrides() -> dict:
+    global _MANUAL_SKILL_OVERRIDES
+    if _MANUAL_SKILL_OVERRIDES is not None:
+        return _MANUAL_SKILL_OVERRIDES
+    import json
+    p = SCRIPT_DIR / "manual_skill_overrides.json"
+    if not p.exists():
+        _MANUAL_SKILL_OVERRIDES = {}
+        return _MANUAL_SKILL_OVERRIDES
+    raw = json.loads(p.read_text(encoding="utf-8"))
+    # Filter out the metadata key, keep spell_id -> reqSkill
+    _MANUAL_SKILL_OVERRIDES = {
+        int(k): v["reqSkill"]
+        for k, v in raw.items()
+        if k.isdigit() and isinstance(v, dict) and "reqSkill" in v
+    }
+    print(f"  loaded {len(_MANUAL_SKILL_OVERRIDES)} hand-curated requiredSkill overrides from "
+          f"manual_skill_overrides.json", file=sys.stderr)
+    return _MANUAL_SKILL_OVERRIDES
+
+
 # Lazy-loaded trainer-rank cache. Built once (across every source) the first
 # time extract_recipes_for_build needs it. Subsequent builds reuse — the data
 # is build-agnostic (trainers are server-side, not per-client-build).
@@ -157,6 +186,9 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
     # first time and caches). Used downstream as the authoritative source
     # for trainer-taught recipes' requiredSkill.
     trainer_skill_ranks = _load_trainer_skill_ranks()
+
+    # Hand-curated manual overrides — top priority for requiredSkill.
+    manual_skill_overrides = _load_manual_skill_overrides()
 
     # ItemSparse indices —
     #   name_by_item:        used to filter obsolete recipe-scroll items
@@ -226,6 +258,64 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
                 items_by_spell.setdefault(sid, set()).add(iid)
         except (TypeError, ValueError, KeyError):
             continue
+
+    # Recipe-scroll name-match supplemental linker.
+    #
+    # ItemEffect only contains direct spell-teach mappings — but many WoW
+    # recipe scrolls implement their teaching via a generic "Learning" spell
+    # (spell 483) whose effect is then chained server-side to grant the
+    # specific craft spell. ItemEffect captures the item→Learning link, not
+    # the item→specific-craft link. As a result our items_by_spell map
+    # misses ~80-100 recipes per profession whose scrolls exist but aren't
+    # directly linked in DBC.
+    #
+    # Workaround: WoW's recipe scroll items follow a predictable naming
+    # convention — "Pattern: <CraftName>" for Tailoring/LW, "Plans: ..."
+    # for BS, "Recipe: ..." for Alchemy/Cooking/FA, "Formula: ..." for
+    # Enchanting, "Schematic: ..." for Engineering, "Design: ..." for JC,
+    # "Manual: ..." for some FA, "Technique: ..." for Inscription. Strip
+    # the prefix and the remainder exactly matches the craft spell's name
+    # in SpellName. Cross-validated at 97% hit rate on Vanilla data
+    # (1,047 of 1,082 recipe scrolls match a spell by stripped name).
+    #
+    # When the same spell name appears multiple times (e.g. rank variants
+    # of an enchant), we associate the scroll with the first matching
+    # spell — same convention as items[0] downstream. Misses (35 in
+    # Vanilla) are mostly singular/plural mismatches, legacy "Imbue X"
+    # naming, and skill-rank books which aren't recipes.
+    spell_by_name: dict[str, list[int]] = {}
+    for sid, sname in name_by_spell.items():
+        if sname:
+            spell_by_name.setdefault(sname, []).append(sid)
+
+    SCROLL_PREFIXES = (
+        "Pattern: ", "Plans: ", "Recipe: ", "Formula: ",
+        "Schematic: ", "Design: ", "Manual: ", "Technique: ",
+    )
+    n_name_match = 0
+    n_name_match_new = 0
+    n_name_unmatched = 0
+    for iid, iname in name_by_item.items():
+        if is_obsolete_item_name(iname):
+            continue
+        for pfx in SCROLL_PREFIXES:
+            if iname.startswith(pfx):
+                craft_name = iname[len(pfx):]
+                matched_spells = spell_by_name.get(craft_name)
+                if matched_spells:
+                    n_name_match += 1
+                    for sp in matched_spells:
+                        bucket = items_by_spell.setdefault(sp, set())
+                        if iid not in bucket:
+                            bucket.add(iid)
+                            n_name_match_new += 1
+                else:
+                    n_name_unmatched += 1
+                break
+    print(f"  recipe-scroll name-match: {n_name_match:,} scrolls matched "
+          f"({n_name_match_new:,} new spell-scroll links), "
+          f"{n_name_unmatched:,} unmatched (edge cases / non-recipe books)",
+          file=sys.stderr)
     if n_skipped_obsolete:
         print(f"  skipped {n_skipped_obsolete} obsolete item-teach rows "
               f"(ZZOLD/TEST/DEPRECATED variants)", file=sys.stderr)
@@ -285,6 +375,13 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
 
             # requiredSkill — ONLY authoritative sources, in priority order:
             #
+            # 0. Hand-curated manual override (manual_skill_overrides.json) —
+            #    user-verified value for recipes whose data isn't in any DBC
+            #    or emulator source (apprentice auto-grants, quest-direct-
+            #    grants, removed-from-DBC vendor scrolls). Highest priority
+            #    so the maintainer can correct any of the lower-tier
+            #    sources by adding an entry to the JSON file.
+            #
             # 1. Recipe-scroll ItemSparse.RequiredSkillRank — the LITERAL
             #    "Requires Blacksmithing (175)" / "Requires Tailoring (300)"
             #    value the in-game tooltip shows on the scroll. Blizzard
@@ -314,7 +411,9 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
                     scroll_rank = r
                     break
             trainer_rank = trainer_skill_ranks.get(spell_id)
-            required_skill = scroll_rank or trainer_rank  # None when unknown
+            manual_override = manual_skill_overrides.get(spell_id)
+            # Priority: manual > scroll > trainer > None
+            required_skill = manual_override or scroll_rank or trainer_rank
 
             recipes[spell_id] = {
                 "name":           name_by_spell.get(spell_id, ""),

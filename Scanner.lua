@@ -445,6 +445,26 @@ function Scanner:Init()
     -- Item-based cooldowns (Salt Shaker in Vanilla leatherworking)
     Ace:RegisterEvent("BAG_UPDATE_COOLDOWN", function() Scanner:OnBagCooldownEvent() end)
 
+    -- Trainer window. When a player opens a profession trainer, capture
+    -- the EXACT ReqSkillRank Blizzard's server enforces for every offered
+    -- spell (via GetTrainerServiceSkillReq). This is the authoritative
+    -- "Requires Blacksmithing (N)" value — same data the trainer's
+    -- tooltip displays — that emulator SQL doesn't have for apprentice-
+    -- tier recipes and that DBC's MinSkillLineRank reports as the
+    -- placeholder 1 for many recipes. One trainer visit captures every
+    -- spell that trainer teaches in a single event; the data syncs
+    -- guild-wide via DeltaSync (added in a follow-up patch) so a single
+    -- player's trainer visit fills the requiredSkill gap for everyone.
+    -- See gdb.trainerObservations table for the captured shape.
+    Ace:RegisterEvent("TRAINER_SHOW",   function() Scanner:OnTrainerShow() end)
+    -- TRAINER_UPDATE fires AFTER TRAINER_SHOW once the service list is
+    -- actually populated. On this client GetNumTrainerServices() returns 0
+    -- inside the TRAINER_SHOW handler — the services arrive one frame
+    -- later via TRAINER_UPDATE. Both events route to the same handler;
+    -- the handler is idempotent (existing entries refresh their
+    -- observedAt timestamp rather than double-counting).
+    Ace:RegisterEvent("TRAINER_UPDATE", function() Scanner:OnTrainerShow() end)
+
     -- Scan cooldowns on login after the server is ready
     Ace:ScheduleTimer(function()
         Scanner:ScanCooldowns()
@@ -686,6 +706,165 @@ function Scanner:OnCraftEvent()
     self:ScanCraftSkillInto(charKey)
     self:ScanCooldowns()
     self:ScheduleBroadcast()
+end
+
+--- Capture trainer-service skill requirements on TRAINER_SHOW.
+--- For each spell offered by the trainer (regardless of whether the player
+--- can currently afford / has already learned it), record:
+---   reqSkill   : the literal ReqSkillRank from GetTrainerServiceSkillReq —
+---                same value as the "Requires Tailoring (100)" tooltip line
+---                the trainer shows. AUTHORITATIVE; matches what Blizzard's
+---                server enforces.
+---   moneyCost  : copper cost to learn the spell (bonus signal; future UI)
+---   profId     : the trainer's profession skill line, derived from
+---                GetTrainerServiceSkillLine when present, else nil. Useful
+---                for cross-checking against the recipe's profession.
+---   observedBy : char key that captured this observation
+---   observedAt : server UNIX timestamp
+---
+--- Stored under gdb.trainerObservations[spellId] = { ... }. Schema lives
+--- top-level (peer to gdb.recipes etc.) so the table is grep-able in the
+--- SavedVariables file — easy for the maintainer to find and dump when
+--- promoting community observations into the shipped recipe DB.
+---
+--- v0.5.6: local capture only. Sync via DeltaSync added in a follow-up
+--- so we can validate the capture shape against real trainer interactions
+--- before plumbing it onto the wire.
+function Scanner:OnTrainerShow()
+    -- Always-on chat ping so we can confirm the event fires in the
+    -- field, even before captures show up. Removed/quieted in a later
+    -- patch once the capture pipeline is verified end-to-end.
+    addon:DebugPrint("Scanner: TRAINER_SHOW/UPDATE fired (Scanner:OnTrainerShow)")
+    if not GetNumTrainerServices then
+        addon:DebugPrint("  GetNumTrainerServices unavailable on this client")
+        return
+    end
+    local gdb = addon:GetGuildDb()
+    if not gdb then
+        addon:DebugPrint("  GetGuildDb returned nil (not in a guild?)")
+        return
+    end
+    if not gdb.trainerObservations then gdb.trainerObservations = {} end
+
+    local charKey = addon:GetCharacterKey()
+    local now     = GetServerTime and GetServerTime() or time()
+    local n       = GetNumTrainerServices() or 0
+    if n == 0 then return end  -- pre-population fire, nothing to do
+    local captured, updated, refreshed, skipped_header, skipped_no_spell = 0, 0, 0, 0, 0
+
+    for i = 1, n do
+        local name, _, svcType = GetTrainerServiceInfo(i)
+        if not name or svcType == "header" then
+            skipped_header = skipped_header + 1
+        else
+            local link = GetTrainerServiceItemLink and GetTrainerServiceItemLink(i)
+            -- TBC's GetTrainerServiceItemLink returns the CRAFTED-ITEM link
+            -- (|Hitem:N|h[Name]|h|r), not the spell link — the function is
+            -- literally named "ItemLink". Extract item ID, then reverse-
+            -- lookup to the recipe spell via addon.recipeDB[*][*].craftedItemId
+            -- (added in v0.5.5 from SpellEffect[Effect=24]). Also accept
+            -- spell:/enchant: as legacy formats for any client that uses
+            -- the older link shape (Vanilla CRAFT_SHOW path, etc.).
+            local spellId  = link and (tonumber(link:match("enchant:(%d+)"))
+                                    or tonumber(link:match("Hspell:(%d+)"))
+                                    or tonumber(link:match("spell:(%d+)")))
+            local itemId   = link and tonumber(link:match("Hitem:(%d+)"))
+            if not spellId and itemId and addon.recipeDB then
+                -- Walk every profession's recipe table to find the spell
+                -- whose craftedItemId matches the trainer's offered item.
+                -- O(profession-size) but only fires once per trainer
+                -- service (~60 per trainer visit) so it's negligible.
+                for _, profRecipes in pairs(addon.recipeDB) do
+                    for sid, data in pairs(profRecipes) do
+                        if data.craftedItemId == itemId then
+                            spellId = sid
+                            break
+                        end
+                    end
+                    if spellId then break end
+                end
+            end
+            if not spellId and name and addon.recipeDB then
+                -- Name-based fallback. Enchanting recipes apply effects
+                -- directly to items rather than producing an item, so
+                -- 84% of enchant entries in our recipeDB have no
+                -- craftedItemId. The trainer service's name
+                -- ("Enchant Cloak - Lesser Shadow Resistance", etc.)
+                -- still matches the spell name in our recipeDB exactly.
+                -- Use that to find the spell ID. Only kicks in when both
+                -- prior lookups (spell-link regex, itemId reverse-lookup)
+                -- missed, so it's a clean third-tier fallback.
+                for _, profRecipes in pairs(addon.recipeDB) do
+                    for sid, data in pairs(profRecipes) do
+                        if data.name == name then
+                            spellId = sid
+                            break
+                        end
+                    end
+                    if spellId then break end
+                end
+            end
+            if not spellId then
+                skipped_no_spell = skipped_no_spell + 1
+                if skipped_no_spell <= 3 then
+                    local raw = tostring(link):gsub("|", "||")
+                    addon:DebugPrint(("  [skip] svc %d name=%q type=%q itemId=%s link=%s"):format(
+                        i, tostring(name), tostring(svcType), tostring(itemId), raw))
+                end
+            else
+                local reqSkill = 0
+                if GetTrainerServiceSkillReq then
+                    -- API returns (reqSkillName, reqSkillRank) — the skill
+                    -- name first ("Blacksmithing"/etc.), the numeric rank
+                    -- second. Previous code captured only the first return
+                    -- and got the string, failing the type check and
+                    -- shipping reqSkill=0 for every observation.
+                    local _, reqSkillRank = GetTrainerServiceSkillReq(i)
+                    if type(reqSkillRank) == "number" then reqSkill = reqSkillRank end
+                end
+                local moneyCost = 0
+                if GetTrainerServiceCost then
+                    local c = GetTrainerServiceCost(i)
+                    if type(c) == "number" then moneyCost = c end
+                end
+                local profId
+                if GetTrainerServiceSkillLine then
+                    local sl = GetTrainerServiceSkillLine(i)
+                    if type(sl) == "number" then profId = sl end
+                end
+                local existing = gdb.trainerObservations[spellId]
+                local entry = {
+                    reqSkill   = reqSkill,
+                    moneyCost  = moneyCost,
+                    profId     = profId,
+                    observedBy = charKey,
+                    observedAt = now,
+                }
+                if not existing then
+                    gdb.trainerObservations[spellId] = entry
+                    captured = captured + 1
+                elseif existing.reqSkill ~= reqSkill or existing.moneyCost ~= moneyCost then
+                    gdb.trainerObservations[spellId] = entry
+                    updated = updated + 1
+                else
+                    existing.observedAt = now
+                    refreshed = refreshed + 1
+                end
+            end
+        end
+    end
+
+    local total = 0
+    for _ in pairs(gdb.trainerObservations) do total = total + 1 end
+    -- Full diagnostic stays on DebugPrint (visible with /togpm debug).
+    -- The one-line summary on captures stays user-facing — small,
+    -- informative, fires once per trainer visit (the early no-services
+    -- fires now return at the top so they don't print at all).
+    addon:DebugPrint(("Scanner: trainerObs captured=%d updated=%d refreshed=%d skipped(header)=%d skipped(no-spell)=%d total=%d"):format(
+        captured, updated, refreshed, skipped_header, skipped_no_spell, total))
+    if captured > 0 or updated > 0 then
+        addon:Print(("Trainer scan: %d new, %d updated (%d total recorded)"):format(captured, updated, total))
+    end
 end
 
 function Scanner:OnBagCooldownEvent()

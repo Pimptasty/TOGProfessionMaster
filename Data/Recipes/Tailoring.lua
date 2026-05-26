@@ -7603,7 +7603,7 @@ addon.recipeDB[197] = {
 				460,
 				475,
 			},
-			["itemId"] = 47657,
+			["itemId"] = 47636,
 			["minExpansion"] = 3,
 			["name"] = "Royal Moonshroud Robe",
 			["reagents"] = {
@@ -7622,7 +7622,7 @@ addon.recipeDB[197] = {
 				460,
 				475,
 			},
-			["itemId"] = 47656,
+			["itemId"] = 47637,
 			["minExpansion"] = 3,
 			["name"] = "Royal Moonshroud Bracers",
 			["reagents"] = {
@@ -7640,7 +7640,7 @@ addon.recipeDB[197] = {
 				460,
 				475,
 			},
-			["itemId"] = 47655,
+			["itemId"] = 47638,
 			["minExpansion"] = 3,
 			["name"] = "Merlin's Robe",
 			["reagents"] = {
@@ -7660,7 +7660,7 @@ addon.recipeDB[197] = {
 				460,
 				475,
 			},
-			["itemId"] = 47654,
+			["itemId"] = 47639,
 			["minExpansion"] = 3,
 			["name"] = "Bejeweled Wizard's Bracers",
 			["reagents"] = {
@@ -11082,12 +11082,14 @@ addon.recipeDB[197] = {
 				125,
 				150,
 			},
+			["itemId"] = 211247,
 			["name"] = "Phoenix Bindings",
 			["reagents"] = {
 				[814] = 2,
 				[2321] = 2,
 				[2997] = 6,
 			},
+			["requiredSkill"] = 125,
 			["teaches"] = 428424,
 		},
 		[429351] = {
@@ -11113,6 +11115,7 @@ addon.recipeDB[197] = {
 				225,
 				235,
 			},
+			["itemId"] = 215149,
 			["name"] = "Gneuro-Linked Arcano-Filament Monocle",
 			["reagents"] = {
 				[4339] = 10,
@@ -11121,6 +11124,7 @@ addon.recipeDB[197] = {
 				[213372] = 1,
 				[213379] = 5,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435610,
 		},
 		[435827] = {
@@ -11131,12 +11135,14 @@ addon.recipeDB[197] = {
 				200,
 				220,
 			},
+			["itemId"] = 215368,
 			["name"] = "Hyperconductive Arcano-Filament",
 			["reagents"] = {
 				[4339] = 2,
 				[8343] = 5,
 				[213378] = 5,
 			},
+			["requiredSkill"] = 200,
 			["teaches"] = 435827,
 		},
 		[435841] = {
@@ -11147,6 +11153,7 @@ addon.recipeDB[197] = {
 				170,
 				200,
 			},
+			["itemId"] = 215369,
 			["name"] = "Invoker's Cord",
 			["reagents"] = {
 				[1210] = 1,
@@ -11154,6 +11161,7 @@ addon.recipeDB[197] = {
 				[4305] = 3,
 				[4340] = 1,
 			},
+			["requiredSkill"] = 150,
 			["teaches"] = 435841,
 		},
 		[435848] = {
@@ -11164,6 +11172,7 @@ addon.recipeDB[197] = {
 				170,
 				200,
 			},
+			["itemId"] = 215370,
 			["name"] = "Invoker's Mantle",
 			["reagents"] = {
 				[2321] = 1,
@@ -11171,6 +11180,7 @@ addon.recipeDB[197] = {
 				[4340] = 4,
 				[6260] = 4,
 			},
+			["requiredSkill"] = 150,
 			["teaches"] = 435848,
 		},
 		[439085] = {
@@ -11181,6 +11191,7 @@ addon.recipeDB[197] = {
 				220,
 				250,
 			},
+			["itemId"] = 7088,
 			["name"] = "Crimson Silk Robe",
 			["reagents"] = {
 				[2604] = 4,
@@ -11189,6 +11200,7 @@ addon.recipeDB[197] = {
 				[4305] = 8,
 				[7068] = 4,
 			},
+			["requiredSkill"] = 205,
 			["teaches"] = 439085,
 		},
 		[439086] = {
@@ -11229,6 +11241,7 @@ addon.recipeDB[197] = {
 				215,
 				245,
 			},
+			["itemId"] = 7086,
 			["name"] = "Earthen Silk Belt",
 			["reagents"] = {
 				[4234] = 4,
@@ -11237,6 +11250,7 @@ addon.recipeDB[197] = {
 				[7067] = 4,
 				[7071] = 1,
 			},
+			["requiredSkill"] = 195,
 			["teaches"] = 439091,
 		},
 		[439093] = {
@@ -11247,6 +11261,7 @@ addon.recipeDB[197] = {
 				210,
 				240,
 			},
+			["itemId"] = 7084,
 			["name"] = "Crimson Silk Shoulders",
 			["reagents"] = {
 				[2604] = 2,
@@ -11254,6 +11269,7 @@ addon.recipeDB[197] = {
 				[4305] = 5,
 				[6371] = 2,
 			},
+			["requiredSkill"] = 190,
 			["teaches"] = 439093,
 		},
 		[439094] = {
@@ -11280,12 +11296,14 @@ addon.recipeDB[197] = {
 				195,
 				225,
 			},
+			["itemId"] = 4352,
 			["name"] = "Boots of the Enchanter",
 			["reagents"] = {
 				[4291] = 1,
 				[4305] = 4,
 				[4337] = 2,
 			},
+			["requiredSkill"] = 175,
 			["teaches"] = 439097,
 		},
 		[439098] = {
@@ -11329,12 +11347,14 @@ addon.recipeDB[197] = {
 				185,
 				215,
 			},
+			["itemId"] = 14630,
 			["name"] = "Enchanter's Cowl",
 			["reagents"] = {
 				[2321] = 2,
 				[4305] = 3,
 				[4337] = 2,
 			},
+			["requiredSkill"] = 165,
 			["teaches"] = 439102,
 		},
 		[446193] = {
@@ -11414,6 +11434,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 228303,
 			["name"] = "Incandescent Mooncloth Robe",
 			["reagents"] = {
 				[13926] = 2,
@@ -11421,6 +11442,7 @@ addon.recipeDB[197] = {
 				[14341] = 2,
 				[14342] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461708,
 		},
 		[461727] = {
@@ -11431,6 +11453,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 228121,
 			["name"] = "Leather-Reinforced Runecloth Bag",
 			["reagents"] = {
 				[8170] = 2,
@@ -11438,6 +11461,7 @@ addon.recipeDB[197] = {
 				[14341] = 1,
 				[15407] = 1,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461727,
 		},
 		[461747] = {
@@ -11448,12 +11472,14 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 228316,
 			["name"] = "Incandescent Mooncloth Vest",
 			["reagents"] = {
 				[14048] = 6,
 				[14341] = 1,
 				[14342] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461747,
 		},
 		[461750] = {
@@ -11464,6 +11490,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 228317,
 			["name"] = "Incandescent Mooncloth Circlet",
 			["reagents"] = {
 				[12800] = 1,
@@ -11472,6 +11499,7 @@ addon.recipeDB[197] = {
 				[14341] = 2,
 				[14342] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461750,
 		},
 		[461752] = {
@@ -11482,12 +11510,14 @@ addon.recipeDB[197] = {
 				305,
 				335,
 			},
+			["itemId"] = 228318,
 			["name"] = "Incandescent Mooncloth Leggings",
 			["reagents"] = {
 				[14048] = 6,
 				[14341] = 1,
 				[14342] = 4,
 			},
+			["requiredSkill"] = 290,
 			["teaches"] = 461752,
 		},
 		[462282] = {
@@ -11498,6 +11528,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 228477,
 			["name"] = "Embroidered Belt of the Archmage",
 			["reagents"] = {
 				[7078] = 12,
@@ -11508,6 +11539,7 @@ addon.recipeDB[197] = {
 				[14342] = 10,
 				[14344] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 462282,
 		},
 		[463972] = {
@@ -11518,6 +11550,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 14510,
 			["name"] = "Bottomless Bag",
 			["reagents"] = {
 				[14048] = 8,
@@ -11526,6 +11559,7 @@ addon.recipeDB[197] = {
 				[14344] = 2,
 				[17012] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 463972,
 		},
 		[1213527] = {
@@ -11536,6 +11570,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 234240,
 			["name"] = "Vampiric Cowl",
 			["reagents"] = {
 				[12810] = 8,
@@ -11543,6 +11578,7 @@ addon.recipeDB[197] = {
 				[14342] = 8,
 				[234009] = 15,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213527,
 		},
 		[1213530] = {
@@ -11553,6 +11589,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 234241,
 			["name"] = "Vampiric Shawl",
 			["reagents"] = {
 				[12810] = 8,
@@ -11560,6 +11597,7 @@ addon.recipeDB[197] = {
 				[14342] = 8,
 				[234009] = 15,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213530,
 		},
 		[1213532] = {
@@ -11570,6 +11608,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 234242,
 			["name"] = "Vampiric Robe",
 			["reagents"] = {
 				[12810] = 12,
@@ -11577,6 +11616,7 @@ addon.recipeDB[197] = {
 				[14342] = 12,
 				[234009] = 25,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213532,
 		},
 		[1213534] = {
@@ -11587,6 +11627,7 @@ addon.recipeDB[197] = {
 				320,
 				340,
 			},
+			["itemId"] = 234244,
 			["name"] = "Qiraji Silk Scarf",
 			["reagents"] = {
 				[12810] = 8,
@@ -11595,6 +11636,7 @@ addon.recipeDB[197] = {
 				[234007] = 8,
 				[234009] = 9,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213534,
 		},
 		[1213536] = {
@@ -11605,6 +11647,7 @@ addon.recipeDB[197] = {
 				320,
 				340,
 			},
+			["itemId"] = 234249,
 			["name"] = "Qiraji Silk Cape",
 			["reagents"] = {
 				[12810] = 8,
@@ -11613,6 +11656,7 @@ addon.recipeDB[197] = {
 				[234007] = 8,
 				[234009] = 9,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213536,
 		},
 		[1213538] = {
@@ -11623,6 +11667,7 @@ addon.recipeDB[197] = {
 				320,
 				340,
 			},
+			["itemId"] = 234250,
 			["name"] = "Qiraji Silk Cloak",
 			["reagents"] = {
 				[12810] = 8,
@@ -11631,6 +11676,7 @@ addon.recipeDB[197] = {
 				[234007] = 8,
 				[234009] = 9,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213538,
 		},
 		[1213540] = {
@@ -11641,6 +11687,7 @@ addon.recipeDB[197] = {
 				320,
 				340,
 			},
+			["itemId"] = 234251,
 			["name"] = "Qiraji Silk Drape",
 			["reagents"] = {
 				[12810] = 8,
@@ -11649,6 +11696,7 @@ addon.recipeDB[197] = {
 				[234007] = 8,
 				[234009] = 9,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213540,
 		},
 		[1213740] = {
@@ -11659,6 +11707,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 22772,
 			["name"] = "Sylvan Shoulders",
 			["reagents"] = {
 				[12803] = 4,
@@ -11666,6 +11715,7 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[19726] = 3,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213740,
 		},
 		[1213742] = {
@@ -11676,6 +11726,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 22773,
 			["name"] = "Sylvan Crown",
 			["reagents"] = {
 				[12803] = 3,
@@ -11684,6 +11735,7 @@ addon.recipeDB[197] = {
 				[14342] = 4,
 				[19726] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213742,
 		},
 		[1213744] = {
@@ -11694,6 +11746,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 22774,
 			["name"] = "Sylvan Vest",
 			["reagents"] = {
 				[12803] = 2,
@@ -11702,6 +11755,7 @@ addon.recipeDB[197] = {
 				[14342] = 4,
 				[19726] = 3,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213744,
 		},
 		[1214173] = {
@@ -11712,10 +11766,12 @@ addon.recipeDB[197] = {
 				315,
 				330,
 			},
+			["itemId"] = 234445,
 			["name"] = "Bolt of Qiraji Silk",
 			["reagents"] = {
 				[234008] = 5,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1214173,
 		},
 		[1214306] = {
@@ -11726,6 +11782,7 @@ addon.recipeDB[197] = {
 				320,
 				340,
 			},
+			["itemId"] = 234483,
 			["name"] = "Dreamscale Bracers",
 			["reagents"] = {
 				[12803] = 4,
@@ -11734,6 +11791,7 @@ addon.recipeDB[197] = {
 				[14342] = 4,
 				[20381] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1214306,
 		},
 		[1214307] = {
@@ -11744,6 +11802,7 @@ addon.recipeDB[197] = {
 				320,
 				340,
 			},
+			["itemId"] = 234486,
 			["name"] = "Dreamscale Mitts",
 			["reagents"] = {
 				[12803] = 4,
@@ -11752,6 +11811,7 @@ addon.recipeDB[197] = {
 				[14342] = 4,
 				[20381] = 5,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1214307,
 		},
 		[1216338] = {
@@ -11779,6 +11839,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 22686,
 			["name"] = "Glacial Vest",
 			["reagents"] = {
 				[7080] = 6,
@@ -11786,6 +11847,7 @@ addon.recipeDB[197] = {
 				[14227] = 8,
 				[236656] = 7,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223760,
 		},
 		[1223762] = {
@@ -11796,6 +11858,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 22685,
 			["name"] = "Glacial Cloak",
 			["reagents"] = {
 				[7080] = 2,
@@ -11803,6 +11866,7 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[236656] = 5,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223762,
 		},
 		[1223764] = {
@@ -11813,6 +11877,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 22684,
 			["name"] = "Glacial Gloves",
 			["reagents"] = {
 				[7080] = 4,
@@ -11820,6 +11885,7 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[236656] = 5,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223764,
 		},
 		[1223766] = {
@@ -11830,6 +11896,7 @@ addon.recipeDB[197] = {
 				315,
 				345,
 			},
+			["itemId"] = 22687,
 			["name"] = "Glacial Wrists",
 			["reagents"] = {
 				[7080] = 2,
@@ -11837,6 +11904,7 @@ addon.recipeDB[197] = {
 				[14227] = 4,
 				[236656] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223766,
 		},
 		[1223768] = {

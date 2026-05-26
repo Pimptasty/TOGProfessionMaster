@@ -5450,7 +5450,7 @@ addon.recipeDB[333] = {
 				[52328] = 1,
 				[52719] = 5,
 			},
-			["requiredSkill"] = 490,
+			["requiredSkill"] = 525,
 			["teaches"] = 74229,
 		},
 		[74230] = {
@@ -6643,12 +6643,14 @@ addon.recipeDB[333] = {
 				100,
 				120,
 			},
+			["itemId"] = 211849,
 			["name"] = "Blackfathom Mana Oil",
 			["reagents"] = {
 				[3372] = 1,
 				[10939] = 1,
 				[10940] = 5,
 			},
+			["requiredSkill"] = 100,
 			["teaches"] = 430409,
 		},
 		[435481] = {
@@ -6658,12 +6660,14 @@ addon.recipeDB[333] = {
 				200,
 				235,
 			},
+			["itemId"] = 215129,
 			["name"] = "Enchant Weapon - Dismantle",
 			["reagents"] = {
 				[5637] = 2,
 				[11174] = 4,
 				[11177] = 2,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435481,
 		},
 		[435903] = {
@@ -6673,11 +6677,13 @@ addon.recipeDB[333] = {
 				200,
 				240,
 			},
+			["itemId"] = 215138,
 			["name"] = "Enchant Chest - Retricutioner",
 			["reagents"] = {
 				[11176] = 2,
 				[11177] = 1,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435903,
 		},
 		[439134] = {
@@ -6763,12 +6769,14 @@ addon.recipeDB[333] = {
 				285,
 				305,
 			},
+			["itemId"] = 228981,
 			["name"] = "Conductive Shield Coating",
 			["reagents"] = {
 				[4625] = 1,
 				[8925] = 1,
 				[16204] = 2,
 			},
+			["requiredSkill"] = 275,
 			["teaches"] = 463869,
 		},
 		[463871] = {
@@ -6778,6 +6786,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 228982,
 			["name"] = "Enchant Shield - Law of Nature",
 			["reagents"] = {
 				[7076] = 1,
@@ -6787,6 +6796,7 @@ addon.recipeDB[333] = {
 				[14344] = 4,
 				[16203] = 12,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 463871,
 		},
 		[471400] = {
@@ -6797,6 +6807,7 @@ addon.recipeDB[333] = {
 				310,
 				330,
 			},
+			["itemId"] = 232610,
 			["name"] = "Magnificent Trollshine",
 			["reagents"] = {
 				[8151] = 3,
@@ -6804,6 +6815,7 @@ addon.recipeDB[333] = {
 				[14344] = 2,
 				[18256] = 1,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 471400,
 		},
 		[1213593] = {
@@ -6814,6 +6826,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 234266,
 			["name"] = "Speedstone",
 			["reagents"] = {
 				[2452] = 20,
@@ -6822,6 +6835,7 @@ addon.recipeDB[333] = {
 				[234006] = 10,
 				[234010] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213593,
 		},
 		[1213595] = {
@@ -6832,6 +6846,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 234267,
 			["name"] = "Tear of the Dreamer",
 			["reagents"] = {
 				[20725] = 4,
@@ -6840,6 +6855,7 @@ addon.recipeDB[333] = {
 				[234010] = 10,
 				[234012] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213595,
 		},
 		[1213598] = {
@@ -6850,6 +6866,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 234268,
 			["name"] = "Lodestone of Retaliation",
 			["reagents"] = {
 				[20725] = 4,
@@ -6858,6 +6875,7 @@ addon.recipeDB[333] = {
 				[234010] = 5,
 				[234011] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213598,
 		},
 		[1213600] = {
@@ -6868,6 +6886,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 234269,
 			["name"] = "Enchanted Stopwatch",
 			["reagents"] = {
 				[2459] = 3,
@@ -6875,6 +6894,7 @@ addon.recipeDB[333] = {
 				[234003] = 3,
 				[234005] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213600,
 		},
 		[1213603] = {
@@ -6885,6 +6905,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 234270,
 			["name"] = "Ruby-Encrusted Broach",
 			["reagents"] = {
 				[20725] = 6,
@@ -6894,6 +6915,7 @@ addon.recipeDB[333] = {
 				[234011] = 10,
 				[234012] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213603,
 		},
 		[1213607] = {
@@ -6904,11 +6926,13 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 234271,
 			["name"] = "Scroll: Wrath of the Swarm",
 			["reagents"] = {
 				[14047] = 1,
 				[16203] = 1,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213607,
 		},
 		[1213610] = {
@@ -6919,12 +6943,14 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 234272,
 			["name"] = "Enchanted Repellent",
 			["reagents"] = {
 				[16204] = 2,
 				[234011] = 3,
 				[234012] = 3,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213610,
 		},
 		[1213616] = {
@@ -6934,6 +6960,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 233997,
 			["name"] = "Enchant Chest - Living Stats",
 			["reagents"] = {
 				[13458] = 10,
@@ -6943,6 +6970,7 @@ addon.recipeDB[333] = {
 				[234010] = 2,
 				[234011] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213616,
 		},
 		[1213622] = {
@@ -6952,6 +6980,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 233998,
 			["name"] = "Enchant Gloves - Holy Power",
 			["reagents"] = {
 				[12735] = 2,
@@ -6959,6 +6988,7 @@ addon.recipeDB[333] = {
 				[14344] = 5,
 				[20725] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213622,
 		},
 		[1213626] = {
@@ -6968,12 +6998,14 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 233999,
 			["name"] = "Enchant Gloves - Arcane Power",
 			["reagents"] = {
 				[12753] = 2,
 				[14344] = 5,
 				[20725] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213626,
 		},
 		[1213628] = {
@@ -6984,6 +7016,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 234275,
 			["name"] = "Enchanted Prayer Tome",
 			["reagents"] = {
 				[12810] = 4,
@@ -6991,6 +7024,7 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234008] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213628,
 		},
 		[1213633] = {
@@ -7001,6 +7035,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 234276,
 			["name"] = "Enchanted Totem",
 			["reagents"] = {
 				[12810] = 3,
@@ -7008,6 +7043,7 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234012] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213633,
 		},
 		[1213635] = {
@@ -7018,6 +7054,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 234277,
 			["name"] = "Enchanted Mushroom",
 			["reagents"] = {
 				[12810] = 3,
@@ -7026,6 +7063,7 @@ addon.recipeDB[333] = {
 				[234011] = 4,
 				[234012] = 20,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213635,
 		},
 		[1216005] = {
@@ -7036,6 +7074,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 235133,
 			["name"] = "Libram of Righteousness",
 			["reagents"] = {
 				[12810] = 4,
@@ -7043,6 +7082,7 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234008] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1216005,
 		},
 		[1216007] = {
@@ -7053,6 +7093,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 235134,
 			["name"] = "Libram of the Exorcist",
 			["reagents"] = {
 				[12810] = 4,
@@ -7060,6 +7101,7 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234008] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1216007,
 		},
 		[1216010] = {
@@ -7070,6 +7112,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 235135,
 			["name"] = "Libram of Sanctity",
 			["reagents"] = {
 				[12810] = 4,
@@ -7077,6 +7120,7 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234008] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1216010,
 		},
 		[1216014] = {
@@ -7087,6 +7131,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 235136,
 			["name"] = "Totem of Pyroclastic Thunder",
 			["reagents"] = {
 				[12810] = 3,
@@ -7094,6 +7139,7 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234012] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1216014,
 		},
 		[1216016] = {
@@ -7104,6 +7150,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 235137,
 			["name"] = "Totem of Thunderous Strikes",
 			["reagents"] = {
 				[12810] = 3,
@@ -7111,6 +7158,7 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234012] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1216016,
 		},
 		[1216018] = {
@@ -7121,6 +7169,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 235138,
 			["name"] = "Totem of Flowing Magma",
 			["reagents"] = {
 				[12810] = 3,
@@ -7128,6 +7177,7 @@ addon.recipeDB[333] = {
 				[234003] = 2,
 				[234012] = 10,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1216018,
 		},
 		[1216020] = {
@@ -7138,6 +7188,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 235139,
 			["name"] = "Idol of Sidereal Wrath",
 			["reagents"] = {
 				[12810] = 3,
@@ -7146,6 +7197,7 @@ addon.recipeDB[333] = {
 				[234011] = 4,
 				[234012] = 20,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1216020,
 		},
 		[1216022] = {
@@ -7156,6 +7208,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 235140,
 			["name"] = "Idol of Feline Ferocity",
 			["reagents"] = {
 				[12810] = 3,
@@ -7164,6 +7217,7 @@ addon.recipeDB[333] = {
 				[234011] = 4,
 				[234012] = 20,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1216022,
 		},
 		[1216024] = {
@@ -7174,6 +7228,7 @@ addon.recipeDB[333] = {
 				320,
 				360,
 			},
+			["itemId"] = 235141,
 			["name"] = "Idol of Ursin Power",
 			["reagents"] = {
 				[12810] = 3,
@@ -7182,6 +7237,7 @@ addon.recipeDB[333] = {
 				[234011] = 4,
 				[234012] = 20,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1216024,
 		},
 		[1217189] = {

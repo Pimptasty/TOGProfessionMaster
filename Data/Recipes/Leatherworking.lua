@@ -9562,7 +9562,7 @@ addon.recipeDB[165] = {
 				460,
 				475,
 			},
-			["itemId"] = 47650,
+			["itemId"] = 47628,
 			["minExpansion"] = 3,
 			["name"] = "Ensorcelled Nerubian Breastplate",
 			["reagents"] = {
@@ -9583,7 +9583,7 @@ addon.recipeDB[165] = {
 				460,
 				475,
 			},
-			["itemId"] = 47646,
+			["itemId"] = 47629,
 			["minExpansion"] = 3,
 			["name"] = "Black Chitin Bracers",
 			["reagents"] = {
@@ -9603,7 +9603,7 @@ addon.recipeDB[165] = {
 				460,
 				475,
 			},
-			["itemId"] = 47649,
+			["itemId"] = 47630,
 			["minExpansion"] = 3,
 			["name"] = "Crusader's Dragonscale Breastplate",
 			["reagents"] = {
@@ -9624,7 +9624,7 @@ addon.recipeDB[165] = {
 				460,
 				475,
 			},
-			["itemId"] = 47647,
+			["itemId"] = 47635,
 			["minExpansion"] = 3,
 			["name"] = "Bracers of Swift Death",
 			["reagents"] = {
@@ -9644,7 +9644,7 @@ addon.recipeDB[165] = {
 				460,
 				475,
 			},
-			["itemId"] = 47652,
+			["itemId"] = 47632,
 			["minExpansion"] = 3,
 			["name"] = "Lunar Eclipse Robes",
 			["reagents"] = {
@@ -9664,7 +9664,7 @@ addon.recipeDB[165] = {
 				460,
 				475,
 			},
-			["itemId"] = 47653,
+			["itemId"] = 47633,
 			["minExpansion"] = 3,
 			["name"] = "Moonshadow Armguards",
 			["reagents"] = {
@@ -9684,7 +9684,7 @@ addon.recipeDB[165] = {
 				460,
 				475,
 			},
-			["itemId"] = 47651,
+			["itemId"] = 47634,
 			["minExpansion"] = 3,
 			["name"] = "Knightbane Carapace",
 			["reagents"] = {
@@ -9704,7 +9704,7 @@ addon.recipeDB[165] = {
 				460,
 				475,
 			},
-			["itemId"] = 47648,
+			["itemId"] = 47631,
 			["minExpansion"] = 3,
 			["name"] = "Crusader's Dragonscale Bracers",
 			["reagents"] = {
@@ -15968,11 +15968,13 @@ addon.recipeDB[165] = {
 				200,
 				220,
 			},
+			["itemId"] = 215367,
 			["name"] = "Faintly Glowing Leather",
 			["reagents"] = {
 				[8172] = 1,
 				[213370] = 5,
 			},
+			["requiredSkill"] = 200,
 			["teaches"] = 435819,
 		},
 		[435904] = {
@@ -15983,6 +15985,7 @@ addon.recipeDB[165] = {
 				225,
 				235,
 			},
+			["itemId"] = 215152,
 			["name"] = "Glowing Gneuro-Linked Cowl",
 			["reagents"] = {
 				[4291] = 2,
@@ -15990,6 +15993,7 @@ addon.recipeDB[165] = {
 				[213369] = 5,
 				[213379] = 1,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435904,
 		},
 		[435949] = {
@@ -16000,6 +16004,7 @@ addon.recipeDB[165] = {
 				225,
 				235,
 			},
+			["itemId"] = 215422,
 			["name"] = "Glowing Hyperconductive Scale Coif",
 			["reagents"] = {
 				[5785] = 10,
@@ -16007,6 +16012,7 @@ addon.recipeDB[165] = {
 				[213372] = 1,
 				[213376] = 1,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435949,
 		},
 		[435951] = {
@@ -16017,6 +16023,7 @@ addon.recipeDB[165] = {
 				225,
 				235,
 			},
+			["itemId"] = 215423,
 			["name"] = "Gneuro-Conductive Channeler's Hood",
 			["reagents"] = {
 				[8172] = 5,
@@ -16024,6 +16031,7 @@ addon.recipeDB[165] = {
 				[213372] = 1,
 				[213379] = 1,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435951,
 		},
 		[435953] = {
@@ -16034,6 +16042,7 @@ addon.recipeDB[165] = {
 				225,
 				235,
 			},
+			["itemId"] = 215424,
 			["name"] = "Rad-Resistant Scale Hood",
 			["reagents"] = {
 				[8172] = 5,
@@ -16041,6 +16050,7 @@ addon.recipeDB[165] = {
 				[213372] = 1,
 				[213376] = 1,
 			},
+			["requiredSkill"] = 225,
 			["teaches"] = 435953,
 		},
 		[439105] = {
@@ -16051,12 +16061,14 @@ addon.recipeDB[165] = {
 				240,
 				260,
 			},
+			["itemId"] = 8387,
 			["name"] = "Big Voodoo Mask",
 			["reagents"] = {
 				[4304] = 8,
 				[8151] = 6,
 				[8343] = 1,
 			},
+			["requiredSkill"] = 220,
 			["teaches"] = 439105,
 		},
 		[439108] = {
@@ -16067,12 +16079,14 @@ addon.recipeDB[165] = {
 				235,
 				255,
 			},
+			["itemId"] = 8386,
 			["name"] = "Big Voodoo Robe",
 			["reagents"] = {
 				[4304] = 10,
 				[8151] = 4,
 				[8343] = 1,
 			},
+			["requiredSkill"] = 215,
 			["teaches"] = 439108,
 		},
 		[439110] = {
@@ -16083,12 +16097,14 @@ addon.recipeDB[165] = {
 				215,
 				235,
 			},
+			["itemId"] = 4300,
 			["name"] = "Guardian Leather Bracers",
 			["reagents"] = {
 				[4234] = 6,
 				[4236] = 2,
 				[4291] = 1,
 			},
+			["requiredSkill"] = 195,
 			["teaches"] = 439110,
 		},
 		[439112] = {
@@ -16099,6 +16115,7 @@ addon.recipeDB[165] = {
 				190,
 				210,
 			},
+			["itemId"] = 4298,
 			["name"] = "Guardian Belt",
 			["reagents"] = {
 				[2321] = 1,
@@ -16106,6 +16123,7 @@ addon.recipeDB[165] = {
 				[4236] = 2,
 				[7071] = 1,
 			},
+			["requiredSkill"] = 170,
 			["teaches"] = 439112,
 		},
 		[439114] = {
@@ -16148,12 +16166,14 @@ addon.recipeDB[165] = {
 				225,
 				245,
 			},
+			["itemId"] = 8385,
 			["name"] = "Turtle Scale Gloves",
 			["reagents"] = {
 				[4304] = 6,
 				[8167] = 8,
 				[8343] = 1,
 			},
+			["requiredSkill"] = 205,
 			["teaches"] = 439118,
 		},
 		[446183] = {
@@ -16283,6 +16303,7 @@ addon.recipeDB[165] = {
 				315,
 				335,
 			},
+			["itemId"] = 227899,
 			["name"] = "Honed Blue Dragonscale Shoulders",
 			["reagents"] = {
 				[8170] = 28,
@@ -16291,6 +16312,7 @@ addon.recipeDB[165] = {
 				[15407] = 1,
 				[15415] = 30,
 			},
+			["requiredSkill"] = 295,
 			["teaches"] = 461645,
 		},
 		[461649] = {
@@ -16301,12 +16323,14 @@ addon.recipeDB[165] = {
 				290,
 				310,
 			},
+			["itemId"] = 227900,
 			["name"] = "Living Green Dragonscale Leggings",
 			["reagents"] = {
 				[8170] = 20,
 				[14341] = 1,
 				[15412] = 25,
 			},
+			["requiredSkill"] = 270,
 			["teaches"] = 461649,
 		},
 		[461653] = {
@@ -16317,6 +16341,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 227910,
 			["name"] = "Brilliant Chromatic Cloak",
 			["reagents"] = {
 				[8170] = 30,
@@ -16326,6 +16351,7 @@ addon.recipeDB[165] = {
 				[15414] = 30,
 				[15416] = 30,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461653,
 		},
 		[461655] = {
@@ -16336,6 +16362,7 @@ addon.recipeDB[165] = {
 				310,
 				330,
 			},
+			["itemId"] = 227902,
 			["name"] = "Hardened Black Dragonscale Breastplate",
 			["reagents"] = {
 				[8170] = 40,
@@ -16343,6 +16370,7 @@ addon.recipeDB[165] = {
 				[15407] = 1,
 				[15416] = 60,
 			},
+			["requiredSkill"] = 290,
 			["teaches"] = 461655,
 		},
 		[461657] = {
@@ -16353,6 +16381,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 227903,
 			["name"] = "Hardened Black Dragonscale Leggings",
 			["reagents"] = {
 				[8170] = 40,
@@ -16361,6 +16390,7 @@ addon.recipeDB[165] = {
 				[15407] = 1,
 				[15416] = 60,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461657,
 		},
 		[461659] = {
@@ -16371,6 +16401,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 227904,
 			["name"] = "Hardened Black Dragonscale Shoulders",
 			["reagents"] = {
 				[8170] = 44,
@@ -16379,6 +16410,7 @@ addon.recipeDB[165] = {
 				[15407] = 1,
 				[15416] = 45,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461659,
 		},
 		[461661] = {
@@ -16389,6 +16421,7 @@ addon.recipeDB[165] = {
 				305,
 				325,
 			},
+			["itemId"] = 227906,
 			["name"] = "Masterwork Volcanic Breastplate",
 			["reagents"] = {
 				[7076] = 1,
@@ -16396,6 +16429,7 @@ addon.recipeDB[165] = {
 				[8170] = 8,
 				[14341] = 1,
 			},
+			["requiredSkill"] = 285,
 			["teaches"] = 461661,
 		},
 		[461663] = {
@@ -16406,6 +16440,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 227907,
 			["name"] = "Masterwork Volcanic Shoulders",
 			["reagents"] = {
 				[7076] = 1,
@@ -16413,6 +16448,7 @@ addon.recipeDB[165] = {
 				[8170] = 10,
 				[14341] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461663,
 		},
 		[461665] = {
@@ -16423,6 +16459,7 @@ addon.recipeDB[165] = {
 				290,
 				310,
 			},
+			["itemId"] = 227908,
 			["name"] = "Masterwork Volcanic Leggings",
 			["reagents"] = {
 				[7075] = 1,
@@ -16430,6 +16467,7 @@ addon.recipeDB[165] = {
 				[8170] = 6,
 				[14341] = 1,
 			},
+			["requiredSkill"] = 270,
 			["teaches"] = 461665,
 		},
 		[461673] = {
@@ -16440,6 +16478,7 @@ addon.recipeDB[165] = {
 				305,
 				325,
 			},
+			["itemId"] = 227898,
 			["name"] = "Honed Blue Dragonscale Breastplate",
 			["reagents"] = {
 				[8170] = 28,
@@ -16447,6 +16486,7 @@ addon.recipeDB[165] = {
 				[15407] = 1,
 				[15415] = 30,
 			},
+			["requiredSkill"] = 285,
 			["teaches"] = 461673,
 		},
 		[461677] = {
@@ -16457,12 +16497,14 @@ addon.recipeDB[165] = {
 				300,
 				320,
 			},
+			["itemId"] = 228251,
 			["name"] = "Living Green Dragonscale Gauntlets",
 			["reagents"] = {
 				[8170] = 20,
 				[14341] = 1,
 				[15412] = 25,
 			},
+			["requiredSkill"] = 270,
 			["teaches"] = 461677,
 		},
 		[461690] = {
@@ -16473,6 +16515,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 228276,
 			["name"] = "Mastercrafted Shifting Cloak",
 			["reagents"] = {
 				[7082] = 12,
@@ -16482,6 +16525,7 @@ addon.recipeDB[165] = {
 				[14341] = 8,
 				[15407] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461690,
 		},
 		[461692] = {
@@ -16509,6 +16553,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 228301,
 			["name"] = "Swift Flight Vambraces",
 			["reagents"] = {
 				[8170] = 12,
@@ -16517,6 +16562,7 @@ addon.recipeDB[165] = {
 				[15420] = 60,
 				[18512] = 8,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461706,
 		},
 		[461720] = {
@@ -16527,12 +16573,14 @@ addon.recipeDB[165] = {
 				280,
 				300,
 			},
+			["itemId"] = 228309,
 			["name"] = "Living Green Dragonscale Breastplate",
 			["reagents"] = {
 				[8170] = 20,
 				[14341] = 2,
 				[15412] = 25,
 			},
+			["requiredSkill"] = 260,
 			["teaches"] = 461720,
 		},
 		[461722] = {
@@ -16543,6 +16591,7 @@ addon.recipeDB[165] = {
 				310,
 				330,
 			},
+			["itemId"] = 228119,
 			["name"] = "Devilcore Gauntlets",
 			["reagents"] = {
 				[7078] = 8,
@@ -16550,6 +16599,7 @@ addon.recipeDB[165] = {
 				[14341] = 1,
 				[15417] = 8,
 			},
+			["requiredSkill"] = 290,
 			["teaches"] = 461722,
 		},
 		[461724] = {
@@ -16560,6 +16610,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 228120,
 			["name"] = "Devilcore Leggings",
 			["reagents"] = {
 				[7078] = 10,
@@ -16568,6 +16619,7 @@ addon.recipeDB[165] = {
 				[15407] = 1,
 				[15417] = 20,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461724,
 		},
 		[461754] = {
@@ -16578,6 +16630,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 228319,
 			["name"] = "Girdle of Arcane Insight",
 			["reagents"] = {
 				[8170] = 12,
@@ -16585,6 +16638,7 @@ addon.recipeDB[165] = {
 				[14341] = 4,
 				[15407] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 461754,
 		},
 		[462227] = {
@@ -16612,12 +16666,14 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 234235,
 			["name"] = "Glowing Chitin Armor Kit",
 			["reagents"] = {
 				[14342] = 3,
 				[18251] = 1,
 				[234007] = 5,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213513,
 		},
 		[1213519] = {
@@ -16628,12 +16684,14 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 234236,
 			["name"] = "Sharpened Chitin Armor Kit",
 			["reagents"] = {
 				[15407] = 3,
 				[18251] = 1,
 				[234007] = 5,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213519,
 		},
 		[1213521] = {
@@ -16644,6 +16702,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 234237,
 			["name"] = "Razorbramble Cowl",
 			["reagents"] = {
 				[12810] = 8,
@@ -16651,6 +16710,7 @@ addon.recipeDB[165] = {
 				[234007] = 15,
 				[234009] = 8,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213521,
 		},
 		[1213523] = {
@@ -16661,6 +16721,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 234238,
 			["name"] = "Razorbramble Shoulderpads",
 			["reagents"] = {
 				[12810] = 8,
@@ -16668,6 +16729,7 @@ addon.recipeDB[165] = {
 				[234007] = 15,
 				[234009] = 8,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213523,
 		},
 		[1213525] = {
@@ -16678,6 +16740,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 234239,
 			["name"] = "Razorbramble Leathers",
 			["reagents"] = {
 				[12810] = 12,
@@ -16685,6 +16748,7 @@ addon.recipeDB[165] = {
 				[234007] = 22,
 				[234009] = 12,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213525,
 		},
 		[1213717] = {
@@ -16695,6 +16759,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 20509,
 			["name"] = "Sandstalker Bracers",
 			["reagents"] = {
 				[18512] = 4,
@@ -16702,6 +16767,7 @@ addon.recipeDB[165] = {
 				[20498] = 20,
 				[20501] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213717,
 		},
 		[1213720] = {
@@ -16712,6 +16778,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 20510,
 			["name"] = "Sandstalker Gauntlets",
 			["reagents"] = {
 				[15407] = 2,
@@ -16720,6 +16787,7 @@ addon.recipeDB[165] = {
 				[20498] = 30,
 				[20501] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213720,
 		},
 		[1213723] = {
@@ -16730,6 +16798,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 20511,
 			["name"] = "Sandstalker Breastplate",
 			["reagents"] = {
 				[15407] = 4,
@@ -16738,6 +16807,7 @@ addon.recipeDB[165] = {
 				[20498] = 40,
 				[20501] = 5,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213723,
 		},
 		[1213726] = {
@@ -16748,6 +16818,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 20506,
 			["name"] = "Spitfire Bracers",
 			["reagents"] = {
 				[7078] = 2,
@@ -16755,6 +16826,7 @@ addon.recipeDB[165] = {
 				[20498] = 20,
 				[20500] = 2,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213726,
 		},
 		[1213728] = {
@@ -16765,6 +16837,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 20507,
 			["name"] = "Spitfire Gauntlets",
 			["reagents"] = {
 				[7078] = 2,
@@ -16773,6 +16846,7 @@ addon.recipeDB[165] = {
 				[20498] = 30,
 				[20500] = 3,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213728,
 		},
 		[1213731] = {
@@ -16783,6 +16857,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 20508,
 			["name"] = "Spitfire Breastplate",
 			["reagents"] = {
 				[7078] = 2,
@@ -16791,6 +16866,7 @@ addon.recipeDB[165] = {
 				[20498] = 40,
 				[20500] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213731,
 		},
 		[1213734] = {
@@ -16801,6 +16877,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 22769,
 			["name"] = "Bramblewood Belt",
 			["reagents"] = {
 				[12803] = 4,
@@ -16808,6 +16885,7 @@ addon.recipeDB[165] = {
 				[15407] = 2,
 				[19726] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213734,
 		},
 		[1213736] = {
@@ -16818,6 +16896,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 22770,
 			["name"] = "Bramblewood Boots",
 			["reagents"] = {
 				[12803] = 4,
@@ -16826,6 +16905,7 @@ addon.recipeDB[165] = {
 				[18512] = 3,
 				[19726] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213736,
 		},
 		[1213738] = {
@@ -16836,6 +16916,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 22771,
 			["name"] = "Bramblewood Helm",
 			["reagents"] = {
 				[12803] = 4,
@@ -16843,6 +16924,7 @@ addon.recipeDB[165] = {
 				[15407] = 4,
 				[19726] = 7,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213738,
 		},
 		[1213751] = {
@@ -16853,6 +16935,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 20382,
 			["name"] = "Dreamscale Breastplate",
 			["reagents"] = {
 				[12803] = 4,
@@ -16861,6 +16944,7 @@ addon.recipeDB[165] = {
 				[15407] = 4,
 				[20381] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1213751,
 		},
 		[1214303] = {
@@ -16871,6 +16955,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 234481,
 			["name"] = "Dreamscale Kilt",
 			["reagents"] = {
 				[12803] = 4,
@@ -16879,6 +16964,7 @@ addon.recipeDB[165] = {
 				[15407] = 4,
 				[20381] = 6,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1214303,
 		},
 		[1216335] = {
@@ -16921,6 +17007,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 22696,
 			["name"] = "Icy Scale Breastplate",
 			["reagents"] = {
 				[7080] = 2,
@@ -16929,6 +17016,7 @@ addon.recipeDB[165] = {
 				[15408] = 24,
 				[236656] = 7,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223774,
 		},
 		[1223776] = {
@@ -16939,6 +17027,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 22697,
 			["name"] = "Icy Scale Gauntlets",
 			["reagents"] = {
 				[7080] = 2,
@@ -16947,6 +17036,7 @@ addon.recipeDB[165] = {
 				[15408] = 16,
 				[236656] = 5,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223776,
 		},
 		[1223778] = {
@@ -16957,6 +17047,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 22698,
 			["name"] = "Icy Scale Bracers",
 			["reagents"] = {
 				[7080] = 2,
@@ -16965,6 +17056,7 @@ addon.recipeDB[165] = {
 				[15408] = 16,
 				[236656] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223778,
 		},
 		[1223780] = {
@@ -16975,6 +17067,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 22692,
 			["name"] = "Polar Tunic",
 			["reagents"] = {
 				[7080] = 2,
@@ -16983,6 +17076,7 @@ addon.recipeDB[165] = {
 				[15407] = 4,
 				[236656] = 7,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223780,
 		},
 		[1223782] = {
@@ -16993,6 +17087,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 22694,
 			["name"] = "Polar Gloves",
 			["reagents"] = {
 				[7080] = 2,
@@ -17001,6 +17096,7 @@ addon.recipeDB[165] = {
 				[15407] = 3,
 				[236656] = 5,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223782,
 		},
 		[1223784] = {
@@ -17011,6 +17107,7 @@ addon.recipeDB[165] = {
 				320,
 				340,
 			},
+			["itemId"] = 22695,
 			["name"] = "Polar Bracers",
 			["reagents"] = {
 				[7080] = 2,
@@ -17019,6 +17116,7 @@ addon.recipeDB[165] = {
 				[15407] = 2,
 				[236656] = 4,
 			},
+			["requiredSkill"] = 300,
 			["teaches"] = 1223784,
 		},
 		[1224138] = {

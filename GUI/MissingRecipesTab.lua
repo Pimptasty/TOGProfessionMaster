@@ -818,7 +818,18 @@ function MissingRecipesTab:BuildPool(parent)
                 useItem = cachedName ~= nil
             end
             if useItem then
-                GameTooltip:SetItemByID(f._itemId)
+                -- pcall-wrapped: third-party addons that hook the tooltip-set
+                -- event chain (RecipeMaster, LoonBestInSlot, etc.) sometimes
+                -- throw from their hook callback when their own internal
+                -- state isn't fully initialised — e.g. RecipeMaster's
+                -- RecipeHandler.lua:43 nil-indexes its empty recipeDB. Their
+                -- error originates inside the SetItemByID call stack, so
+                -- pcall here catches it. The tooltip itself still populates
+                -- correctly because Blizzard's C-level SetItemByID runs to
+                -- completion before the third-party hook callbacks fire.
+                -- Prevents the 88x BugSack error storm when opening tabs
+                -- with many missing recipes against a broken peer addon.
+                pcall(GameTooltip.SetItemByID, GameTooltip, f._itemId)
             elseif f._spellId and GameTooltip.SetSpellByID then
                 GameTooltip:SetSpellByID(f._spellId)
             else

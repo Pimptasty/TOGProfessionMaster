@@ -574,6 +574,32 @@ def _load_phase_map():
     return _PHASE_MAP
 
 
+# Lazy-loaded hand-curated phase overrides. Win over the ATT-derived phase
+# map for spells ATT misclassified (e.g. world-drop formulas wrongly gated
+# behind a later phase via an awp/reputation tag). See
+# tools/manual_phase_overrides.json.
+_MANUAL_PHASE_OVERRIDES = None
+
+def _load_manual_phase_overrides():
+    global _MANUAL_PHASE_OVERRIDES
+    if _MANUAL_PHASE_OVERRIDES is not None:
+        return _MANUAL_PHASE_OVERRIDES
+    import json
+    p = SCRIPT_DIR / "manual_phase_overrides.json"
+    if not p.exists():
+        _MANUAL_PHASE_OVERRIDES = {}
+        return _MANUAL_PHASE_OVERRIDES
+    raw = json.loads(p.read_text(encoding="utf-8"))
+    _MANUAL_PHASE_OVERRIDES = {
+        int(k): v["phase"]
+        for k, v in raw.items()
+        if k.isdigit() and isinstance(v, dict) and "phase" in v
+    }
+    print(f"  loaded {len(_MANUAL_PHASE_OVERRIDES)} hand-curated phase overrides from "
+          f"manual_phase_overrides.json", file=sys.stderr)
+    return _MANUAL_PHASE_OVERRIDES
+
+
 def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
     """Write Data/Recipes/<filename>.lua. The recipe entries include the
     new `name` field which the existing addon doesn't use today — adding it
@@ -588,6 +614,7 @@ def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
     Only TBC has phase data today; other expansions get no `phase` field
     and the addon's filter treats them as always-visible."""
     phase_map = _load_phase_map()
+    phase_overrides = _load_manual_phase_overrides()
     cleaned = {}
     n_skipped_non_recipe = 0
     n_skipped_manual_exclude = 0
@@ -644,11 +671,15 @@ def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
         crafted = entry.get("craftedItemId")
         if crafted and crafted != out.get("itemId"):
             out["craftedItemId"] = crafted
-        phase = phase_map.get(spell_id)
+        # Manual phase override wins over the ATT-derived value (ATT
+        # occasionally misclassifies world-drop formulas as a later phase).
+        phase = phase_overrides.get(spell_id, phase_map.get(spell_id))
         if phase and phase > 1:
             # Only emit `phase` when it's beyond Phase 1 (the default).
             # Recipes without a phase entry — or tagged Phase 1 — get no
-            # field and the addon treats them as always-visible.
+            # field and the addon treats them as always-visible. A manual
+            # override of phase=1 therefore strips the field, un-hiding a
+            # recipe ATT wrongly gated behind a later phase.
             out["phase"] = phase
         # minExpansion: earliest build index (1=Vanilla..5=MoP) where the
         # spell first appeared. Set by merge_expansions. Emit only when

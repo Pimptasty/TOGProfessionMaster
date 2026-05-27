@@ -1,5 +1,22 @@
 # TOG Profession Master Changelog
 
+## [v0.6.1] (2026-05-26) - Defensive pcall around SetItemByID + German profession-name validation + manual TBC phase-override mechanism
+
+### Data Quality
+
+- **Manual TBC content-phase override mechanism** ([tools/manual_phase_overrides.json](tools/manual_phase_overrides.json)) — corrects recipes the ATT-derived phase map (v0.5.4) misclassified. ATT sometimes derives a recipe's phase from an `awp` patch tag or reputation gate that reflects when the recipe's DATA was last touched rather than when it became obtainable, so world-drop formulas available since TBC launch can wrongly end up gated behind a later phase. The override wins over the ATT value in `build_authoritative_data.py`'s `emit_recipe_file`; a `phase=1` override strips the phase field entirely so the recipe is always visible. First entries (user-reported by a TBC player): **Enchant Boots - Cat's Swiftness** (spell 34007) and **Enchant Boots - Boar's Speed** (spell 34008) — both BoE world-drop formulas available since TBC launch (Phase 1) but ATT had tagged them Phase 4, hiding them from the Missing Recipes tab on Phase 2. Now always-visible. Future phase misclassifications get the same one-line-JSON-entry treatment (report → add → regenerate) rather than re-deriving the whole ATT dataset.
+
+### Improvements
+
+- **All 15 German profession names now native-speaker validated.** v0.6.0 shipped with 9 names provided by the German contact and 6 my-best-guess standard WoW-DE terms (Herbalism, Skinning, Jewelcrafting, Inscription, Fishing, Smelting). Native-speaker review confirms all 6 guesses were correct as-shipped (Kräuterkunde, Kürschnerei, Juwelenschleifen, Inschriftenkunde, Angeln, Verhütten) — and corrected one of the original 9: **Tailoring** changes from `Schneiderkunst` to `Schneiderei` (the noun form for the profession). Updated [Locale/deDE.lua](Locale/deDE.lua) `L["ProfTailoring"]` and the `FilterProfessionDesc` example string accordingly.
+
+### Bug Fixes
+
+- **88x error storm in BugSack when opening Missing Recipes tabs against broken peer addons.** User report after v0.6.0 ship: opening the Leatherworking Missing Recipes tab generated 88 RecipeMaster errors (`RecipeHandler.lua:43: attempt to index local 'recipe' (a nil value)`) in BugSack. Investigation: RecipeMaster's `TooltipHandler` globally hooks the tooltip-set event chain, then calls `getAllCharactersRecipeStatus` which iterates the character's known spell IDs and indexes its own `recipeDB[spellId]` without nil-checking. When RecipeMaster's `recipeDB` isn't initialised for the current profession context (the locals dump showed `rm.recipeDB = {}`, `rm.displayedProfession = ""`), every lookup returns nil and the hook crashes. The bug exists in RecipeMaster, not in TOGPM, but our `GameTooltip:SetItemByID` call at [GUI/MissingRecipesTab.lua:821](GUI/MissingRecipesTab.lua) is what fires the tooltip-set event chain that RecipeMaster's broken hook listens on. v0.6.0's Missing Recipes accuracy fixes (the `craftedItemId` known-recipe fallback in particular) changed *which* recipes appear in the missing list — recipes the user genuinely doesn't have are now correctly shown instead of recipes they already knew. That shifted the set of hover targets toward exactly the subset RecipeMaster's broken nil-check trips over, exposing a latent bug at high volume.
+- **Fix:** narrowly `pcall`-wrap the `GameTooltip:SetItemByID(f._itemId)` call only — same defensive pattern as the existing comment block at the same site contemplated for `LoonBestInSlot`. Blizzard's C-level `SetItemByID` runs to completion before third-party hook callbacks fire, so the tooltip itself still populates correctly; the pcall catches errors that bubble back up from the hook chain so they don't pile up in BugSack. Other call paths (`SetSpellByID`, text fallback, the surrounding `OnEnter`/`OnLeave` scripts) are unchanged. Tradeoff: pcall would hide future errors from our own code if we ever break the SetItemByID call site, but the pcall is narrowed to that single line to keep the blast radius small. The underlying RecipeMaster bug still needs reporting upstream — fix on their end is a one-line nil-check at `RecipeHandler.lua:43` before indexing `recipe`.
+
+---
+
 ## [v0.6.0] (2026-05-26) - Multi-language support: German (deDE) is the first translation + Classic Era Missing Recipes accuracy fixes + spec dead-code cleanup
 
 ### New Features

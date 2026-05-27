@@ -53,7 +53,7 @@ L["ShowAll"]                = "Alle"
 L["FilterColProfession"]    = "Beruf"
 L["FilterColCooldown"]      = "Abklingzeit"
 L["FilterColView"]          = "Ansicht"
-L["FilterProfessionDesc"]   = "Filtert die Abklingzeitenliste nach einem Beruf (Alchimie, Schneiderkunst usw.)."
+L["FilterProfessionDesc"]   = "Filtert die Abklingzeitenliste nach einem Beruf (Alchimie, Schneiderei usw.)."
 L["FilterCooldownDesc"]     = "Filtert innerhalb des gew\195\164hlten Berufs nach einer einzelnen geteilten Abklingzeit (z.B. Transmutieren, Mondstoff)."
 L["FilterViewDesc"]         = "Wechselt zwischen den Abklingzeiten aller Gildenmitglieder und nur euren eigenen Charakteren."
 L["AllCooldowns"]           = "Alle Abklingzeiten"
@@ -337,7 +337,7 @@ L["SlashDebugDisabled"]      = "|cffff4444deaktiviert|r"
 L["SlashDebugToggleFormat"]  = "Debug-Ausgabe %s"
 
 -- ---------------------------------------------------------------------------
--- Berufsnamen (native-speaker provided for 9; remaining 6 are standard WoW-DE)
+-- Berufsnamen (native-speaker validated, all 15)
 -- ---------------------------------------------------------------------------
 L["ProfAlchemy"]        = "Alchimie"
 L["ProfBlacksmithing"]  = "Schmiedekunst"
@@ -347,7 +347,7 @@ L["ProfEngineering"]    = "Ingenieurkunst"
 L["ProfFirstAid"]       = "Erste Hilfe"
 L["ProfLeatherworking"] = "Lederverarbeitung"
 L["ProfMining"]         = "Bergbau"
-L["ProfTailoring"]      = "Schneiderkunst"
+L["ProfTailoring"]      = "Schneiderei"
 L["ProfHerbalism"]      = "Kr\195\164uterkunde"
 L["ProfSkinning"]       = "K\195\188rschnerei"
 L["ProfJewelcrafting"]  = "Juwelenschleifen"

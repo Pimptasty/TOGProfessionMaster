@@ -1,0 +1,22 @@
+{
+  "_README": [
+    "Hand-curated TBC-content-phase overrides for recipes that the",
+    "ATT-derived phase map (tools/att_extract_phase.py) misclassified.",
+    "Used in build_authoritative_data.py's emit_recipe_file — wins over the",
+    "att_phase_map.json value for the same spell.",
+    "",
+    "Each entry: spell_id (string key) -> { phase, source, verified_by, name }.",
+    "phase 1 = TBC launch (always visible); 2 = SSC/TK; 3 = BT/Hyjal;",
+    "4 = Sunwell/MgT. A phase-1 override effectively un-hides a recipe the",
+    "ATT data wrongly gated behind a later phase.",
+    "",
+    "Why misclassifications happen: ATT derives phase from an `awp` patch tag",
+    "or a reputation gate, which sometimes reflects when the recipe's DATA was",
+    "last touched rather than when it became obtainable. World-drop formulas",
+    "available since TBC launch can end up tagged Phase 4 this way."
+  ],
+
+  "_comment_boots_enchants_phase1": "BoE world-drop boots enchant formulas — available since TBC launch (Phase 1), ATT wrongly tagged them Phase 4.",
+  "34007": { "phase": 1, "source": "TBC launch world drop", "verified_by": "Galdof", "name": "Enchant Boots - Cat's Swiftness" },
+  "34008": { "phase": 1, "source": "TBC launch world drop", "verified_by": "Galdof", "name": "Enchant Boots - Boar's Speed" }
+}

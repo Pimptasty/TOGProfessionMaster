@@ -14,11 +14,21 @@
 libs\LibDataBroker-1.1.lua
 libs\LibDBIcon-1.0.lua
 
+Locale\_init.lua
 Locale\enUS.lua
+Locale\enGB.lua
 Locale\deDE.lua
 Locale\esES.lua
+Locale\esMX.lua
 Locale\frFR.lua
+Locale\itIT.lua
+Locale\ptBR.lua
 Locale\ruRU.lua
+Locale\koKR.lua
+Locale\zhCN.lua
+Locale\zhTW.lua
+Locale\thTH.lua
+Locale\filPH.lua
 
 TOGProfessionMaster.lua
 Compat.lua

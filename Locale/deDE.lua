@@ -3,8 +3,7 @@
 -- Translations are best-effort; native-speaker review welcome.
 
 local _, addon = ...
-local L = LibStub("AceLocale-3.0"):NewLocale("TOGProfessionMaster", "deDE")
-if not L then return end
+local L = addon.NewLocale("deDE")
 
 -- ---------------------------------------------------------------------------
 -- Main window
@@ -91,6 +90,10 @@ L["MailBtnTooltip"]         = "Versorgungspost senden"
 L["MailBtnTooltipDesc"]     = "\195\150ffnet einen Briefkasten, dann klickt, um Reagenzien anzuh\195\164ngen und eine Versorgungspost an diesen Spieler zu verfassen."
 L["BankBtn"]                = "[Bank]"
 L["CloseBtn"]               = "Schlie\195\159en"
+
+-- Profession-spec Bonus-Output-Indikator (kleines Symbol links vom Charakternamen)
+L["SpecBonusGuaranteedDouble"]  = "Garantiert doppelter Ertrag"
+L["SpecBonusProcChance"]        = "Chance auf zus\195\164tzlichen Ertrag"
 
 -- ---------------------------------------------------------------------------
 -- Shopping list tab
@@ -186,6 +189,10 @@ L["SettingsMinimapBtn"]          = "Minimap-Knopf anzeigen"
 L["SettingsMinimapBtnDesc"]      = "Blendet den Minimap-Starter-Knopf ein oder aus."
 L["SettingsPersistProfFilter"]     = "Berufsfilter merken"
 L["SettingsPersistProfFilterDesc"] = "Stellt den gew\195\164hlten Beruf beim Einloggen oder Reload wieder her."
+L["SettingsUILangOverride"]        = "UI-Sprache \195\188berschreiben"
+L["SettingsUILangOverrideDesc"]    = "Erzwingt die TOGPM-Addon-UI (Tabs, Kn\195\182pfe, Tooltips, Einstellungen) in eine bestimmte Sprache, unabh\195\164ngig von der Sprache eures WoW-Clients. \"Automatisch\" folgt der Sprache eures WoW-Clients. Namen von Gegenst\195\164nden / Zaubern / Rezepten im Spiel werden weiterhin in der tats\195\164chlichen Client-Sprache angezeigt, da diese aus Blizzards APIs stammen und nicht aus diesem Addon. Inklusive Thai und Filipino, die Blizzards Client nicht nativ unterst\195\188tzt, f\195\188r die TOGPM aber \195\156bersetzungen \195\188ber diese \195\156berschreibung mitliefert."
+L["SettingsUILangAuto"]            = "Automatisch (WoW-Client-Sprache verwenden)"
+L["SettingsUILangReloadHint"]      = "UI-Sprache ge\195\164ndert. Tippt |cffffd100/reload|r, damit die \195\132nderung \195\188berall wirksam wird."
 L["SettingsCooldownsHeader"]= "Abklingzeiten"
 L["SettingsMailReadyOnly"]  = "Post: nur bereite Abklingzeiten anzeigen"
 L["SettingsMailReadyOnlyDesc"] = "Beim Verfassen von Versorgungspost aus dem Abklingzeiten-Bereich nur Gildenmitglieder auflisten, deren Abklingzeit abgelaufen ist."

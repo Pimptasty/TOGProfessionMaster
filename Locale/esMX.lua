@@ -1,11 +1,13 @@
--- TOG Profession Master -- Spanish (Spain) locale
+-- TOG Profession Master -- Spanish (Mexico / Latin America) locale
 -- Any missing key falls back to enUS automatically via AceLocale.
 -- Translations are best-effort; native-speaker review welcome.
--- esMX (Mexican Spanish) lives in its own file with identical content;
--- divergence can be introduced later if any string needs LATAM phrasing.
+-- Content is currently identical to esES (Spain Spanish) — the official
+-- Blizzard WoW glossary is shared, and addon-UI strings rarely need
+-- LATAM-specific phrasing. Diverge any string here if a Mexican-Spanish
+-- player flags one that reads awkwardly compared to esES.
 
 local _, addon = ...
-local L = addon.NewLocale("esES")
+local L = addon.NewLocale("esMX")
 
 -- ---------------------------------------------------------------------------
 -- Main window

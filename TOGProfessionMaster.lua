@@ -161,6 +161,18 @@ local SETTINGS_DEFAULTS = {
         -- User bumps it manually when phase 3 / 3.5 / 4 go live; we'll ship
         -- the new default in a follow-up patch each time.
         tbcAnniversaryPhase = 2,
+
+        -- UI Language Override. "auto" = follow the WoW client's GetLocale().
+        -- Other values map to a locale code in addon.Locales (populated by
+        -- the files in Locale/*.lua). At OnInitialize, ApplyLocaleOverride
+        -- mutates the AceLocale L table in place so every existing
+        -- `local L = LibStub("AceLocale-3.0"):GetLocale(...)` reference
+        -- picks up the override without code changes elsewhere.
+        --
+        -- Includes non-WoW-supported locales (thTH, filPH) that AceLocale
+        -- would never auto-select — the override mechanism is the only way
+        -- those locales reach players on enUS / zhTW / etc. clients.
+        uiLanguageOverride = "auto",
     },
     char = {
         -- Shopping list: [spellId] = { quantity = N }
@@ -225,12 +237,60 @@ local SLASH_COMMANDS = {
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 
+--- Swap the AceLocale-managed L table for the user's chosen override locale.
+--- Default ("auto") leaves the table untouched — AceLocale already populated
+--- it with the GetLocale()-matched strings at file load. For any other value,
+--- we wipe the table and re-fill it from addon.Locales[override] layered on
+--- top of the enUS baseline (so keys missing in the override still resolve).
+---
+--- Mutates the table in place rather than reassigning, so every
+---   local L = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
+--- reference captured at file load time sees the new strings without code
+--- changes elsewhere. Called once at OnInitialize after AceDB is ready.
+function addon:ApplyLocaleOverride()
+    local override = self.db and self.db.profile and self.db.profile.uiLanguageOverride or "auto"
+
+    -- Fast path: first call after load with override=="auto" — AceLocale has
+    -- already populated localeTbl with the GetLocale()-matched strings, so
+    -- there's nothing to do. _localeOverrideApplied tracks whether a previous
+    -- non-auto override left localeTbl in a non-auto state we need to restore.
+    if override == "auto" and not self._localeOverrideApplied then return end
+
+    local AceLocale = LibStub("AceLocale-3.0", true)
+    if not AceLocale then return end
+    local localeTbl = AceLocale:GetLocale("TOGProfessionMaster", true)
+    if not localeTbl then return end
+
+    local Locales = self.Locales or {}
+    local enUS    = Locales.enUS or {}
+    local target
+    if override == "auto" then
+        target = Locales[GetLocale()] or enUS
+    else
+        target = Locales[override]
+        if not target then
+            addon:DebugPrint("ApplyLocaleOverride: unknown locale", override, "— ignoring")
+            return
+        end
+    end
+    self._localeOverrideApplied = (override ~= "auto")
+
+    for k in pairs(localeTbl) do localeTbl[k] = nil end
+    for k, v in pairs(enUS) do localeTbl[k] = v end          -- baseline fallback
+    for k, v in pairs(target) do localeTbl[k] = v end        -- chosen on top
+end
+
 function Ace:OnInitialize()
     -- Set up SavedVariables via AceDB (two separate SVs).
     -- TOGPM_Settings: profile (UI prefs) and char (shopping list, reagent watch, frames)
     self.db       = LibStub("AceDB-3.0"):New("TOGPM_Settings", SETTINGS_DEFAULTS, true)
     -- TOGPM_GuildDB: global guild-wide data (recipes, skills, cooldowns, sync log)
     addon.guildDb = LibStub("AceDB-3.0"):New("TOGPM_GuildDB", GUILD_DB_DEFAULTS, true)
+
+    -- Apply UI Language Override (if any) before any GUI module reads L.
+    -- This mutates the AceLocale table in place; all subsequent reads pick
+    -- up the chosen locale automatically. No-op when override is "auto".
+    addon:ApplyLocaleOverride()
 
     -- Restore debug flag from profile so DebugPrint works before OnEnable.
     addon.debug = self.db.profile.debug

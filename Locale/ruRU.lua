@@ -3,8 +3,7 @@
 -- Translations are best-effort; native-speaker review welcome.
 
 local _, addon = ...
-local L = LibStub("AceLocale-3.0"):NewLocale("TOGProfessionMaster", "ruRU")
-if not L then return end
+local L = addon.NewLocale("ruRU")
 
 -- ---------------------------------------------------------------------------
 -- Main window
@@ -91,6 +90,10 @@ L["MailBtnTooltip"]         = "Отправить посылку с матери
 L["MailBtnTooltipDesc"]     = "Откройте почтовый ящик, затем нажмите, чтобы вложить реагенты и составить письмо с материалами этому игроку."
 L["BankBtn"]                = "[Банк]"
 L["CloseBtn"]               = "Закрыть"
+
+-- Индикатор бонуса специализации профессии
+L["SpecBonusGuaranteedDouble"]  = "Гарантированный двойной выход"
+L["SpecBonusProcChance"]        = "Шанс на дополнительный выход"
 
 -- ---------------------------------------------------------------------------
 -- Shopping list tab

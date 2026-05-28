@@ -1,13 +1,15 @@
 -- TOG Profession Master — English (enUS) locale
 -- This is the authoritative locale and serves as the fallback for all other
--- locales.  Add a new file under Locale/ for each additional language, using
--- the same keys.  Missing keys fall back to the enUS string automatically via
+-- locales. Add a new file under Locale/ for each additional language, using
+-- the same keys. Missing keys fall back to the enUS string automatically via
 -- AceLocale's silent-fill feature.
+--
+-- Uses addon.NewLocale (defined in Locale/_init.lua, which loads first) so
+-- writes flow to BOTH AceLocale (auto-detect path) AND addon.Locales.enUS
+-- (UI-language-override path).
 
 local _, addon = ...
-local L = LibStub("AceLocale-3.0"):NewLocale("TOGProfessionMaster", "enUS", true)
-if not L then return end
-addon.L = L
+local L = addon.NewLocale("enUS", true)   -- true = default fallback for missing keys
 
 -- ---------------------------------------------------------------------------
 -- Main window
@@ -95,6 +97,12 @@ L["MailBtnTooltip"]         = "Send Supply Mail"
 L["MailBtnTooltipDesc"]     = "Open a mailbox, then click to attach reagents and compose a supply mail to this player."
 L["BankBtn"]                = "[Bank]"
 L["CloseBtn"]               = "Close"
+
+-- Profession-spec bonus-output indicator (small icon left of crafter name).
+-- The header line on the indicator's tooltip is the spec's name, pulled
+-- automatically from GetSpellInfo and localized by the WoW client.
+L["SpecBonusGuaranteedDouble"]  = "Guaranteed 2x output"
+L["SpecBonusProcChance"]        = "Chance to proc extra output"
 
 -- ---------------------------------------------------------------------------
 -- Shopping list tab
@@ -192,6 +200,10 @@ L["SettingsMinimapBtn"]          = "Show minimap button"
 L["SettingsMinimapBtnDesc"]      = "Show or hide the minimap launcher button."
 L["SettingsPersistProfFilter"]     = "Remember profession filter"
 L["SettingsPersistProfFilterDesc"] = "Restore the selected profession when you log in or reload."
+L["SettingsUILangOverride"]        = "UI Language Override"
+L["SettingsUILangOverrideDesc"]    = "Force the TOGPM addon UI (tabs, buttons, tooltips, settings) into a specific language regardless of your WoW client's language. \"Auto\" follows your WoW client's language. In-game item / spell / recipe names still render in the client's actual language since those come from Blizzard's APIs, not from this addon. Includes Thai and Filipino, which Blizzard's client doesn't natively support but TOGPM ships translations for via this override."
+L["SettingsUILangAuto"]            = "Auto (use WoW client language)"
+L["SettingsUILangReloadHint"]      = "UI language changed. Type |cffffd100/reload|r for the change to apply everywhere."
 L["SettingsCooldownsHeader"]= "Cooldowns"
 L["SettingsMailReadyOnly"]  = "Mail: show ready cooldowns only"
 L["SettingsMailReadyOnlyDesc"] = "When composing supply mail from the cooldowns panel, only list guild members whose cooldown is ready."

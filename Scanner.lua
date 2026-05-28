@@ -461,6 +461,7 @@ function Scanner:Init()
     -- Scan cooldowns on login after the server is ready
     Ace:ScheduleTimer(function()
         Scanner:ScanCooldowns()
+        Scanner:DetectSpecializations()
         Scanner:ScheduleBroadcast()
         -- Kick off P2P catch-up: always broadcast on login so peers can compare
         -- hashes and offer fresher data. hasMissingItems() only checks for absent
@@ -689,6 +690,7 @@ function Scanner:OnTradeSkillEvent()
     local charKey = addon:GetCharacterKey()
     self:ScanTradeSkillInto(charKey, false)
     self:ScanCooldowns()
+    self:DetectSpecializations()
     self:ScheduleBroadcast()
 end
 
@@ -1196,6 +1198,45 @@ local function GetCooldownLeft(start, duration)
     local cdTime      = (2 ^ 32) / 1000 - start
     local cdStartTime = startupTime - cdTime
     return (cdStartTime + duration) - luaTime
+end
+
+-- ---------------------------------------------------------------------------
+-- Profession-spec detection
+--
+-- Walks IsSpellKnown on each known spec spell ID and records which spec
+-- (if any) this character has for each profession. Result lands in
+-- gdb.specializations[charKey][profId] = specSpellId, then piggybacks the
+-- crafters: leaf on the next sync (see BuildLeafPayload / OnGuildDataReceived).
+--
+-- Detection catalog covers TBC-introduced specs (Vanilla had no profession
+-- specs in the bonus-output sense; Cata 4.0.1 removed the proc system).
+-- Engineering Gnomish/Goblin gate exclusive recipes but currently have no
+-- bonus-output mapping — they're kept here so the detection table is
+-- complete for future use (e.g. spec-aware recipe filtering).
+-- ---------------------------------------------------------------------------
+
+local SPEC_SPELLS = {
+    [171] = { 28677, 28682, 28683 },   -- Alchemy: Potion Master / Elixir Master / Transmutation Master
+    [202] = { 20219, 20222 },          -- Engineering: Gnomish / Goblin
+    [197] = { 26797, 26801, 26802 },   -- Tailoring: Mooncloth / Shadoweave / Spellfire
+}
+
+function Scanner:DetectSpecializations()
+    local charKey = addon:GetCharacterKey()
+    local gdb     = addon:GetGuildDb()
+    if not gdb then return end
+    if not gdb.specializations then gdb.specializations = {} end
+
+    local specs = {}
+    for profId, spellList in pairs(SPEC_SPELLS) do
+        for _, spellId in ipairs(spellList) do
+            if IsSpellKnown and IsSpellKnown(spellId, false) then
+                specs[profId] = spellId
+                break
+            end
+        end
+    end
+    gdb.specializations[charKey] = specs
 end
 
 -- ---------------------------------------------------------------------------
@@ -1746,6 +1787,19 @@ function Scanner:BuildLeafPayload(itemKey)
             end
             if next(skillsOut) then payload.skills = { [profId] = skillsOut } end
         end
+        -- Include profession-spec (TBC alchemy / tailoring) for everyone in
+        -- this profession. Drives the bonus-output indicator on the Cooldowns
+        -- tab. Same opportunistic-piggyback model as skills above — propagates
+        -- on the next crafters: leaf transfer rather than triggering its own
+        -- broadcast on spec acquisition (which is a one-time event per char).
+        if gdb.specializations then
+            local specsOut = {}
+            for ck, charSpecs in pairs(gdb.specializations) do
+                local sid = charSpecs[profId]
+                if sid then specsOut[ck] = sid end
+            end
+            if next(specsOut) then payload.specializations = { [profId] = specsOut } end
+        end
         if gdb.lastScan then
             for _, rd in pairs(gdb.recipes[profId]) do
                 for ck in pairs(rd.crafters or {}) do
@@ -2104,6 +2158,19 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                                         skillMax  = sk.skillMax or 300,
                                     }
                                 end
+                            end
+                        end
+                    end
+                    -- Specializations (per-charKey spec spell ID) also ride along.
+                    -- Last-write-wins is fine — a character's spec changes ~once
+                    -- ever (or never), so divergence between peers is transient.
+                    if type(data.specializations) == "table"
+                       and type(data.specializations[profId]) == "table" then
+                        if not gdb.specializations then gdb.specializations = {} end
+                        for ck, sid in pairs(data.specializations[profId]) do
+                            if type(ck) == "string" and type(sid) == "number" then
+                                if not gdb.specializations[ck] then gdb.specializations[ck] = {} end
+                                gdb.specializations[ck][profId] = sid
                             end
                         end
                     end

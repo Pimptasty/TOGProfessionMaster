@@ -1176,6 +1176,37 @@ function CooldownsTab:FillRows(scroll)
     end
 end
 
+-- Profession-spec bonus output indicator support.
+-- On TBC/Wrath, a small icon to the left of the crafter name signals that
+-- this crafter's profession spec gives bonus output on this row's cooldown
+-- (Mooncloth/Shadoweave/Spellfire tailoring → guaranteed 2x; Transmutation
+-- Master alchemy → proc chance on every transmute). The 4.0.1 patch removed
+-- the proc system, so the gate is isTBC/isWrath only — Vanilla never had the
+-- system, Cata/MoP no longer do.
+local SPEC_SLOT_RESERVED = addon.isTBC or addon.isWrath
+local SPEC_ICON_W = SPEC_SLOT_RESERVED and 14 or 0
+
+local function getSpecBonus(row, gdb)
+    if not SPEC_SLOT_RESERVED then return nil end
+    if not gdb or not gdb.specializations then return nil end
+    local charSpecs = gdb.specializations[row.charKey]
+    if not charSpecs then return nil end
+    local data = addon:GetCooldownData()
+    local specBonuses = data and data.specBonuses
+    if not specBonuses then return nil end
+    for _, specSpellId in pairs(charSpecs) do
+        local bonus = specBonuses[specSpellId]
+        if bonus then
+            if row.isTransmuteGroup and bonus.affectsAllTransmutes then
+                return specSpellId, bonus.bonusType
+            elseif row.spellId and bonus.spells and bonus.spells[row.spellId] then
+                return specSpellId, bonus.bonusType
+            end
+        end
+    end
+    return nil
+end
+
 function CooldownsTab:DrawRow(parent, row, now)
     -- Responsive column widths shared by charLbl / col2 / timeLbl below.
     -- Computed once in Draw() per redraw; falls back to preferred values
@@ -1238,9 +1269,40 @@ function CooldownsTab:DrawRow(parent, row, now)
     })
 
     -- ── Column 1: Character (190px) — online=white, offline=grey ─────────────
+    -- On TBC/Wrath, the first SPEC_ICON_W pixels are reserved for the spec-
+    -- bonus indicator (always present so column alignment stays consistent
+    -- across rows; icon texture is only set when a spec bonus actually applies).
+    local gdb        = addon:GetGuildDb()
+    if SPEC_SLOT_RESERVED then
+        local specSpellId, specBonusType = getSpecBonus(row, gdb)
+        -- InteractiveLabel (not Label) — has native SetCallback dispatch for
+        -- OnEnter/OnLeave; AceGUI clears widget.events on release so the
+        -- pool-recycling hazard in CLAUDE.md doesn't bite us.
+        local specIcon = AceGUI:Create("InteractiveLabel")
+        specIcon:SetWidth(SPEC_ICON_W)
+        specIcon:SetImageSize(12, 12)
+        if specSpellId then
+            local tex = GetSpellTexture(specSpellId)
+            if tex then
+                specIcon:SetImage(tex, 0.08, 0.92, 0.08, 0.92)
+                specIcon:SetCallback("OnEnter", function(_widget)
+                    addon.Tooltip.Owner(_widget.frame)
+                    local specName = GetSpellInfo(specSpellId) or ""
+                    GameTooltip:SetText(specName, 1, 1, 1)
+                    local bonusLine = (specBonusType == "guaranteed")
+                        and L["SpecBonusGuaranteedDouble"]
+                        or  L["SpecBonusProcChance"]
+                    GameTooltip:AddLine(bonusLine, 0.7, 0.85, 1.0, true)
+                    GameTooltip:Show()
+                end)
+                specIcon:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+            end
+        end
+        rowGroup:AddChild(specIcon)
+    end
+
     local charLbl = AceGUI:Create("InteractiveLabel")
     local GuildCache = addon.Scanner and addon.Scanner.GuildCache
-    local gdb        = addon:GetGuildDb()
     local online = GuildCache and GuildCache:IsPlayerOnline(row.charKey) or false
     local displayName = row.shortName
     local isYou = addon:IsMyCharacter(row.charKey)
@@ -1270,7 +1332,7 @@ function CooldownsTab:DrawRow(parent, row, now)
     local colorOffline = "|c" .. (addon.ColorOffline or "ffaaaaaa")
     local nameColor = isYou and colorYou or (online and colorOnline or colorOffline)
     charLbl:SetText(nameColor .. displayName .. "|r")
-    charLbl:SetWidth(cw.char)
+    charLbl:SetWidth(cw.char - SPEC_ICON_W)
     sf(charLbl)
     nowrap(charLbl)
     charLbl:SetCallback("OnClick", function(_widget, _event, button)

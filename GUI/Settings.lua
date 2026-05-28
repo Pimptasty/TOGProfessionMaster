@@ -63,6 +63,52 @@ local OPTIONS = {
             end,
         },
 
+        -- UI Language Override. "auto" follows the WoW client's GetLocale();
+        -- any other value forces TOGPM's own UI strings into that locale even
+        -- on a different client (in-game item / spell / NPC names still come
+        -- from Blizzard's APIs and render in the client's actual language —
+        -- this only overrides strings the addon itself ships). The
+        -- ApplyLocaleOverride function in TOGProfessionMaster.lua mutates the
+        -- AceLocale L table in place at OnInitialize and on each set here,
+        -- so already-open windows pick up the change on next refresh; a
+        -- /reload is recommended to be safe (some captured strings may have
+        -- been formatted into widgets already).
+        --
+        -- Dropdown labels are intentionally NOT localized — they always
+        -- show in each language's native script so users can recognize
+        -- their language regardless of the current UI language.
+        uiLanguageOverride = {
+            name   = L["SettingsUILangOverride"],
+            desc   = L["SettingsUILangOverrideDesc"],
+            type   = "select",
+            order  = 4,
+            values = {
+                auto  = L["SettingsUILangAuto"],
+                enUS  = "English (US)",
+                enGB  = "English (UK)",
+                deDE  = "Deutsch",
+                esES  = "Español (España)",
+                esMX  = "Español (México)",
+                frFR  = "Français",
+                itIT  = "Italiano",
+                ptBR  = "Português (Brasil)",
+                ruRU  = "Русский",
+                koKR  = "한국어",
+                zhCN  = "简体中文",
+                zhTW  = "繁體中文",
+                thTH  = "ไทย",
+                filPH = "Filipino",
+            },
+            sorting = { "auto", "enUS", "enGB", "deDE", "esES", "esMX", "frFR",
+                        "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "thTH", "filPH" },
+            get = function() return Ace.db.profile.uiLanguageOverride or "auto" end,
+            set = function(_, val)
+                Ace.db.profile.uiLanguageOverride = val
+                addon:ApplyLocaleOverride()
+                addon:Print(L["SettingsUILangReloadHint"])
+            end,
+        },
+
         -- ---- Cooldowns -----------------------------------------------------
         cooldownsHeader = {
             name  = L["SettingsCooldownsHeader"],

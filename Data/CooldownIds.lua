@@ -208,6 +208,61 @@ local OUTPUT_OVERRIDES = {
     [15846] = "Refined Deeprock Salt",  -- Salt Shaker tool → product name
 }
 
+-- ---------------------------------------------------------------------------
+-- Profession-spec bonus output map
+--
+-- Indexed by spec spell ID (the spell granted by the spec quest, what
+-- IsSpellKnown returns true for). Each entry lists the cooldown spell IDs
+-- whose output the spec affects, plus a bonusType that drives the indicator
+-- tooltip text:
+--   "guaranteed" = the spec ALWAYS doubles output (Mooncloth/Shadoweave/Spellfire)
+--   "proc"       = the spec gives a chance to proc extra output (Transmutation Master)
+--
+-- Only specs that actually affect a shared-cooldown row are listed here.
+-- Elixir Master / Potion Master DO proc on elixir/flask/potion crafts, but
+-- those aren't shared-cooldown crafts so they have no row to indicate on.
+-- Engineering specs (Gnomish/Goblin) gate exclusive recipes rather than
+-- bonus output. Wrath cloth cooldowns (Ebonweave/Spellweave/Moonshroud)
+-- are universal — no Wrath-era cloth spec.
+--
+-- The 4.0.1 (Cata) patch removed the Vanilla/TBC proc system entirely; the
+-- caller is responsible for gating the indicator render on isTBC/isWrath.
+-- ---------------------------------------------------------------------------
+
+local SPEC_BONUSES = {
+    -- Alchemy: Transmutation Master (28683) — procs extra output on EVERY
+    -- transmute. All TBC + Wrath transmute spell IDs are listed individually
+    -- (matches the spells in VANILLA_TRANSMUTES / TBC_TRANSMUTES / WRATH_TRANSMUTES
+    -- above). Vanilla transmutes aren't listed because the spec didn't exist
+    -- yet in Vanilla — a Wrath alchemist who never re-specced doesn't proc on
+    -- Vanilla transmutes either (the spec is TBC-introduced content).
+    [28683] = {
+        bonusType = "proc",
+        spells = {
+            -- TBC transmutes
+            [28566] = true, [28567] = true, [28568] = true, [28569] = true,
+            [28576] = true, [28580] = true, [28581] = true, [28582] = true,
+            [28583] = true, [28584] = true, [32765] = true, [32766] = true,
+            -- Wrath eternal/gem transmutes
+            [53771] = true, [53773] = true, [53774] = true, [53775] = true,
+            [53776] = true, [53777] = true, [53779] = true, [53780] = true,
+            [53781] = true, [53782] = true, [53783] = true, [53784] = true,
+            [66658] = true, [66659] = true, [66660] = true, [66662] = true,
+            [66663] = true, [66664] = true,
+        },
+        -- Used by CooldownsTab when the transmute group row collapses many
+        -- transmutes into one row: any spec marked affectsAllTransmutes lights
+        -- up the group-row indicator without needing per-spell lookups.
+        affectsAllTransmutes = true,
+    },
+
+    -- Tailoring cloth specs — each spec GUARANTEES 2x output on its specific
+    -- cloth cooldown. (Patch 2.1+: the proc was changed from random to flat 2x.)
+    [26797] = { bonusType = "guaranteed", spells = { [26751] = true } }, -- Mooncloth Tailoring → Primal Mooncloth
+    [26801] = { bonusType = "guaranteed", spells = { [36686] = true } }, -- Shadoweave Tailoring → Shadowcloth
+    [26802] = { bonusType = "guaranteed", spells = { [31373] = true } }, -- Spellfire Tailoring  → Spellcloth
+}
+
 -- Spell IDs where GetSpellTexture returns a bad/missing icon.
 -- Value is the item ID whose icon should be used instead.
 local ICON_OVERRIDES = {
@@ -315,6 +370,7 @@ local function Build()
         outputOverrides = OUTPUT_OVERRIDES,
         groups         = COOLDOWN_GROUPS,
         groupBySpell   = groupBySpell,
+        specBonuses    = SPEC_BONUSES,
         saltShakerItem = 15846,
     }
 end

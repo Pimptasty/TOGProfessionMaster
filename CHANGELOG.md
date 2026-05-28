@@ -1,5 +1,13 @@
 # TOG Profession Master Changelog
 
+## [v0.7.1] (2026-05-28) — Thai dropdown label fix
+
+### Bug Fixes
+
+- **Thai entry in the UI Language Override dropdown rendered as boxes/garbage.** WoW's default fonts only ship glyphs for Blizzard's officially supported locales (Latin / Cyrillic / Han / Hangul) — Thai script falls outside that set, so the native-script label `ไทย` couldn't render. Cyrillic (`Русский`), Korean (`한국어`), Simplified Chinese (`简体中文`), and Traditional Chinese (`繁體中文`) all work because those scripts have native WoW font support. Changed the dropdown label to the Latin-script `Thai` so it's at least readable. The Thai-language UI strings themselves are unaffected — selecting `Thai` still applies the `thTH` locale strings; only the dropdown LABEL changed. Location: [GUI/Settings.lua](GUI/Settings.lua).
+
+---
+
 ## [v0.7.0] (2026-05-28) — Flat universal recipe DB + libguildroster visibility gate + slim sync protocol (backwards-breaking)
 
 This is a major architectural rework. The SV schema flattens from per-guild buckets to a single universal recipe table, the sync protocol drops the recipe-metadata leaf entirely (metadata lives in the shipped `addon.recipeDB` now), and crafter visibility is gated against libguildroster so departed members get swept out automatically. **Wire-protocol incompatible with v0.6.x and earlier** — the DeltaSync namespace bumps from `TOGPmv2` to `TOGPmv3`, so old clients and new clients silently don't sync with each other during the transition window.

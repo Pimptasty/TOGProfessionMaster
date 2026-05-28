@@ -97,7 +97,7 @@ local OPTIONS = {
                 koKR  = "한국어",
                 zhCN  = "简体中文",
                 zhTW  = "繁體中文",
-                thTH  = "ไทย",
+                thTH  = "Thai",  -- WoW's default fonts don't ship Thai glyphs; native script "ไทย" would render as boxes
                 filPH = "Filipino",
             },
             sorting = { "auto", "enUS", "enGB", "deDE", "esES", "esMX", "frFR",

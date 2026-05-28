@@ -1,5 +1,17 @@
 # TOG Profession Master Changelog
 
+## [v0.6.2] (2026-05-27) - Three new EU locales: Spanish (esES), French (frFR), Russian (ruRU)
+
+### New Features
+
+- **Three new EU locale files shipped.** Extends v0.6.0's AceLocale-3.0 infrastructure with `esES` (Spanish — Spain), `frFR` (French), and `ruRU` (Russian). Each file mirrors the 265-key structure of [Locale/enUS.lua](Locale/enUS.lua) so any missing key falls back to English automatically. Profession display names use the official Blizzard glossary for each language (Alchemy → Alquimia / Alchimie / Алхимия, Tailoring → Sastrería / Couture / Портняжное дело, etc., all 15 professions). The `esES` file also mirrors its translations into the `esMX` (Latin-American Spanish) locale slot so esMX clients pick them up directly instead of falling all the way back to enUS — same Blizzard glossary, no need for a parallel file. Translations for the rest of the UI are best-effort following the German precedent (ship + iterate from player feedback); native-speaker review welcome. Location: [Locale/esES.lua](Locale/esES.lua), [Locale/frFR.lua](Locale/frFR.lua), [Locale/ruRU.lua](Locale/ruRU.lua).
+
+### Improvements
+
+- **All four non-English locales now load on every supported expansion.** v0.6.0 wired German only into the main (`TOGProfessionMaster.toc`) Classic Era TOC — the four variant TOCs (`_TBC.toc`, `_Wrath.toc`, `_Cata.toc`, `_Mists.toc`) still only included `Locale\enUS.lua`, meaning a German player on TBC Anniversary or Wrath got the English UI even though `Locale/deDE.lua` was sitting right there in the addon folder. Backfilled the `Locale\deDE.lua` include in all four variant TOCs alongside the three new EU locale entries; all five TOCs now ship the same 5-locale load list (`enUS`, `deDE`, `esES`, `frFR`, `ruRU`).
+
+---
+
 ## [v0.6.1] (2026-05-26) - Defensive pcall around SetItemByID + German profession-name validation + manual TBC phase-override mechanism
 
 ### Data Quality

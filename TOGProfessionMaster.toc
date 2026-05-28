@@ -16,6 +16,9 @@ libs\LibDBIcon-1.0.lua
 
 Locale\enUS.lua
 Locale\deDE.lua
+Locale\esES.lua
+Locale\frFR.lua
+Locale\ruRU.lua
 
 TOGProfessionMaster.lua
 Compat.lua

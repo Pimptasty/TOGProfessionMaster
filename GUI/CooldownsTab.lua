@@ -488,37 +488,41 @@ local function BuildRows(readyOnly, viewMode)
                 end
             end
 
-            -- Build a quick spellId → recipe-DB lookup for this character.
-            -- Used by BOTH the cooldown branch (so cast spells pick up
-            -- multi-reagent data) AND the unseen-recipes branch below.
-            -- Without this, cast spells fall through to data.transReagents
-            -- which is single-reagent only — Arcanite would show ONE row
-            -- for Arcane Crystal instead of TWO rows (Arcane Crystal +
-            -- Thorium Bar). Same regression for any other multi-reagent
-            -- transmute.
+            -- v0.7.0: build the spellId → recipe lookup from addon.recipeDB
+            -- (authoritative metadata, shipped with the addon) intersected
+            -- with this character's known-recipe set from gdb. The crafters
+            -- table now only stores presence + guild tag — name/reagents/
+            -- spellId come from addon.recipeDB[171][recipeId].
             local recipeBySpellId = {}
-            if gdb.recipes and gdb.recipes[171] then
-                for recipeId, rd in pairs(gdb.recipes[171]) do
-                    if rd.crafters and rd.crafters[charKey]
-                       and type(rd.name) == "string"
-                       and rd.name:find("[Tt]ransmute")
-                       and rd.spellId then
-                        recipeBySpellId[rd.spellId] = { rd = rd, recipeId = recipeId }
+            local profRecipeDB    = addon.recipeDB and addon.recipeDB[171]
+            local charKnownAlch   = (gdb.recipes and gdb.recipes[171]) or {}
+            if profRecipeDB then
+                for recipeId, meta in pairs(profRecipeDB) do
+                    local rd = charKnownAlch[recipeId]
+                    if rd and rd.crafters and rd.crafters[charKey]
+                       and type(meta.name) == "string"
+                       and meta.name:find("[Tt]ransmute") then
+                        -- The spell taught by this recipe. Most TBC/Wrath
+                        -- recipes carry teaches = the actual transmute spell;
+                        -- for Enchanting-style spell-keyed recipes recipeId
+                        -- itself is the spell.
+                        local spellId = meta.teaches or recipeId
+                        recipeBySpellId[spellId] = {
+                            recipeId = recipeId,
+                            name     = meta.name,
+                            reagents = meta.reagents,
+                        }
                     end
                 end
             end
 
-            -- Helper to extract a reagent list from a recipe DB entry,
-            -- with the hardcoded single-reagent fallback when the scan
-            -- never captured the recipe's reagent rows (older client
-            -- versions, peer broadcasts predating the reagent-scan fix).
-            local function reagentsFor(spellId, rd)
+            -- Reagent helper. addon.recipeDB ships reagents as { [itemId] = count };
+            -- convert to the { id, qty } shape this tab expects.
+            local function reagentsFor(spellId, hit)
                 local reagents = {}
-                if rd and type(rd.reagents) == "table" then
-                    for _, rge in ipairs(rd.reagents) do
-                        if rge.itemId then
-                            reagents[#reagents + 1] = { id = rge.itemId, qty = rge.count or 1 }
-                        end
+                if hit and type(hit.reagents) == "table" then
+                    for itemId, count in pairs(hit.reagents) do
+                        reagents[#reagents + 1] = { id = itemId, qty = count or 1 }
                     end
                 end
                 if #reagents == 0 and spellId
@@ -530,26 +534,19 @@ local function BuildRows(readyOnly, viewMode)
             end
 
             -- Cooldown-derived entries (definite spellIds, on cooldown).
-            -- Prefer recipe-DB multi-reagent data when available; fall
-            -- back to hardcoded single-reagent transReagents only when
-            -- the recipe scan didn't catch this spell.
             for _, sid in ipairs(tg.spellIds) do
                 seenSpellIds[sid] = true
                 local hit = recipeBySpellId[sid]
-                local rd  = hit and hit.rd
-                local recipeId = hit and hit.recipeId
-                local displayName = (rd and rd.name) or GetSpellInfo(sid) or ("Spell " .. tostring(sid))
-                emitTransmute(sid, displayName, recipeId, reagentsFor(sid, rd))
+                local displayName = (hit and hit.name) or GetSpellInfo(sid) or ("Spell " .. tostring(sid))
+                emitTransmute(sid, displayName, hit and hit.recipeId, reagentsFor(sid, hit))
             end
 
-            -- Recipe-DB-derived entries — covers transmutes the char
-            -- knows but hasn't cast (so they're not in tg.spellIds).
-            -- The seenSpellIds guard skips anything the cooldown branch
-            -- already emitted.
+            -- Recipe-DB-derived entries (transmutes the char knows but
+            -- hasn't cast — not yet in tg.spellIds).
             for spellId, hit in pairs(recipeBySpellId) do
                 if not seenSpellIds[spellId] then
                     seenSpellIds[spellId] = true
-                    emitTransmute(spellId, hit.rd.name, hit.recipeId, reagentsFor(spellId, hit.rd))
+                    emitTransmute(spellId, hit.name, hit.recipeId, reagentsFor(spellId, hit))
                 end
             end
 

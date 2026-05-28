@@ -162,7 +162,13 @@ end
 -- State persisted across tab switches (reset on UI reload).
 BrowserTab._selectedProfId    = 0        -- 0 = All Professions (default)
 BrowserTab._searchText        = ""
-BrowserTab._viewMode          = "guild"  -- "guild" | "mine"
+BrowserTab._viewMode          = "guild"  -- "guild" | "mine" | "missing"
+BrowserTab._showAllRecipes    = false    -- v0.7.0 toolbar checkbox: when true,
+                                         -- include recipes from the shipped
+                                         -- addon.recipeDB with no crafters
+                                         -- (rendered greyed out). Pairs with
+                                         -- the "Show Missing" entry in the
+                                         -- profession dropdown for gap-finding.
 BrowserTab._scroll            = nil      -- active AceGUI ScrollFrame widget
 BrowserTab._container         = nil      -- the tab container widget
 BrowserTab._pool              = nil      -- raw-frame row pool (left list)
@@ -206,203 +212,159 @@ local function GetProfDropdownEntries()
     return entries
 end
 
--- In "mine" view, walk every bucket in addon.guildDb.global.guilds and union
--- their recipe rows so cross-guild and guildless own alts surface in the
--- Browser. First bucket's metadata (name, icon, links, reagents) wins per
--- (profId, recipeId); crafter sets are unioned across all buckets. In any
--- other mode just return the current bucket's recipes table as-is. The walk
--- is purely a local SavedVariables read — no network involvement.
-local function CollectRecipesForView(viewMode)
-    if viewMode ~= "mine" then
-        local gdb = GetGuildDb()
-        return gdb and gdb.recipes or {}
-    end
-    local merged = {}
-    addon:ForEachGuildBucket(function(bucket)
-        if not bucket.recipes then return end
-        for pid, profRecipes in pairs(bucket.recipes) do
-            if not merged[pid] then merged[pid] = {} end
-            for recipeId, rd in pairs(profRecipes) do
-                local existing = merged[pid][recipeId]
-                if not existing then
-                    existing = {}
-                    for k, v in pairs(rd) do existing[k] = v end
-                    existing.crafters = {}
-                    merged[pid][recipeId] = existing
-                end
-                if rd.crafters then
-                    for ck, v in pairs(rd.crafters) do
-                        if v then existing.crafters[ck] = true end
-                    end
-                end
-            end
-        end
-    end)
-    return merged
+-- v0.7.0: gdb.recipes is already a flat universal table (no more per-guild
+-- buckets), so the old cross-bucket merge for the "mine" view collapses into
+-- a single direct return. viewMode filtering now happens at the BuildRecipeList
+-- level via the visibility gate (IsVisibleCrafter + IsMyCharacter).
+local function CollectRecipesForView(_viewMode)
+    local gdb = GetGuildDb()
+    return gdb and gdb.recipes or {}
 end
 
-local function BuildRecipeList(profId, viewMode, searchText)
+-- BuildRecipeList(profId, viewMode, searchText, opts)
+--   profId       — 0 for "all professions", otherwise the profession spell ID
+--   viewMode     — "guild" / "mine" / "missing"
+--   searchText   — substring filter (case-insensitive)
+--   opts         — { showAll = bool }  v0.7.0 toolbar: when showAll is set,
+--                  also yield rows for recipes in addon.recipeDB that have no
+--                  visible crafters in the current guild (rendered greyed out
+--                  by the list). When viewMode == "missing", ONLY no-crafter
+--                  rows are returned.
+local function BuildRecipeList(profId, viewMode, searchText, opts)
     if profId == nil then return {} end
     local gdb = GetGuildDb()
     if not gdb then return {} end
     local recipes = CollectRecipesForView(viewMode)
-    if not next(recipes) then return {} end
 
-    local myKey = addon:GetCharacterKey()
-    local filter = searchText and searchText:lower() or ""
-    local list   = {}
+    local myKey   = addon:GetCharacterKey()
+    local filter  = searchText and searchText:lower() or ""
+    local showAll = opts and opts.showAll or false
+    local list    = {}
+
+    local function buildCrafterList(profRecipeData, thisViewMode)
+        if not profRecipeData or not profRecipeData.crafters then return nil end
+        local GuildCache  = addon.Scanner and addon.Scanner.GuildCache
+        local crafterObjs = {}
+        local youSelf, youAlts = nil, {}
+        for ck, tag in pairs(profRecipeData.crafters) do
+            if addon:IsMyCharacter(ck) then
+                if ck == myKey then
+                    youSelf = { name = L["You"], online = true, isYou = true }
+                else
+                    local altShort = ck:match("^(.-)%-") or ck
+                    table.insert(youAlts, {
+                        name   = L["You"] .. " (" .. altShort .. ")",
+                        online = true,
+                        isYou  = true,
+                    })
+                end
+            elseif thisViewMode ~= "mine" and addon:IsVisibleCrafter(ck, tag) then
+                local shortName   = ck:match("^(.-)%-") or ck
+                local online      = GuildCache and GuildCache:IsPlayerOnline(ck) or false
+                local displayName = shortName
+                if not online and gdb.altGroups and gdb.altGroups[ck] then
+                    for _, altCk in ipairs(gdb.altGroups[ck]) do
+                        if altCk ~= ck and GuildCache and GuildCache:IsPlayerOnline(altCk) then
+                            local altShort = altCk:match("^(.-)%-") or altCk
+                            displayName = altShort .. " (" .. shortName .. ")"
+                            online = true
+                            break
+                        end
+                    end
+                end
+                table.insert(crafterObjs, { name = displayName, online = online })
+            end
+        end
+        table.sort(crafterObjs, function(a, b)
+            if a.online ~= b.online then return a.online end
+            return a.name < b.name
+        end)
+        table.sort(youAlts, function(a, b) return a.name < b.name end)
+        for i = #youAlts, 1, -1 do
+            table.insert(crafterObjs, 1, youAlts[i])
+        end
+        if youSelf then
+            table.insert(crafterObjs, 1, youSelf)
+        end
+        return crafterObjs
+    end
 
     local function processProf(thisProfId, profRecipes)
-        if not profRecipes then return end
         local profName   = addon.PROF_NAMES[thisProfId] or ""
         local profIconId = addon.ProfessionIcons and addon.ProfessionIcons[thisProfId]
                         or (addon.ProfessionIconFallback or 134400)
-        for recipeId, rd in pairs(profRecipes) do
-            if rd.crafters then
-                local mineVisible = false
-                if viewMode == "mine" then
+        local profMetaDB = addon.recipeDB and addon.recipeDB[thisProfId]
+
+        -- Build the union of recipeIds to consider:
+        --   default               → keys of profRecipes (recipes someone knows)
+        --   showAll or missing    → keys of profMetaDB (every shipped recipe)
+        local recipeIdSet = {}
+        if showAll or viewMode == "missing" then
+            if profMetaDB then
+                for rId in pairs(profMetaDB) do recipeIdSet[rId] = true end
+            end
+        end
+        if profRecipes then
+            for rId in pairs(profRecipes) do recipeIdSet[rId] = true end
+        end
+
+        for recipeId in pairs(recipeIdSet) do
+            local rd       = profRecipes and profRecipes[recipeId]
+            local crafters = rd and buildCrafterList(rd, viewMode) or {}
+            local hasAny   = (#crafters > 0)
+
+            -- View-mode filter (after crafter-list is built so we can use its size)
+            local viewKeep
+            if viewMode == "mine" then
+                -- Crafted by one of my own characters
+                viewKeep = false
+                if rd and rd.crafters then
                     for ck in pairs(rd.crafters) do
-                        if addon:IsMyCharacter(ck) then mineVisible = true; break end
+                        if addon:IsMyCharacter(ck) then viewKeep = true; break end
                     end
                 end
-                local visible = mineVisible or (viewMode ~= "mine" and next(rd.crafters))
-                if visible then
-                    local name = rd.name or tostring(recipeId)
-                    if filter == "" or name:lower():find(filter, 1, true) then
-                        local GuildCache  = addon.Scanner and addon.Scanner.GuildCache
-                        local crafterObjs = {}
-                        local youSelf, youAlts = nil, {}
-                        for ck in pairs(rd.crafters) do
-                            if addon:IsMyCharacter(ck) then
-                                -- Each of your characters that crafts this recipe gets its own
-                                -- entry: "You" for the currently-logged-in character, "You (Alt)"
-                                -- for every other own alt, so the user can tell them apart.
-                                if ck == myKey then
-                                    youSelf = { name = L["You"], online = true, isYou = true }
-                                else
-                                    local altShort = ck:match("^(.-)%-") or ck
-                                    table.insert(youAlts, {
-                                        name   = L["You"] .. " (" .. altShort .. ")",
-                                        online = true,
-                                        isYou  = true,
-                                    })
-                                end
-                            elseif viewMode ~= "mine" then
-                                -- Guildmate crafter. Skip entirely in "mine"
-                                -- view so the crafter list only shows YOUR
-                                -- characters — otherwise a recipe that one of
-                                -- your alts crafts but is ALSO known to N
-                                -- guildmates renders with those N guildmate
-                                -- names alongside your alt, which the user
-                                -- correctly read as "TOGPM thinks these
-                                -- guildmates are my alts" even though the
-                                -- visibility filter on line 207-213 had
-                                -- already done the right "is this MY recipe"
-                                -- gate. In "guild" view we still show
-                                -- everyone (the whole point of that view).
-                                local shortName   = ck:match("^(.-)%-") or ck
-                                local online      = GuildCache and GuildCache:IsPlayerOnline(ck) or false
-                                local displayName = shortName
-                                if not online and gdb.altGroups and gdb.altGroups[ck] then
-                                    for _, altCk in ipairs(gdb.altGroups[ck]) do
-                                        if altCk ~= ck and GuildCache and GuildCache:IsPlayerOnline(altCk) then
-                                            local altShort = altCk:match("^(.-)%-") or altCk
-                                            displayName = altShort .. " (" .. shortName .. ")"
-                                            online = true
-                                            break
-                                        end
-                                    end
-                                end
-                                table.insert(crafterObjs, { name = displayName, online = online })
-                            end
-                        end
-                        table.sort(crafterObjs, function(a, b)
-                            if a.online ~= b.online then return a.online end
-                            return a.name < b.name
-                        end)
-                        -- Insert You entries at the front: own alts (sorted by alt name)
-                        -- first, then logged-in self at position 1 so it stays on top.
-                        table.sort(youAlts, function(a, b) return a.name < b.name end)
-                        for i = #youAlts, 1, -1 do
-                            table.insert(crafterObjs, 1, youAlts[i])
-                        end
-                        if youSelf then
-                            table.insert(crafterObjs, 1, youSelf)
-                        end
-                        -- Icon resolution. Three sources, tried in priority order.
-                        --
-                        -- 1. CRAFTED ITEM ID parsed out of rd.itemLink. This is
-                        --    the only authoritative source for the icon of the
-                        --    item the recipe produces. On TBC Anniversary every
-                        --    recipe is stored with isSpell=true keyed by spell ID
-                        --    (because GetTradeSkillRecipeLink returns enchant:
-                        --    links for every profession), so recipeId is NOT the
-                        --    crafted item ID there — but the itemLink captured at
-                        --    scan time still carries the Hitem:N of the crafted
-                        --    item (e.g. spell 29568 / Adamantite Cleaver →
-                        --    itemLink contains Hitem:23503). GetItemIcon(23503)
-                        --    is the actual cleaver icon.
-                        --
-                        -- 2. recipeId via GetItemIcon, for the Classic Era pattern
-                        --    where non-spell recipes are keyed by crafted item ID.
-                        --
-                        -- 3. rd.icon — the cached value (often wrong; on TBC it's
-                        --    the generic recipe-scroll icon 136192 from
-                        --    GetTradeSkillIcon, on stub-created entries it's the
-                        --    spell's generic icon). Last resort.
-                        --
-                        -- Final 134400 fallback only fires when all three return
-                        -- nil (cache cold, no link, no cached icon).
-                        local resolvedIcon
-                        if type(rd.itemLink) == "string" and GetItemIcon then
-                            local craftedId = tonumber(rd.itemLink:match("Hitem:(%d+)"))
-                            -- Reject spell-id namespace collisions. For
-                            -- Enchanting recipes on TBC, rd.itemLink often
-                            -- ends up as `Hitem:SPELLID:...[Unrelated Item]`
-                            -- because a stub-creation path pulled
-                            -- GetItemInfo(spellId) and stamped whatever item
-                            -- happened to share that numeric ID. Example:
-                            -- spell 13522 (Enchant Cloak - Lesser Shadow
-                            -- Resistance) got itemLink Hitem:13522 = "Recipe:
-                            -- Flask of Chromatic Resistance" → recipe-scroll
-                            -- icon; spell 13868 (Enchant Gloves - Advanced
-                            -- Herbalism) got Hitem:13868 = "Frostweave Robe"
-                            -- → robe icon. Tell: when the parsed itemID
-                            -- equals the recipe's spell ID, it's the
-                            -- collision pattern, not a real crafted item.
-                            -- Adamantite Cleaver (spell 29568, real crafted
-                            -- item 23503) passes — 23503 ≠ 29568.
-                            local collisionId = rd.spellId or (rd.isSpell and recipeId) or nil
-                            if craftedId and craftedId ~= collisionId then
-                                resolvedIcon = GetItemIcon(craftedId)
-                            end
-                        end
-                        if not resolvedIcon and not rd.isSpell and type(recipeId) == "number" and GetItemIcon then
-                            resolvedIcon = GetItemIcon(recipeId)
-                        end
-                        resolvedIcon = resolvedIcon or rd.icon
-                        table.insert(list, {
-                            id         = recipeId,
-                            name       = name,
-                            profName   = profName,
-                            profIconId = profIconId,
-                            icon       = resolvedIcon or 134400,
-                            isSpell    = rd.isSpell,
-                            spellId    = rd.spellId,
-                            recipeLink = rd.recipeLink,
-                            itemLink   = rd.itemLink,
-                            reagents   = rd.reagents,
-                            crafters   = crafterObjs,
-                        })
-                    end
+            elseif viewMode == "missing" then
+                viewKeep = (not hasAny)
+            else  -- "guild" (default)
+                viewKeep = showAll or hasAny
+            end
+
+            -- Only consider recipes the local addon DB knows; unknown recipeIds
+            -- (sender's newer addon ships content we don't) get hidden silently.
+            if viewKeep and profMetaDB and profMetaDB[recipeId] then
+                local name = addon:GetRecipeName(thisProfId, recipeId)
+                if filter == "" or (name:lower()):find(filter, 1, true) then
+                    local craftedItemId = addon:GetRecipeCraftedItemId(thisProfId, recipeId)
+                    local itemLink      = craftedItemId and select(2, GetItemInfo(craftedItemId))
+                    table.insert(list, {
+                        id            = recipeId,
+                        name          = name,
+                        profName      = profName,
+                        profIconId    = profIconId,
+                        icon          = addon:GetRecipeIcon(thisProfId, recipeId),
+                        craftedItemId = craftedItemId,
+                        itemLink      = itemLink,
+                        reagents      = addon:GetRecipeReagents(thisProfId, recipeId),
+                        crafters      = crafters,
+                        greyed        = (not hasAny),  -- v0.7.0: rendered de-emphasized
+                    })
                 end
             end
         end
     end
 
     if profId == 0 then
-        for pid, profRecipes in pairs(recipes) do
-            processProf(pid, profRecipes)
+        -- "All professions" view. Iterate the union of
+        --   (a) profs with at least one crafter row in gdb.recipes, AND
+        --   (b) profs in addon.recipeDB when showAll / missing is active
+        --       (so empty professions still surface their unlearned recipes).
+        local profIds = {}
+        for pid in pairs(recipes) do profIds[pid] = true end
+        if (showAll or viewMode == "missing") and addon.recipeDB then
+            for pid in pairs(addon.recipeDB) do profIds[pid] = true end
+        end
+        for pid in pairs(profIds) do
+            processProf(pid, recipes[pid])
         end
     else
         processProf(profId, recipes[profId])
@@ -492,8 +454,21 @@ function BrowserTab:Draw(container)
 
     local viewDD = AceGUI:Create("Dropdown")
     viewDD:SetLabel("")
-    viewDD:SetWidth(130)
-    viewDD:SetList({ guild = L["ViewGuild"], mine = L["ViewMine"] })
+    viewDD:SetWidth(150)
+    -- v0.7.0 view-mode dropdown gains "Show Missing" (only meaningful when
+    -- _showAllRecipes is on). Items are listed in a deterministic order via
+    -- the sorting array; AceConfig-style sorting isn't supported on raw
+    -- AceGUI Dropdowns so we just SetList with the order we want.
+    local viewItems = { guild = L["ViewGuild"], mine = L["ViewMine"] }
+    if self._showAllRecipes then
+        viewItems.missing = L["ViewMissing"] or "Show Missing"
+    end
+    viewDD:SetList(viewItems, { "guild", "mine", "missing" })
+    -- If the user previously selected "missing" then toggled the checkbox off,
+    -- fall back to "guild" so the dropdown value stays valid.
+    if self._viewMode == "missing" and not self._showAllRecipes then
+        self._viewMode = "guild"
+    end
     viewDD:SetValue(self._viewMode)
     viewDD:SetCallback("OnValueChanged", function(_w, _e, value)
         self._viewMode       = value
@@ -508,9 +483,33 @@ function BrowserTab:Draw(container)
     end)
     toolbar:AddChild(viewDD)
 
-    -- 8px spacer to match the existing toolbar gap convention (between
-    -- profession dropdown / search / view dropdown).
     local sp3 = AceGUI:Create("Label"); sp3:SetWidth(8); toolbar:AddChild(sp3)
+
+    -- v0.7.0 "Show all recipes" checkbox. When ON, every recipe in the shipped
+    -- addon.recipeDB appears in the list — ones nobody in the guild knows
+    -- render greyed out so users can scan the gaps. Also unlocks the
+    -- "Show Missing" entry in the View dropdown above.
+    local showAllCB = AceGUI:Create("CheckBox")
+    showAllCB:SetLabel(L["BrowserShowAllRecipes"] or "Show all recipes")
+    showAllCB:SetWidth(170)
+    showAllCB:SetValue(self._showAllRecipes)
+    showAllCB:SetCallback("OnValueChanged", function(_w, _e, value)
+        self._showAllRecipes = value
+        if not value and self._viewMode == "missing" then
+            self._viewMode = "guild"
+        end
+        C_Timer.After(0, function()
+            if self._container then
+                self._container:ReleaseChildren()
+                self:Draw(self._container)
+            end
+        end)
+    end)
+    addon.GUI.AttachTooltip(showAllCB, L["BrowserShowAllRecipes"] or "Show all recipes",
+        L["BrowserShowAllRecipesDesc"] or "Include every recipe in the shipped database, even ones nobody in the guild knows. Missing recipes render greyed out so officers can spot which skills the guild still needs to cover.")
+    toolbar:AddChild(showAllCB)
+
+    local sp3b = AceGUI:Create("Label"); sp3b:SetWidth(8); toolbar:AddChild(sp3b)
 
     -- Scan AH button — kicks off a throttled scan over every reagent in
     -- the user's shopping list. After completion, reagent rows in the
@@ -1135,7 +1134,11 @@ function BrowserTab:FillList()
         return
     end
 
-    local recipes = BuildRecipeList(self._selectedProfId, self._viewMode, self._searchText)
+    local recipes = BuildRecipeList(
+        self._selectedProfId,
+        self._viewMode,
+        self._searchText,
+        { showAll = self._showAllRecipes })
     if #recipes == 0 then
         local lbl = AceGUI:Create("Label")
         lbl:SetText(self._searchText ~= "" and L["NoMatchingRecipes"] or L["NoDataYet"])

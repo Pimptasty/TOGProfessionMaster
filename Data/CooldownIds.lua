@@ -394,41 +394,20 @@ end
 --- works for any spell the player knows by name regardless of spellbook
 --- presentation, so we use it as a fallback name→ID lookup.
 function addon:RefreshTransmuteCatalogueFromRecipes()
+    -- v0.7.0: gdb.recipes no longer stores name/spellId. Walk the shipped
+    -- addon.recipeDB[171] (authoritative metadata) for transmute names and
+    -- add any spellIds (via meta.teaches) that aren't in the static catalogue.
     local data = self:GetCooldownData()
     if not data or not data.transmutes then return 0 end
-    local gdb = self:GetGuildDb()
-    if not gdb or not gdb.recipes or not gdb.recipes[171] then return 0 end
+    local profMeta = self.recipeDB and self.recipeDB[171]
+    if not profMeta then return 0 end
 
     local added = 0
-    for _, rd in pairs(gdb.recipes[171]) do
-        if type(rd.name) == "string" and rd.name:find("[Tt]ransmute") then
-            -- (1) Static-catalogue name match.  data.transmutes is populated
-            -- from the cumulative VANILLA / TBC / WRATH / CATA / MOP transmute
-            -- tables in this file — every transmute spell ID/name pair we've
-            -- ever shipped, regardless of which client the viewer is on.
-            -- Name-matching against this hardcoded data resolves the spellId
-            -- without needing GetSpellLink, which means it works for
-            -- non-alchemist viewers too (they don't "know" the spell, so
-            -- GetSpellLink would return nil for them).
-            if not rd.spellId then
-                for sid, sname in pairs(data.transmutes) do
-                    if sname == rd.name then
-                        rd.spellId = sid
-                        break
-                    end
-                end
-            end
-            -- (2) GetSpellLink fallback — works only for spells the local
-            -- player currently knows.  Catches any transmute IDs added by
-            -- a future expansion that aren't yet in the static catalogue.
-            if not rd.spellId and GetSpellLink then
-                local link = GetSpellLink(rd.name)
-                if link then
-                    rd.spellId = tonumber(link:match("spell:(%d+)"))
-                end
-            end
-            if rd.spellId and not data.transmutes[rd.spellId] then
-                data.transmutes[rd.spellId] = rd.name
+    for _, meta in pairs(profMeta) do
+        if type(meta.name) == "string" and meta.name:find("[Tt]ransmute") then
+            local spellId = meta.teaches
+            if spellId and not data.transmutes[spellId] then
+                data.transmutes[spellId] = meta.name
                 added = added + 1
             end
         end

@@ -4,9 +4,7 @@
 -- Implements the per-leaf hash cache for the v0.2.0 hash-then-fetch sync
 -- protocol.  See docs/v0.2.0-protocol.md for the canonical design.
 --
--- Leaf keys
---   recipemeta:<profId>     — immutable recipe metadata for one profession
---                             (name, icon, isSpell, spellId, itemLink, recipeLink, reagents)
+-- Leaf keys (v0.7.0 — recipemeta leaf REMOVED, metadata lives in addon.recipeDB)
 --   crafters:<profId>       — crafter membership { recipeId → {charKey → true} }
 --   cooldown:<charKey>      — cooldown bucket { spellId → expiresAt } for one character
 --   accountchars:<charKey>  — alt group { charKey, ... } owned by one broadcaster
@@ -73,8 +71,10 @@ function HashManager:ComputeCharCooldownHash(DS, gdb, charKey)
 end
 
 --- Hash for accountchars:<charKey> — alt group claimed by one broadcaster.
+-- v0.7.0: the synced per-broadcaster array lives in gdb.altClaims; gdb.accountChars
+-- is now a local-only boolean-flag set for IsMyCharacter and isn't synced.
 function HashManager:ComputeAccountCharsHash(DS, gdb, charKey)
-    return DS:ComputeHash(gdb.accountChars and gdb.accountChars[charKey] or {})
+    return DS:ComputeHash(gdb.altClaims and gdb.altClaims[charKey] or {})
 end
 
 --- Hash for crafters:<profId> — crafter membership map for one profession.
@@ -100,27 +100,10 @@ function HashManager:ComputeCraftersHash(DS, gdb, profId)
     return DS:ComputeHash(map)
 end
 
---- Hash for recipemeta:<profId> — immutable recipe metadata for one profession.
--- Excludes crafters intentionally; crafters live in a separate leaf.
-function HashManager:ComputeRecipeMetaHash(DS, gdb, profId)
-    local map = {}
-    if gdb.recipes and gdb.recipes[profId] then
-        for recipeId, rd in pairs(gdb.recipes[profId]) do
-            -- Only the static fields.  spellId may be nil for non-local scans
-            -- so we use false as the placeholder so the hash is stable.
-            map[tostring(recipeId)] = {
-                name       = rd.name       or "",
-                icon       = rd.icon       or 0,
-                isSpell    = rd.isSpell    and true or false,
-                spellId    = rd.spellId    or 0,
-                itemLink   = rd.itemLink   or "",
-                recipeLink = rd.recipeLink or "",
-                reagents   = rd.reagents,
-            }
-        end
-    end
-    return DS:ComputeHash(map)
-end
+-- v0.7.0: ComputeRecipeMetaHash removed — recipe metadata isn't synced anymore.
+-- The shipped addon.recipeDB carries name/icon/reagents/links, identical on
+-- every client that ships the same addon version, so there's no per-leaf hash
+-- to negotiate.
 
 -- ---------------------------------------------------------------------------
 -- Roll-up computations (derived from cached leaf entries)
@@ -190,8 +173,8 @@ function HashManager:InvalidateAccountChars(DS, gdb, charKey)
     end
 end
 
---- After a profession scan or merge.  Invalidates BOTH recipemeta:<profId>
---- and crafters:<profId> since either may have changed.
+--- After a profession scan or merge. v0.7.0: only the crafters:<profId> leaf
+--- needs invalidation — recipemeta is dead.
 function HashManager:InvalidateProfession(DS, gdb, profId)
     local hashes = ensureHashes(gdb)
     local key    = tostring(profId)
@@ -207,8 +190,7 @@ function HashManager:InvalidateProfession(DS, gdb, profId)
         end
     end
 
-    setEntry(hashes, "recipemeta:" .. key, self:ComputeRecipeMetaHash(DS, gdb, profId), maxTs)
-    setEntry(hashes, "crafters:"   .. key, self:ComputeCraftersHash(DS, gdb, profId),   maxTs)
+    setEntry(hashes, "crafters:" .. key, self:ComputeCraftersHash(DS, gdb, profId), maxTs)
 end
 
 -- ---------------------------------------------------------------------------
@@ -223,12 +205,15 @@ end
 function HashManager:RebuildOnFirstLoad(DS, gdb)
     local hashes = ensureHashes(gdb)
 
-    -- ── Drop legacy v0.1.x leaf keys ──────────────────────────────────────
-    -- recipes:<profId> was split into recipemeta:<profId> + crafters:<profId>.
-    -- guild:recipes was replaced by guild:accountchars (different roll-up).
+    -- ── Drop legacy v0.1.x → v0.6.x leaf keys ─────────────────────────────
+    -- recipes:<profId> (v0.1.x) was split into recipemeta + crafters in v0.2.
+    -- v0.7.0 then drops recipemeta entirely (metadata lives in addon.recipeDB,
+    -- not on the wire). Strip both old key prefixes here so the hash store
+    -- doesn't carry dead entries across the schema migration.
     local toRemove = {}
     for key in pairs(hashes) do
-        if key:sub(1, 8) == "recipes:" or key == "guild:recipes" then
+        if key:sub(1, 8) == "recipes:" or key:sub(1, 11) == "recipemeta:"
+        or key == "guild:recipes" then
             toRemove[#toRemove + 1] = key
         end
     end
@@ -236,9 +221,8 @@ function HashManager:RebuildOnFirstLoad(DS, gdb)
         hashes[key] = nil
     end
 
-    -- ── Ensure all expected v0.2.0 leaves exist ──────────────────────────
-    -- These calls no-op when content is unchanged (setEntry has the guard),
-    -- so it's safe to invoke unconditionally.
+    -- ── Ensure all expected v0.7.0 leaves exist ──────────────────────────
+    -- These calls no-op when content is unchanged (setEntry has the guard).
 
     if gdb.cooldowns then
         for charKey in pairs(gdb.cooldowns) do
@@ -248,8 +232,11 @@ function HashManager:RebuildOnFirstLoad(DS, gdb)
         end
     end
 
-    if gdb.accountChars then
-        for charKey in pairs(gdb.accountChars) do
+    -- v0.7.0: iterate altClaims (synced per-broadcaster arrays). The local-only
+    -- gdb.accountChars boolean-flag set isn't a sync source — it just gates
+    -- "is this charKey one of mine" lookups.
+    if gdb.altClaims then
+        for charKey in pairs(gdb.altClaims) do
             if not hashes["accountchars:" .. charKey] then
                 self:InvalidateAccountChars(DS, gdb, charKey)
             end
@@ -259,7 +246,7 @@ function HashManager:RebuildOnFirstLoad(DS, gdb)
     if gdb.recipes then
         for profId in pairs(gdb.recipes) do
             local k = tostring(profId)
-            if not hashes["recipemeta:" .. k] or not hashes["crafters:" .. k] then
+            if not hashes["crafters:" .. k] then
                 self:InvalidateProfession(DS, gdb, profId)
             end
         end
@@ -300,23 +287,19 @@ function HashManager:GetAccountCharsLevelMap(gdb)
     return copyEntries(ensureHashes(gdb), "accountchars:")
 end
 
-function HashManager:GetRecipeMetaLevelMap(gdb)
-    return copyEntries(ensureHashes(gdb), "recipemeta:")
-end
-
 function HashManager:GetCraftersLevelMap(gdb)
     return copyEntries(ensureHashes(gdb), "crafters:")
 end
 
---- Return the L0 broadcast map: per-profession (recipemeta + crafters) plus
---- the two roll-up entries.  Per-character leaves are NOT included at L0 —
---- they're drilled down on roll-up mismatch via the subhashes request.
+--- Return the L0 broadcast map: per-profession crafters leaf plus the two
+--- roll-up entries. v0.7.0: recipemeta leaf removed. Per-character leaves
+--- are NOT included at L0 — drilled down on roll-up mismatch via subhashes.
 function HashManager:GetL0BroadcastMap(gdb)
     local hashes = ensureHashes(gdb)
     local map    = {}
-    -- Per-profession
+    -- Per-profession (crafters only)
     for key, entry in pairs(hashes) do
-        if key:sub(1, 11) == "recipemeta:" or key:sub(1, 9) == "crafters:" then
+        if key:sub(1, 9) == "crafters:" then
             map[key] = { hash = entry.hash, updatedAt = entry.updatedAt }
         end
     end
@@ -351,11 +334,7 @@ function HashManager:PadMissingProfessionPlaceholders(DS, map)
         local available = (not addon.IsProfessionAvailable)
                        or addon.IsProfessionAvailable(profId)
         if available then
-            local rmKey = "recipemeta:" .. tostring(profId)
-            local crKey = "crafters:"   .. tostring(profId)
-            if not map[rmKey] then
-                map[rmKey] = { hash = placeholderHash, updatedAt = 0 }
-            end
+            local crKey = "crafters:" .. tostring(profId)
             if not map[crKey] then
                 map[crKey] = { hash = placeholderHash, updatedAt = 0 }
             end
@@ -380,7 +359,7 @@ function HashManager:HasContent(gdb, itemKey)
         return gdb.cooldowns and next(gdb.cooldowns) ~= nil
     end
     if itemKey == "guild:accountchars" then
-        return gdb.accountChars and next(gdb.accountChars) ~= nil
+        return gdb.altClaims and next(gdb.altClaims) ~= nil
     end
     if itemKey:sub(1, 6) == "guild:" then return false end
 
@@ -393,18 +372,14 @@ function HashManager:HasContent(gdb, itemKey)
 
     if itemKey:sub(1, 13) == "accountchars:" then
         local owner = itemKey:sub(14)
-        return gdb.accountChars
-           and gdb.accountChars[owner]
-           and #gdb.accountChars[owner] > 0
+        return gdb.altClaims
+           and type(gdb.altClaims[owner]) == "table"
+           and #gdb.altClaims[owner] > 0
     end
 
-    if itemKey:sub(1, 11) == "recipemeta:" then
-        local profId = tonumber(itemKey:sub(12))
-        return profId
-           and gdb.recipes
-           and gdb.recipes[profId]
-           and next(gdb.recipes[profId]) ~= nil
-    end
+    -- v0.7.0: recipemeta: leaf removed. Any inbound query for it returns
+    -- false so peers stop asking.
+    if itemKey:sub(1, 11) == "recipemeta:" then return false end
 
     if itemKey:sub(1, 9) == "crafters:" then
         local profId = tonumber(itemKey:sub(10))

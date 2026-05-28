@@ -77,35 +77,73 @@ addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
 --   TOGPM_GuildDB   : guild-wide data (global scope, shared across characters)
 --   TOGPM_Settings  : per-user settings and per-character UI state
 -- ---------------------------------------------------------------------------
+-- v0.7.0 schema version. Bumped when the AceDB shape changes incompatibly.
+-- Migration code in MigrateGuildDb (below) runs on OnInitialize when the
+-- stored schemaVersion is missing or older than this.
+local CURRENT_SCHEMA_VERSION = 7
+
+-- v0.7.0 SCHEMA — flat universal tables, no per-guild buckets.
+-- Each crafter entry carries a guild tag (hash of guildKey) inline so a single
+-- DB serves any number of guilds the player has been in; display-time filters
+-- on tag match + libguildroster presence to pick out the right people. Recipe
+-- metadata (name, icon, reagents, etc.) is NOT stored — those live in the
+-- shipped authoritative addon.recipeDB and are looked up by recipeId at
+-- render time, so the DB stays tight and there's no obsolete-name churn.
 local GUILD_DB_DEFAULTS = {
     global = {
-        -- All guild-specific data.
-        -- Key format: "Alliance-Grobbulus-Knights of TOG"
-        -- guildDb.global.guilds[compositeKey] = {
-        --   recipes[profId][recipeId] = { name, icon, isSpell, crafters={["Name-Realm"]=true} }
-        --   skills["Name-Realm"][profId] = { skillRank, skillMax }
-        --   guildData       = { ["Name-Realm"] = {} }  -- membership index only
-        --   cooldowns       = { ["Name-Realm"] = { [spellId] = expiresAt } }
-        --   syncTimes       = { ["Name-Realm"] = timestamp }
-        --   specializations = { ["Name-Realm"] = { [profId] = spellId } }
-        --   factions        = { ["Name-Realm"] = "Alliance"|"Horde" }
-        --   altGroups       = { ["Name-Realm"] = {"Name-Realm", "Alt-Realm", ...} }
-        --   trainerObservations = { [spellId] = {
-        --       reqSkill, moneyCost, profId, observedBy, observedAt
-        --   } }  -- v0.5.6: TRAINER_SHOW-captured ReqSkillRank values for
-        --        recipes (the literal "Requires Tailoring (100)" trainer
-        --        tooltip line). Lazy-created on first capture in
-        --        Scanner.lua's OnTrainerShow. Eventual extraction script
-        --        feeds this back into the shipped recipe DB to close the
-        --        ~20% requiredSkill gap that emulator SQL doesn't cover.
-        -- }
-        guilds = {},
-        -- Account-wide set of all own characters that have ever logged in with
-        -- this addon.  Key = "Name-Realm", value = true.
-        -- Used to mark crafters as "you" in the UI across all your alts.
-        accountChars = {},
-        -- Sync log ring buffer — capped at 200 entries by Modules/SyncLog.lua
-        -- Each entry: { ts, event, peer, bytes }
+        -- DO NOT put schemaVersion here. AceDB applies defaults BEFORE
+        -- OnInitialize fires, so a default value would make MigrateGuildDb's
+        -- early-return check trip BEFORE it ever ran the data walk — wiping
+        -- out cooldowns on the first v0.7.0 launch. schemaVersion is set
+        -- exclusively at the end of MigrateGuildDb, after migration succeeds.
+
+        -- Recipes: ONE row per recipe, crafters carry guild tag inline.
+        --   recipes[profId][recipeId] = {
+        --     crafters = { [charKey] = guildTag }   -- "abc123" hex hash or "personal"
+        --   }
+        -- Receivers hide rows whose recipeId isn't in their local addon.recipeDB
+        -- (shipped data may differ between addon versions).
+        recipes = {},
+
+        -- Per-character data — no guild scope needed (charKey is globally unique).
+        cooldowns       = {},  -- [charKey] = { [spellId] = expiresAt }
+        skills          = {},  -- [charKey][profId] = { skillRank, skillMax }
+        specializations = {},  -- [charKey][profId] = spellSpecId (v0.6.3)
+        factions        = {},  -- [charKey] = "Alliance"|"Horde"
+        syncTimes       = {},  -- [charKey] = timestamp
+
+        -- Account-level (own characters, populated locally).
+        accountChars    = {},  -- [charKey] = true   (local-only flag, used by IsMyCharacter)
+        altClaims       = {},  -- [broadcasterKey] = { array of charKeys }
+                               --   per-broadcaster authoritative alt-group claim,
+                               --   sync'd via the accountchars: DeltaSync leaf.
+                               --   Lives in its own field (separate from
+                               --   accountChars above) to avoid the boolean/array
+                               --   type conflict when the same charKey is both an
+                               --   own char AND a broadcaster.
+        altGroups       = {},  -- [charKey] = { array of charKeys on same account }
+                               --   derived view, rebuilt from altClaims on receive
+
+        -- Guild registry: maps tag → metadata. Tag is FNV-1a-32 hash of the
+        -- guildKey ("Faction-GuildName") as 6 hex chars. Reserved tag "personal"
+        -- is for the player's own guildless alts.
+        guildRegistry = {
+            personal = { name = "Personal Alts", reserved = true },
+        },
+
+        -- v0.7.0: charKeys flagged for purge on next OnRosterReady + 60s sweep.
+        -- Populated by the display gate when a tag-matching charKey isn't in
+        -- libguildroster. Data stays in the main DB until the sweep runs.
+        pendingPurge = {},
+
+        -- DeltaSync hash leaves + per-character last-scan timestamps.
+        hashes   = {},
+        lastScan = {},
+
+        -- Trainer-observed required-skill values (v0.5.6), per-spell, no guild scope.
+        trainerObservations = {},
+
+        -- Sync log ring buffer (Modules/SyncLog.lua caps at 200 entries).
         syncLog = {},
     },
 }
@@ -248,7 +286,12 @@ local SLASH_COMMANDS = {
 --- reference captured at file load time sees the new strings without code
 --- changes elsewhere. Called once at OnInitialize after AceDB is ready.
 function addon:ApplyLocaleOverride()
-    local override = self.db and self.db.profile and self.db.profile.uiLanguageOverride or "auto"
+    -- The AceDB instance lives on the AceAddon object (addon.lib), NOT on
+    -- addon itself. Reading self.db.profile here would always be nil and
+    -- silently fall through to "auto" — which is exactly what made this
+    -- function appear to do nothing in v0.7.0 pre-ship.
+    local db = addon.lib and addon.lib.db
+    local override = db and db.profile and db.profile.uiLanguageOverride or "auto"
 
     -- Fast path: first call after load with override=="auto" — AceLocale has
     -- already populated localeTbl with the GetLocale()-matched strings, so
@@ -278,6 +321,10 @@ function addon:ApplyLocaleOverride()
     for k in pairs(localeTbl) do localeTbl[k] = nil end
     for k, v in pairs(enUS) do localeTbl[k] = v end          -- baseline fallback
     for k, v in pairs(target) do localeTbl[k] = v end        -- chosen on top
+
+    -- Rebuild any caller-level tables that captured L["..."] values at
+    -- module load time (before this override ran).
+    if addon.RebuildLocalizedTables then addon:RebuildLocalizedTables() end
 end
 
 function Ace:OnInitialize()
@@ -286,6 +333,12 @@ function Ace:OnInitialize()
     self.db       = LibStub("AceDB-3.0"):New("TOGPM_Settings", SETTINGS_DEFAULTS, true)
     -- TOGPM_GuildDB: global guild-wide data (recipes, skills, cooldowns, sync log)
     addon.guildDb = LibStub("AceDB-3.0"):New("TOGPM_GuildDB", GUILD_DB_DEFAULTS, true)
+
+    -- v0.7.0 schema migration. One-shot: wipes the old per-guild bucket tree
+    -- and rebuilds the flat top-level tables. Cooldown timers are preserved
+    -- (merged out of every old bucket). Everything else regenerates on next
+    -- trade-skill scan + guild sync. No-op when SV is already at v7.
+    addon:MigrateGuildDb()
 
     -- Apply UI Language Override (if any) before any GUI module reads L.
     -- This mutates the AceLocale table in place; all subsequent reads pick
@@ -327,6 +380,17 @@ function Ace:OnEnable()
         GuildCache:RegisterCallback("OnMemberOnline", function(_, name)
             addon:OnCrafterCameOnline(name)
         end)
+
+        -- v0.7.0 timed-purge sweep. OnRosterReady fires after the initial
+        -- guild roster scan completes; we add a 60-second buffer to cover
+        -- straggler GUILD_ROSTER_UPDATE events on large guilds (>500
+        -- members) where the roster trickles in over multiple ticks. After
+        -- the buffer, walk addon.guildDb.global.pendingPurge and delete
+        -- every reference for each flagged charKey (departed members
+        -- queued by display-time visibility checks).
+        GuildCache:RegisterCallback("OnRosterReady", function()
+            self:ScheduleTimer(function() addon:RunPendingPurge() end, 60)
+        end)
     end
 
     addon:DebugPrint("OnEnable complete.")
@@ -351,59 +415,16 @@ function Ace:OnPlayerEnteringWorld(_event, isInitialLogin, isReloadingUi)
         ac[staleName .. "-"] = nil
     end
 
-    -- Migrate old "Faction-Realm-GuildName" guild buckets to the new
-    -- "Faction-GuildName" format so connected-realm peers share one bucket.
-    local newKey = addon:GetGuildKey()
-    if newKey then
-        local g = addon.guildDb.global.guilds
-        local dst = addon:GetGuildDb()  -- creates/returns the new bucket
-        local toMigrate = {}
-        for key in pairs(g) do
-            if key ~= newKey and addon:NormalizeGuildKey(key) == newKey then
-                table.insert(toMigrate, key)
-            end
-        end
-        for _, key in ipairs(toMigrate) do
-            local src = g[key]
-            -- recipes: profId → recipeId → {crafters, ...}
-            for profId, recipes in pairs(src.recipes or {}) do
-                if not dst.recipes[profId] then dst.recipes[profId] = {} end
-                for recipeId, rd in pairs(recipes) do
-                    if not dst.recipes[profId][recipeId] then
-                        dst.recipes[profId][recipeId] = rd
-                    else
-                        local drd = dst.recipes[profId][recipeId]
-                        if not drd.crafters then drd.crafters = {} end
-                        for ck, ci in pairs(rd.crafters or {}) do
-                            if not drd.crafters[ck] then drd.crafters[ck] = ci end
-                        end
-                    end
-                end
-            end
-            -- Flat char-keyed tables: copy if destination has no entry.
-            for _, field in ipairs({"skills","guildData","cooldowns","specializations","factions","altGroups"}) do
-                if src[field] then
-                    if not dst[field] then dst[field] = {} end
-                    for ck, v in pairs(src[field]) do
-                        if not dst[field][ck] then dst[field][ck] = v end
-                    end
-                end
-            end
-            -- syncTimes: take the newer timestamp.
-            for ck, ts in pairs(src.syncTimes or {}) do
-                if not dst.syncTimes[ck] or ts > dst.syncTimes[ck] then
-                    dst.syncTimes[ck] = ts
-                end
-            end
-            g[key] = nil
-            addon:DebugPrint("Migrated guild bucket", key, "→", newKey)
-        end
-    end
+    -- v0.7.0: legacy "Faction-Realm-GuildName" → "Faction-GuildName" bucket
+    -- migration removed. gdb.guilds tree was wiped by MigrateGuildDb at
+    -- OnInitialize and there's no per-guild bucket to normalize anymore.
 
-    -- v0.2.0: populate gdb.accountChars[myKey] from the account-wide flat set.
-    -- This is the per-broadcaster authoritative alt group used by the new sync
-    -- protocol (see docs/v0.2.0-protocol.md §7.4).  Stamp lastScan so the
-    -- accountchars:<myKey> hash leaf has a content-derived updatedAt.
+    -- v0.7.0: populate gdb.altClaims[myKey] from the local account-wide flag set.
+    -- altClaims is the per-broadcaster authoritative alt-group used by the
+    -- sync protocol; accountChars stays a separate local boolean-flag table
+    -- so the two semantics don't collide (the v0.7.0 first build collapsed
+    -- them and crashed in BuildLeafPayload — see the migration in
+    -- MigrateGuildDb that splits them back apart).
     if addon:GetGuildKey() then
         local gdb = addon:GetGuildDb()
         if gdb then
@@ -412,7 +433,8 @@ function Ace:OnPlayerEnteringWorld(_event, isInitialLogin, isReloadingUi)
                 if type(ck) == "string" then groupArr[#groupArr + 1] = ck end
             end
             table.sort(groupArr)  -- deterministic order so the hash is stable across peers
-            gdb.accountChars[myKey] = groupArr
+            if not gdb.altClaims then gdb.altClaims = {} end
+            gdb.altClaims[myKey] = groupArr
             if not gdb.lastScan[myKey] then gdb.lastScan[myKey] = {} end
             gdb.lastScan[myKey].accountchars = GetServerTime()
         end
@@ -434,13 +456,27 @@ end
 -- dropdowns and the Tooltip / crafter-alert lookups. Per-version filtering
 -- happens via addon.PROF_AVAILABILITY below; per-tab category filtering
 -- happens via addon.CRAFTING_PROFS.
-addon.PROF_NAMES = {
-    [171] = L["ProfAlchemy"],        [164] = L["ProfBlacksmithing"],  [185] = L["ProfCooking"],
-    [333] = L["ProfEnchanting"],     [202] = L["ProfEngineering"],    [129] = L["ProfFirstAid"],
-    [165] = L["ProfLeatherworking"], [186] = L["ProfMining"],         [197] = L["ProfTailoring"],
-    [182] = L["ProfHerbalism"],      [393] = L["ProfSkinning"],       [755] = L["ProfJewelcrafting"],
-    [773] = L["ProfInscription"],    [356] = L["ProfFishing"],        [374] = L["ProfSmelting"],
+--
+-- v0.7.0: PROF_NAMES is built from PROF_LOCALE_KEYS so it can be REBUILT
+-- after the UI Language Override is applied. Without the rebuild,
+-- module-load-time L["..."] reads freeze English strings before
+-- ApplyLocaleOverride can mutate the AceLocale table — the dropdowns
+-- then stay English even after the override.
+local PROF_LOCALE_KEYS = {
+    [171] = "ProfAlchemy",        [164] = "ProfBlacksmithing",  [185] = "ProfCooking",
+    [333] = "ProfEnchanting",     [202] = "ProfEngineering",    [129] = "ProfFirstAid",
+    [165] = "ProfLeatherworking", [186] = "ProfMining",         [197] = "ProfTailoring",
+    [182] = "ProfHerbalism",      [393] = "ProfSkinning",       [755] = "ProfJewelcrafting",
+    [773] = "ProfInscription",    [356] = "ProfFishing",        [374] = "ProfSmelting",
 }
+
+addon.PROF_NAMES = {}
+function addon:RebuildLocalizedTables()
+    for profId, lkey in pairs(PROF_LOCALE_KEYS) do
+        addon.PROF_NAMES[profId] = L[lkey]
+    end
+end
+addon:RebuildLocalizedTables()  -- initial population from current L state
 
 -- Per-profession version availability. Each entry is a function that
 -- returns true when the profession exists on the current client. Default
@@ -587,52 +623,49 @@ function addon:DumpRecipe(args)
         Ace:Print("Usage: /togpm dumprecipe <recipe name>")
         return
     end
-    local g = addon.guildDb and addon.guildDb.global and addon.guildDb.global.guilds
-    if not g then Ace:Print("|cffff4444No guild DB|r"); return end
+    local gdb = addon:GetGuildDb()
+    if not gdb then Ace:Print("|cffff4444No guild DB|r"); return end
 
+    -- v0.7.0: walk the shipped addon.recipeDB by name (authoritative
+    -- metadata) and cross-reference each hit against gdb.recipes for the
+    -- crafter set.
     local found = 0
-    for guildKey, gdb in pairs(g) do
-        for profId, profRecipes in pairs(gdb.recipes or {}) do
-            for recipeId, rd in pairs(profRecipes) do
-                if rd.name == name then
+    if addon.recipeDB then
+        for profId, profMeta in pairs(addon.recipeDB) do
+            for recipeId, meta in pairs(profMeta) do
+                if meta.name == name then
                     found = found + 1
-                    Ace:Print(("|cffda8cff[%s]|r profId=%d recipeId=%s spellId=%s isSpell=%s"):format(
-                        guildKey, profId, tostring(recipeId), tostring(rd.spellId), tostring(rd.isSpell)))
-                    Ace:Print(("  itemLink=%s"):format(tostring(rd.itemLink)))
-                    Ace:Print(("  recipeLink=%s"):format(tostring(rd.recipeLink)))
-                    local reag = rd.reagents
-                    if type(reag) ~= "table" then
-                        Ace:Print(("  reagents = %s (not a table)"):format(tostring(reag)))
-                    else
-                        Ace:Print(("  reagents (%d):"):format(#reag))
-                        for i, x in ipairs(reag) do
-                            Ace:Print(("    [%d] name=%s count=%s itemId=%s itemLink=%s"):format(
-                                i, tostring(x.name), tostring(x.count),
-                                tostring(x.itemId), tostring(x.itemLink)))
+                    Ace:Print(("|cffda8cff[prof %d]|r recipeId=%s teaches=%s craftedItemId=%s"):format(
+                        profId, tostring(recipeId), tostring(meta.teaches), tostring(meta.craftedItemId)))
+                    Ace:Print(("  requiredSkill=%s"):format(tostring(meta.requiredSkill)))
+                    if meta.reagents then
+                        local n = 0; for _ in pairs(meta.reagents) do n = n + 1 end
+                        Ace:Print(("  reagents (%d):"):format(n))
+                        for itemId, count in pairs(meta.reagents) do
+                            Ace:Print(("    [item %s] count=%s"):format(tostring(itemId), tostring(count)))
                         end
                     end
+                    local rd = gdb.recipes and gdb.recipes[profId] and gdb.recipes[profId][recipeId]
                     local crafters = {}
-                    for ck in pairs(rd.crafters or {}) do crafters[#crafters + 1] = ck end
+                    if rd and rd.crafters then
+                        for ck, tag in pairs(rd.crafters) do
+                            crafters[#crafters + 1] = ck .. "(" .. tostring(tag) .. ")"
+                        end
+                    end
                     Ace:Print(("  crafters: %s"):format(table.concat(crafters, ", ")))
                 end
             end
         end
     end
     if found == 0 then
-        Ace:Print(("|cffff4444No recipe named '%s' found in any guild bucket|r"):format(name))
+        Ace:Print(("|cffff4444No recipe named '%s' found in addon.recipeDB|r"):format(name))
     end
 end
 
---- /togpm backfill — manually run the reagent itemId backfill pass.
+--- /togpm backfill — v0.7.0: no-op. Metadata isn't stored in SV anymore,
+--- so there's nothing to backfill. Kept as a slash command for muscle memory.
 function addon:RunBackfill()
-    if addon.Scanner and addon.Scanner.BackfillReagentItemIds then
-        addon.Scanner:BackfillReagentItemIds()
-        if addon.Scanner.BackfillBogusRecipeNames then
-            addon.Scanner:BackfillBogusRecipeNames()
-        end
-    else
-        Ace:Print("|cffff4444Scanner not available yet|r")
-    end
+    Ace:Print("|cffaaaaaav0.7.0: metadata lives in addon.recipeDB; nothing to backfill.|r")
 end
 
 --- /togpm myalts — diagnostic: print what the addon thinks are this
@@ -1024,51 +1057,393 @@ function addon:NormalizeGuildKey(key)
     return key  -- Already new format: "Faction-GuildName"
 end
 
--- Synthetic guild-bucket key used when the player has no guild. Lets the
--- scanner store own-character scans somewhere coherent so the "My Characters"
--- view filter on the Cooldowns / Missing Recipes tabs can surface guildless
--- alts. Local-only by construction: every broadcast helper in Scanner.lua
--- gates on addon:GetGuildKey() returning a real (non-nil) value, so the
--- synthetic bucket's contents never reach the wire. Connected-realm names
--- can't contain underscores so this key cannot collide with a real guild.
-addon.NoGuildBucketKey = "__noguild"
+-- v0.7.0: NoGuildBucketKey no longer used (flat schema). Reserved tag
+-- "personal" handles guildless own alts via the guildRegistry.
+addon.NoGuildBucketKey = "__noguild"  -- kept as a constant for legacy migration code
 
--- Return (and lazily create) the guild-scoped sub-table for the current guild.
--- Falls back to the synthetic NoGuildBucketKey bucket when the player is not
--- in a guild so own-character scans always have somewhere to write.
+-- Return the global flat data table. Field names (recipes / skills / cooldowns
+-- / specializations / accountChars / altGroups / factions / syncTimes / hashes
+-- / lastScan / pendingPurge / trainerObservations / guildRegistry) mirror the
+-- old per-guild bucket fields, so most call sites continue to work without
+-- code change. The DATA SHAPE inside recipes changed though — crafters values
+-- are now guild tags (strings) instead of bools — see top-of-file schema notes.
 function addon:GetGuildDb()
-    local guildKey = self:GetGuildKey() or addon.NoGuildBucketKey
+    return addon.guildDb.global
+end
 
-    local g = addon.guildDb.global.guilds
-    if not g[guildKey] then
-        g[guildKey] = {
-            recipes         = {},  -- [profId][recipeId] = { name, icon, isSpell, crafters }
-            skills          = {},  -- [charKey][profId]  = { skillRank, skillMax }
-            guildData       = {},  -- [charKey] = {}  (membership index)
-            cooldowns       = {},
-            syncTimes       = {},
-            specializations = {},
-            factions        = {},
-            accountChars    = {},  -- [broadcasterKey] = { charKey, ... }   (v0.2.0: per-broadcaster authoritative alt group)
-            lastScan        = {},  -- [charKey] = { [profId]=ts, cooldowns=ts, accountchars=ts }   (v0.2.0: content-derived hash timestamps)
+-- ---------------------------------------------------------------------------
+-- v0.7.0 guild-tag helpers
+-- ---------------------------------------------------------------------------
+
+-- Reserved tag for guildless own alts. Used in place of a hash so it's visually
+-- distinguishable in the SV file and can't collide with any FNV-1a output.
+addon.PersonalTag = "personal"
+
+-- FNV-1a 32-bit hash of a string → 6 hex chars. Deterministic across all clients
+-- so the same guildKey always produces the same tag. 24-bit output (~16M
+-- possible values) is collision-safe at the scale of a single user's SV (a
+-- handful of guilds over a playing lifetime).
+local FNV_OFFSET = 2166136261
+local FNV_PRIME  = 16777619
+local bit_band, bit_bxor = bit.band, bit.bxor
+
+local function fnv1aHash6(str)
+    local h = FNV_OFFSET
+    for i = 1, #str do
+        h = bit_bxor(h, str:byte(i))
+        h = bit_band(h * FNV_PRIME, 0xFFFFFFFF)
+    end
+    -- Take low 24 bits → 6 hex chars (1 in 16M collision per pair; safe at our scale).
+    return string.format("%06x", bit_band(h, 0xFFFFFF))
+end
+
+-- Compute the tag for a given guildKey, or PersonalTag when nil/empty.
+-- Registers the guild in guildRegistry on first call so the UI can later
+-- resolve the tag back to a human-readable name.
+function addon:GetGuildTagFor(guildKey, faction, guildName)
+    if not guildKey or guildKey == "" then return addon.PersonalTag end
+    local tag = fnv1aHash6(guildKey)
+    local gdb = self:GetGuildDb()
+    if not gdb.guildRegistry then gdb.guildRegistry = {} end
+    if not gdb.guildRegistry[tag] then
+        gdb.guildRegistry[tag] = {
+            name    = guildName,
+            faction = faction,
+            key     = guildKey,
         }
     end
-    -- Lazy-init fields for buckets created before this version.
-    local b = g[guildKey]
-    if not b.recipes         then b.recipes         = {} end
-    if not b.skills          then b.skills          = {} end
-    if not b.guildData       then b.guildData       = {} end
-    if not b.cooldowns       then b.cooldowns       = {} end
-    if not b.syncTimes       then b.syncTimes       = {} end
-    if not b.specializations then b.specializations = {} end
-    if not b.factions        then b.factions        = {} end
-    if not b.altGroups       then b.altGroups       = {} end
-    -- v0.2.0 fields: empty on first migration, populated by v0.2.0 scans + receives.
-    -- Existing v0.1.x altGroups data stays usable; gdb.altGroups will be rebuilt
-    -- from gdb.accountChars whenever v0.2.0 broadcasts arrive.
-    if not b.accountChars    then b.accountChars    = {} end
-    if not b.lastScan        then b.lastScan        = {} end
-    return b
+    return tag
+end
+
+-- Convenience: the tag for the LOCAL player's current guild (or PersonalTag
+-- when guildless). Called by Scanner when tagging a freshly-scanned crafter
+-- entry, and by display sites to know which tag is "ours" for filtering.
+function addon:GetCurrentGuildTag()
+    local guildKey = self:GetGuildKey()
+    if not guildKey then return addon.PersonalTag end
+    local guildName = GetGuildInfo("player")
+    local faction   = UnitFactionGroup("player") or "Neutral"
+    return self:GetGuildTagFor(guildKey, faction, guildName)
+end
+
+-- ---------------------------------------------------------------------------
+-- v0.7.0 display-time visibility gate
+-- ---------------------------------------------------------------------------
+
+-- Return true if a crafter entry should be displayed RIGHT NOW.
+--   charKey:  "Name-Realm"
+--   crafterTag: the guild tag stored on the crafter entry
+-- Rules (any TRUE keeps the crafter visible):
+--   1. The crafter is one of the local player's own characters (own alt).
+--   2. The crafter's tag matches the current guild AND they're in libguildroster.
+-- A charKey that matches no rule gets queued in pendingPurge for the timed
+-- sweep — the data stays in the DB until the sweep runs so a transient roster
+-- glitch doesn't permanently strip them.
+function addon:IsVisibleCrafter(charKey, crafterTag)
+    if not charKey then return false end
+    -- Own alts (accountChars-tracked) always visible, regardless of guild.
+    if self:IsMyCharacter(charKey) then return true end
+
+    local myTag = self:GetCurrentGuildTag()
+
+    -- Tag mismatch = stale data from a previous guild. Flag for purge so the
+    -- timed sweep cleans them up. Covers "you left Guild A and joined Guild B"
+    -- and "you left Guild A and are now guildless" symmetrically.
+    if crafterTag ~= myTag then
+        self:FlagForPurge(charKey)
+        return false
+    end
+
+    -- We're guildless (PersonalTag) and they're not own alt — orphan.
+    if crafterTag == addon.PersonalTag then
+        self:FlagForPurge(charKey)
+        return false
+    end
+
+    -- Tag matches current guild. Check libguildroster directly.
+    local GC = self.Scanner and self.Scanner.GuildCache
+    if GC and GC:IsInGuild(charKey) then return true end
+
+    -- Not in roster directly — keep alive if they're an alt of someone IN
+    -- the roster (bank alts of in-guild mains stay visible).
+    if self:IsAltOfInRosterCharacter(charKey) then return true end
+
+    self:FlagForPurge(charKey)
+    return false
+end
+
+-- Return true if charKey is in any altGroup whose owner OR any sibling is
+-- currently in the guild roster. Protects bank alts of in-guild mains.
+function addon:IsAltOfInRosterCharacter(charKey)
+    local gdb = self:GetGuildDb()
+    local altGroups = gdb and gdb.altGroups
+    if not altGroups then return false end
+    local GC = self.Scanner and self.Scanner.GuildCache
+    if not GC then return false end
+
+    for ownerKey, alts in pairs(altGroups) do
+        local belongsHere = (ownerKey == charKey)
+        if not belongsHere and type(alts) == "table" then
+            for _, altCk in ipairs(alts) do
+                if altCk == charKey then belongsHere = true; break end
+            end
+        end
+        if belongsHere then
+            if GC:IsInGuild(ownerKey) then return true end
+            if type(alts) == "table" then
+                for _, altCk in ipairs(alts) do
+                    if altCk ~= charKey and GC:IsInGuild(altCk) then return true end
+                end
+            end
+        end
+    end
+    return false
+end
+
+-- Return true if charKey appears as an alt in someone's accountChars / altGroups
+-- list. Used by the visibility gate to keep alts of in-guild members alive
+-- even when the alt itself isn't in the roster.
+function addon:IsAltOfKnownCharacter(charKey)
+    local gdb = self:GetGuildDb()
+    local altGroups = gdb and gdb.altGroups
+    if not altGroups then return false end
+    for ownerKey, alts in pairs(altGroups) do
+        if ownerKey == charKey then return true end   -- own owner key
+        if type(alts) == "table" then
+            for _, altCk in ipairs(alts) do
+                if altCk == charKey then return true end
+            end
+        end
+    end
+    return false
+end
+
+-- Add a charKey to the pending-purge list. The timed sweep at OnRosterReady +
+-- 60s walks this list and deletes each charKey's references from every table.
+function addon:FlagForPurge(charKey)
+    if not charKey then return end
+    local gdb = self:GetGuildDb()
+    if not gdb.pendingPurge then gdb.pendingPurge = {} end
+    gdb.pendingPurge[charKey] = true
+end
+
+-- Walk pendingPurge and delete every reference for each flagged charKey.
+-- Called by Scanner after libguildroster is confirmed populated (OnRosterReady
+-- callback + 60s safety buffer for stragglers on large rosters).
+function addon:RunPendingPurge()
+    local gdb = self:GetGuildDb()
+    if not gdb.pendingPurge or not next(gdb.pendingPurge) then return 0 end
+
+    local count = 0
+    for charKey in pairs(gdb.pendingPurge) do
+        -- Walk every recipe's crafters list and strip this charKey.
+        for _, profRecipes in pairs(gdb.recipes or {}) do
+            for _, rd in pairs(profRecipes) do
+                if rd.crafters then rd.crafters[charKey] = nil end
+            end
+        end
+        if gdb.cooldowns       then gdb.cooldowns[charKey]       = nil end
+        if gdb.skills          then gdb.skills[charKey]          = nil end
+        if gdb.specializations then gdb.specializations[charKey] = nil end
+        if gdb.factions        then gdb.factions[charKey]        = nil end
+        if gdb.syncTimes       then gdb.syncTimes[charKey]       = nil end
+        if gdb.altGroups then
+            gdb.altGroups[charKey] = nil
+            -- Also strip charKey from other owners' alt arrays.
+            for _, alts in pairs(gdb.altGroups) do
+                if type(alts) == "table" then
+                    for i = #alts, 1, -1 do
+                        if alts[i] == charKey then table.remove(alts, i) end
+                    end
+                end
+            end
+        end
+        count = count + 1
+    end
+
+    -- Drop guildRegistry entries whose last crafter just got purged.
+    if gdb.guildRegistry and gdb.recipes then
+        local stillReferenced = {}
+        for _, profRecipes in pairs(gdb.recipes) do
+            for _, rd in pairs(profRecipes) do
+                for _, tag in pairs(rd.crafters or {}) do
+                    stillReferenced[tag] = true
+                end
+            end
+        end
+        for tag, entry in pairs(gdb.guildRegistry) do
+            if not entry.reserved and not stillReferenced[tag] then
+                gdb.guildRegistry[tag] = nil
+            end
+        end
+    end
+
+    gdb.pendingPurge = {}
+    addon:DebugPrint("Purge swept", count, "charKey(s) from the DB")
+    return count
+end
+
+-- ---------------------------------------------------------------------------
+-- v0.7.0 recipe-metadata accessors (read from shipped addon.recipeDB)
+--
+-- The SV no longer carries name/icon/reagents/links per recipe — those live
+-- in the shipped Data/Recipes/<Prof>.lua tables. Every GUI consumer uses
+-- these helpers to look up display metadata at render time.
+-- ---------------------------------------------------------------------------
+
+function addon:GetRecipeMeta(profId, recipeId)
+    local prof = self.recipeDB and self.recipeDB[profId]
+    return prof and prof[recipeId]
+end
+
+function addon:GetRecipeName(profId, recipeId)
+    local m = self:GetRecipeMeta(profId, recipeId)
+    if m and m.name then return m.name end
+    -- Fallback: WoW client APIs (may return localized name).
+    if type(recipeId) == "number" then
+        local n = (GetSpellInfo and GetSpellInfo(recipeId)) or (GetItemInfo and GetItemInfo(recipeId))
+        if n then return n end
+    end
+    return tostring(recipeId)
+end
+
+function addon:GetRecipeIcon(profId, recipeId)
+    local m = self:GetRecipeMeta(profId, recipeId)
+    if m and m.craftedItemId and GetItemIcon then
+        local t = GetItemIcon(m.craftedItemId)
+        if t then return t end
+    end
+    if type(recipeId) == "number" then
+        if GetSpellTexture then
+            local t = GetSpellTexture(recipeId)
+            if t then return t end
+        end
+        if GetItemIcon then
+            local t = GetItemIcon(recipeId)
+            if t then return t end
+        end
+    end
+    return 134400  -- generic question-mark fallback
+end
+
+-- Return reagents as the array-of-tables form GUI consumers expect:
+--   { { itemId, count, name, itemLink }, ... }
+-- The shipped addon.recipeDB stores { [itemId] = count }, so we convert on
+-- read. GetItemInfo populates name+link; nil values are fine (consumers
+-- handle uncached items by retrying via Item:CreateFromItemID).
+function addon:GetRecipeReagents(profId, recipeId)
+    local m = self:GetRecipeMeta(profId, recipeId)
+    if not m or not m.reagents then return nil end
+    local arr = {}
+    for itemId, count in pairs(m.reagents) do
+        local name, link = GetItemInfo(itemId)
+        arr[#arr + 1] = {
+            itemId   = itemId,
+            count    = count,
+            name     = name or ("Item #" .. itemId),
+            itemLink = link,
+        }
+    end
+    return arr
+end
+
+-- The crafted item ID (what the recipe produces). Used for icon resolution,
+-- tooltip SetItemByID, shopping list output naming. nil for spells with no
+-- physical product (currently none in the shipped DB).
+function addon:GetRecipeCraftedItemId(profId, recipeId)
+    local m = self:GetRecipeMeta(profId, recipeId)
+    return m and m.craftedItemId
+end
+
+-- ---------------------------------------------------------------------------
+-- v0.7.0 schema migration (one-shot at first OnInitialize on a v0.6.x SV)
+-- ---------------------------------------------------------------------------
+
+function addon:MigrateGuildDb()
+    local gdb = addon.guildDb and addon.guildDb.global
+    if not gdb then return end
+
+    -- Migrate if either (a) schemaVersion is missing/old, OR (b) the legacy
+    -- gdb.guilds tree is still present. The (b) branch is a recovery path
+    -- for the first v0.7.0 release, which incorrectly set schemaVersion via
+    -- defaults BEFORE the migration walk ran — leaving cooldowns stranded
+    -- inside the orphaned gdb.guilds[X].cooldowns tables. On the next load
+    -- with the corrected code, gdb.guilds is still there (the broken
+    -- migration never wiped it because it returned early), so we detect it
+    -- and run the walk now, recovering the cooldown timers.
+    local needsMigration = (not gdb.schemaVersion)
+                       or (gdb.schemaVersion < CURRENT_SCHEMA_VERSION)
+                       or (gdb.guilds ~= nil)
+    if not needsMigration then return end
+
+    addon:DebugPrint("Migrating GuildDB to schema v" .. CURRENT_SCHEMA_VERSION)
+
+    -- Preserve cooldowns from the old per-guild buckets — they're time-
+    -- sensitive (re-scanning loses the active expiry timer). Also preserve
+    -- any cooldowns already at the top level (from an in-progress migration
+    -- or hand-edit) by merging both sources, with bucket data taking priority
+    -- when both have the same charKey (buckets are the older / more complete
+    -- record from before the broken migration).
+    local mergedCooldowns = {}
+    if type(gdb.cooldowns) == "table" then
+        for charKey, expiries in pairs(gdb.cooldowns) do
+            if type(expiries) == "table" then mergedCooldowns[charKey] = expiries end
+        end
+    end
+    if gdb.guilds then
+        for _, bucket in pairs(gdb.guilds) do
+            for charKey, expiries in pairs(bucket.cooldowns or {}) do
+                if type(expiries) == "table" then mergedCooldowns[charKey] = expiries end
+            end
+        end
+    end
+
+    -- Recover per-broadcaster alt-group arrays from the old per-guild buckets
+    -- (where they used to live under bucket.accountChars[broadcasterKey]).
+    -- v0.7.0's first build mistakenly stomped them into the top-level
+    -- accountChars boolean-flag table, causing a runtime crash when
+    -- BuildLeafPayload tried to read accountchars: leaves. Move any
+    -- table-valued entries currently in gdb.accountChars into altClaims and
+    -- reset accountChars to its proper boolean-flag-only semantics.
+    local altClaims = {}
+    if gdb.guilds then
+        for _, bucket in pairs(gdb.guilds) do
+            for broadcasterKey, arr in pairs(bucket.accountChars or {}) do
+                if type(arr) == "table" then altClaims[broadcasterKey] = arr end
+            end
+        end
+    end
+    if type(gdb.accountChars) == "table" then
+        for ck, v in pairs(gdb.accountChars) do
+            if type(v) == "table" then
+                altClaims[ck] = v
+                gdb.accountChars[ck] = true   -- restore boolean flag semantics
+            end
+        end
+    end
+
+    gdb.guilds              = nil      -- drop the entire old per-guild tree
+    gdb.recipes             = {}
+    gdb.skills              = {}
+    gdb.specializations     = {}
+    gdb.factions            = {}
+    gdb.syncTimes           = {}
+    gdb.altGroups           = {}
+    gdb.guildRegistry       = { [addon.PersonalTag] = { name = "Personal Alts", reserved = true } }
+    gdb.pendingPurge        = {}
+    gdb.hashes              = {}
+    gdb.lastScan            = {}
+    gdb.trainerObservations = gdb.trainerObservations or {}
+    gdb.cooldowns           = mergedCooldowns
+    gdb.accountChars        = gdb.accountChars or {}
+    gdb.altClaims           = altClaims
+    gdb.syncLog             = gdb.syncLog or {}
+    gdb.schemaVersion       = CURRENT_SCHEMA_VERSION
+
+    addon:DebugPrint("Migration complete. Recovered cooldown entries:",
+        (function() local n = 0; for _ in pairs(mergedCooldowns) do n = n + 1 end; return n end)(),
+        "altClaim entries:",
+        (function() local n = 0; for _ in pairs(altClaims) do n = n + 1 end; return n end)())
 end
 
 --- Return true if charKey belongs to the local player's account.
@@ -1078,33 +1453,22 @@ function addon:IsMyCharacter(charKey)
     return addon.guildDb.global.accountChars[charKey] == true
 end
 
---- Iterate every guild bucket in addon.guildDb.global.guilds.
--- Used by tabs to walk all stored data when the "My Characters" view needs
--- to surface data for own alts that live in other guild buckets (or in the
--- synthetic NoGuildBucketKey bucket for guildless alts). Local read only —
--- no sync-protocol implications since broadcasts gate on addon:GetGuildKey()
--- returning a real non-nil value.
--- @param callback  function(bucket)  — invoked once per bucket
+--- v0.7.0 compatibility shim. The flat schema has no per-guild buckets
+--- anymore — there's a single global data tree. Callers that still iterate
+--- "every bucket" now get a single virtual "bucket" (the global table)
+--- that exposes the same field names (recipes, skills, cooldowns, etc.).
+-- @param callback  function(bucket)  — invoked once, with the flat global
 function addon:ForEachGuildBucket(callback)
-    for _, bucket in pairs(self.guildDb.global.guilds or {}) do
-        callback(bucket)
-    end
+    if not self.guildDb or not self.guildDb.global then return end
+    callback(self.guildDb.global)
 end
 
---- Find the first guild bucket whose `field` sub-table has an entry for
--- charKey. Use for cross-bucket lookups when a character's tracked data
--- (skills, cooldowns, specializations, etc.) may live in any bucket because
--- the character is in a different guild from the logged-in player or in no
--- guild at all.
--- @param charKey  string — "Name-Realm"
--- @param field    string — bucket sub-table to inspect ("skills", "cooldowns", "specializations", ...)
--- @return         bucket table or nil if no bucket has data for this character
+--- v0.7.0 compatibility shim. With the flat schema there's only one
+--- "bucket" (the global table), so this returns it if the field+charKey
+--- exists, nil otherwise.
 function addon:FindBucketForChar(charKey, field)
     if not charKey or not field then return nil end
-    for _, bucket in pairs(self.guildDb.global.guilds or {}) do
-        if bucket[field] and bucket[field][charKey] then
-            return bucket
-        end
-    end
+    local g = self.guildDb and self.guildDb.global
+    if g and g[field] and g[field][charKey] then return g end
     return nil
 end

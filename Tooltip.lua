@@ -60,21 +60,20 @@ end
 --
 -- Returns the matching `rd`, or nil. Caller (FindCrafters) handles the
 -- crafters list extraction.
-local function ResolveRecipeForItem(profRecipes, itemID)
-    local rd = profRecipes[itemID]
-    if rd and not rd.isSpell then return rd end
-    -- Fall through to itemLink scan for spell-keyed recipes (TBC).
-    -- O(N) per profession, but only fires when the fast-path missed —
-    -- and only for items the user is actively hovering (one call per hover).
-    for _, rd2 in pairs(profRecipes) do
-        if rd2.isSpell and type(rd2.itemLink) == "string" then
-            local linkedItemId = tonumber(rd2.itemLink:match("Hitem:(%d+)"))
-            if linkedItemId == itemID then
-                return rd2
+-- v0.7.0: find every recipe (profId, recipeId) whose craftedItemId matches
+-- itemID. Searches the shipped addon.recipeDB (authoritative metadata) —
+-- crafter membership for any hits is then looked up in gdb.recipes.
+local function ResolveRecipesForItem(itemID)
+    local hits = {}
+    if not addon.recipeDB then return hits end
+    for profId, profRecipes in pairs(addon.recipeDB) do
+        for recipeId, meta in pairs(profRecipes) do
+            if meta.craftedItemId == itemID then
+                hits[#hits + 1] = { profId = profId, recipeId = recipeId }
             end
         end
     end
-    return nil
+    return hits
 end
 
 local function FindCrafters(itemID)
@@ -83,29 +82,37 @@ local function FindCrafters(itemID)
 
     local GuildCache = addon.Scanner and addon.Scanner.GuildCache
     local roster     = {}
+    local seen       = {}  -- dedup same (charKey, profId) appearing via multiple recipe matches
 
-    for profId, profRecipes in pairs(gdb.recipes) do
-        local rd = ResolveRecipeForItem(profRecipes, itemID)
-        if rd then
-            for charKey in pairs(rd.crafters or {}) do
-                local name      = charKey:match("^(.-)%-") or charKey
-                local skillData = gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
-                local online    = GuildCache and GuildCache:IsPlayerOnline(charKey) or false
-                if not online and gdb.altGroups and gdb.altGroups[charKey] then
-                    for _, altCk in ipairs(gdb.altGroups[charKey]) do
-                        if altCk ~= charKey and GuildCache and GuildCache:IsPlayerOnline(altCk) then
-                            online = true
-                            break
+    for _, hit in ipairs(ResolveRecipesForItem(itemID)) do
+        local profId   = hit.profId
+        local recipeId = hit.recipeId
+        local profRow  = gdb.recipes[profId]
+        local rd       = profRow and profRow[recipeId]
+        if rd and rd.crafters then
+            for charKey, tag in pairs(rd.crafters) do
+                local seenKey = charKey .. "@" .. profId
+                if not seen[seenKey] and addon:IsVisibleCrafter(charKey, tag) then
+                    seen[seenKey] = true
+                    local name      = charKey:match("^(.-)%-") or charKey
+                    local skillData = gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
+                    local online    = GuildCache and GuildCache:IsPlayerOnline(charKey) or false
+                    if not online and gdb.altGroups and gdb.altGroups[charKey] then
+                        for _, altCk in ipairs(gdb.altGroups[charKey]) do
+                            if altCk ~= charKey and GuildCache and GuildCache:IsPlayerOnline(altCk) then
+                                online = true
+                                break
+                            end
                         end
                     end
+                    roster[#roster + 1] = {
+                        name       = name,
+                        profession = addon.PROF_NAMES[profId] or tostring(profId),
+                        skillLevel = skillData and skillData.skillRank or 0,
+                        maxLevel   = skillData and skillData.skillMax  or 0,
+                        online     = online,
+                    }
                 end
-                roster[#roster + 1] = {
-                    name       = name,
-                    profession = addon.PROF_NAMES[profId] or tostring(profId),
-                    skillLevel = skillData and skillData.skillRank or 0,
-                    maxLevel   = skillData and skillData.skillMax  or 0,
-                    online     = online,
-                }
             end
         end
     end
@@ -203,25 +210,20 @@ local function AppendCraftersNow(tooltip, itemID)
         --                       sole crafter unlearned the recipe)
         --   bop-skipped       : crafters line was suppressed because item is
         --                       Bind-on-Pickup (can't be traded/mailed anyway)
+        -- v0.7.0: walk ResolveRecipesForItem (which mines the shipped
+        -- addon.recipeDB by craftedItemId) and cross-reference each hit
+        -- against gdb.recipes for the crafter count.
         local gdb = addon:GetGuildDb()
         local diag = "recipe-not-found"
         local crafterCount = 0
-        if gdb and gdb.recipes then
-            -- Use the same resolver as FindCrafters so the diag tag reflects
-            -- the real lookup. Before the resolver was added, TBC clients
-            -- always reported "recipe-not-found" because the direct
-            -- profRecipes[itemID] indexing missed every spell-keyed entry
-            -- (TBC stores every profession's recipes under their spell ID,
-            -- not the crafted item ID — see ResolveRecipeForItem comment).
-            for _, profRecipes in pairs(gdb.recipes) do
-                local rd = ResolveRecipeForItem(profRecipes, itemID)
-                if rd then
-                    if rd.spellId then table.insert(idParts, "spellId=" .. rd.spellId) end
-                    for _ in pairs(rd.crafters or {}) do crafterCount = crafterCount + 1 end
-                    diag = (crafterCount > 0) and ("crafters=" .. crafterCount) or "recipe-no-crafters"
-                    break
-                end
-            end
+        for _, hit in ipairs(ResolveRecipesForItem(itemID)) do
+            local meta = addon.recipeDB[hit.profId][hit.recipeId]
+            if meta.teaches then table.insert(idParts, "spellId=" .. meta.teaches) end
+            local profRow = gdb and gdb.recipes and gdb.recipes[hit.profId]
+            local rd      = profRow and profRow[hit.recipeId]
+            for _ in pairs((rd and rd.crafters) or {}) do crafterCount = crafterCount + 1 end
+            diag = (crafterCount > 0) and ("crafters=" .. crafterCount) or "recipe-no-crafters"
+            break
         end
         if not showCrafters then
             diag = "crafters-disabled"

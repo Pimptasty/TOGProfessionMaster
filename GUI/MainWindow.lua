@@ -65,11 +65,16 @@ MainWindow.frame     = nil   -- root AceGUI Frame
 MainWindow.tabs      = nil   -- AceGUI TabGroup
 MainWindow.activeTab = "browser"
 
-local TAB_DEFS = {
-    { value = "browser",   text = L["TabProfessions"]    },
-    { value = "cooldowns", text = L["TabCooldowns"]      },
-    { value = "missing",   text = L["TabMissingRecipes"] },
-}
+-- v0.7.0: function (not table) so the L["..."] reads happen at tab-build
+-- time, after ApplyLocaleOverride has had a chance to mutate the AceLocale
+-- table. A file-scope table would freeze the strings at module load.
+local function getTabDefs()
+    return {
+        { value = "browser",   text = L["TabProfessions"]    },
+        { value = "cooldowns", text = L["TabCooldowns"]      },
+        { value = "missing",   text = L["TabMissingRecipes"] },
+    }
+end
 
 -- ---------------------------------------------------------------------------
 -- ESC proxy
@@ -355,7 +360,7 @@ function MainWindow:Open(tabKey)
 
     -- TabGroup
     local tg = AceGUI:Create("TabGroup")
-    tg:SetTabs(TAB_DEFS)
+    tg:SetTabs(getTabDefs())
     tg:SetLayout("Flow")
     tg:SetFullWidth(true)
     tg:SetFullHeight(true)

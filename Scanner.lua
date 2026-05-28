@@ -194,7 +194,7 @@ function Scanner:InitDeltaSync()
         -- raw C_ChatInfo.SendAddonMessage. Without this, large chunked
         -- payloads can interleave under sync load and CRC-fail silently.
         aceAddon  = addon.lib,
-        namespace = "TOGPmv2",   -- v0.2.0 protocol bump (was TOGPmv1 in v0.1.x)
+        namespace = "TOGPmv3",   -- v0.7.0: bare crafters leaf, no recipemeta; was TOGPmv2 in v0.2-v0.6
 
         -- A guild member is asking us for data.  baseline carries the request
         -- type per the v0.2.0 protocol (see docs/v0.2.0-protocol.md §5):
@@ -919,7 +919,9 @@ end
 --- Scan the currently open trade-skill window and store the result in AceDB.
 -- @param charKey   "Name-Realm" string for the character being scanned
 -- @param isLinked  true when viewing another player's linked trade skill
-function Scanner:ScanTradeSkillInto(charKey, isLinked)  --luacheck: ignore isLinked
+function Scanner:ScanTradeSkillInto(charKey, _isLinked)
+    -- v0.7.0: isLinked no longer matters — we don't store metadata so the
+    -- "build local spellbook cache for non-linked scans" branch is gone.
     local skillName, _, skillRank, skillMax = GetTradeSkillLine()
     if not skillName or skillName == "UNKNOWN" then return end
 
@@ -929,136 +931,76 @@ function Scanner:ScanTradeSkillInto(charKey, isLinked)  --luacheck: ignore isLin
         return
     end
 
-    -- Build name → spellId map from local spellbook once per scan.
-    -- Works for local scans; linked profession scans leave spellId nil.
-    local spellNameCache = (not isLinked) and self:BuildSpellNameCache() or {}
-
-    -- Collect all recipe spell IDs.  Only include rows with a real difficulty
-    -- rating; "header" separators and any other non-recipe rows are skipped.
-    local recipes = {}
-    local total   = GetNumTradeSkills()
+    -- v0.7.0: collect ONLY recipe IDs. Recipe metadata (name / icon / reagents /
+    -- itemLink) lives in the shipped addon.recipeDB and is looked up at render
+    -- time. The SV stores nothing but the crafter set per recipe, keyed by tag.
+    local recipeIds = {}
+    local total = GetNumTradeSkills()
     for i = 1, total do
-        local recipeName, tradeSkillType = GetTradeSkillInfo(i)
+        local _, tradeSkillType = GetTradeSkillInfo(i)
         if tradeSkillType == "optimal" or tradeSkillType == "medium"
         or tradeSkillType == "easy"    or tradeSkillType == "trivial" then
-            local recipeId, isSpell = self:ExtractTradeSkillId(i)
-            if recipeId then
-                -- [1]=name [2]=icon [3]=isSpell [4]=spellId [5]=itemLink [6]=reagents [7]=recipeLink
-                local spellId    = spellNameCache[recipeName]
-                local recipeLink = GetTradeSkillRecipeLink and GetTradeSkillRecipeLink(i)
-                local itemLink   = GetTradeSkillItemLink(i)
-                -- Capture reagents while the trade skill window is open.
-                -- On Classic Era, GetTradeSkillReagentItemLink can return nil for
-                -- reagents even when the API exists, so we also resolve itemId
-                -- via GetItemInfoInstant(name) as a stable identifier for the
-                -- bank-stock lookup and reagent-watch features. Both fields are
-                -- broadcast so peers receive whichever one we managed to capture.
-                local reagents = {}
-                local numReagents = GetTradeSkillNumReagents(i) or 0
-                for r = 1, numReagents do
-                    local rName, _, rCount = GetTradeSkillReagentInfo(i, r)
-                    if rName then
-                        local rLink = GetTradeSkillReagentItemLink and GetTradeSkillReagentItemLink(i, r)
-                        if not rLink then
-                            local sc = GetReagentScraper()
-                            sc:ClearLines()
-                            sc:SetTradeSkillItem(i, r)
-                            local _, scrapedLink = sc:GetItem()
-                            if scrapedLink and scrapedLink ~= "" then rLink = scrapedLink end
-                        end
-                        local rItemId = rLink and tonumber(rLink:match("item:(%d+)"))
-                        if not rItemId and GetItemInfoInstant then
-                            rItemId = (GetItemInfoInstant(rName))
-                        end
-                        table.insert(reagents, {
-                            name = rName, count = rCount or 1,
-                            itemId = rItemId, itemLink = rLink,
-                        })
-                    end
-                end
-                local cleanName = cleanRecipeName(recipeName, itemLink, recipeLink)
-                recipes[recipeId] = { cleanName, GetTradeSkillIcon(i), isSpell, spellId, itemLink, reagents, recipeLink }
-            end
+            local recipeId = self:ExtractTradeSkillId(i)
+            if recipeId then recipeIds[recipeId] = true end
         end
     end
 
     local gdb = addon:GetGuildDb()
     if not gdb then return end
-    self:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, recipes)
+    self:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, recipeIds)
 
-    -- Stamp the content-derived scan time used by HashManager to compute the
-    -- crafters:<profId> and recipemeta:<profId> leaves' updatedAt.  This is
-    -- the v0.2.0 sync protocol's "when did this data actually change?" signal.
+    -- Stamp the content-derived scan time used by HashManager.
     if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
     gdb.lastScan[charKey][profId] = GetServerTime()
 
-    -- Invalidate the per-profession recipe hash and the guild:recipes roll-up.
+    -- Invalidate the per-profession recipe hash.
     local DS = self.DS
     if DS then
         addon.HashManager:InvalidateProfession(DS, gdb, profId)
     end
 
-    addon:DebugPrint("Scanner: scanned", skillName, "for", charKey,
-        "—", (function() local n = 0; for _ in pairs(recipes) do n = n + 1 end; return n end)(), "recipes")
+    local count = 0; for _ in pairs(recipeIds) do count = count + 1 end
+    addon:DebugPrint("Scanner: scanned", skillName, "for", charKey, "—", count, "recipes")
 end
 
---- Merge a scanned recipe table into the recipe-centric guild DB.
--- Stores recipe metadata once; adds charKey to each recipe's crafters set.
--- Removes charKey from recipes for this prof that are no longer known.
-function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, recipes)
-    -- Ensure new-structure fields exist (backwards-compat for old saved vars).
-    if not gdb.recipes   then gdb.recipes   = {} end
-    if not gdb.skills    then gdb.skills    = {} end
-    if not gdb.guildData then gdb.guildData = {} end
+--- Merge a freshly-scanned recipe-id set into the flat recipe DB.
+--- v0.7.0: no metadata stored — just the crafter set per recipe, tagged with
+--- the local player's current guild. The shipped addon.recipeDB carries name,
+--- icon, reagents, etc., looked up at display time by recipeId.
+---
+--- @param recipeIds  table  set { [recipeId] = true } of recipes this char knows
+function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, recipeIds)
+    if not gdb.recipes then gdb.recipes = {} end
+    if not gdb.skills  then gdb.skills  = {} end
 
-    -- Mark member as known (membership index only).
-    gdb.guildData[charKey] = gdb.guildData[charKey] or {}
-
-    -- Update skill rank/max.
+    -- Skill rank/max.
     if not gdb.skills[charKey] then gdb.skills[charKey] = {} end
     gdb.skills[charKey][profId] = { skillRank = skillRank or 0, skillMax = skillMax or 300 }
 
-    -- Remove charKey from any existing recipe crafters for this prof
-    -- (covers recipes they may have unlearned).
-    if gdb.recipes[profId] then
+    -- Compute the current guild tag once. Tag is "personal" when guildless,
+    -- so own scans on a no-guild alt still get stored (and visible to that
+    -- alt's owner via the My Characters view).
+    local tag = addon:GetCurrentGuildTag()
+
+    -- Remove charKey from any existing recipe's crafter set for this prof
+    -- (covers recipes the character has unlearned since the last scan).
+    if not gdb.recipes[profId] then
+        gdb.recipes[profId] = {}
+    else
         for _, rd in pairs(gdb.recipes[profId]) do
             if rd.crafters then rd.crafters[charKey] = nil end
         end
-    else
-        gdb.recipes[profId] = {}
     end
 
-    -- Add/update recipe entries.
-    -- Type-guards (asString) and the non-destructive reagent merge live at
-    -- module scope so OnGuildDataReceived's per-leaf merges can reuse them.
-    for recipeId, rd in pairs(recipes) do
-        local existing = gdb.recipes[profId][recipeId]
-        if existing then
-            existing.name    = rd[1]
-            existing.icon    = rd[2]
-            existing.isSpell = rd[3]
-            -- [4]=spellId [5]=itemLink [6]=reagents [7]=recipeLink — only overwrite when non-nil.
-            -- recipeLink ([7]) only comes from local scans (GetTradeSkillRecipeLink).
-            if rd[4] ~= nil then existing.spellId    = rd[4]            end
-            if rd[5] ~= nil then existing.itemLink   = asString(rd[5])  end
-            if rd[6] ~= nil then
-                local merged = mergeReagents(existing.reagents, rd[6])
-                if merged then existing.reagents = merged end
-            end
-            if rd[7] ~= nil then existing.recipeLink = asString(rd[7])  end
-            existing.crafters[charKey] = true
-        else
-            gdb.recipes[profId][recipeId] = {
-                name       = rd[1],
-                icon       = rd[2],
-                isSpell    = rd[3],
-                spellId    = rd[4],
-                itemLink   = asString(rd[5]),
-                reagents   = mergeReagents(nil, rd[6]),
-                recipeLink = asString(rd[7]),
-                crafters   = { [charKey] = true },
-            }
+    -- Add charKey + tag to each known recipe.
+    for recipeId in pairs(recipeIds) do
+        local rd = gdb.recipes[profId][recipeId]
+        if not rd then
+            rd = { crafters = {} }
+            gdb.recipes[profId][recipeId] = rd
         end
+        if not rd.crafters then rd.crafters = {} end
+        rd.crafters[charKey] = tag
     end
 end
 
@@ -1100,62 +1042,35 @@ function Scanner:ScanCraftSkillInto(charKey)
         return
     end
 
-    local recipes = {}
-    local total   = GetNumCrafts and GetNumCrafts() or 0
+    -- v0.7.0: recipe IDs only — metadata lives in the shipped addon.recipeDB.
+    local recipeIds = {}
+    local total = GetNumCrafts and GetNumCrafts() or 0
     for i = 1, total do
-        local craftName, _, craftType = GetCraftInfo(i)
+        local _, _, craftType = GetCraftInfo(i)
         if craftType == "optimal" or craftType == "medium"
         or craftType == "easy"    or craftType == "trivial" then
             local link    = GetCraftItemLink and GetCraftItemLink(i)
             local spellId = link and tonumber(link:match("enchant:(%d+)"))
-            if spellId then
-                local craftIcon = GetCraftIcon and GetCraftIcon(i)
-                local reagents = {}
-                local numR = GetCraftNumReagents and GetCraftNumReagents(i) or 0
-                for r = 1, numR do
-                    local rName, _, rCount = GetCraftReagentInfo(i, r)
-                    if rName then
-                        local rLink = GetCraftReagentItemLink and GetCraftReagentItemLink(i, r)
-                        if not rLink then
-                            local sc = GetReagentScraper()
-                            sc:ClearLines()
-                            sc:SetCraftItem(i, r)
-                            local _, scrapedLink = sc:GetItem()
-                            if scrapedLink and scrapedLink ~= "" then rLink = scrapedLink end
-                        end
-                        local rItemId = rLink and tonumber(rLink:match("item:(%d+)"))
-                        if not rItemId and GetItemInfoInstant then
-                            rItemId = (GetItemInfoInstant(rName))
-                        end
-                        table.insert(reagents, {
-                            name = rName, count = rCount or 1,
-                            itemId = rItemId, itemLink = rLink,
-                        })
-                    end
-                end
-                -- [1]=name [2]=icon [3]=isSpell [4]=spellId [5]=itemLink [6]=reagents
-                local cleanName = cleanRecipeName(craftName, link, link)
-                recipes[spellId] = { cleanName, craftIcon, true, nil, nil, reagents }
-            end
+            if spellId then recipeIds[spellId] = true end
         end
     end
 
     local gdb = addon:GetGuildDb()
     if not gdb then return end
-    self:MergeRecipesIntoGdb(gdb, charKey, profId, 0, 300, recipes)
+    self:MergeRecipesIntoGdb(gdb, charKey, profId, 0, 300, recipeIds)
 
-    -- Stamp content-derived scan time for v0.2.0 hash leaves.
+    -- Stamp content-derived scan time for hash leaves.
     if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
     gdb.lastScan[charKey][profId] = GetServerTime()
 
-    -- Invalidate the per-profession recipe hash and the guild:recipes roll-up.
+    -- Invalidate the per-profession recipe hash.
     local DS = self.DS
     if DS then
         addon.HashManager:InvalidateProfession(DS, gdb, profId)
     end
 
-    addon:DebugPrint("Scanner: scanned craft", skillName, "for", charKey,
-        "—", (function() local n = 0; for _ in pairs(recipes) do n = n + 1 end; return n end)(), "recipes")
+    local count = 0; for _ in pairs(recipeIds) do count = count + 1 end
+    addon:DebugPrint("Scanner: scanned craft", skillName, "for", charKey, "—", count, "recipes")
 end
 
 -- ---------------------------------------------------------------------------
@@ -1708,7 +1623,9 @@ function Scanner:BuildLeafPayload(itemKey)
 
     elseif itemKey:sub(1, 13) == "accountchars:" then
         local owner = itemKey:sub(14)
-        local group = gdb.accountChars and gdb.accountChars[owner]
+        -- v0.7.0: per-broadcaster alt-group arrays live under altClaims to
+        -- avoid colliding with the boolean-flag accountChars set.
+        local group = gdb.altClaims and gdb.altClaims[owner]
         if not group or #group == 0 then return nil end
         payload.leaves[itemKey] = {
             data      = group,
@@ -1720,42 +1637,19 @@ function Scanner:BuildLeafPayload(itemKey)
             lastScanOut[owner] = { accountchars = ls.accountchars }
         end
 
-    elseif itemKey:sub(1, 11) == "recipemeta:" then
-        local profId = tonumber(itemKey:sub(12))
-        if not profId or not gdb.recipes or not gdb.recipes[profId]
-           or not next(gdb.recipes[profId]) then return nil end
-        local meta = {}
-        for recipeId, rd in pairs(gdb.recipes[profId]) do
-            meta[recipeId] = {
-                name       = rd.name,
-                icon       = rd.icon,
-                isSpell    = rd.isSpell,
-                spellId    = rd.spellId,
-                itemLink   = rd.itemLink,
-                recipeLink = rd.recipeLink,
-                reagents   = rd.reagents,
-            }
-        end
-        payload.leaves[itemKey] = {
-            data      = meta,
-            hash      = entry and entry.hash      or 0,
-            updatedAt = entry and entry.updatedAt or 0,
-        }
-        if gdb.lastScan then
-            for _, rd in pairs(gdb.recipes[profId]) do
-                for ck in pairs(rd.crafters or {}) do
-                    local ls = gdb.lastScan[ck]
-                    if ls and ls[profId] then
-                        if not lastScanOut[ck] then lastScanOut[ck] = {} end
-                        lastScanOut[ck][profId] = ls[profId]
-                    end
-                end
-            end
-        end
+    -- v0.7.0: recipemeta: leaf removed entirely. All recipe metadata (name,
+    -- icon, reagents, links) lives in the shipped addon.recipeDB and is looked
+    -- up by recipeId at display time. The receiver never needs name/icon over
+    -- the wire — they have it locally.
 
     elseif itemKey:sub(1, 9) == "crafters:" then
         local profId = tonumber(itemKey:sub(10))
         if not profId or not gdb.recipes or not gdb.recipes[profId] then return nil end
+        -- v0.7.0: bare {[recipeId] = {[charKey] = true}}. Per-crafter guild tag
+        -- is NOT shipped — receivers compute it locally from their current
+        -- guild context (inbound data always arrived through the receiver's
+        -- own guild channel, so all crafters in the payload share the
+        -- receiver's current guild tag at receive time).
         local crafters = {}
         local hasCrafters = false
         for recipeId, rd in pairs(gdb.recipes[profId]) do
@@ -1824,13 +1718,16 @@ end
 -- Receive & merge guild data
 -- ---------------------------------------------------------------------------
 
---- Rebuild gdb.altGroups (denormalized lookup) from gdb.accountChars (per-broadcaster authoritative).
--- Each member of any group gets a pointer to the same group array.
+--- Rebuild gdb.altGroups (denormalized lookup) from gdb.altClaims
+--- (per-broadcaster authoritative).
+--- Each member of any group gets a pointer to the same group array.
 function Scanner:RebuildAltGroups(gdb)
     gdb.altGroups = {}
-    for _, group in pairs(gdb.accountChars or {}) do
-        for _, member in ipairs(group) do
-            gdb.altGroups[member] = group
+    for _, group in pairs(gdb.altClaims or {}) do
+        if type(group) == "table" then
+            for _, member in ipairs(group) do
+                gdb.altGroups[member] = group
+            end
         end
     end
 end
@@ -1909,6 +1806,17 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
     if not gdb.recipes[profId] then gdb.recipes[profId] = {} end
     local profRecipes = gdb.recipes[profId]
 
+    -- Hide recipes the local addon DB doesn't know about (sender's addon is
+    -- newer / has SoD content we don't ship yet). We could store them as
+    -- unknown rows, but the UI hides them anyway — no point bloating the DB.
+    local localProfDB = addon.recipeDB and addon.recipeDB[profId]
+
+    -- Receiver-side guild tag: inbound DeltaSync data always arrives via our
+    -- own guild channel, so every crafter in the payload gets tagged with
+    -- the current player's guild tag (or PersonalTag if guildless, though
+    -- that case shouldn't reach the wire — broadcasts gate on a real guild).
+    local tag = addon:GetCurrentGuildTag()
+
     if senderClaimsOwnScan and senderKey then
         for _, rd in pairs(profRecipes) do
             if rd.crafters then rd.crafters[senderKey] = nil end
@@ -1916,49 +1824,15 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
     end
 
     for recipeId, ckSet in pairs(crafters) do
-        if type(ckSet) == "table" then
+        if type(ckSet) == "table" and (not localProfDB or localProfDB[recipeId]) then
             local existing = profRecipes[recipeId]
             if not existing then
-                -- Try to populate name/icon/itemLink from WoW's item cache so
-                -- the row doesn't render as "? <id>" between when crafters:<profId>
-                -- arrives and recipemeta:<profId> catches up.  GetItemInfo returns
-                -- nil if the item isn't cached yet — backfill recovers later.
-                local stub = { crafters = {} }
-                if type(recipeId) == "number" then
-                    local nm, link, _, _, _, _, _, _, _, icon = GetItemInfo(recipeId)
-                    -- Reject namespace-collision hits (recipeId is a spell ID
-                    -- but the same numeric value happens to be a TEST / ZZOLD
-                    -- / DEPRECATED / [PH] item in ItemSparse). Falls through
-                    -- to GetSpellInfo below, which is the correct API for a
-                    -- spell-id stub anyway.
-                    if nm and not isObsoleteItemName(nm) then
-                        stub.name     = nm
-                        stub.icon     = icon
-                        stub.itemLink = link
-                        stub.isSpell  = false
-                    elseif GetSpellInfo then
-                        -- Fallback: Enchanting recipes are spell-keyed (recipeId
-                        -- IS the enchant spell ID), and many stubs land here
-                        -- because GetItemInfo returns nil for spell IDs. Without
-                        -- this fallback the stub stays nameless until the
-                        -- recipemeta leaf catches up — and BrowserTab's tooltip
-                        -- falls through to SetHyperlink("item:<id>") producing
-                        -- "Retrieving item information" for spell-only IDs.
-                        local sname, _, sicon = GetSpellInfo(recipeId)
-                        if sname then
-                            stub.name    = sname
-                            stub.icon    = sicon
-                            stub.isSpell = true
-                            stub.spellId = recipeId
-                        end
-                    end
-                end
-                profRecipes[recipeId] = stub
-                existing = stub
+                existing = { crafters = {} }
+                profRecipes[recipeId] = existing
             end
             if not existing.crafters then existing.crafters = {} end
             for ck, v in pairs(ckSet) do
-                if v and type(ck) == "string" then existing.crafters[ck] = true end
+                if v and type(ck) == "string" then existing.crafters[ck] = tag end
             end
         end
     end
@@ -2098,6 +1972,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
             elseif itemKey:sub(1, 13) == "accountchars:" then
                 local owner = itemKey:sub(14)
                 if type(leafData) == "table" then
+                    if not gdb.altClaims then gdb.altClaims = {} end
                     if owner == senderKey then
                         -- Authoritative replace for the broadcaster's own group.
                         local arr = {}
@@ -2105,32 +1980,30 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                             if type(ck) == "string" then arr[#arr + 1] = ck end
                         end
                         table.sort(arr)
-                        gdb.accountChars[owner] = arr
+                        gdb.altClaims[owner] = arr
                     else
                         -- Relay: union add to existing.
-                        if not gdb.accountChars[owner] then gdb.accountChars[owner] = {} end
+                        if not gdb.altClaims[owner] then gdb.altClaims[owner] = {} end
                         local seen = {}
-                        for _, ck in ipairs(gdb.accountChars[owner]) do seen[ck] = true end
+                        for _, ck in ipairs(gdb.altClaims[owner]) do seen[ck] = true end
                         for _, ck in ipairs(leafData) do
                             if type(ck) == "string" and not seen[ck] then
-                                gdb.accountChars[owner][#gdb.accountChars[owner] + 1] = ck
+                                gdb.altClaims[owner][#gdb.altClaims[owner] + 1] = ck
                                 seen[ck] = true
                             end
                         end
-                        table.sort(gdb.accountChars[owner])
+                        table.sort(gdb.altClaims[owner])
                     end
                     touchedAltGroups = true
                 end
                 if DS then addon.HashManager:InvalidateAccountChars(DS, gdb, owner) end
                 if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
 
-            elseif itemKey:sub(1, 11) == "recipemeta:" then
-                local profId = tonumber(itemKey:sub(12))
-                if profId then
-                    self:MergeRecipeMetaIntoGdb(gdb, profId, leafData)
-                    touchedProfessions[profId] = true
-                end
-                if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
+            -- v0.7.0: recipemeta: leaf removed (metadata lives in shipped
+            -- addon.recipeDB, not synced). Receivers ignore inbound recipemeta:
+            -- payloads from any straggler peer that wasn't aware of the change;
+            -- the namespace bump TOGPmv2 → TOGPmv3 means v0.6.x clients can't
+            -- reach our OnGuildDataReceived in the first place.
 
             elseif itemKey:sub(1, 9) == "crafters:" then
                 local profId = tonumber(itemKey:sub(10))

@@ -91,6 +91,7 @@ local OPTIONS = {
                 esMX  = "Español (México)",
                 frFR  = "Français",
                 itIT  = "Italiano",
+                nlNL  = "Nederlands",
                 ptBR  = "Português (Brasil)",
                 ruRU  = "Русский",
                 koKR  = "한국어",
@@ -100,7 +101,7 @@ local OPTIONS = {
                 filPH = "Filipino",
             },
             sorting = { "auto", "enUS", "enGB", "deDE", "esES", "esMX", "frFR",
-                        "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "thTH", "filPH" },
+                        "itIT", "nlNL", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "thTH", "filPH" },
             get = function() return Ace.db.profile.uiLanguageOverride or "auto" end,
             set = function(_, val)
                 Ace.db.profile.uiLanguageOverride = val

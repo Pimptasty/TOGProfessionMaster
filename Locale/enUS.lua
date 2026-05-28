@@ -43,6 +43,10 @@ L["You"]                = "You"
 L["BrowserScanAH"]          = "Scan AH"
 L["BrowserScanAHProgress"]  = "Scanning %d/%d"
 L["BrowserScanAHDesc"]      = "Scan the auction house for every reagent in your shopping list. Reagent rows whose item is currently on the AH get an [AH] button; click that to jump straight to the AH search for it."
+L["BrowserShowAllRecipes"]     = "Show all recipes"
+L["BrowserShowAllRecipesDesc"] = "Include every recipe in the shipped database, even ones nobody in the guild knows. Recipes nobody knows render greyed out so officers can spot which skills the guild still needs to cover. Pairs with the 'Show Missing' entry in the View dropdown for a focused gap view."
+L["ViewMissing"]               = "Show Missing"
+L["ViewMissingRequiresShowAll"] = "Requires 'Show all recipes' to be enabled."
 L["CooldownsScanAHDesc"]    = "Scan the auction house for every unique reagent in the visible cooldown rows. Rows whose reagent is currently on the AH get an [AH] button (left of [Bank]); click that to jump straight to the AH search for it."
 
 -- Recipe detail popup

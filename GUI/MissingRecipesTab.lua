@@ -106,10 +106,12 @@ end
 -- currently-logged-in toon is always included even if it has not opened a
 -- trade-skill window yet.
 local function GetCharactersWithProfessions()
+    -- v0.7.0: gdb.skills is a single flat table keyed by charKey (no more
+    -- per-guild buckets). Walk it once.
     local list, seen = {}, {}
-    addon:ForEachGuildBucket(function(bucket)
-        if not bucket.skills then return end
-        for charKey, profMap in pairs(bucket.skills) do
+    local gdb = addon:GetGuildDb()
+    if gdb and gdb.skills then
+        for charKey, profMap in pairs(gdb.skills) do
             if not seen[charKey]
                and addon:IsMyCharacter(charKey)
                and profMap and next(profMap) then
@@ -117,7 +119,7 @@ local function GetCharactersWithProfessions()
                 seen[charKey] = true
             end
         end
-    end)
+    end
     local myKey = addon:GetCharacterKey()
     if not seen[myKey] then table.insert(list, myKey) end
 
@@ -136,10 +138,12 @@ end
 -- lingers in the SavedVariables shouldn't surface Inscription on a
 -- Vanilla client.
 local function GetProfessionsForCharacter(charKey)
-    local bucket = addon:FindBucketForChar(charKey, "skills")
-    if not bucket then return {} end
+    -- v0.7.0: skills are at the top level (gdb.skills[charKey][profId]).
+    local gdb = addon:GetGuildDb()
+    local charSkills = gdb and gdb.skills and gdb.skills[charKey]
+    if not charSkills then return {} end
     local out = {}
-    for profId in pairs(bucket.skills[charKey]) do
+    for profId in pairs(charSkills) do
         if addon.recipeDB and addon.recipeDB[profId]
            and addon.IsProfessionAvailable(profId) then
             table.insert(out, profId)
@@ -215,20 +219,24 @@ local function BuildMissingList(charKey, profId, includeTrainer)
     --      743 + 856 — looked up via spellNameCache during the scan), so we
     --      index both the table KEY and the rd.spellId FIELD into one set.
     --      Lookup against that set is O(1) and works for all professions.
+    -- v0.7.0: gdb.recipes is a single flat table (no more per-guild buckets).
+    -- crafters[charKey] now holds a guild tag string (truthy) instead of the
+    -- old boolean `true`. Either way the presence check is the same.
     local knownSpells = {}
-    for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
-        local profRecipes = bucket.recipes and bucket.recipes[profId]
-        if profRecipes then
-            for recipeKey, rd in pairs(profRecipes) do
-                if rd and rd.crafters and rd.crafters[charKey] then
-                    -- Index the table key (Enchanting hits via this path).
-                    knownSpells[recipeKey] = true
-                    -- Also index by the stored spellId field if present
-                    -- (non-Enchanting professions hit via this path because
-                    -- the table key is the crafted item id, not the spell).
-                    if rd.spellId then
-                        knownSpells[rd.spellId] = true
-                    end
+    local gdb         = addon:GetGuildDb()
+    local profRecipes = gdb and gdb.recipes and gdb.recipes[profId]
+    if profRecipes then
+        for recipeKey, rd in pairs(profRecipes) do
+            if rd and rd.crafters and rd.crafters[charKey] then
+                -- The table key is the recipeId — for non-Enchanting it's
+                -- the crafted item ID, for Enchanting it's the spell ID.
+                knownSpells[recipeKey] = true
+                -- Also index by the spell taught (from addon.recipeDB) so
+                -- non-Enchanting recipes hit the cross-reference path.
+                local meta = addon.recipeDB and addon.recipeDB[profId]
+                                            and addon.recipeDB[profId][recipeKey]
+                if meta and meta.teaches then
+                    knownSpells[meta.teaches] = true
                 end
             end
         end
@@ -237,14 +245,10 @@ local function BuildMissingList(charKey, profId, includeTrainer)
         return knownSpells[recipeId] == true
     end
 
-    -- skillMax for the rank-book filter below — also walks all buckets and
-    -- takes the maximum value, for the same reason as knownByChar.
+    -- skillMax from the flat skills table.
     local skillMax = 0
-    for _, bucket in pairs(addon.guildDb.global.guilds or {}) do
-        local se = bucket.skills and bucket.skills[charKey] and bucket.skills[charKey][profId]
-        if se and (se.skillMax or 0) > skillMax then
-            skillMax = se.skillMax
-        end
+    if gdb and gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId] then
+        skillMax = gdb.skills[charKey][profId].skillMax or 0
     end
 
     local out = {}

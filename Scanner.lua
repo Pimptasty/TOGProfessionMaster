@@ -922,7 +922,33 @@ end
 function Scanner:ScanTradeSkillInto(charKey, _isLinked)
     -- v0.7.0: isLinked no longer matters — we don't store metadata so the
     -- "build local spellbook cache for non-linked scans" branch is gone.
-    local skillName, _, skillRank, skillMax = GetTradeSkillLine()
+    --
+    -- v0.7.6: GetTradeSkillLine returns (name, rank, maxRank) on every
+    -- Classic version (Vanilla / TBC / Wrath / Cata / MoP) — 3 values,
+    -- no texture parameter. Confirmed against AllTheThings
+    -- (src/UI/Windows/Tradeskills.lua:167) and MissingTradeSkillsList
+    -- (ui/event_handler.lua:168), both of which run on every Classic
+    -- expansion and use the same 3-return signature.
+    --
+    -- The pre-v0.7.6 read was `name, _, rank, max` — assuming a 4-return
+    -- signature with `texture` in position 2 (modern WoW pre-C_TradeSkillUI
+    -- behaviour). Wrong on Classic: the `_` ate the actual current rank,
+    -- position 3 picked up `maxRank` instead, and `skillMax` came back
+    -- nil and got defaulted to 300 inside MergeRecipesIntoGdb. Net effect
+    -- for every Classic scan since the addon was written:
+    --   gdb.skills[charKey][profId].skillRank = the character's MAX skill
+    --   gdb.skills[charKey][profId].skillMax  = 300 (regardless of cap)
+    -- Nothing read these fields until v0.7.4's "Can learn now" filter, so
+    -- the bug stayed invisible. Then a 267/300 Blacksmith with the filter
+    -- on saw every 290 / 295 / 300 plan still in their missing list
+    -- because the filter compared the recipe's requiredSkill against a
+    -- skillRank that had silently been pinned to 300 forever.
+    --
+    -- Existing affected players need to open each trade-skill window
+    -- once post-update to overwrite their stale gdb.skills entries with
+    -- the correctly-read rank. Same self-healing model as the v0.7.5
+    -- ScanCraftSkillInto fix for Vanilla Enchanters.
+    local skillName, skillRank, skillMax = GetTradeSkillLine()
     if not skillName or skillName == "UNKNOWN" then return end
 
     local profId = self:ResolveProfessionId(skillName)

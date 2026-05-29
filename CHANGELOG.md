@@ -1,5 +1,13 @@
 # TOG Profession Master Changelog
 
+## [v0.7.6] (2026-05-29) — GetTradeSkillLine signature bug — every Classic scan was writing maxRank as skillRank
+
+### Bug Fixes
+
+- **"Can learn now" filter on Missing Recipes was comparing recipes' required-skill against the character's MAX skill instead of their current rank.** Reported in-game: a 267/300 Vanilla Blacksmith named Genguin with the filter on still saw 116 missing recipes including every 290 / 295 / 300 Plan (Volcanic Hammer, Thorium Leggings, Imperial Plate Chest, Runic Plate Shoulders, etc.) — recipes that were clearly above his actual rank. Root cause: [Scanner.lua](Scanner.lua) `ScanTradeSkillInto` read the trade-skill window header as `local skillName, _, skillRank, skillMax = GetTradeSkillLine()` — a 4-return signature with `texture` discarded in position 2. That's the **modern WoW (pre-`C_TradeSkillUI`) signature**, but on **every Classic version** (Vanilla / TBC / Wrath / Cata / MoP) `GetTradeSkillLine()` returns just `(name, rank, maxRank)` — 3 values, no texture. Confirmed against AllTheThings (`src/UI/Windows/Tradeskills.lua:167`) and MissingTradeSkillsList (`ui/event_handler.lua:168`), both of which run on every Classic expansion and use the 3-return signature. So our read was misaligned by one position: the `_` discarded the actual current rank, `skillRank` picked up `maxRank` instead, and `skillMax` came back nil and got defaulted to 300 inside `MergeRecipesIntoGdb`. Net effect for every Classic trade-skill scan since the addon was written: `gdb.skills[charKey][profId].skillRank = the character's MAX skill`, `skillMax = 300` regardless of cap. Nothing read these fields until v0.7.4's "Can learn now" filter, so the bug stayed invisible for the entire pre-v0.7.4 history. Then the filter compared each recipe's `requiredSkill` against a `skillRank` that was silently pinned to the player's max forever, and every recipe up to that max passed through. **Fix:** changed the read to `local skillName, skillRank, skillMax = GetTradeSkillLine()`. Existing affected players need to open each trade-skill window once post-update to overwrite their stale `gdb.skills` entries with the correctly-read rank — same self-healing model as the v0.7.5 `ScanCraftSkillInto` fix for Vanilla Enchanters. Location: [Scanner.lua](Scanner.lua) `ScanTradeSkillInto`.
+
+---
+
 ## [v0.7.5] (2026-05-29) — "Can learn now" follow-ups + Browser cross-version gate + RecipeMaster crash sidestep + Alchemy data tidy
 
 ### Bug Fixes

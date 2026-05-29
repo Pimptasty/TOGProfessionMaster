@@ -1,5 +1,13 @@
 # TOG Profession Master Changelog
 
+## [v0.7.3] (2026-05-28) — Salt Shaker banker exclusion actually works now
+
+### Bug Fixes
+
+- **Salt Shaker banker exclusion shipped broken in v0.7.2.** The v0.7.2 fix added `addon.Bank.IsBanker(charKey)` in `Compat.lua` that rolled its own check: walk `TOG:GetBanks()`, compare each entry against `charKey:match("^([^-]+)")` (the short name without the realm suffix). On connected-realm guilds — which is to say, virtually all live Classic Era / TBC / Wrath realms — `TOG:GetBanks()` returns roster `member.name` values which are `"Name-Realm"` because cross-realm clusters report the realm suffix on every roster entry. My short-name comparison stripped the realm before comparing, so the LHS was always `"Name"` while the RHS was always `"Name-Realm"` — no entry ever matched, every banker fell through as non-banker, and the Salt Shaker filter never fired. **Fix:** delegate to TOGBankClassic's own canonical `TOG:IsBank(name)` method (in `TOGBankClassic/Modules/Guild.lua`) instead of rolling our own loop. `TOG:IsBank` accepts any name format, normalizes via its `NormalizeName` helper, and does an O(1) `memberRoster` lookup against the live banker set — bypassing all of the format-mismatch hazards. Location: [Compat.lua](Compat.lua) `addon.Bank.IsBanker`. The caller in [GUI/CooldownsTab.lua](GUI/CooldownsTab.lua) is unchanged — same signature, just a working implementation behind it.
+
+---
+
 ## [v0.7.2] (2026-05-28) — Bogus cooldown entries (mage talents, portals) evicted + transmute popup correctness + banker exclusion
 
 ### Bug Fixes
@@ -10,7 +18,7 @@
 
 - **Transmute popup showed different per-row timers for spells that share one cooldown.** In Classic Era / TBC / Wrath, all alchemy transmutes share a single ~20-hour cooldown — but the game only records the CD under the spell ID the alchemist actually cast. The popup's per-row time column used `charCds[spellId]` to look up the time per entry, so the cast spell showed (e.g.) "5h 17m" while every other transmute in the same popup showed "Ready" — visually inconsistent and misleading (the others aren't actually castable). **Fix:** transmute-group popup rows now use the group's shared `row.expiresAt` (the max future expiry across every transmute spell the char knows) for every entry. Non-transmute group popups (Mooncloth tier, etc.) still resolve per-spell — those CDs are genuinely independent. Location: `GUI/CooldownsTab.lua` `ShowGroupPopup`.
 
-- **TOGBankClassic banker alts surfaced spurious Salt Shaker cooldown rows.** A bank toon with no cooking skill had a stale Salt Shaker (item 15846) CD record in `gdb.cooldowns` — most likely from a pre-repurposing scan, or peer-broadcast pollution under the wrong charKey, or pre-v0.7.0 data that survived migration. The CD was display-only noise (bankers can't cast Salt Shaker anyway), but it cluttered the Cooldowns tab with a row that always read "Ready" and could never actually go anywhere. **Fix:** added `addon.Bank.IsBanker(charKey)` helper in `Compat.lua` that compares the charKey's short-name against `TOGBankClassic_Guild:GetBanks()`. The Salt Shaker branch of `BuildRows` in `GUI/CooldownsTab.lua` now skips emit when the row's charKey is a banker. No-op when TOGBank isn't loaded.
+- **TOGBankClassic banker alts surfaced spurious Salt Shaker cooldown rows.** A bank toon with no cooking skill had a stale Salt Shaker (item 15846) CD record in `gdb.cooldowns` — most likely from a pre-repurposing scan, or peer-broadcast pollution under the wrong charKey, or pre-v0.7.0 data that survived migration. The CD was display-only noise (bankers can't cast Salt Shaker anyway), but it cluttered the Cooldowns tab with a row that always read "Ready" and could never actually go anywhere. **Fix:** added `addon.Bank.IsBanker(charKey)` helper in `Compat.lua` that compares the charKey's short-name against `TOGBankClassic_Guild:GetBanks()`. The Salt Shaker branch of `BuildRows` in `GUI/CooldownsTab.lua` now skips emit when the row's charKey is a banker. No-op when TOGBank isn't loaded. **NOTE:** this first-pass implementation was broken on connected-realm guilds — see v0.7.3 for the fix.
 
 ---
 

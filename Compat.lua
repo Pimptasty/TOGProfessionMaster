@@ -190,20 +190,21 @@ function addon.Bank.GetBanksWithItem(itemId)
 end
 
 --- Returns true if charKey belongs to a TOGBankClassic banker alt.
--- TOGBankClassic keys its alts by short name (no realm suffix); TOGPM
--- charKeys are "Name-NormalizedRealm". Compare on the short name.
+-- Delegates to TOGBankClassic's own canonical check (`TOG:IsBank`) which
+-- normalizes the input via `NormalizeName` and does an O(1) memberRoster
+-- lookup. Earlier rolling-our-own implementation that walked `GetBanks()`
+-- and string-compared against `charKey:match("^([^-]+)")` was broken on
+-- connected-realm guilds: `GetBanks()` returns `member.name` from the
+-- guild roster, which is `"Name-Realm"` on cross-realm clusters, while
+-- our short-name match stripped the realm — so no entry ever matched
+-- and every banker fell through as non-banker. `TOG:IsBank` accepts
+-- any format and handles normalization itself.
 -- Returns false when TOGBank isn't loaded so callers degrade gracefully.
 function addon.Bank.IsBanker(charKey)
     if type(charKey) ~= "string" then return false end
     local TOG = _G["TOGBankClassic_Guild"]
-    if not TOG or not TOG.GetBanks then return false end
-    local banks = TOG:GetBanks()
-    if not banks or #banks == 0 then return false end
-    local shortName = charKey:match("^([^-]+)") or charKey
-    for _, bankName in ipairs(banks) do
-        if bankName == shortName then return true end
-    end
-    return false
+    if not TOG or not TOG.IsBank then return false end
+    return TOG:IsBank(charKey)
 end
 
 -- Persistent bank-request dialog shared across all UI callers (lazy-created).

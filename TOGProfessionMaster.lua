@@ -340,6 +340,13 @@ function Ace:OnInitialize()
     -- trade-skill scan + guild sync. No-op when SV is already at v7.
     addon:MigrateGuildDb()
 
+    -- v0.7.1: recovery pass for the Vanilla / HC scan-key bug. Tailors,
+    -- Cooks, etc. on Vanilla scanned with `Hitem:ITEMID` links and stored
+    -- recipes under crafted-item-ID keys; the rest of the addon looks them
+    -- up by spell ID. Idempotent — moves item-keyed entries onto their
+    -- spell-ID slots when a match exists in addon.recipeDB.
+    addon:RemapItemKeysToSpellIds()
+
     -- Apply UI Language Override (if any) before any GUI module reads L.
     -- This mutates the AceLocale table in place; all subsequent reads pick
     -- up the chosen locale automatically. No-op when override is "auto".
@@ -1353,6 +1360,77 @@ end
 function addon:GetRecipeCraftedItemId(profId, recipeId)
     local m = self:GetRecipeMeta(profId, recipeId)
     return m and m.craftedItemId
+end
+
+-- v0.7.1: reverse lookup table — craftedItemId → recipeId (spell ID) per
+-- profession. Used on Vanilla / Classic Hardcore where the trade-skill
+-- recipe link is `Hitem:ITEMID` (not `Henchant:SPELLID` like TBC+),
+-- so the scanner returns the crafted item ID instead of the spell ID
+-- the rest of the addon expects. Built lazily per profession on first
+-- access; reset to nil to force rebuild after a Data/Recipes update.
+function addon:GetSpellIdForCraftedItem(profId, craftedItemId)
+    if not profId or not craftedItemId then return nil end
+    self._craftedItemMap = self._craftedItemMap or {}
+    local profMap = self._craftedItemMap[profId]
+    if not profMap then
+        profMap = {}
+        local profMeta = self.recipeDB and self.recipeDB[profId]
+        if profMeta then
+            for spellId, meta in pairs(profMeta) do
+                if meta.craftedItemId then
+                    profMap[meta.craftedItemId] = spellId
+                end
+            end
+        end
+        self._craftedItemMap[profId] = profMap
+    end
+    return profMap[craftedItemId]
+end
+
+-- v0.7.1: walk gdb.recipes and remap any item-ID-keyed entries to their
+-- spell-ID equivalents. Idempotent — only touches entries whose current
+-- key matches a craftedItemId in addon.recipeDB and is NOT a recognized
+-- spell ID in the same profession bucket. Safe to call on every
+-- OnInitialize; a no-op on already-correct data. Recovery path for the
+-- Vanilla / HC scan-key bug: existing tailors / cooks / etc. had 60+
+-- recipes scanned under itemID keys that nothing could cross-reference.
+function addon:RemapItemKeysToSpellIds()
+    local gdb = self:GetGuildDb()
+    if not gdb or not gdb.recipes then return 0 end
+    local moved = 0
+    for profId, profRecipes in pairs(gdb.recipes) do
+        local profMeta = self.recipeDB and self.recipeDB[profId]
+        if profMeta then
+            -- Snapshot keys first; mutating profRecipes mid-iteration is
+            -- undefined behavior in Lua 5.1.
+            local keys = {}
+            for k in pairs(profRecipes) do keys[#keys + 1] = k end
+            for _, key in ipairs(keys) do
+                if not profMeta[key] then
+                    local spellId = self:GetSpellIdForCraftedItem(profId, key)
+                    if spellId and profMeta[spellId] then
+                        local rd = profRecipes[key]
+                        local target = profRecipes[spellId]
+                        if not target then
+                            profRecipes[spellId] = rd
+                        else
+                            -- Union the crafter sets when both keys carry data.
+                            if not target.crafters then target.crafters = {} end
+                            for ck, tag in pairs(rd.crafters or {}) do
+                                target.crafters[ck] = tag
+                            end
+                        end
+                        profRecipes[key] = nil
+                        moved = moved + 1
+                    end
+                end
+            end
+        end
+    end
+    if moved > 0 then
+        addon:DebugPrint("RemapItemKeysToSpellIds: moved", moved, "item-keyed entries to spell-keyed slots")
+    end
+    return moved
 end
 
 -- ---------------------------------------------------------------------------

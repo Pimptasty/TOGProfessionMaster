@@ -59,17 +59,25 @@ local function SetupMinimapButton()
     -- LibDBIcon expects a db table with:
     --   minimapPos  (number)  — angle in degrees, default 220
     --   hide        (bool)    — whether the button is hidden
-    if type(Ace.db.profile.minimapPos) ~= "number" then
-        Ace.db.profile.minimapPos = 220
+    --
+    -- v0.7.1: the table passed here MUST be the one that persists across
+    -- reloads — LibDBIcon writes the new angle into it when the user drags
+    -- the button, so if we pass a throwaway local table the new position
+    -- gets lost on the next /reload. Use a sub-table living directly on
+    -- the AceDB profile so writes propagate automatically. The legacy
+    -- profile.minimapPos field stays untouched as a one-time seed value
+    -- so existing users don't lose their position on first v0.7.1 launch.
+    if type(Ace.db.profile.minimap) ~= "table" then
+        Ace.db.profile.minimap = {}
     end
+    local md = Ace.db.profile.minimap
+    if type(md.minimapPos) ~= "number" then
+        md.minimapPos = Ace.db.profile.minimapPos or 220
+    end
+    md.hide = not Ace.db.profile.minimapButton
 
-    local minimapData = {
-        hide       = not Ace.db.profile.minimapButton,
-        minimapPos = Ace.db.profile.minimapPos,
-    }
-
-    icon:Register("TOGProfessionMaster", dataObj, minimapData)
-    addon:DebugPrint("MinimapButton: registered")
+    icon:Register("TOGProfessionMaster", dataObj, md)
+    addon:DebugPrint("MinimapButton: registered (pos:", md.minimapPos, "hide:", md.hide, ")")
 end
 
 -- ---------------------------------------------------------------------------

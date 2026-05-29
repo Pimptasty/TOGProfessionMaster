@@ -993,11 +993,23 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
     end
 
     -- Add charKey + tag to each known recipe.
+    -- v0.7.1: on Vanilla / Classic Hardcore, ExtractTradeSkillId returns
+    -- the crafted item ID (Hitem:N links) rather than the spell ID; the
+    -- addon.recipeDB is keyed by spell ID universally. Remap item-IDs to
+    -- spell-IDs here so storage lands at the key everything else reads
+    -- from. addon.recipeDB on other clients (TBC+) keys directly by spell
+    -- and the lookup is a no-op (profMeta[recipeId] hits, no remap).
+    local profMeta = addon.recipeDB and addon.recipeDB[profId]
     for recipeId in pairs(recipeIds) do
-        local rd = gdb.recipes[profId][recipeId]
+        local effectiveId = recipeId
+        if profMeta and not profMeta[recipeId] then
+            local spellId = addon:GetSpellIdForCraftedItem(profId, recipeId)
+            if spellId then effectiveId = spellId end
+        end
+        local rd = gdb.recipes[profId][effectiveId]
         if not rd then
             rd = { crafters = {} }
-            gdb.recipes[profId][recipeId] = rd
+            gdb.recipes[profId][effectiveId] = rd
         end
         if not rd.crafters then rd.crafters = {} end
         rd.crafters[charKey] = tag
@@ -1824,15 +1836,26 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
     end
 
     for recipeId, ckSet in pairs(crafters) do
-        if type(ckSet) == "table" and (not localProfDB or localProfDB[recipeId]) then
-            local existing = profRecipes[recipeId]
-            if not existing then
-                existing = { crafters = {} }
-                profRecipes[recipeId] = existing
+        if type(ckSet) == "table" then
+            -- v0.7.1: peers running on Vanilla (or v0.7.0 pre-key-fix on
+            -- HC) may broadcast crafter sets keyed by crafted-item-ID
+            -- instead of spell-ID. Resolve to spell-ID before storing so
+            -- the cross-reference with addon.recipeDB works.
+            local effectiveId = recipeId
+            if localProfDB and not localProfDB[recipeId] then
+                local spellId = addon:GetSpellIdForCraftedItem(profId, recipeId)
+                if spellId then effectiveId = spellId end
             end
-            if not existing.crafters then existing.crafters = {} end
-            for ck, v in pairs(ckSet) do
-                if v and type(ck) == "string" then existing.crafters[ck] = tag end
+            if not localProfDB or localProfDB[effectiveId] then
+                local existing = profRecipes[effectiveId]
+                if not existing then
+                    existing = { crafters = {} }
+                    profRecipes[effectiveId] = existing
+                end
+                if not existing.crafters then existing.crafters = {} end
+                for ck, v in pairs(ckSet) do
+                    if v and type(ck) == "string" then existing.crafters[ck] = tag end
+                end
             end
         end
     end

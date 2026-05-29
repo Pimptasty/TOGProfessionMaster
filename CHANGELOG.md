@@ -1,5 +1,13 @@
 # TOG Profession Master Changelog
 
+## [v0.7.4] (2026-05-29) — "Can learn now" filter on the Missing Recipes tab
+
+### New Features
+
+- **"Can learn now" checkbox on the Missing Recipes toolbar.** Player request. Hides recipes the selected character isn't skilled enough to train yet — strict comparison: only shows rows where the character's current skill rank (from `gdb.skills[charKey][profId].skillRank`) is at or above the recipe's `requiredSkill`. Recipes with unknown skill requirement (where neither the recipe scroll's `RequiredSkillRank` nor the trainer SQL's `ReqSkillRank` supplied a value — `requiredSkill` is nil) stay visible regardless of the filter, so officers scanning gaps don't miss anything we can't classify. Sits next to the existing "Include trainer-only" checkbox in the toolbar; off by default; state survives tab switches but resets on UI reload (same pattern as `_includeTrainer`). Location: [GUI/MissingRecipesTab.lua](GUI/MissingRecipesTab.lua) — new `canLearnOnly` parameter on `BuildMissingList`, new state field `MissingRecipesTab._canLearnOnly`, new locale keys `MissingCanLearnOnly` / `MissingCanLearnOnlyDesc` in [Locale/enUS.lua](Locale/enUS.lua). Other locales fall back to English via AceLocale writeproxy until translations land.
+
+---
+
 ## [v0.7.3] (2026-05-28) — Salt Shaker banker exclusion actually works now
 
 ### Bug Fixes

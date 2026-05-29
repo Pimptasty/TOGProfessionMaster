@@ -50,6 +50,7 @@ MissingRecipesTab._charKey         = nil
 MissingRecipesTab._profId          = 0
 MissingRecipesTab._searchText      = ""
 MissingRecipesTab._includeTrainer  = false
+MissingRecipesTab._canLearnOnly    = false
 MissingRecipesTab._container       = nil
 MissingRecipesTab._listSection     = nil
 
@@ -188,7 +189,7 @@ local RANK_CAPS = {
 -- render time via GetItemInfoInstant (which does NOT trigger an async load),
 -- and the row count is capped during render. Item-name resolution itself
 -- happens per-row inside FillList so we only ever pay for the visible slice.
-local function BuildMissingList(charKey, profId, includeTrainer)
+local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly)
     if not charKey or not profId or profId == 0 then return {} end
     local recipes = addon.recipeDB and addon.recipeDB[profId]
     if not recipes then return {} end
@@ -245,10 +246,13 @@ local function BuildMissingList(charKey, profId, includeTrainer)
         return knownSpells[recipeId] == true
     end
 
-    -- skillMax from the flat skills table.
-    local skillMax = 0
+    -- skillRank + skillMax from the flat skills table.
+    --   skillRank is consumed by the "Can learn now" filter below.
+    --   skillMax gates the rank-book RANK_CAPS check (Expert / Artisan / etc.).
+    local skillRank, skillMax = 0, 0
     if gdb and gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId] then
-        skillMax = gdb.skills[charKey][profId].skillMax or 0
+        skillRank = gdb.skills[charKey][profId].skillRank or 0
+        skillMax  = gdb.skills[charKey][profId].skillMax  or 0
     end
 
     local out = {}
@@ -315,6 +319,13 @@ local function BuildMissingList(charKey, profId, includeTrainer)
             -- Recipe is from a future expansion the current client can't
             -- support. Hide it; the player will see it once they're on a
             -- later TOC variant.
+            skip = true
+        elseif canLearnOnly and data.requiredSkill and data.requiredSkill > skillRank then
+            -- "Can learn now" toolbar filter — hide recipes the char is
+            -- not yet skilled enough to train. Strict: requires skillRank
+            -- >= requiredSkill. Recipes with no requiredSkill data (nil)
+            -- are intentionally kept visible so officers scanning gaps
+            -- don't miss anything we can't classify.
             skip = true
         elseif tbcPhaseLimit and data.phase and data.phase > tbcPhaseLimit then
             -- TBC client: recipe is gated by a content phase that hasn't
@@ -572,6 +583,18 @@ function MissingRecipesTab:Draw(container)
     end)
     AttachWidgetTooltip(trainCb, L["MissingIncludeTrainer"], L["MissingIncludeTrainerDesc"])
     toolbar:AddChild(trainCb)
+
+    -- "Can learn now" checkbox — strict skillRank >= requiredSkill filter.
+    local learnCb = AceGUI:Create("CheckBox")
+    learnCb:SetLabel(L["MissingCanLearnOnly"])
+    learnCb:SetValue(self._canLearnOnly)
+    learnCb:SetWidth(140)
+    learnCb:SetCallback("OnValueChanged", function(_w, _e, value)
+        self._canLearnOnly = value and true or false
+        self:RefreshList()
+    end)
+    AttachWidgetTooltip(learnCb, L["MissingCanLearnOnly"], L["MissingCanLearnOnlyDesc"])
+    toolbar:AddChild(learnCb)
 
     -- Scan AH button — kicks off a throttled scan over the currently-displayed
     -- missing-recipes list. After completion, rows whose recipe scroll has
@@ -1055,7 +1078,7 @@ function MissingRecipesTab:FillList()
         return
     end
 
-    local fullList = BuildMissingList(self._charKey, self._profId, self._includeTrainer)
+    local fullList = BuildMissingList(self._charKey, self._profId, self._includeTrainer, self._canLearnOnly)
 
     -- Apply search filter using GetItemInfo — its first return IS the item
     -- name (string). NOT GetItemInfoInstant (whose first return is the

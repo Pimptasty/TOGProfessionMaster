@@ -1,6 +1,18 @@
 local _, addon = ...
 
 addon.sourceDB[171] = {
+		-- v0.7.5: minimal source entries — only the category presence is
+		-- read by the UI (FormatSources in MissingRecipesTab does a truthy
+		-- check on srcEntry.<category>, never inspects inner IDs), so an
+		-- empty inner table is enough to make the Sources column render
+		-- "Quest" / "Drop" / etc. instead of "Unknown". Backfill specific
+		-- IDs later if a tooltip ever surfaces them.
+		[11452] = {  -- Restorative Potion — Uldaman / Badlands Reagent Run quests
+			["quest"] = {},
+		},
+		[17579] = {  -- Greater Holy Protection Potion — world drop
+			["drop"] = {},
+		},
 		[2331] = {
 			["trainer"] = {
 				[1215] = "",

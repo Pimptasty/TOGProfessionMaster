@@ -122,24 +122,6 @@ addon.recipeDB[171] = {
 			["requiredSkill"] = 60,
 			["teaches"] = 2335,
 		},
-		[2336] = {
-			["craftedItemId"] = 2460,
-			["difficulty"] = {
-				70,
-				85,
-				100,
-				140,
-			},
-			["itemId"] = 2556,
-			["name"] = "Elixir of Tongues",
-			["reagents"] = {
-				[785] = 2,
-				[2449] = 2,
-				[3371] = 1,
-			},
-			["requiredSkill"] = 70,
-			["teaches"] = 2336,
-		},
 		[2337] = {
 			["craftedItemId"] = 858,
 			["difficulty"] = {
@@ -541,24 +523,6 @@ addon.recipeDB[171] = {
 			},
 			["requiredSkill"] = 175,
 			["teaches"] = 6618,
-		},
-		[6619] = {
-			["craftedItemId"] = 5632,
-			["difficulty"] = {
-				1,
-				75,
-				150,
-				190,
-			},
-			["itemId"] = 5641,
-			["name"] = "Cowardly Flight Potion",
-			["reagents"] = {
-				[3356] = 1,
-				[3372] = 1,
-				[5636] = 1,
-			},
-			["requiredSkill"] = 125,
-			["teaches"] = 6619,
 		},
 		[6624] = {
 			["craftedItemId"] = 5634,

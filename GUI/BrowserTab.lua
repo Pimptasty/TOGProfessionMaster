@@ -241,6 +241,43 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
     local showAll = opts and opts.showAll or false
     local list    = {}
 
+    -- v0.7.5: per-client expansion cap. The shipped recipeDB is a universal
+    -- union of every recipe across every expansion (wago.tools' MoP build
+    -- inherits Vanilla / TBC / Wrath / Cata content), so an unfiltered
+    -- iteration shows Wrath / Cata / MoP recipes to a Vanilla user — both
+    -- in the "Show all recipes" mode (showAll = true) AND through guild
+    -- view when a peer in a different-version guild has broadcast their
+    -- data and our addon.recipeDB happens to include it. The MissingRecipesTab
+    -- already applies the same gate (see GUI/MissingRecipesTab.lua:284-318);
+    -- pull the rules in here so the Browser tab agrees with it.
+    --   minExpansion       : recipeDB ships 1=Vanilla, 2=TBC, 3=Wrath,
+    --                        4=Cata, 5=MoP — primary cross-expansion gate.
+    --   clientMaxSkill cap : belt-and-suspenders against future-expansion
+    --                        recipes whose minExpansion tag is missing but
+    --                        whose requiredSkill exceeds the client's cap.
+    --   spellId > 25000    : defensive gate for Classic Era against untagged
+    --                        post-Vanilla recipes (covers Cata / SoD /
+    --                        Anniversary additions that lack minExpansion).
+    --   season             : SoD seasonal content — hide on non-SoD clients.
+    local clientExp, clientMaxSkill
+    if     addon.isVanilla then clientExp, clientMaxSkill = 1, 300
+    elseif addon.isTBC     then clientExp, clientMaxSkill = 2, 375
+    elseif addon.isWrath   then clientExp, clientMaxSkill = 3, 450
+    elseif addon.isCata    then clientExp, clientMaxSkill = 4, 525
+    elseif addon.isMoP     then clientExp, clientMaxSkill = 5, 600
+    else                        clientExp, clientMaxSkill = 5, 600
+    end
+    local function passesClientGate(thisProfId, recipeId)
+        local meta = addon.recipeDB and addon.recipeDB[thisProfId]
+                                    and addon.recipeDB[thisProfId][recipeId]
+        if not meta then return false end
+        if meta.minExpansion and meta.minExpansion > clientExp then return false end
+        if (not meta.minExpansion) and clientExp == 1 and recipeId > 25000 then return false end
+        if meta.requiredSkill and meta.requiredSkill > clientMaxSkill then return false end
+        if meta.season then return false end
+        return true
+    end
+
     local function buildCrafterList(profRecipeData, thisViewMode)
         if not profRecipeData or not profRecipeData.crafters then return nil end
         local GuildCache  = addon.Scanner and addon.Scanner.GuildCache
@@ -331,7 +368,12 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
 
             -- Only consider recipes the local addon DB knows; unknown recipeIds
             -- (sender's newer addon ships content we don't) get hidden silently.
-            if viewKeep and profMetaDB and profMetaDB[recipeId] then
+            -- v0.7.5: AND only when the recipe is gated as valid on the current
+            -- client version — see passesClientGate above. Without this, "Show
+            -- all recipes" on a Vanilla client surfaced Wrath / Cata / MoP
+            -- entries from the universal shipped DB.
+            if viewKeep and profMetaDB and profMetaDB[recipeId]
+               and passesClientGate(thisProfId, recipeId) then
                 local name = addon:GetRecipeName(thisProfId, recipeId)
                 if filter == "" or (name:lower()):find(filter, 1, true) then
                     local craftedItemId = addon:GetRecipeCraftedItemId(thisProfId, recipeId)

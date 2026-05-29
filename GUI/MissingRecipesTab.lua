@@ -53,6 +53,30 @@ MissingRecipesTab._includeTrainer  = false
 MissingRecipesTab._canLearnOnly    = false
 MissingRecipesTab._container       = nil
 MissingRecipesTab._listSection     = nil
+MissingRecipesTab._customTip       = nil  -- lazy-init via GetCustomTip
+
+-- v0.7.5: Private GameTooltip instance owned by this tab. RecipeMaster
+-- and similar addons hook OnTooltipSetItem / OnTooltipSetSpell on the
+-- GLOBAL _G.GameTooltip via GameTooltip:HookScript — those handlers
+-- belong to that specific frame instance. A separate GameTooltip frame
+-- inheriting from the same "GameTooltipTemplate" virtual template (the
+-- one _G.GameTooltip itself is built from — see
+-- Blizzard_GameTooltip/Mainline/GameTooltip.xml lines 4 and 249) gets
+-- the full Blizzard API, full appearance, but a separate script handler
+-- registry. RecipeMaster's broken cachedRecipes nil-index at
+-- RecipeHandler.lua:43 never runs because OnTooltipSetItem doesn't fire
+-- on this frame.
+--
+-- Lazy because CreateFrame requires UIParent to exist, which isn't
+-- guaranteed at file-load time on Vanilla (the AddOn loader can run
+-- before the UI is fully constructed in some load orders).
+function MissingRecipesTab:GetCustomTip()
+    if not self._customTip then
+        self._customTip = CreateFrame("GameTooltip", "TOGPMMissingRecipeTip",
+                                      UIParent, "GameTooltipTemplate")
+    end
+    return self._customTip
+end
 
 -- ---------------------------------------------------------------------------
 -- Pure helpers
@@ -320,13 +344,6 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly)
             -- support. Hide it; the player will see it once they're on a
             -- later TOC variant.
             skip = true
-        elseif canLearnOnly and data.requiredSkill and data.requiredSkill > skillRank then
-            -- "Can learn now" toolbar filter — hide recipes the char is
-            -- not yet skilled enough to train. Strict: requires skillRank
-            -- >= requiredSkill. Recipes with no requiredSkill data (nil)
-            -- are intentionally kept visible so officers scanning gaps
-            -- don't miss anything we can't classify.
-            skip = true
         elseif tbcPhaseLimit and data.phase and data.phase > tbcPhaseLimit then
             -- TBC client: recipe is gated by a content phase that hasn't
             -- gone live yet (e.g. Sunwell content while Anniversary is on
@@ -382,6 +399,30 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly)
             local itemKnown = data.itemId and GetItemInfoInstant
                               and GetItemInfoInstant(data.itemId)
             if not itemKnown then
+                skip = true
+            end
+        end
+
+        -- "Can learn now" toolbar filter — additive guard, runs AFTER the
+        -- elseif chain above so it never bypasses knownByChar / rank-book /
+        -- season / etc. v0.7.5's first cut wired this as another
+        -- `elseif canLearnOnly` branch inside the chain, which short-
+        -- circuited the entire chain when the flag was on — every recipe
+        -- the user already knows reappeared in the "missing" list (~120
+        -- extra rows). Pulling it out of the chain restores the prior
+        -- semantics: this filter only TIGHTENS the visible set, never
+        -- relaxes earlier rules.
+        --
+        -- Gate resolution: data.requiredSkill when present, else
+        -- data.difficulty[1] (orange threshold = lowest castable rank).
+        -- ~13% of Blacksmithing and ~16% of Tailoring recipes ship with
+        -- no requiredSkill; falling back to difficulty[1] closes that
+        -- coverage gap. If BOTH are nil the row still passes (truly
+        -- unknown — same intentional permissive behavior).
+        if not skip and canLearnOnly then
+            local gate = data.requiredSkill
+                      or (data.difficulty and data.difficulty[1])
+            if gate and gate > skillRank then
                 skip = true
             end
         end
@@ -825,51 +866,66 @@ function MissingRecipesTab:BuildPool(parent)
         -- SetItemByID (Blizzard silently sets an empty tooltip, but
         -- addons that hook SetItemByID such as LoonBestInSlot then crash
         -- on the empty state).
+        --
+        -- v0.7.5: route the tooltip through a private GameTooltip instance
+        -- (MissingRecipesTab:GetCustomTip below) instead of the global
+        -- _G.GameTooltip. Third-party addons that crash on recipe-scroll
+        -- tooltips — RecipeMaster on Vanilla (RecipeHandler.lua:43 nil-
+        -- indexes recipe.teaches when its cachedRecipes table is empty),
+        -- LoonBestInSlot, etc. — hook their OnTooltipSetItem /
+        -- OnTooltipSetSpell handlers onto the GLOBAL GameTooltip instance
+        -- via GameTooltip:HookScript. Those handlers don't run when the
+        -- tooltip lives on a different frame instance, even if both
+        -- frames inherit from "GameTooltipTemplate" (same look and feel,
+        -- same SetX API, but separate script handler registries). So we
+        -- get the rich Blizzard item tooltip — reagents, required skill,
+        -- quality colouring — without ever triggering RecipeMaster's
+        -- broken hook chain. v0.6.1's pcall wrap and v0.7.5's
+        -- seterrorhandler swap both failed because the hook crashes were
+        -- dispatched via WoW's internal script-error path which BugGrabber
+        -- captures before either guard reaches the error.
         f:SetScript("OnEnter", function()
             if not (f._itemId or f._spellId) then return end
-            addon.Tooltip.Owner(f)
+            local tip = MissingRecipesTab:GetCustomTip()
+            -- Anchor next to the row using the same screen-half logic as
+            -- addon.Tooltip.Owner — popup appears just below the row when
+            -- the row is in the upper half of the screen, just above
+            -- when it's in the lower half.
+            local _, y = f:GetCenter()
+            local anchor = (y and y > GetScreenHeight() / 2)
+                           and "ANCHOR_BOTTOMLEFT" or "ANCHOR_TOPLEFT"
+            tip:SetOwner(f, anchor)
             -- Decide between item tooltip and spell tooltip. Item is
             -- preferred (shows reagents + profession requirement) but
             -- ONLY when the item is already in the WoW client's cache.
-            -- Calling GameTooltip:SetItemByID on a cache-cold item ID
-            -- silently sets an empty tooltip on our side, but LoonBestInSlot
-            -- (and other addons that hook SetItemByID via AceHook) then
-            -- read back nil from GameTooltip:GetItem() and crash trying to
-            -- ContinueOnItemLoad(nil). GetItemInfo doubles as the
-            -- cache-presence check and the async cache load trigger: nil
-            -- return means not cached, but the call queues the fetch so
-            -- the NEXT mouseover succeeds.
+            -- Calling SetItemByID on a cache-cold item ID silently sets
+            -- an empty tooltip — fall back to spell or plain text. The
+            -- cold-cache check via GetItemInfo doubles as an async
+            -- prefetch trigger, so the next mouseover lands warm.
             local useItem = false
             if f._itemId and GetItemInfo then
                 local cachedName = GetItemInfo(f._itemId)
                 useItem = cachedName ~= nil
             end
             if useItem then
-                -- pcall-wrapped: third-party addons that hook the tooltip-set
-                -- event chain (RecipeMaster, LoonBestInSlot, etc.) sometimes
-                -- throw from their hook callback when their own internal
-                -- state isn't fully initialised — e.g. RecipeMaster's
-                -- RecipeHandler.lua:43 nil-indexes its empty recipeDB. Their
-                -- error originates inside the SetItemByID call stack, so
-                -- pcall here catches it. The tooltip itself still populates
-                -- correctly because Blizzard's C-level SetItemByID runs to
-                -- completion before the third-party hook callbacks fire.
-                -- Prevents the 88x BugSack error storm when opening tabs
-                -- with many missing recipes against a broken peer addon.
-                pcall(GameTooltip.SetItemByID, GameTooltip, f._itemId)
-            elseif f._spellId and GameTooltip.SetSpellByID then
-                GameTooltip:SetSpellByID(f._spellId)
+                tip:SetItemByID(f._itemId)
+            elseif f._spellId and tip.SetSpellByID then
+                tip:SetSpellByID(f._spellId)
             else
                 local name = (f._spellId and GetSpellInfo and GetSpellInfo(f._spellId))
                              or (f._itemId and ("Item #" .. f._itemId))
                              or "?"
-                GameTooltip:SetText(name, 1, 1, 1, 1, true)
+                tip:SetText(name, 1, 1, 1, 1, true)
             end
-            GameTooltip:AddLine(" ")
-            GameTooltip:AddLine(L["MissingRowTooltipShift"], 0.7, 0.7, 0.7, true)
-            GameTooltip:Show()
+            tip:AddLine(" ")
+            tip:AddLine(L["MissingRowTooltipShift"], 0.7, 0.7, 0.7, true)
+            tip:Show()
         end)
-        f:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        f:SetScript("OnLeave", function()
+            if MissingRecipesTab._customTip then
+                MissingRecipesTab._customTip:Hide()
+            end
+        end)
         f:SetScript("OnMouseDown", function(_, button)
             if button ~= "LeftButton" or not IsShiftKeyDown() then return end
             local link

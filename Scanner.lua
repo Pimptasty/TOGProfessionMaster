@@ -1045,7 +1045,13 @@ end
 function Scanner:ScanCraftSkillInto(charKey)
     if not GetCraftDisplaySkillLine then return end
 
-    local skillName = GetCraftDisplaySkillLine()
+    -- v0.7.5: GetCraftDisplaySkillLine on Vanilla returns (name, rank, maxRank).
+    -- v0.7.4 and earlier only read the name and hardcoded skillRank=0,
+    -- skillMax=300 into MergeRecipesIntoGdb. That broke the v0.7.4 "Can
+    -- learn now" filter for every Vanilla Enchanter: gdb.skills[charKey][333]
+    -- recorded skillRank=0, the filter compared every recipe's requiredSkill
+    -- against 0, every requiredSkill > 0 → every Enchanting recipe hidden.
+    local skillName, skillRank, skillMax = GetCraftDisplaySkillLine()
     if not skillName then return end
 
     local profId = self:ResolveProfessionId(skillName)
@@ -1069,7 +1075,7 @@ function Scanner:ScanCraftSkillInto(charKey)
 
     local gdb = addon:GetGuildDb()
     if not gdb then return end
-    self:MergeRecipesIntoGdb(gdb, charKey, profId, 0, 300, recipeIds)
+    self:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank or 0, skillMax or 300, recipeIds)
 
     -- Stamp content-derived scan time for hash leaves.
     if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end

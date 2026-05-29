@@ -347,6 +347,13 @@ function Ace:OnInitialize()
     -- spell-ID slots when a match exists in addon.recipeDB.
     addon:RemapItemKeysToSpellIds()
 
+    -- v0.7.2: evict spell IDs from gdb.cooldowns that aren't in the explicit
+    -- whitelist. Stale data (mage talents, portals, etc.) had slipped in via
+    -- buggy v0.6.x code paths or peer broadcasts before the receive path was
+    -- whitelisted; this pass cleans the SV and stops the entries from
+    -- re-broadcasting forward. Idempotent — no-op once clean.
+    addon:RemoveBogusCooldowns()
+
     -- Apply UI Language Override (if any) before any GUI module reads L.
     -- This mutates the AceLocale table in place; all subsequent reads pick
     -- up the chosen locale automatically. No-op when override is "auto".
@@ -1385,6 +1392,43 @@ function addon:GetSpellIdForCraftedItem(profId, craftedItemId)
         self._craftedItemMap[profId] = profMap
     end
     return profMap[craftedItemId]
+end
+
+-- v0.7.2: walk gdb.cooldowns and strip any spell IDs that aren't in the
+-- explicit whitelist (data.cooldowns + data.transmutes + groupBySpell +
+-- saltShakerItem). Used to evict stale junk like Impact 12360 (a Fire
+-- Mage talent) or Portal: Undercity from cooldown buckets — those
+-- entries slipped in via v0.6.x code paths or buggy peer broadcasts
+-- before the receive path was whitelisted. Idempotent — no-op once
+-- clean. Called at OnInitialize.
+function addon:RemoveBogusCooldowns()
+    local gdb = self:GetGuildDb()
+    if not gdb or not gdb.cooldowns then return 0 end
+    local data = self.GetCooldownData and self:GetCooldownData()
+    if not data then return 0 end
+    local valid = function(sid)
+        return data.cooldowns[sid]
+            or data.transmutes[sid]
+            or (data.groupBySpell and data.groupBySpell[sid])
+            or sid == data.saltShakerItem
+    end
+    local stripped = 0
+    for _, cds in pairs(gdb.cooldowns) do
+        if type(cds) == "table" then
+            local toRemove = {}
+            for sid in pairs(cds) do
+                if not valid(sid) then toRemove[#toRemove + 1] = sid end
+            end
+            for _, sid in ipairs(toRemove) do
+                cds[sid] = nil
+                stripped = stripped + 1
+            end
+        end
+    end
+    if stripped > 0 then
+        addon:DebugPrint("RemoveBogusCooldowns: stripped", stripped, "non-whitelisted cooldown entries")
+    end
+    return stripped
 end
 
 -- v0.7.1: walk gdb.recipes and remap any item-ID-keyed entries to their

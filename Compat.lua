@@ -189,6 +189,23 @@ function addon.Bank.GetBanksWithItem(itemId)
     return result
 end
 
+--- Returns true if charKey belongs to a TOGBankClassic banker alt.
+-- TOGBankClassic keys its alts by short name (no realm suffix); TOGPM
+-- charKeys are "Name-NormalizedRealm". Compare on the short name.
+-- Returns false when TOGBank isn't loaded so callers degrade gracefully.
+function addon.Bank.IsBanker(charKey)
+    if type(charKey) ~= "string" then return false end
+    local TOG = _G["TOGBankClassic_Guild"]
+    if not TOG or not TOG.GetBanks then return false end
+    local banks = TOG:GetBanks()
+    if not banks or #banks == 0 then return false end
+    local shortName = charKey:match("^([^-]+)") or charKey
+    for _, bankName in ipairs(banks) do
+        if bankName == shortName then return true end
+    end
+    return false
+end
+
 -- Persistent bank-request dialog shared across all UI callers (lazy-created).
 local _bankDialog
 

@@ -415,9 +415,30 @@ local function BuildRows(readyOnly, viewMode)
                             })
                         end
                     end
-                else
-                    -- Regular single-spell cooldown row.
-                    if not readyOnly or remaining <= 0 then
+                elseif data.cooldowns[spellId] or spellId == data.saltShakerItem then
+                    -- v0.7.2: only render single-spell rows when the spell ID
+                    -- is in the explicit whitelist (data.cooldowns from
+                    -- Data/CooldownIds.lua, or the Salt Shaker item ID).
+                    -- Stops stale junk like Impact 12360 (Fire Mage talent)
+                    -- or Portal: Undercity from rendering as cooldown rows
+                    -- when they happen to be left over in gdb.cooldowns
+                    -- from old code paths or buggy peer broadcasts. The
+                    -- one-shot RemoveBogusCooldowns sweep at OnInitialize
+                    -- evicts them from the SV; this guard catches anything
+                    -- that slips back in via future inbound payloads.
+                    -- v0.7.2: also hide Salt Shaker rows for TOGBankClassic
+                    -- banker alts. Reported case — a bank toon with no
+                    -- cooking surfaces a stale Salt Shaker CD record
+                    -- (legacy data from before the char was repurposed,
+                    -- or stale peer broadcast under the wrong charKey).
+                    -- Bankers can't cast Salt Shaker, so the row is
+                    -- pure noise. Gated on TOGBank being loaded; no-op
+                    -- when it isn't.
+                    if spellId == data.saltShakerItem
+                       and addon.Bank and addon.Bank.IsBanker
+                       and addon.Bank.IsBanker(charKey) then
+                        -- skip — banker alt, can't use Salt Shaker
+                    elseif not readyOnly or remaining <= 0 then
                         -- Salt Shaker stores its cooldown under the ITEM id
                         -- (15846), which is also a valid SPELL id — namely
                         -- "Veil of Shadow," a generic NPC ability. Without
@@ -534,11 +555,20 @@ local function BuildRows(readyOnly, viewMode)
             end
 
             -- Cooldown-derived entries (definite spellIds, on cooldown).
+            -- v0.7.2: only emit when the char actually knows this recipe
+            -- as a transmute (hit). The earlier "spell name contains
+            -- 'Transmute'" fallback emitted entries for stale cooldown
+            -- IDs the char no longer knows — e.g., transmutes they had
+            -- on CD before re-rolling / unlearning alchemy, transmutes
+            -- inherited from pre-v0.7.0 data, or peer-broadcast pollution
+            -- under wrong charKey. Requiring `hit` keeps the popup
+            -- pinned to the char's CURRENT alchemy knowledge.
             for _, sid in ipairs(tg.spellIds) do
                 seenSpellIds[sid] = true
                 local hit = recipeBySpellId[sid]
-                local displayName = (hit and hit.name) or GetSpellInfo(sid) or ("Spell " .. tostring(sid))
-                emitTransmute(sid, displayName, hit and hit.recipeId, reagentsFor(sid, hit))
+                if hit then
+                    emitTransmute(sid, hit.name, hit.recipeId, reagentsFor(sid, hit))
+                end
             end
 
             -- Recipe-DB-derived entries (transmutes the char knows but
@@ -1740,7 +1770,22 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
         local reagentQty = e.reagentQty or 1
         local showName   = e.showName ~= false
         local showTime   = e.showTime ~= false
-        local expiresAt  = spellId and charCds[spellId]
+        -- v0.7.2: transmutes share a single 20h cooldown — once the
+        -- alchemist casts any one of them, every other transmute is on
+        -- CD too, but the game only records the cooldown under the cast
+        -- spell's ID. A per-row charCds[spellId] lookup therefore shows
+        -- the cast spell as "5h 17m" and every other transmute as
+        -- "Ready" inside the same popup, which is wrong. For transmute
+        -- groups, use the group's shared expiresAt (already computed as
+        -- the max future expiry across every transmute spell the char
+        -- knows). Non-transmute group popups (Mooncloth tier, etc.)
+        -- still resolve per-spell — those are genuinely independent.
+        local expiresAt
+        if row.isTransmuteGroup then
+            expiresAt = row.expiresAt and row.expiresAt > now and row.expiresAt or nil
+        else
+            expiresAt = spellId and charCds[spellId]
+        end
         local remaining  = expiresAt and (expiresAt - now) or nil
         -- No spellId → cooldown can't be tracked, treat as Ready.
         -- No cooldown record OR expired (remaining <= 0) → spell is castable.

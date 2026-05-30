@@ -59,6 +59,18 @@ Ace:RegisterEvent("AUCTION_HOUSE_SHOW", function()
     if addon.callbacks then
         addon.callbacks:Fire("AH_OPEN_STATE_CHANGED", true)
     end
+    -- Auto full-scan to keep TOGPM's own price DB fresh for cost-to-craft. The
+    -- AH guy IS the button — no click needed. Skipped when the user has opted
+    -- into Auctionator pricing (then Auctionator's DB is the source) or when
+    -- a scan is already running. The legacy getAll throttle (~once/15 min) is
+    -- enforced inside StartFullScan, so re-opens inside the window no-op. The
+    -- 1s delay lets the AH UI finish initialising before we query.
+    local useAuc = Ace and Ace.db and Ace.db.profile and Ace.db.profile.useAuctionator
+    if not useAuc then
+        Ace:ScheduleTimer(function()
+            if AH.IsOpen() then AH.StartFullScan(true) end
+        end, 1.0)
+    end
 end)
 Ace:RegisterEvent("AUCTION_HOUSE_CLOSED", function()
     AH._isOpen = false
@@ -67,6 +79,16 @@ Ace:RegisterEvent("AUCTION_HOUSE_CLOSED", function()
     -- scan first if one is running. The clear runs BEFORE the state-
     -- changed fire so callback subscribers see the cleared state.
     if AH._isScanning then AH.CancelScan() end
+    -- Stop any in-flight full scan (its batch loop bails on _fullScanning=false)
+    -- but KEEP its cached results (AH._fullSeen). getAll is throttled to ~once
+    -- /15 min, so we cache the full scan for the WHOLE session and overwrite it
+    -- only on the next successful scan — closing and re-opening the AH inside the
+    -- cooldown reuses the cache instead of showing nothing. (A scan aborted
+    -- mid-flight by this close discards its partial data via fullScanFrame's own
+    -- AUCTION_HOUSE_CLOSED handler.) GetListingsFor only exposes _fullSeen while
+    -- the AH is open, so the per-row [AH] buttons still track the AH window.
+    AH._fullScanning = false
+    AH._fullPending  = false
     AH.ClearResults()
     if addon.callbacks then
         addon.callbacks:Fire("AH_OPEN_STATE_CHANGED", false)
@@ -225,6 +247,7 @@ AH._opts        = nil
 --- so any subscribed tab can refresh its row pool.
 function AH.StartScan(items, opts)
     if AH._isScanning then return false, "scan-in-progress" end
+    if AH._fullScanning then return false, "full-scan-in-progress" end
     if not AH.IsOpen()    then return false, "ah-closed" end
     if type(items) ~= "table" or #items == 0 then return false, "no-items" end
 
@@ -377,11 +400,207 @@ function AH._completeCurrentItem(listings)
     Ace:ScheduleTimer(function() AH._scanNext() end, AH.GetEffectiveScanDelay())
 end
 
+-- ===========================================================================
+-- Full AH scan — one server-side "scan everything" pass that builds the local
+-- price DB (addon.Price) used for cost-to-craft. This is TOGPM's OWN price
+-- source, so the addon never depends on Auctionator. Auto-fires when the AH
+-- opens (no button); see the AUCTION_HOUSE_SHOW handler. Results are the lowest
+-- per-item unit buyout seen across all listings.
+--
+-- Legacy (Era/TBC/Wrath): QueryAuctionItems(..., getAll=true) — one shot,
+-- server-throttled to ~once / 15 min (we honour CanSendAuctionQuery's canGetAll
+-- and skip silently when it's not allowed). Modern (Cata/MoP): C_AuctionHouse
+-- .ReplicateItems(). Either way we batch-process the returned list across frames
+-- so a multi-thousand-row scan doesn't hitch.
+-- ===========================================================================
+AH._fullScanning = false
+AH._fullPending  = false
+AH._fullSeen     = nil      -- [itemId] = { count, lowestBuyout, scannedAt } this scan
+AH._otherFrames  = nil      -- frames we silenced for AUCTION_ITEM_LIST_UPDATE
+local FULL_BATCH = 500
+
+-- Dedicated scan frame for the legacy getAll. Following Auctionator's
+-- FullScan pattern: during a scan we silence EVERY other frame registered for
+-- AUCTION_ITEM_LIST_UPDATE (Blizzard's AH UI, other addons) so ONLY this frame
+-- receives the getAll response — a competing browse-query event can then never
+-- make us process a partial / wrong result set. Frames are restored when done.
+local fullScanFrame    = CreateFrame("Frame")
+local FULL_SCAN_EVENTS = { "AUCTION_ITEM_LIST_UPDATE", "AUCTION_HOUSE_CLOSED" }
+local fullProcessLegacy, fullProcessModern   -- forward declarations
+
+local function fullRegisterEvents()
+    AH._otherFrames = { GetFramesRegisteredForEvent("AUCTION_ITEM_LIST_UPDATE") }
+    for _, f in ipairs(AH._otherFrames) do f:UnregisterEvent("AUCTION_ITEM_LIST_UPDATE") end
+    FrameUtil.RegisterFrameForEvents(fullScanFrame, FULL_SCAN_EVENTS)
+end
+
+local function fullUnregisterEvents()
+    FrameUtil.UnregisterFrameForEvents(fullScanFrame, FULL_SCAN_EVENTS)
+    if AH._otherFrames then
+        for _, f in ipairs(AH._otherFrames) do f:RegisterEvent("AUCTION_ITEM_LIST_UPDATE") end
+        AH._otherFrames = nil
+    end
+end
+
+fullScanFrame:SetScript("OnEvent", function(_, event)
+    if event == "AUCTION_ITEM_LIST_UPDATE" then
+        -- The getAll payload — process it exactly once, then stop listening.
+        fullScanFrame:UnregisterEvent("AUCTION_ITEM_LIST_UPDATE")
+        if fullProcessLegacy then fullProcessLegacy() end
+    elseif event == "AUCTION_HOUSE_CLOSED" then
+        fullUnregisterEvents()
+        AH._fullScanning = false
+        AH._fullSeen     = nil
+    end
+end)
+
+local function fullStore()
+    fullUnregisterEvents()   -- restore the frames we silenced (Auctionator pattern)
+    local n = 0
+    local now = (GetServerTime and GetServerTime()) or time()
+    AH._lastFullScanAt = now   -- for the modern self-throttle (legacy uses CanSendAuctionQuery)
+    if AH._fullSeen and addon.Price and addon.Price.StoreAHPrice then
+        for itemId, rec in pairs(AH._fullSeen) do
+            rec.scannedAt = now
+            if rec.lowestBuyout then
+                addon.Price.StoreAHPrice(itemId, rec.lowestBuyout)
+                n = n + 1
+            end
+        end
+    end
+    -- Keep AH._fullSeen for the rest of the AH session: GetListingsFor falls
+    -- back to it, so the per-row [AH] buttons on every tab light up from the
+    -- full scan with no targeted "Scan AH" click. Cleared on AH close, reset on
+    -- the next scan. Only the scanning flags reset here.
+    AH._fullScanning = false
+    AH._fullPending  = false
+    addon:Print(("AH full scan complete — priced %d items."):format(n))
+    -- Tabs refresh their [AH] buttons / costs against the new data (same hook
+    -- the targeted scan uses). Empty payload: prices went straight to addon.Price.
+    if addon.callbacks then addon.callbacks:Fire("AH_SCAN_COMPLETE", {}, "fullscan") end
+end
+
+-- Legacy getAll list processor (GetAuctionItemInfo positional: count=3,
+-- buyout=10, itemId=17). Per-unit price = ceil(buyout/count), matching
+-- Auctionator's effectivePrice = buyoutPrice / available.
+fullProcessLegacy = function()
+    local n = GetNumAuctionItems("list") or 0
+    AH._fullSeen = AH._fullSeen or {}
+    addon:DebugPrint("AH full scan (legacy): processing", n, "listings")
+    local function batch(start)
+        if not AH._fullScanning then return end
+        local stop = math.min(start + FULL_BATCH - 1, n)
+        for i = start, stop do
+            local info   = { GetAuctionItemInfo("list", i) }
+            local count  = info[3] or 1
+            local buyout = info[10] or 0
+            local itemId = info[17]
+            if itemId and buyout > 0 and count > 0 then
+                local unit = math.ceil(buyout / count)
+                local rec  = AH._fullSeen[itemId]
+                if not rec then rec = { count = 0 }; AH._fullSeen[itemId] = rec end
+                rec.count = rec.count + 1
+                if not rec.lowestBuyout or unit < rec.lowestBuyout then
+                    rec.lowestBuyout = unit
+                end
+            end
+        end
+        if stop < n then
+            Ace:ScheduleTimer(function() batch(stop + 1) end, 0.01)
+        else
+            fullStore()
+        end
+    end
+    batch(1)
+end
+
+-- Modern replicate processor (C_AuctionHouse.GetReplicateItemInfo is 0-indexed).
+fullProcessModern = function()
+    local n = (C_AuctionHouse and C_AuctionHouse.GetNumReplicateItems and C_AuctionHouse.GetNumReplicateItems()) or 0
+    AH._fullSeen = AH._fullSeen or {}
+    addon:DebugPrint("AH full scan (modern): processing", n, "listings")
+    local function batch(start)
+        if not AH._fullScanning then return end
+        local stop = math.min(start + FULL_BATCH - 1, n)
+        for i = start, stop do
+            local _name, _tex, count, _q, _u, _lvl, _lt, _minBid, _minInc, buyout,
+                  _bid, _hb, _bn, _owner, _on, _sale, itemID =
+                  C_AuctionHouse.GetReplicateItemInfo(i - 1)
+            local cnt = count or 1
+            if itemID and buyout and buyout > 0 and cnt > 0 then
+                local unit = math.ceil(buyout / cnt)
+                local rec  = AH._fullSeen[itemID]
+                if not rec then rec = { count = 0 }; AH._fullSeen[itemID] = rec end
+                rec.count = rec.count + 1
+                if not rec.lowestBuyout or unit < rec.lowestBuyout then
+                    rec.lowestBuyout = unit
+                end
+            end
+        end
+        if stop < n then
+            Ace:ScheduleTimer(function() batch(stop + 1) end, 0.01)
+        else
+            fullStore()
+        end
+    end
+    batch(1)
+end
+
+--- Kick off a full scan. `auto` suppresses the throttle message (used by the
+--- auto-on-open trigger). Returns false + reason when it can't start.
+function AH.StartFullScan(auto)
+    if AH._fullScanning or AH._isScanning then return false, "busy" end
+    if not AH.IsOpen() then return false, "ah-closed" end
+
+    if AH._isModernAH then
+        if not (C_AuctionHouse and C_AuctionHouse.ReplicateItems) then return false, "no-api" end
+        -- ReplicateItems has no CanSendAuctionQuery-style pre-check, so self-
+        -- throttle: if we scanned < 15 min ago, keep the cached _fullSeen instead
+        -- of resetting it and re-firing (which could briefly empty the buttons).
+        local now = (GetServerTime and GetServerTime()) or time()
+        if AH._lastFullScanAt and (now - AH._lastFullScanAt) < 15 * 60 then
+            if not auto then addon:Print("AH full scan is on cooldown (~once / 15 min). Using cached prices.") end
+            return false, "throttled"
+        end
+        AH._fullSeen     = {}
+        AH._fullScanning = true
+        AH._fullPending  = true
+        C_AuctionHouse.ReplicateItems()
+        return true
+    end
+
+    -- Legacy: getAll is gated server-side; the 2nd return of CanSendAuctionQuery
+    -- is "can do a getAll right now". Skip quietly on the auto path when it's on
+    -- cooldown — the next AH open inside the window will catch it.
+    local _, canGetAll = CanSendAuctionQuery()
+    if not canGetAll then
+        if not auto then
+            addon:Print("AH full scan is on cooldown (getAll allows ~once / 15 min). Try again shortly.")
+        end
+        return false, "throttled"
+    end
+    AH._fullSeen     = {}
+    AH._fullScanning = true
+    -- Guard against a Classic AH-code error on the getAll result set.
+    if ITEM_QUALITY_COLORS and not ITEM_QUALITY_COLORS[-1] then
+        ITEM_QUALITY_COLORS[-1] = { r = 0, g = 0, b = 0 }
+    end
+    -- Silence other AUCTION_ITEM_LIST_UPDATE listeners, then fire getAll; the
+    -- dedicated fullScanFrame catches the response cleanly (Auctionator pattern).
+    fullRegisterEvents()
+    QueryAuctionItems("", nil, nil, 0, nil, nil, true, false, nil)
+    return true
+end
+
+function AH.IsFullScanning() return AH._fullScanning == true end
+
 -- ---------------------------------------------------------------------------
 -- Legacy result collector (Vanilla, TBC Classic, Wrath Classic)
 -- ---------------------------------------------------------------------------
 
 local function onAuctionItemListUpdate()
+    -- Full-scan getAll is handled by the dedicated fullScanFrame (Auctionator
+    -- pattern), not here — this shared handler is per-item targeted scans only.
     if not AH._isScanning or not AH._currentItem then return end
     if AH._isModernAH then return end  -- legacy event ignored on modern clients
 
@@ -490,6 +709,10 @@ end
 if AH._isModernAH then
     Ace:RegisterEvent("ITEM_SEARCH_RESULTS_UPDATED",      onItemSearchResultsUpdated)
     Ace:RegisterEvent("COMMODITY_SEARCH_RESULTS_UPDATED", onCommoditySearchResultsUpdated)
+    -- Full-scan replicate result (modern getAll equivalent).
+    Ace:RegisterEvent("REPLICATE_ITEM_LIST_UPDATE", function()
+        if AH._fullPending then AH._fullPending = false; fullProcessModern() end
+    end)
 else
     Ace:RegisterEvent("AUCTION_ITEM_LIST_UPDATE", onAuctionItemListUpdate)
 end
@@ -534,7 +757,19 @@ function AH.IsScanning() return AH._isScanning == true end
 --- session. Result shape: { listings, lowestBuyout, count, scannedAt }.
 --- count == 0 means the scan ran but found no listings.
 function AH.GetListingsFor(itemId)
+    -- A targeted per-item scan (AH._results) wins when present — more specific /
+    -- fresher. Otherwise fall back to the cached full scan (AH._fullSeen), so the
+    -- [AH] buttons on every tab light up with no targeted "Scan AH" click.
+    --
+    -- The full-scan cache SURVIVES the AH closing and lives the whole session
+    -- (only the next successful scan overwrites it) — so closing and re-opening
+    -- the AH, even inside the ~15-min getAll cooldown, shows the buttons again
+    -- straight from cache with no re-scan. We only surface it while the AH is
+    -- open because the button's action (search the AH) can't do anything when
+    -- it's closed; the data is never dropped.
     return AH._results[itemId]
+        or (AH.IsOpen() and AH._fullSeen and AH._fullSeen[itemId])
+        or nil
 end
 
 --- Scan progress: returns (scanned, total). Both 0 when no scan has run.

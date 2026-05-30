@@ -181,6 +181,12 @@ local SETTINGS_DEFAULTS = {
         -- guaranteed populated before we read it.
         ahScanDelay = 0,
 
+        -- Cost-to-craft price source. OFF by default: TOGPM uses its OWN
+        -- auto-scanned AH prices (Modules/AHScanner full scan on AH open) plus
+        -- the shipped vendor table. Tick this to ALSO read Auctionator's price
+        -- DB (preferred over our scan when present). Read in Modules/Price.lua.
+        useAuctionator = false,
+
         -- Global item tooltip lines. Both OFF by default — opt-in via
         -- Settings to keep the addon's tooltip footprint minimal until the
         -- user explicitly wants either signal. Independent toggles so users
@@ -245,6 +251,13 @@ local SETTINGS_DEFAULTS = {
 
         -- Window positions / sizes saved by AceGUI.
         frames          = {},
+
+        -- Crafting tab: last-selected profession name (for the dropdown), and
+        -- the craft queue. The queue is an ORDERED array — order is the
+        -- user's stack rank (drag-to-reorder), and Craft Next processes it
+        -- top-down. Each entry: { profId = N, recipeId = N, qty = N }.
+        craftSelProf    = nil,
+        craftQueue      = {},
     },
 }
 
@@ -260,6 +273,7 @@ local SLASH_COMMANDS = {
     ["status"]       = "PrintStatus",
     ["versioncheck"] = "PrintVersionCheck",
     ["debug"]        = "ToggleDebug",
+    ["craft"]        = "ToggleCraftingTakeover",
     ["spellcache"]   = "DumpSpellCache",
     ["dumprecipe"]   = "DumpRecipe",
     ["dumphashes"]   = "DumpHashes",
@@ -968,6 +982,29 @@ function addon:ToggleDebug(args)
     end
     Ace.db.profile.debug = addon.debug
     Ace:Print(string.format(L["SlashDebugToggleFormat"], addon.debug and L["SlashDebugEnabled"] or L["SlashDebugDisabled"]))
+end
+
+--- /togpm craft [on|off] — toggle the Crafting-tab takeover of the native
+--- profession window. Also serves as an escape hatch during development: if
+--- the reskin ever misbehaves, `/togpm craft off` restores Blizzard's default
+--- window immediately. The proper Settings UI toggle comes in a later step.
+function addon:ToggleCraftingTakeover(args)
+    local Engine = addon.CraftingEngine
+    if not Engine then
+        Ace:Print("Crafting engine not loaded.")
+        return
+    end
+    local arg = strtrim(args or ""):lower()
+    local on
+    if arg == "on" then
+        on = true
+    elseif arg == "off" then
+        on = false
+    else
+        on = not Engine:IsTakeoverEnabled()
+    end
+    Engine:SetTakeoverEnabled(on)
+    Ace:Print("Crafting window takeover: " .. (on and "|cff00ff00ON|r" or "|cffff0000OFF|r"))
 end
 
 --- /togpm versioncheck — broadcast version check and print responses.

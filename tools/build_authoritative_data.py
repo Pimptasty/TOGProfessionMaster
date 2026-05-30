@@ -81,6 +81,19 @@ PROF_FILES = {
 
 
 # ---------------------------------------------------------------------------
+# Effect text (enrichment for description search)
+# ---------------------------------------------------------------------------
+
+# NOTE: We deliberately do NOT enrich crafted *gear* with a synthetic stat
+# string. The live client already renders the real item tooltip (with the
+# authoritative, current stats) for any created item, so a parallel
+# ItemSparse-derived "+N Stat" line was both redundant and prone to drift
+# (the StatModifier columns don't always match what the client shows). Only
+# *enchants* get an `effect` string — enchants have no item to hover, so the
+# SpellItemEnchantment name is the only searchable description of what they do.
+
+
+# ---------------------------------------------------------------------------
 # Per-expansion recipe extraction
 # ---------------------------------------------------------------------------
 
@@ -165,14 +178,120 @@ def _load_trainer_skill_ranks() -> dict:
     return _TRAINER_SKILL_RANKS
 
 
-def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
+# Locales to build into ProfessionDB beyond the canonical enUS pass. enGB is a
+# WoW client locale but its game text == enUS, so we mirror enUS rather than
+# fetch it. These are the official client locales wago.tools serves.
+EXTRA_LOCALES = ["deDE", "esES", "esMX", "frFR", "itIT",
+                 "koKR", "ptBR", "ruRU", "zhCN", "zhTW"]
+MIRROR_LOCALES = {"enGB": "enUS"}   # locale -> source locale whose strings it copies
+
+_ENCH_PH   = re.compile(r"\$(\d*)[a-zA-Z](\d)")
+_ENCH_JUNK = re.compile(r"\$\S+")
+
+
+def build_enchant_names(item_ench: list, spell_points: dict) -> dict:
+    """SpellItemEnchantment id -> clean display name (e.g. 1897 -> "+5 Weapon
+    Damage"). Builds store the name with placeholder tokens WoW substitutes at
+    runtime:
+        $k1 / $s1     — this enchant's own effect value, slot 1 (its own
+                        EffectPointsMin_{slot-1}).
+        $<spellId>s1  — a cross-spell reference: effect 1 of spell <spellId>,
+                        e.g. "+$13624s1 All Stats" -> spell 13624 effect 1 = 1
+                        -> "+1 All Stats". Resolved via spell_points (locale-
+                        independent numbers from SpellEffect) — so the same
+                        spell_points feeds every locale's string pass.
+    Any token we can't resolve is stripped (with its orphaned "+") so we never
+    ship a raw "$..." or a misleading "+0 Mining". The Name_lang column carries
+    the localized text, so passing a localized SpellItemEnchantment CSV yields
+    localized enchant names with identical placeholder handling."""
+    out: dict[int, str] = {}
+    for row in item_ench:
+        try:
+            eid = int(row.get("ID") or 0)
+            nm = (row.get("Name_lang") or "").strip()
+            if not (eid and nm):
+                continue
+            if "$" in nm:
+                pts = []
+                for i in range(3):
+                    try:
+                        pts.append(int(row.get(f"EffectPointsMin_{i}") or 0))
+                    except (TypeError, ValueError):
+                        pts.append(0)
+
+                def _resolve(m, pts=pts):
+                    spellid, idx = m.group(1), int(m.group(2))
+                    if not (1 <= idx <= 3):
+                        return ""
+                    if spellid == "":
+                        v = pts[idx - 1]                 # own effect value
+                    else:
+                        v = spell_points.get(int(spellid), {}).get(idx - 1, 0)
+                    return str(abs(v)) if v != 0 else "" # strip unresolved/zero
+
+                nm = _ENCH_PH.sub(_resolve, nm)
+                nm = _ENCH_JUNK.sub("", nm)             # leftover scaling tokens ($i/$n/$f)
+                nm = re.sub(r"\([+\-/\s]*\)", "", nm)   # collapsed empty "(+)" / "(/)" groups
+                nm = re.sub(r"\s*\([+\-/\s]*$", "", nm) # dangling unclosed "(+" tail
+                nm = re.sub(r"\+\s+", "", nm)           # orphaned "+" from a stripped value
+                nm = re.sub(r"\s{2,}", " ", nm).strip() # tidy whitespace
+            out[eid] = nm
+        except (TypeError, ValueError, KeyError):
+            continue
+    return out
+
+
+def localize_entries(out: dict, ctx: dict, build: str, locale: str,
+                     refresh: bool = False) -> dict:
+    """Produce a localized copy of one build's {profId: {spellId: entry}} by
+    overriding ONLY the translated fields — recipe `name` (localized SpellName)
+    and enchant `effect` (localized SpellItemEnchantment). Everything structural
+    (which recipes exist, difficulty, reagents, ids, phase) is reused verbatim
+    from the canonical enUS extraction, so the recipe SET is identical across
+    every locale — only the text differs. Falls back to the enUS string when a
+    locale is missing a translation."""
+    name_by_spell_loc: dict[int, str] = {}
+    for row in fetch_csv("SpellName", build, refresh=refresh, locale=locale):
+        try:
+            nm = (row.get("Name_lang") or "").strip()
+            if nm:
+                name_by_spell_loc[int(row["ID"])] = nm
+        except (TypeError, ValueError, KeyError):
+            continue
+
+    item_ench_loc = fetch_csv("SpellItemEnchantment", build,
+                              refresh=refresh, locale=locale)
+    enchant_name_loc = build_enchant_names(item_ench_loc, ctx["spell_points"])
+    ench_by_spell = ctx["enchant_id_by_spell"]
+
+    res: dict = {}
+    for prof_id, recipes in out.items():
+        slot: dict = {}
+        for spell_id, entry in recipes.items():
+            e = dict(entry)
+            nm = name_by_spell_loc.get(spell_id)
+            if nm:
+                e["name"] = nm
+            if entry.get("effect"):           # enchant — re-resolve its effect
+                eid = ench_by_spell.get(spell_id)
+                loc_eff = enchant_name_loc.get(eid) if eid else None
+                if loc_eff:
+                    e["effect"] = loc_eff
+            slot[spell_id] = e
+        res[prof_id] = slot
+    return res
+
+
+def extract_recipes_for_build(build: str, refresh: bool = False) -> tuple:
     """Pull every recipe for every profession in PROF_FILES from one build.
 
-    Returns:
-        {profId: {spellId: {
+    Returns (out, ctx):
+        out = {profId: {spellId: {
             name, difficulty=[orange,yellow,green,grey], requiredSkill,
             reagents={[itemId]=count}, items=[recipe item ids], expansion=<build>
         }}}
+        ctx = { enchant_id_by_spell, spell_points } — the locale-independent
+              maps localize_entries() needs to re-resolve enchant effects.
     """
     print(f"  fetching DBC tables for build {build}", file=sys.stderr)
     sla          = fetch_csv("SkillLineAbility", build, refresh=refresh)
@@ -181,6 +300,7 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
     item_effects = fetch_csv("ItemEffect",       build, refresh=refresh)
     item_sparse  = fetch_csv("ItemSparse",       build, refresh=refresh)
     spell_effects = fetch_csv("SpellEffect",     build, refresh=refresh)
+    item_ench    = fetch_csv("SpellItemEnchantment", build, refresh=refresh)
 
     # Trainer skill-ranks (build-agnostic; loads from emulator SQL the
     # first time and caches). Used downstream as the authoritative source
@@ -335,18 +455,44 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
     # items here too so we never tag a craftedItemId pointing at a
     # ZZOLD/TEST item even when those are the spell's primary output.
     created_item_by_spell: dict[int, int] = {}
+    enchant_id_by_spell: dict[int, int] = {}   # spell -> SpellItemEnchantment id (Effect 53)
+    # spellId -> {effectIndex(0-based): displayed value}. Used to resolve
+    # cross-spell enchant-name placeholders like "+$13624s1 All Stats", where
+    # $<spellId>s<n> means "effect n of spell <spellId>". The displayed amount is
+    # EffectPointsMin when present, else EffectBasePoints.
+    spell_points: dict[int, dict[int, int]] = {}
     for row in spell_effects:
         try:
             effect = int(row.get("Effect") or 0)
-            if effect != 24:  # CREATE_ITEM
-                continue
             sid = int(row.get("SpellID") or 0)
-            iid = int(row.get("EffectItemType") or 0)
-            if sid and iid and sid not in created_item_by_spell:
-                if not is_obsolete_item_name(name_by_item.get(iid, "")):
-                    created_item_by_spell[sid] = iid
+            if not sid:
+                continue
+            try:
+                eidx = int(row.get("EffectIndex") or 0)
+                pmin = int(row.get("EffectPointsMin") or 0)
+                base = int(row.get("EffectBasePoints") or 0)
+                val = pmin if pmin != 0 else base
+                if val != 0:
+                    spell_points.setdefault(sid, {})[eidx] = val
+            except (TypeError, ValueError):
+                pass
+            if effect == 24:  # CREATE_ITEM
+                iid = int(row.get("EffectItemType") or 0)
+                if iid and sid not in created_item_by_spell:
+                    if not is_obsolete_item_name(name_by_item.get(iid, "")):
+                        created_item_by_spell[sid] = iid
+            elif effect == 53:  # ENCHANT_ITEM (permanent)
+                ench = int(row.get("EffectMiscValue_0") or 0)
+                if ench and sid not in enchant_id_by_spell:
+                    enchant_id_by_spell[sid] = ench
         except (TypeError, ValueError, KeyError):
             continue
+
+    # SpellItemEnchantment id -> display name (e.g. 1897 -> "Weapon Damage +5").
+    # Localized re-resolution (per-locale string passes) reuses this via the
+    # standalone build_enchant_names(), which is why it takes the locale-
+    # independent spell_points map as an argument.
+    enchant_name_by_id = build_enchant_names(item_ench, spell_points)
 
     # Build the per-profession recipe dicts.
     out: dict = {}
@@ -415,18 +561,45 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> dict:
             # Priority: manual > scroll > trainer > None
             required_skill = manual_override or scroll_rank or trainer_rank
 
+            # Correct the tiers for pattern/drop recipes. wago's MinSkillLineRank
+            # is a placeholder 1 for these — the real learn level is requiredSkill
+            # (Polar Bracers: SLA min=1 but the pattern requires 300). For these,
+            # the real tiers are [requiredSkill, TrivialLow, mid(Low,High),
+            # TrivialHigh] — i.e. orange = learn level, yellow = TrivialLow, green
+            # = midpoint, grey = TrivialHigh. Verified vs WoWhead:
+            #   Impact {200,220,240,260}, Polar {300,320,330,340}.
+            # (difficulty[2]=TrivialLow / green, difficulty[3]=TrivialHigh / grey
+            # from the array built above.) Recipes with a real MinSkillLineRank
+            # (>1) keep their SLA-derived values — e.g. Medium {75,95,115,130}.
+            if difficulty[0] <= 1 and required_skill and required_skill > 1:
+                o    = required_skill
+                low  = difficulty[2] if (difficulty[2] and difficulty[2] > o)   else o
+                high = difficulty[3] if (difficulty[3] and difficulty[3] > low) else low
+                difficulty = [o, low, (low + high) // 2, high]
+
+            # Searchable effect text: the enchant effect name for Enchanting
+            # recipes (e.g. "+5 Weapon Damage", "+1 All Stats"). nil otherwise —
+            # crafted gear has a real client tooltip, so we never fabricate one.
+            ench_id = enchant_id_by_spell.get(spell_id)
+            effect = enchant_name_by_id.get(ench_id) if ench_id else None
+
             recipes[spell_id] = {
                 "name":           name_by_spell.get(spell_id, ""),
                 "difficulty":     difficulty,
                 "teaches":        spell_id,  # self-teaching; scanner returns spell id
                 "requiredSkill":  required_skill,
+                "effect":         effect,
                 "reagents":       reagents_by_spell.get(spell_id, {}),
                 "items":          sorted(items_by_spell.get(spell_id, set())),
                 "craftedItemId":  created_item_by_spell.get(spell_id),
                 "expansion":      build,
             }
         out[prof_id] = recipes
-    return out
+    ctx = {
+        "enchant_id_by_spell": enchant_id_by_spell,
+        "spell_points":        spell_points,
+    }
+    return out, ctx
 
 
 # ---------------------------------------------------------------------------
@@ -458,9 +631,13 @@ def merge_expansions(per_build_data: list[dict]) -> dict:
             for spell_id, entry in recipes.items():
                 if spell_id in slot:
                     # Preserve the earlier minExpansion across the overwrite.
-                    prior_min = slot[spell_id].get("minExpansion", build_idx)
+                    prior_min    = slot[spell_id].get("minExpansion", build_idx)
+                    prior_effect = slot[spell_id].get("effect")
                     slot[spell_id] = dict(entry)
                     slot[spell_id]["minExpansion"] = prior_min
+                    # Don't let a later build's missing effect clobber a good one.
+                    if not slot[spell_id].get("effect") and prior_effect:
+                        slot[spell_id]["effect"] = prior_effect
                 else:
                     slot[spell_id] = dict(entry)
                     slot[spell_id]["minExpansion"] = build_idx
@@ -600,14 +777,14 @@ def _load_manual_phase_overrides():
     return _MANUAL_PHASE_OVERRIDES
 
 
-def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
-    """Write Data/Recipes/<filename>.lua. The recipe entries include the
-    new `name` field which the existing addon doesn't use today — adding it
-    is forward-compatible since Lua tables ignore extra fields.
+def clean_recipes(prof_id: int, recipes: dict) -> dict:
+    """Return the runtime-ready {spellId: entry} dict for a profession.
 
-    We strip the helper-only fields (`items`, `expansion`) before emit since
-    they're for the importer's downstream Source-DB pass, not the runtime
-    recipe DB.
+    Strips helper-only fields (`items`, `expansion`) and non-recipe spells
+    (rank-ups, specs, gathering toggles), and adds `itemId` / `craftedItemId`
+    / `phase` where available. Shared by BOTH the TOGPM merged emit
+    (emit_recipe_file) and the per-version ProfessionDB library emit
+    (emit_library_file) so the two outputs can never drift.
 
     When ATT's phase map is available (att_extract_phase.py output), each
     recipe gets a `phase` field for client-side content-phase filtering.
@@ -660,6 +837,11 @@ def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
         # and renders "-" in the UI so the gap is visible.
         if entry.get("requiredSkill"):
             out["requiredSkill"] = entry["requiredSkill"]
+        # effect: searchable effect text — enchant effect name (e.g. "Weapon
+        # Damage +5") or formatted gear stats ("+10 Agility, +15 Stamina").
+        # Omitted when there's nothing to show.
+        if entry.get("effect"):
+            out["effect"] = entry["effect"]
         if items:
             out["itemId"] = items[0]
         # craftedItemId: the item produced BY the craft spell (from
@@ -695,6 +877,15 @@ def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
     if n_skipped_manual_exclude:
         print(f"  {prof_id}: skipped {n_skipped_manual_exclude} manually-excluded "
               f"spells (never-implemented content)", file=sys.stderr)
+    return cleaned
+
+
+def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
+    """TOGPM (live addon) output: Data/Recipes/<filename>.lua, populating the
+    addon-private `addon.recipeDB`. This is the MERGED, all-expansion union the
+    Classic addon ships today; the per-client expansion gates in the GUI keep a
+    given client to its own content."""
+    cleaned = clean_recipes(prof_id, recipes)
     body = lua_value(cleaned, 1)
     target = RECIPES_DIR / f"{filename}.lua"
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -702,6 +893,57 @@ def emit_recipe_file(prof_id: int, filename: str, recipes: dict):
         "local _, addon = ...\n"
         "\n"
         f"addon.recipeDB[{prof_id}] = {body}\n"
+    )
+    target.write_text(contents, encoding="utf-8")
+    return len(cleaned), target
+
+
+# Build label -> ProfessionDB game-folder name. MoP ships under "Mists" to
+# match the live TOGProfessionMaster_Mists.toc naming.
+LIBRARY_GAME_FOLDER = {
+    "Vanilla": "Vanilla", "TBC": "TBC", "Wrath": "Wrath",
+    "Cata": "Cata", "MoP": "Mists",
+}
+# ProfessionDB library data root (sibling addon next to TOGProfessionMaster).
+LIBRARY_DATA_ROOT = ADDON_ROOT.parent / "ProfessionDB" / "Data"
+
+
+def emit_library_file(prof_id: int, filename: str, recipes: dict,
+                      game: str, locale: str):
+    """ProfessionDB (external library) output: one self-contained, point-in-time
+    file per game + locale at ProfessionDB/Data/<game>/<locale>/<filename>.lua.
+
+    Unlike the TOGPM merged output this is NOT merged across expansions — each
+    game folder holds exactly that build's recipes (correct per-version
+    difficulty, requiredSkill, reagents, names, effects). Self-contained: every
+    file carries the full recipe (structural + localized strings), so a consumer
+    loads just one game + one locale.
+
+    File format mirrors LibItemDB: a GetLocale() guard so a TOC can list every
+    locale's files and only the matching one runs, then a LibStub fetch and a
+    lib:LoadRecipes(profId, recipes) call. Which GAME loads is implicit — each
+    per-flavour ProfessionDB .toc lists only its own Data/<game>/ files."""
+    cleaned = clean_recipes(prof_id, recipes)
+    # A profession can be present in a build's SkillLineAbility yet contribute no
+    # craftable recipes (e.g. Fishing in Vanilla — only the skill-up spell, which
+    # clean_recipes strips). Don't write an empty file; the per-flavour TOC then
+    # simply has no line for it.
+    if not cleaned:
+        return 0, None
+    body = lua_value(cleaned, 1)
+    target = LIBRARY_DATA_ROOT / game / locale / f"{filename}.lua"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    contents = (
+        f"-- LibProfessionDB data — WoW {game}, {locale}, {filename}\n"
+        "-- Auto-generated by the TOGProfessionMaster authoritative-data "
+        "pipeline. Do not hand-edit.\n"
+        f"-- {len(cleaned)} recipes\n"
+        "\n"
+        f'if GetLocale() ~= "{locale}" then return end\n'
+        'local lib = LibStub and LibStub("LibProfessionDB-1.0", true)\n'
+        f'if not lib or not lib:IsGameVersion("{game}") then return end\n'
+        "\n"
+        f"lib:LoadRecipes({prof_id}, {body})\n"
     )
     target.write_text(contents, encoding="utf-8")
     return len(cleaned), target
@@ -733,6 +975,89 @@ def emit_recipe_items_map(merged: dict):
     print(f"\n  wrote {target.relative_to(ADDON_ROOT)} for Phase B input")
 
 
+def emit_vendor_prices(per_build: list):
+    """Write TOGProfessionMaster/Data/VendorPrices.lua — { [itemId] = copper }
+    for crafting reagents that a vendor ACTUALLY sells, priced from wago
+    ItemSparse BuyPrice.
+
+    Why the npc_vendor gate: ItemSparse BuyPrice is ~SellPrice*4 and present on
+    almost every item (drop mats included), so it is NOT a vendor-availability
+    signal. Vendor inventories are server-side (absent from client DBC / wago),
+    so we take the authoritative "is it vendor-sold" list from the emulator
+    npc_vendor tables (the same dumps Phase B already caches) and intersect with
+    the reagents that appear in recipes. Result: thread / dye / vials / flux get
+    a vendor price; drop/farmed mats (leather, ore, herbs, cloth) do not."""
+    # Vendor-sold item set from cached emulator npc_vendor dumps, gated to
+    # genuine GOLD STAPLES: maxcount == 0 (unlimited stock) AND ExtendedCost == 0
+    # (bought with gold, not tokens/currency). npc_vendor schema across
+    # AzerothCore / TrinityCore is (entry, slot, item, maxcount, incrtime,
+    # ExtendedCost, ...). Without this gate, limited-stock or token-vendor
+    # entries (a vendor with 3 Heavy Leather, a token quartermaster selling
+    # Linen) would wrongly tag farmed/drop mats with a "vendor price" — exactly
+    # what Auctionator avoids by only caching numAvailable == -1 items.
+    emul_cache = SCRIPT_DIR / "emulator_data"
+    vendor_files = sorted(emul_cache.glob("*_npc_vendor.sql"))
+    if not vendor_files:
+        print("  vendor prices: no npc_vendor data cached; skipping", file=sys.stderr)
+        return
+    _row = re.compile(r"\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)")
+    vendor_items = set()
+    for p in vendor_files:
+        text = p.read_text(encoding="utf-8", errors="replace")
+        for m in _row.finditer(text):
+            item     = int(m.group(3))
+            maxcount = int(m.group(4))
+            extcost  = int(m.group(6))
+            if item and maxcount == 0 and extcost == 0:
+                vendor_items.add(item)
+    if not vendor_items:
+        print("  vendor prices: npc_vendor parsed 0 unlimited gold items; skipping",
+              file=sys.stderr)
+        return
+
+    # Reagent itemIds that actually appear in recipes (keeps the table small).
+    reagent_ids = set()
+    for out in per_build:
+        for recipes in out.values():
+            for entry in recipes.values():
+                for iid in (entry.get("reagents") or {}):
+                    reagent_ids.add(iid)
+
+    # BuyPrice per item from ItemSparse (merged across builds; item-intrinsic).
+    buy = {}
+    for _label, build_id in EXPANSION_BUILDS:
+        for row in fetch_csv("ItemSparse", build_id):
+            try:
+                iid = int(row.get("ID") or 0)
+                bp  = int(row.get("BuyPrice") or 0)
+            except (TypeError, ValueError):
+                continue
+            if iid and bp > 0 and iid not in buy:
+                buy[iid] = bp
+
+    table = {}
+    for iid in (vendor_items & reagent_ids):
+        bp = buy.get(iid)
+        if bp and bp > 0:
+            table[iid] = bp
+
+    target = ADDON_ROOT / "Data" / "VendorPrices.lua"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    contents = (
+        "local _, addon = ...\n"
+        "\n"
+        "-- Vendor buy price (copper) for crafting reagents a vendor actually\n"
+        "-- sells. Generated by tools/build_authoritative_data.py: emulator\n"
+        "-- npc_vendor (vendor-sold gate) intersected with recipe reagents,\n"
+        "-- priced from wago ItemSparse BuyPrice. Do not hand-edit.\n"
+        f"addon.VendorPrices = {lua_value(table, 0)}\n"
+    )
+    target.write_text(contents, encoding="utf-8")
+    print(f"  wrote {target.relative_to(ADDON_ROOT)}: "
+          f"{len(table)} vendor-priced reagents "
+          f"({len(vendor_items):,} vendor items x {len(reagent_ids):,} reagents)")
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -758,26 +1083,58 @@ def main():
     print(f"== Authoritative Data Builder ==", file=sys.stderr)
     print(f"   builds: {[b[0] for b in builds]}", file=sys.stderr)
 
-    per_build = []
+    per_build = []   # list of canonical enUS {profId: {spell: entry}} dicts
+    per_ctx   = []   # parallel list of locale-resolution context per build
     for label, build_id in builds:
         print(f"\n[{label}] build {build_id}", file=sys.stderr)
-        per_build.append(extract_recipes_for_build(build_id, refresh=args.refresh))
+        out, ctx = extract_recipes_for_build(build_id, refresh=args.refresh)
+        per_build.append(out)
+        per_ctx.append(ctx)
 
     merged = merge_expansions(per_build)
 
-    # Per-profession emit + report.
-    print(f"\n=== Emitting Data/Recipes/*.lua ===")
-    print(f"{'profession':<18} {'recipes':>8}  {'output'}")
-    total = 0
-    for prof_id, (filename, _) in sorted(PROF_FILES.items(), key=lambda kv: kv[1][0]):
-        recipes = merged.get(prof_id, {})
-        count, path = emit_recipe_file(prof_id, filename, recipes)
-        total += count
-        print(f"{filename:<18} {count:>8}  {path.relative_to(ADDON_ROOT)}")
-    print(f"{'TOTAL':<18} {total:>8}")
-
-    # Stash the recipe-item linkage for Phase B (source DB builder).
+    # NOTE: TOGProfessionMaster no longer ships a bundled, all-version-merged
+    # Data/Recipes/*.lua set — it now consumes the per-version LibProfessionDB
+    # library (emitted below) via Data/RecipeDB.lua. The merge is still computed
+    # here ONLY to feed the Phase B source-DB builder its recipe→items linkage.
+    # (emit_recipe_file is kept available for ad-hoc/debug use but is no longer
+    # called by the pipeline.)
     emit_recipe_items_map(merged)
+
+    # Static vendor-price table for TOGPM cost-to-craft (npc_vendor ∩ reagents).
+    emit_vendor_prices(per_build)
+
+    # ---- ProfessionDB library output: per-game, per-locale, NOT merged ----
+    # Each game folder gets exactly that build's recipes (correct point-in-time
+    # difficulty / requiredSkill / reagents / names / effects). Professions that
+    # don't exist in a given build (e.g. Jewelcrafting in Vanilla) are simply
+    # absent — no empty files. enUS is the canonical pass; every other official
+    # locale re-resolves ONLY name + effect (identical recipe set, translated
+    # text). enGB mirrors enUS (same game text).
+    print(f"\n=== Emitting ProfessionDB/Data/<game>/<locale>/*.lua (per-version) ===")
+    print(f"{'game':<10} {'locale':<6} {'recipes':>9}")
+    lib_total = 0
+    for (label, build_id), out, ctx in zip(builds, per_build, per_ctx):
+        game = LIBRARY_GAME_FOLDER.get(label, label)
+        by_locale = {"enUS": out}
+        for loc in EXTRA_LOCALES:
+            print(f"  [{label}] localizing {loc}", file=sys.stderr)
+            by_locale[loc] = localize_entries(out, ctx, build_id, loc,
+                                              refresh=args.refresh)
+        for mloc, src in MIRROR_LOCALES.items():
+            if src in by_locale:
+                by_locale[mloc] = by_locale[src]
+        for loc, data in sorted(by_locale.items()):
+            loc_total = 0
+            for prof_id, (filename, _) in sorted(PROF_FILES.items(), key=lambda kv: kv[1][0]):
+                recipes = data.get(prof_id, {})
+                if not recipes:
+                    continue
+                count, _path = emit_library_file(prof_id, filename, recipes, game, loc)
+                loc_total += count
+            lib_total += loc_total
+            print(f"{game:<10} {loc:<6} {loc_total:>9}")
+    print(f"{'TOTAL':<28} {lib_total:>9}")
 
 
 if __name__ == "__main__":

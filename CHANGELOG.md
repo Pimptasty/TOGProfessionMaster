@@ -1,5 +1,33 @@
 # TOG Profession Master Changelog
 
+## [v0.8.0] (2026-05-30) — Crafting tab, cost-to-craft, and the LibProfessionDB data library
+
+> **Heads-up:** this release moves the recipe database into the new standalone **LibProfessionDB** library and depends on it. It cannot load until LibProfessionDB is installed (it's a required dependency in the TOC / `.pkgmeta`), so it must not ship before that library is published.
+
+### New Features
+
+- **Crafting tab.** A full fourth tab modeled on TradeSkillMaster's crafting screen but in TOGPM's own style (AceGUI widgets, brand colour, shared tooltip handler). It **replaces the native profession window** when you open a profession — with a toggle button to drop back to the Blizzard UI — pre-populates a dropdown from your known professions, and lists every recipe with a difficulty-coloured name and an orange→yellow→green→grey skill-tier column. Local single-character crafting; a virtual-scroll raw-frame row pool keeps it instant on large recipe sets. Location: [GUI/CraftingTab.lua](GUI/CraftingTab.lua), [Modules/Crafting/CraftingEngine.lua](Modules/Crafting/CraftingEngine.lua).
+
+- **Craft queue.** Queue recipes and craft them top-down, with click-drag to reorder so you can stack-rank what gets made first. Completion-tracked (watches `UNIT_SPELLCAST_SUCCEEDED`) and persisted as a proper per-character table. Location: [Modules/Crafting/CraftQueue.lua](Modules/Crafting/CraftQueue.lua).
+
+- **Cost-to-craft.** A per-recipe **Crafting Cost** total (on the recipe-name row, above the Missing Materials label) plus a per-reagent **Cost** column, summed by a unified price provider. Sources, in priority order: the Auction House (TOGPM's own scan, or Auctionator when you opt in) then a shipped vendor-price table. Markers: `*` = a reagent has no price yet (total is a lower bound), `~` = a contributing price is stale, `—` = nothing priced. Location: [Modules/Price.lua](Modules/Price.lua), [GUI/CraftingTab.lua](GUI/CraftingTab.lua).
+
+- **Built-in Auction House scan — no Auctionator required.** Opening the Auction House auto-fires a one-pass full scan (legacy `getAll` on Era/TBC/Wrath, `C_AuctionHouse.ReplicateItems` on Cata/MoP) that builds TOGPM's own price DB — no button to click. Modeled on Auctionator's FullScan: a dedicated scan frame silences every other `AUCTION_ITEM_LIST_UPDATE` listener during the getAll so the Blizzard AH UI can't corrupt the result set; lowest per-unit buyout per item, batched across frames. Honours the server's ~once/15-min getAll throttle, and the scan is cached for the whole session so re-opening the AH inside the cooldown reuses it. Location: [Modules/AHScanner.lua](Modules/AHScanner.lua).
+
+- **Auto-populated `[AH]` buttons.** Because the full scan knows every listed item, the per-row `[AH]` buttons across the Professions / Crafting / Missing / Cooldowns / Shopping List tabs now light up straight from it — no per-recipe "Scan AH" click. Location: [Modules/AHScanner.lua](Modules/AHScanner.lua) `GetListingsFor`.
+
+- **Optional Auctionator integration (off by default).** A "Use Auctionator pricing" toggle under Settings → Auction House. Off by default so the addon uses its own scanned + vendor prices first; tick it to prefer Auctionator's price database when installed. Auctionator is an `OptionalDeps`, never required. Location: [GUI/Settings.lua](GUI/Settings.lua), [Modules/Price.lua](Modules/Price.lua).
+
+- **Shipped vendor-price table.** A generated [Data/VendorPrices.lua](Data/VendorPrices.lua) gives thread, dyes, vials, flux and other vendor-bought reagents a cost out of the box — gated to genuinely vendor-sold items (emulator `npc_vendor`, unlimited-stock + gold-only, so drop/farmed mats are never mis-priced) and priced from wago ItemSparse.
+
+### Changes
+
+- **Recipe data now comes from the standalone LibProfessionDB-1.0 library.** TOGPM no longer bundles its own all-version-merged `Data/Recipes/*.lua`; those are removed and replaced by a small bridge ([Data/RecipeDB.lua](Data/RecipeDB.lua)) that points `addon.recipeDB` at the library's **point-in-time** recipe set for the running game version + locale. Because the library data is already version-scoped, the per-client expansion gates in BrowserTab / MissingRecipesTab (`minExpansion`, the `spellId > 25000` heuristic, the skill cap) now step aside for it — which also fixes the class of bug where legitimate high-ID Classic recipes were wrongly hidden. ProfessionDB is declared in `## Dependencies` and `.pkgmeta required-dependencies`.
+
+- **Enriched, searchable effect text.** Enchanting recipes carry their effect (`+5 Weapon Damage`, `+1 All Stats`, …). The Crafting and Professions tab searches now match recipe **name OR effect** (so `5 damage`, `agility`, `mining` all find recipes), and both tabs' tooltips show the effect. Search boxes lost the non-functional AceGUI "okay" button and got clearer tooltips. Location: [GUI/CraftingTab.lua](GUI/CraftingTab.lua), [GUI/BrowserTab.lua](GUI/BrowserTab.lua).
+
+---
+
 ## [v0.7.6] (2026-05-29) — GetTradeSkillLine signature bug — every Classic scan was writing maxRank as skillRank
 
 ### Bug Fixes

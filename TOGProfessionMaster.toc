@@ -8,8 +8,8 @@
 ## SavedVariables: TOGPM_Settings TOGPM_GuildDB
 ## SavedVariablesPerCharacter:
 ## X-Curse-Project-ID: 1513588
-## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0, DeltaSync
-## OptionalDeps: TOGBankClassic, GreenWall
+## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0, DeltaSync, ProfessionDB
+## OptionalDeps: TOGBankClassic, GreenWall, Auctionator
 
 libs\LibDataBroker-1.1.lua
 libs\LibDBIcon-1.0.lua
@@ -35,16 +35,8 @@ TOGProfessionMaster.lua
 Compat.lua
 Data\ProfessionIcons.lua
 Data\CooldownIds.lua
-Data\Recipes\Alchemy.lua
-Data\Recipes\Blacksmithing.lua
-Data\Recipes\Cooking.lua
-Data\Recipes\Enchanting.lua
-Data\Recipes\Engineering.lua
-Data\Recipes\Firstaid.lua
-Data\Recipes\Fishing.lua
-Data\Recipes\Leatherworking.lua
-Data\Recipes\Mining.lua
-Data\Recipes\Tailoring.lua
+Data\RecipeDB.lua
+Data\VendorPrices.lua
 Data\Sources\Alchemy.lua
 Data\Sources\Blacksmithing.lua
 Data\Sources\Cooking.lua
@@ -60,7 +52,10 @@ Modules\HashManager.lua
 Modules\ReagentWatch.lua
 Modules\SyncLog.lua
 Modules\AHScanner.lua
+Modules\Price.lua
 Modules\CooldownAlerts.lua
+Modules\Crafting\CraftingEngine.lua
+Modules\Crafting\CraftQueue.lua
 GUI\MinimapButton.lua
 GUI\MainWindow.lua
 GUI\SharedWidgets.lua
@@ -68,6 +63,7 @@ GUI\BrowserTab.lua
 GUI\CooldownsTab.lua
 GUI\ShoppingListTab.lua
 GUI\MissingRecipesTab.lua
+GUI\CraftingTab.lua
 GUI\ReagentTracker.lua
 GUI\Settings.lua
 Tooltip.lua

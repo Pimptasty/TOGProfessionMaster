@@ -51,6 +51,7 @@ MissingRecipesTab._profId          = 0
 MissingRecipesTab._searchText      = ""
 MissingRecipesTab._includeTrainer  = false
 MissingRecipesTab._canLearnOnly    = false
+MissingRecipesTab._showAll         = false   -- show every recipe (known + missing)
 MissingRecipesTab._container       = nil
 MissingRecipesTab._listSection     = nil
 MissingRecipesTab._customTip       = nil  -- lazy-init via GetCustomTip
@@ -213,7 +214,7 @@ local RANK_CAPS = {
 -- render time via GetItemInfoInstant (which does NOT trigger an async load),
 -- and the row count is capped during render. Item-name resolution itself
 -- happens per-row inside FillList so we only ever pay for the visible slice.
-local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly)
+local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, showAll)
     if not charKey or not profId or profId == 0 then return {} end
     local recipes = addon.recipeDB and addon.recipeDB[profId]
     if not recipes then return {} end
@@ -318,28 +319,45 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly)
     else                        clientExp, clientMaxSkill = 5, 600
     end
 
+    -- LibProfessionDB ships version-scoped data, so the cross-expansion gates
+    -- (minExpansion / spellId>25000 / requiredSkill cap) are obsolete and would
+    -- mis-fire on it — they only existed to filter the old merged union. Skip
+    -- them when lib-sourced; content-phase gating and known/rank checks below
+    -- still apply.
+    local libData = addon.recipeDBFromLib
     for spellId, data in pairs(recipes) do
         local skip = false
-        if data.minExpansion and data.minExpansion > clientExp then
+        if (not libData) and data.minExpansion and data.minExpansion > clientExp then
             -- Recipe was first introduced in a later expansion than this
             -- client supports. Wrath transmute on TBC, Cata recipe on
             -- Wrath, etc. — never learnable here regardless of phase or
             -- skill cap. PRIMARY cross-expansion gate.
             skip = true
-        elseif (not data.minExpansion) and clientExp == 1 and spellId > 25000 then
+        elseif (not libData) and (not data.minExpansion) and clientExp == 1 and spellId > 25000 then
             -- Defensive gate for Classic Era against untagged post-Vanilla
             -- recipes. The build tool tags non-Vanilla recipes with
             -- minExpansion>=2 but coverage is incomplete (~36% of Cooking,
-            -- ~30% of Leatherworking lack the tag). Every Vanilla recipe
-            -- spell ID is in the 2000-25000 range, so an untagged spellId
-            -- above that on Vanilla is post-Vanilla content the Era client
+            -- ~30% of Leatherworking lack the tag). Most Vanilla recipe spell
+            -- IDs are in the 2000-25000 range, so an untagged spellId above
+            -- that on Vanilla is USUALLY post-Vanilla content the Era client
             -- can't learn (TBC Crystal Throat Lozenge spell 30047, Cata
-            -- Smoked Redgill 470370, SoD/Anniversary Prowler Steak 1225758,
-            -- etc.). Belt-and-suspenders to the requiredSkill cap below,
-            -- which only catches reqSkill > 300; low-skill TBC recipes
-            -- slip past that check.
-            skip = true
-        elseif data.requiredSkill and data.requiredSkill > clientMaxSkill then
+            -- Smoked Redgill 470370, SoD/Anniversary Prowler Steak 1225758).
+            --
+            -- BUT a handful of legitimate late-Vanilla recipes (AQ/Naxx-era,
+            -- e.g. Dirge's Kickin' Chimaerok Chops spell 25659 / item 21025)
+            -- have IDs above 25000 too. So only skip when the recipe genuinely
+            -- isn't on THIS client — i.e. neither its scroll item nor its
+            -- crafted item exists in the client's item table. GetItemInfoInstant
+            -- is synchronous and returns nil for items the client doesn't know,
+            -- so a real Era recipe (items present) is kept while true
+            -- post-Vanilla content (items absent) is still hidden.
+            local existsHere = GetItemInfoInstant and (
+                (data.itemId        and GetItemInfoInstant(data.itemId)) or
+                (data.craftedItemId and GetItemInfoInstant(data.craftedItemId)))
+            if not existsHere then
+                skip = true
+            end
+        elseif (not libData) and data.requiredSkill and data.requiredSkill > clientMaxSkill then
             -- Recipe is from a future expansion the current client can't
             -- support. Hide it; the player will see it once they're on a
             -- later TOC variant.
@@ -353,11 +371,11 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly)
             skip = true
         elseif data.season then
             skip = true
-        elseif knownByChar(spellId) then
+        elseif (not showAll) and knownByChar(spellId) then
             skip = true
-        elseif data.teaches and data.teaches ~= spellId and knownByChar(data.teaches) then
+        elseif (not showAll) and data.teaches and data.teaches ~= spellId and knownByChar(data.teaches) then
             skip = true
-        elseif data.craftedItemId and knownByChar(data.craftedItemId) then
+        elseif (not showAll) and data.craftedItemId and knownByChar(data.craftedItemId) then
             -- Fallback when rd.spellId is nil in gdb.recipes — Classic Era's
             -- BuildSpellNameCache walk doesn't enumerate every profession
             -- recipe as a "spell" spellbook item, so the spellNameCache
@@ -460,6 +478,12 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly)
                     -- the sort treat "unknown" as "lowest skill" and bury
                     -- those recipes at the top of the list.
                     requiredSkill = data.requiredSkill,
+                    tiers         = data.difficulty,  -- {orange,yellow,green,grey} skill breakpoints
+                    effect        = data.effect,      -- searchable effect text
+                    known         = knownByChar(spellId)
+                                    or (data.teaches and knownByChar(data.teaches))
+                                    or (data.craftedItemId and knownByChar(data.craftedItemId))
+                                    or false,
                     sources       = srcEntry,
                     sourcesText   = FormatSources(srcEntry, includeTrainer),
                 })
@@ -600,6 +624,7 @@ function MissingRecipesTab:Draw(container)
     search:SetLabel(L["MissingSearchLabel"])
     search:SetWidth(200)
     search:SetText(self._searchText)
+    search:DisableButton(true)
     search:SetCallback("OnTextChanged", function(_w, _e, text)
         self._searchText = text
         if self._searchTimer then self._searchTimer:Cancel() end
@@ -636,6 +661,19 @@ function MissingRecipesTab:Draw(container)
     end)
     AttachWidgetTooltip(learnCb, L["MissingCanLearnOnly"], L["MissingCanLearnOnlyDesc"])
     toolbar:AddChild(learnCb)
+
+    -- "Show All" checkbox — include recipes the character already knows, so the
+    -- list becomes every recipe for the selected profession (known marked ✓).
+    local allCb = AceGUI:Create("CheckBox")
+    allCb:SetLabel(L["MissingShowAll"])
+    allCb:SetValue(self._showAll)
+    allCb:SetWidth(110)
+    allCb:SetCallback("OnValueChanged", function(_w, _e, value)
+        self._showAll = value and true or false
+        self:RefreshList()
+    end)
+    AttachWidgetTooltip(allCb, L["MissingShowAll"], L["MissingShowAllDesc"])
+    toolbar:AddChild(allCb)
 
     -- Scan AH button — kicks off a throttled scan over the currently-displayed
     -- missing-recipes list. After completion, rows whose recipe scroll has
@@ -800,9 +838,8 @@ function MissingRecipesTab:BuildPool(parent)
         -- right-justified values align with the column header above it.
         local skillLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         skillLbl:SetPoint("LEFT", nameLbl, "RIGHT", -1, 0)
-        skillLbl:SetWidth(40)
-        skillLbl:SetJustifyH("RIGHT")
-        skillLbl:SetTextColor(0.9, 0.9, 0.9)
+        skillLbl:SetWidth(104)
+        skillLbl:SetJustifyH("LEFT")
         f.skillLbl = skillLbl
 
         -- 16px gap from the skill column matches the header's 4 + 8 spacer +
@@ -1056,13 +1093,17 @@ function MissingRecipesTab:UpdateVirtualRows()
                     color = string.format("ff%02x%02x%02x", r * 255, g * 255, b * 255)
                 end
             end
-            f.nameLbl:SetText(color and ("|c" .. color .. displayName .. "|r") or displayName)
+            local nmText = color and ("|c" .. color .. displayName .. "|r") or displayName
+            if entry.known then
+                -- Show All marks recipes the character already knows with a check.
+                nmText = "|TInterface\\Buttons\\UI-CheckBox-Check:0|t " .. nmText
+            end
+            f.nameLbl:SetText(nmText)
 
-            -- "-" surfaces the data gap when no authoritative source (recipe-
-            -- scroll RequiredSkillRank or trainer SQL ReqSkillRank) supplied
-            -- a value; lets the user / maintainer spot recipes whose
-            -- requirement still needs filling in from emulator data.
-            f.skillLbl:SetText(entry.requiredSkill and tostring(entry.requiredSkill) or "-")
+            -- Skill column: the recipe's authoritative difficulty breakpoints
+            -- (orange→yellow→green→grey). Pattern-recipe orange is corrected in
+            -- the data pipeline, so this just colours the shipped values.
+            f.skillLbl:SetText(addon.FormatSkillTiers(entry.tiers, entry.requiredSkill))
             f.srcLbl:SetText(entry.sourcesText or "")
 
             -- [Bank] button: show only when TOGBankClassic reports stock for
@@ -1134,7 +1175,7 @@ function MissingRecipesTab:FillList()
         return
     end
 
-    local fullList = BuildMissingList(self._charKey, self._profId, self._includeTrainer, self._canLearnOnly)
+    local fullList = BuildMissingList(self._charKey, self._profId, self._includeTrainer, self._canLearnOnly, self._showAll)
 
     -- Apply search filter using GetItemInfo — its first return IS the item
     -- name (string). NOT GetItemInfoInstant (whose first return is the
@@ -1158,7 +1199,11 @@ function MissingRecipesTab:FillList()
             -- only by a trainer.
             local name = (entry.itemId and GetItemInfo and GetItemInfo(entry.itemId))
                          or (GetSpellInfo and GetSpellInfo(entry.spellId))
-            if type(name) == "string" and name:lower():find(filter, 1, true) then
+            local nameHit = type(name) == "string" and name:lower():find(filter, 1, true)
+            -- Also match the effect text ("+5 Weapon Damage", "+12 Agility")
+            -- so e.g. "5 damage" / "agility" find the right recipes.
+            local effHit = entry.effect and entry.effect:lower():find(filter, 1, true)
+            if nameHit or effHit then
                 list[#list + 1] = entry
             end
         end
@@ -1184,7 +1229,12 @@ function MissingRecipesTab:FillList()
     -- mirror the pool row widths in BuildPool; the 8px spacer between
     -- Skill and Sources plus the pool's 16px skill→source gap keeps the
     -- columns visually distinct.
-    local noun = (#list == 1) and L["MissingCountSingular"] or L["MissingCountPlural"]
+    local noun
+    if self._showAll then
+        noun = (#list == 1) and L["MissingCountAllSingular"] or L["MissingCountAllPlural"]
+    else
+        noun = (#list == 1) and L["MissingCountSingular"] or L["MissingCountPlural"]
+    end
     local countText = string.format(L["MissingCountFormat"], #list, noun)
 
     local hdr = AceGUI:Create("SimpleGroup")
@@ -1204,7 +1254,7 @@ function MissingRecipesTab:FillList()
     H("",                    22)
     H(countText,             240, nil,
         L["MissingHdrCountTitle"], L["MissingHdrCountDesc"])
-    H(L["MissingColSkill"],  40, "RIGHT",
+    H(L["MissingColSkill"],  104, "LEFT",
         L["MissingHdrSkillTitle"], L["MissingHdrSkillDesc"])
     H("",                    16)  -- 8 + 8 nudge so Sources header sits over its data column
     H(L["MissingColSource"], 180, nil,

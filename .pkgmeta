@@ -14,6 +14,7 @@ required-dependencies:
   - acecommqueue
   - versioncheck
   - deltasync
+  - professiondb
 
 optional-dependencies:
   - togbankclassic

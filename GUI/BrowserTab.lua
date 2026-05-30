@@ -71,6 +71,13 @@ end
 -- IDs line always fires (gated on the user's tooltipShowIds setting).
 local function AppendBrandTooltipLines(entry)
     if not entry then return end
+    -- Enriched effect text ("+5 Weapon Damage", "+12 Agility", "Mining") from
+    -- the authoritative recipeDB. Shown in green right under the recipe name —
+    -- crucial for guild recipes the local client can't resolve natively (the
+    -- custom/fallback name-only tooltip would otherwise carry no detail).
+    if entry.effect and entry.effect ~= "" then
+        GameTooltip:AddLine(entry.effect, 0.4, 1, 0.4, true)
+    end
     -- Crafters line (only meaningful for item-keyed recipes).
     if not entry.isSpell and type(entry.id) == "number" and addon.Tooltip.AppendCrafters then
         addon.Tooltip.AppendCrafters(GameTooltip, entry.id)
@@ -271,6 +278,12 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
         local meta = addon.recipeDB and addon.recipeDB[thisProfId]
                                     and addon.recipeDB[thisProfId][recipeId]
         if not meta then return false end
+        -- LibProfessionDB data is already point-in-time per game version, so the
+        -- cross-expansion gates below (which only existed to filter the old
+        -- all-version merged union) are obsolete and would mis-fire — e.g. the
+        -- spellId>25000 heuristic would wrongly hide legitimate high-ID Vanilla
+        -- recipes. With version-scoped data, every loaded recipe belongs here.
+        if addon.recipeDBFromLib then return true end
         if meta.minExpansion and meta.minExpansion > clientExp then return false end
         if (not meta.minExpansion) and clientExp == 1 and recipeId > 25000 then return false end
         if meta.requiredSkill and meta.requiredSkill > clientMaxSkill then return false end
@@ -374,13 +387,19 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
             -- entries from the universal shipped DB.
             if viewKeep and profMetaDB and profMetaDB[recipeId]
                and passesClientGate(thisProfId, recipeId) then
-                local name = addon:GetRecipeName(thisProfId, recipeId)
-                if filter == "" or (name:lower()):find(filter, 1, true) then
+                local name   = addon:GetRecipeName(thisProfId, recipeId)
+                local effect = profMetaDB[recipeId].effect  -- enriched effect text
+                -- Match the recipe name OR its effect text ("+5 Weapon Damage",
+                -- "+12 Agility"), so e.g. "5 damage" / "agility" find the recipe.
+                if filter == ""
+                   or name:lower():find(filter, 1, true)
+                   or (effect and effect:lower():find(filter, 1, true)) then
                     local craftedItemId = addon:GetRecipeCraftedItemId(thisProfId, recipeId)
                     local itemLink      = craftedItemId and select(2, GetItemInfo(craftedItemId))
                     table.insert(list, {
                         id            = recipeId,
                         name          = name,
+                        effect        = effect,
                         profName      = profName,
                         profIconId    = profIconId,
                         icon          = addon:GetRecipeIcon(thisProfId, recipeId),
@@ -482,12 +501,12 @@ function BrowserTab:Draw(container)
     search:SetLabel("|c" .. (addon.BrandColor or "ffFF8000") .. L["SearchPlaceholder"] .. "|r")
     search:SetWidth(220)
     search:SetText(self._searchText)
+    search:DisableButton(true)
     search:SetCallback("OnTextChanged", function(_w, _e, text)
         self._searchText = text
         self:RefreshList()
     end)
-    addon.GUI.AttachTooltip(search, "Search Recipes",
-        "Type to filter recipes by name.")
+    addon.GUI.AttachTooltip(search, L["SearchPlaceholder"], L["CraftSearchDesc"])
     toolbar:AddChild(search)
 
     local sp2 = AceGUI:Create("Label")

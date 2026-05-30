@@ -73,6 +73,7 @@ local function getTabDefs()
         { value = "browser",   text = L["TabProfessions"]    },
         { value = "cooldowns", text = L["TabCooldowns"]      },
         { value = "missing",   text = L["TabMissingRecipes"] },
+        { value = "crafting",  text = L["TabCrafting"]       },
     }
 end
 
@@ -403,6 +404,7 @@ local _TAB_SIZE_LOOKUP = {
     browser   = function() return addon.BrowserTab        and addon.BrowserTab.WINDOW_SIZE        end,
     cooldowns = function() return addon.CooldownsTab      and addon.CooldownsTab.WINDOW_SIZE      end,
     missing   = function() return addon.MissingRecipesTab and addon.MissingRecipesTab.WINDOW_SIZE end,
+    crafting  = function() return addon.CraftingTab       and addon.CraftingTab.WINDOW_SIZE       end,
 }
 
 function MainWindow:ApplyTabSize(tabKey)
@@ -540,6 +542,10 @@ function MainWindow:DrawTab(group, container)
     elseif group == "missing" then
         if addon.MissingRecipesTab then
             addon.MissingRecipesTab:Draw(container)
+        end
+    elseif group == "crafting" then
+        if addon.CraftingTab then
+            addon.CraftingTab:Draw(container)
         end
     end
 end

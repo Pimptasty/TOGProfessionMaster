@@ -47,16 +47,24 @@ PROF_NAMES = {
 }
 
 
-def fetch_csv(table: str, build: str, refresh: bool = False) -> list[dict]:
+def fetch_csv(table: str, build: str, refresh: bool = False,
+              locale: str | None = None) -> list[dict]:
     """Download a wago.tools CSV table and return parsed rows as dicts.
 
-    Cached under tools/wago_cache/<build>__<table>.csv so repeat runs are
-    instant. Raises on HTTP errors (no fallback — we want to know).
+    Cached under tools/wago_cache/<build>__<table>[__<locale>].csv so repeat
+    runs are instant. enUS (the wago default) uses the un-suffixed cache name,
+    so existing caches keep working and aren't re-downloaded. Other locales add
+    &locale=<locale> to the request and a __<locale> cache suffix. Raises on
+    HTTP errors (no fallback — we want to know).
     """
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache = CACHE_DIR / f"{build}__{table}.csv"
+    loc = locale if (locale and locale != "enUS") else None
+    suffix = f"__{loc}" if loc else ""
+    cache = CACHE_DIR / f"{build}__{table}{suffix}.csv"
     if not cache.exists() or refresh:
         url = f"https://wago.tools/db2/{table}/csv?build={build}"
+        if loc:
+            url += f"&locale={loc}"
         print(f"  fetching {url}", file=sys.stderr)
         req = urllib.request.Request(url, headers={"User-Agent": "TOGPM/0.5.0"})
         with urllib.request.urlopen(req, timeout=60) as resp:

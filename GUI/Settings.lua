@@ -222,6 +222,16 @@ local OPTIONS = {
             order = 19.7,
         },
 
+        useAuctionator = {
+            name  = L["SettingsUseAuctionator"],
+            desc  = L["SettingsUseAuctionatorDesc"],
+            type  = "toggle",
+            width = "full",
+            order = 19.75,
+            get   = function() return Ace.db.profile.useAuctionator == true end,
+            set   = function(_, val) Ace.db.profile.useAuctionator = val and true or false end,
+        },
+
         ahScanDelay = {
             name  = L["SettingsAHScanDelay"],
             desc  = L["SettingsAHScanDelayDesc"],

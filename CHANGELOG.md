@@ -26,6 +26,12 @@
 
 - **Enriched, searchable effect text.** Enchanting recipes carry their effect (`+5 Weapon Damage`, `+1 All Stats`, …). The Crafting and Professions tab searches now match recipe **name OR effect** (so `5 damage`, `agility`, `mining` all find recipes), and both tabs' tooltips show the effect. Search boxes lost the non-functional AceGUI "okay" button and got clearer tooltips. Location: [GUI/CraftingTab.lua](GUI/CraftingTab.lua), [GUI/BrowserTab.lua](GUI/BrowserTab.lua).
 
+### Localization
+
+- **Crafting tab is fully localized.** Every crafting-tab string is a locale key (no hardcoded text), defined in `Locale/enUS.lua` and present in all 15 shipped locale files so translators can localize in place — English fallback until then. The per-reagent **Cost** column also right-aligns cleanly (coin strings no longer wrap to a second line). Location: [Locale/](Locale/), [GUI/CraftingTab.lua](GUI/CraftingTab.lua).
+
+- **Dutch (`nlNL`) native-speaker review.** Reviewed by a Dutch speaker: game-mechanic terms (profession / reagent / Auction House / cooldown names, etc.) kept in English, "watch" → "in de gaten houden", "characters" → "personages". Location: [Locale/nlNL.lua](Locale/nlNL.lua).
+
 ---
 
 ## [v0.7.6] (2026-05-29) — GetTradeSkillLine signature bug — every Classic scan was writing maxRank as skillRank

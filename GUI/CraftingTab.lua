@@ -535,7 +535,7 @@ local DCTRL_W    = 230     -- right-hand controls column width
 local DREAG_H    = 13      -- reagent row height (tight, ~ font height)
 local DREAG_TOP  = 42      -- y-offset of the first reagent row from the panel top
 local DCTRL_BOT  = 86      -- controls block bottom offset (queue button bottom)
-local DREAG_COST_W = 70    -- per-reagent cost column width
+local DREAG_COST_W = 96    -- per-reagent cost column width (fits "NNNg NNs NNc" coin string)
 
 local function rawTip(frame, getTitle, getDesc)
     frame:SetScript("OnEnter", function()
@@ -705,6 +705,7 @@ function CraftingTab:BuildDetailPanel(parent)
         rcost:SetPoint("RIGHT", bankBtn, "LEFT", -4, 0)
         rcost:SetWidth(DREAG_COST_W)
         rcost:SetJustifyH("RIGHT")
+        rcost:SetWordWrap(false)   -- keep coin strings on one right-aligned line (no wrap into row 2)
         row.cost = rcost
 
         local nm = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")

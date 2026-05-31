@@ -22,7 +22,14 @@ local L      = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 local CraftingTab = {}
 addon.CraftingTab = CraftingTab
 
-CraftingTab.WINDOW_SIZE = { width = 820, height = 600, locked = true }
+-- Resizable (shares the saved "resizable" size with the Browser tab via
+-- MainWindow). minWidth holds the known-good width so the recipe columns + the
+-- fixed-width queue panel never overlap; height can shrink a little and grow
+-- freely. The layout itself is responsive — AnchorAll pins the detail panel to
+-- the bottom edge, the queue panel to the right edge, and lets the recipe list
+-- fill the rest, so it reflows to any size (re-run via container.LayoutFinished
+-- on the AceGUI resize cascade + the WINDOW_RESIZED handler below).
+CraftingTab.WINDOW_SIZE = { minWidth = 820, minHeight = 540 }
 
 -- Recipe list geometry — shared by the header and the row pool so columns line
 -- up. Offsets are measured from the left edge of both (header frame and the
@@ -115,6 +122,12 @@ function CraftingTab:Draw(container)
     profDD:SetCallback("OnValueChanged", function(_w, _e, name)
         setSavedProf(name)
         if not (info and info.name == name) then
+            -- Queue is kept across profession switches by design (bounce between
+            -- professions toward one goal). Opt-in setting clears it on switch.
+            if Ace.db and Ace.db.profile and Ace.db.profile.clearQueueOnProfSwitch
+               and addon.CraftQueue then
+                addon.CraftQueue:Clear()
+            end
             local p = findProf(professions, name)
             if Engine then Engine:OpenProfession(p and p.castName or name) end
         end
@@ -464,12 +477,18 @@ end
 local function passesFilter(self, e)
     if self._haveOnly and (e.num or 0) <= 0 then return false end
     if self._search and self._search ~= "" then
-        local q = self._search:lower()
-        -- Match the recipe name OR the effect text ("+5 Weapon Damage",
-        -- "+12 Agility"), so "5 damage" / "agility" find the right recipes.
-        local hit = e.name:lower():find(q, 1, true)
-                 or (e.effect and e.effect:lower():find(q, 1, true))
-        if not hit then return false end
+        -- Search the recipe name AND its effect text together, term by term:
+        -- every whitespace-separated term in the query must appear somewhere in
+        -- "name effect". Order-independent matching is important because effect
+        -- text is formatted stat-first ("Agility +5", "Weapon Damage +5") — a
+        -- single whole-string match would miss the natural "5 agi" / "5 agility"
+        -- / "agility 5", since "5 agi" isn't a substring of "agility +5". Tokens
+        -- fix that: "5" and "agi" each appear, in any order.
+        local hay = e.name:lower()
+        if e.effect then hay = hay .. " " .. e.effect:lower() end
+        for term in self._search:lower():gmatch("%S+") do
+            if not hay:find(term, 1, true) then return false end
+        end
     end
     return true
 end
@@ -637,10 +656,11 @@ function CraftingTab:BuildDetailPanel(parent)
 
     -- "Cost" column header — right edge aligns with the per-reagent cost values,
     -- which sit just left of the [Bank]/[AH] buttons. The buttons/count occupy a
-    -- fixed 130px on the right of each row (bank 44 + ah 30 + count 42 + gaps),
-    -- so the cost column's right edge is the row's right inset (DCTRL_W+14) + 130.
+    -- fixed 148px on the right of each row (bank 44 + ah 30 + count 60 + gaps) —
+    -- the count column is 60 wide to fit the bank/bags/need triple — so the cost
+    -- column's right edge is the row's right inset (DCTRL_W+14) + 148.
     local costHdr = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    costHdr:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(DCTRL_W + 144), -26)
+    costHdr:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(DCTRL_W + 162), -26)
     costHdr:SetWidth(DREAG_COST_W)
     costHdr:SetJustifyH("RIGHT")
     costHdr:SetText(Brand(L["CraftColCostHdr"]))
@@ -660,10 +680,13 @@ function CraftingTab:BuildDetailPanel(parent)
         ri:SetTexCoord(0.07, 0.93, 0.07, 0.93)
         row.icon = ri
 
+        -- Count column shows bank/bags/need (three values), so it's wider than a
+        -- plain have/need pair. Kept in sync with the costHdr offset above.
         local cnt = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         cnt:SetPoint("RIGHT", row, "RIGHT", -2, 0)
-        cnt:SetWidth(42)
+        cnt:SetWidth(60)
         cnt:SetJustifyH("RIGHT")
+        cnt:SetWordWrap(false)
         row.cnt = cnt
 
         -- [AH] / [Bank] just left of the count (no header, compact). Shown only
@@ -843,13 +866,21 @@ function CraftingTab:RefreshDetail()
         local r   = reagents[i]
         if r then
             shown = i
-            local enough = (r.have or 0) >= (r.need or 0)
+            -- Count column: bank / bags / need. Bags is live (GetItemCount);
+            -- bank is the cached snapshot from the player's last bank visit
+            -- (ReagentWatch persists it on BANKFRAME_CLOSED). "Enough" — and the
+            -- Missing-Materials flag — now counts bank + bags together, so a
+            -- reagent you have stashed in the bank no longer reads as missing.
+            local need = r.need or 0
+            local bags = (r.itemId and GetItemCount and GetItemCount(r.itemId)) or r.have or 0
+            local bankq = (r.itemId and addon.ReagentWatch and addon.ReagentWatch:GetBankCount(r.itemId)) or 0
+            local enough = (bags + bankq) >= need
             if not enough then missing = true end
             row._link = r.link
             row.icon:SetTexture(r.texture or 134400)
             row.nm:SetText(r.name or "?")
             row.cnt:SetText(Color(enough and "ff40c040" or "ffff4040",
-                ("%d/%d"):format(r.have or 0, r.need or 0)))
+                ("%d/%d/%d"):format(bankq, bags, need)))
 
             -- Per-reagent line cost: unit price × needed. "—" when unpriced.
             if addon.Price and r.itemId then
@@ -1173,5 +1204,18 @@ end
 if addon.RegisterCallback then
     addon.RegisterCallback(CraftingTab, "AH_SCAN_COMPLETE", function()
         if addon.CraftingTab then addon.CraftingTab:OnLiveRefresh() end
+    end)
+
+    -- Window resized: the panels re-anchor automatically (they're pinned to the
+    -- container edges), but the virtual-scroll row pool sizes itself to the
+    -- visible height, so recompute it once the resize settles. AnchorAll is a
+    -- cheap, idempotent re-pin done first as a belt-and-suspenders alongside the
+    -- LayoutFinished cascade. MainWindow fires this debounced (~150ms).
+    addon.RegisterCallback(CraftingTab, "WINDOW_RESIZED", function()
+        local mw = addon.MainWindow
+        if mw and mw.frame and mw.activeTab == "crafting" then
+            if CraftingTab._anchorAll then CraftingTab._anchorAll() end
+            CraftingTab:UpdateVirtualRows()
+        end
     end)
 end

@@ -126,6 +126,27 @@ local OPTIONS = {
             set   = function(_, val) Ace.db.profile.mailReadyOnly = val end,
         },
 
+        -- ---- Crafting ------------------------------------------------------
+        craftingHeader = {
+            name  = L["SettingsCraftingHeader"],
+            type  = "header",
+            order = 12,
+        },
+
+        -- The craft queue is deliberately KEPT when you switch the Crafting-tab
+        -- profession dropdown (so you can bounce between professions toward one
+        -- goal). This opt-in flips that to "clear on switch" for players who
+        -- want a clean queue per profession. Off by default.
+        clearQueueOnProfSwitch = {
+            name  = L["SettingsClearQueueOnProfSwitch"],
+            desc  = L["SettingsClearQueueOnProfSwitchDesc"],
+            type  = "toggle",
+            width = "full",
+            order = 12.1,
+            get   = function() return Ace.db.profile.clearQueueOnProfSwitch == true end,
+            set   = function(_, val) Ace.db.profile.clearQueueOnProfSwitch = val and true or false end,
+        },
+
         -- ---- Crafter Alerts ------------------------------------------------
         alertsHeader = {
             name  = L["SettingsAlertsHeader"],

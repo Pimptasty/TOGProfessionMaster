@@ -135,8 +135,26 @@ function CraftQueue:CraftNext()
     local count = math.min(e.qty, entry.num or e.qty)
     if count < 1 then return end
 
-    self._active = { recipeId = e.recipeId, profId = e.profId, remaining = count }
+    -- Engine:Craft sets the active-batch tracker (CraftQueue:TrackCraft) for us,
+    -- so both Craft Next and the manual Craft button decrement the queue the
+    -- same way. No need to set self._active here.
     Engine:Craft(e.recipeId, entry.index, count)
+end
+
+-- Begin tracking a craft initiated through CraftingEngine:Craft (either the
+-- queue's Craft Next or the detail-panel Craft button). `count` is how many
+-- UNIT_SPELLCAST_SUCCEEDED events to expect for this batch (1 on the Vanilla/TBC
+-- Craft window, where DoCraft makes a single item). Each success then decrements
+-- the matching queue entry — if the recipe isn't queued, the success is simply
+-- ignored once the batch finishes.
+function CraftQueue:TrackCraft(recipeId, count)
+    local Engine = addon.CraftingEngine
+    local info   = Engine and Engine:GetOpenInfo()
+    self._active = {
+        recipeId  = recipeId,
+        profId    = info and info.profId,
+        remaining = math.max(1, math.floor(count or 1)),
+    }
 end
 
 -- ---------------------------------------------------------------------------

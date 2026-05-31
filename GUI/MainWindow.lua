@@ -181,7 +181,12 @@ function MainWindow:Open(tabKey)
     -- doesn't overwrite Browser's user-chosen size).
     local _resizeTimer
     f.frame:HookScript("OnSizeChanged", function(_self, w, h)
-        if self.activeTab == "browser" and w and h
+        -- Persist the user-chosen size for the resizable tabs (Browser AND
+        -- Crafting). Both share the one browserWidth/browserHeight slot — the
+        -- locked tabs never reach here (suppressed via _suppressBrowserSize
+        -- during their programmatic snap), so a resizable tab's size is never
+        -- clobbered by a locked tab's dimensions.
+        if (self.activeTab == "browser" or self.activeTab == "crafting") and w and h
            and not self._suppressBrowserSize then
             frames.mainWindow.browserWidth  = math.floor(w + 0.5)
             frames.mainWindow.browserHeight = math.floor(h + 0.5)

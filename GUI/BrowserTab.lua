@@ -248,6 +248,23 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
     local showAll = opts and opts.showAll or false
     local list    = {}
 
+    -- Term-by-term search: every whitespace-separated term in the query must
+    -- appear somewhere in "name effect", order-independent. Effect text is
+    -- stat-first ("Agility +5"), so a single whole-string match would miss the
+    -- natural "5 agi" / "5 agility" (it isn't a substring of "agility +5"). Tokens
+    -- fix that — "5" and "agi" each match in any order. Returns true on empty query.
+    local _terms = {}
+    for t in filter:gmatch("%S+") do _terms[#_terms + 1] = t end
+    local function searchMatches(name, effect)
+        if #_terms == 0 then return true end
+        local hay = (name or ""):lower()
+        if effect then hay = hay .. " " .. effect:lower() end
+        for _, term in ipairs(_terms) do
+            if not hay:find(term, 1, true) then return false end
+        end
+        return true
+    end
+
     -- v0.7.5: per-client expansion cap. The shipped recipeDB is a universal
     -- union of every recipe across every expansion (wago.tools' MoP build
     -- inherits Vanilla / TBC / Wrath / Cata content), so an unfiltered
@@ -389,11 +406,10 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
                and passesClientGate(thisProfId, recipeId) then
                 local name   = addon:GetRecipeName(thisProfId, recipeId)
                 local effect = profMetaDB[recipeId].effect  -- enriched effect text
-                -- Match the recipe name OR its effect text ("+5 Weapon Damage",
-                -- "+12 Agility"), so e.g. "5 damage" / "agility" find the recipe.
-                if filter == ""
-                   or name:lower():find(filter, 1, true)
-                   or (effect and effect:lower():find(filter, 1, true)) then
+                -- Match name + effect term-by-term (see searchMatches above), so
+                -- e.g. "5 damage", "agility", "5 agi" all find the right recipe
+                -- regardless of the stat-first effect-text wording.
+                if searchMatches(name, effect) then
                     local craftedItemId = addon:GetRecipeCraftedItemId(thisProfId, recipeId)
                     local itemLink      = craftedItemId and select(2, GetItemInfo(craftedItemId))
                     table.insert(list, {

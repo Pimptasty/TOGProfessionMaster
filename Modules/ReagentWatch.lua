@@ -119,6 +119,15 @@ end
 RW._ScanPersonalBank = ScanPersonalBank
 RW._ScanPersonalMail = ScanPersonalMail
 
+--- Cached personal-bank count for one item id (0 if none / never scanned).
+-- This is the last snapshot taken when the player closed their bank
+-- (BANKFRAME_CLOSED), so it persists between sessions but can be stale until
+-- the next bank visit. Used by the Crafting tab's bank/bags/need reagent column.
+function RW:GetBankCount(itemId)
+    local bc = Ace.db and Ace.db.char and Ace.db.char.bankCounts
+    return (bc and itemId and bc[itemId]) or 0
+end
+
 -- ---------------------------------------------------------------------------
 -- 9.3 — Reagent Watch
 -- ---------------------------------------------------------------------------

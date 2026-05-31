@@ -58,6 +58,7 @@ Engine._autoOpened    = false   -- WE opened the main window for this takeover
 Engine._showingDefault = false  -- Blizzard's frame is the active view this session
 Engine._toggleBtn     = nil     -- "back to TOGPM" button injected on Blizzard's frame
 Engine._suppressUpdate = false  -- guard: ignore TRADE_SKILL_UPDATE while we mutate the list
+Engine._closePending  = false   -- a debounced teardown is scheduled (see ScheduleClose)
 
 -- ---------------------------------------------------------------------------
 -- Takeover setting (default ON). Persisted per-character alongside the other
@@ -241,6 +242,26 @@ local function linkColour(link)
     return link and link:match("|c(%x%x%x%x%x%x%x%x)") or nil
 end
 
+-- Craftable count for a Craft-window recipe (Vanilla/TBC Enchanting), derived
+-- from reagents. GetCraftInfo's numAvailable is unreliable on the Craft API — it
+-- reads 0 for enchants even with reagents in hand — which is why TSM ignores it
+-- entirely and computes the count from mats (min over floor(have/need)); we do
+-- the same. The enchanting ROD is a spell-focus (GetCraftSpellFocus), NOT a
+-- reagent, so it never appears here and can't skew the count. Falls back to the
+-- API's numAvailable if the reagent reads come back empty (defensive).
+local function craftWindowCraftable(index, numAvailable)
+    local n = GetCraftNumReagents and GetCraftNumReagents(index) or 0
+    if n == 0 then return numAvailable or 0 end
+    local num = math.huge
+    for j = 1, n do
+        local _, _, need, have = GetCraftReagentInfo(index, j)
+        if need and need > 0 then
+            num = math.min(num, math.floor((have or 0) / need))
+        end
+    end
+    return (num == math.huge) and (numAvailable or 0) or num
+end
+
 function Engine:GetRecipeList()
     if not self._sessionOpen then return {} end
     local out = {}
@@ -260,7 +281,7 @@ function Engine:GetRecipeList()
                     local meta = recipeMeta(profId, rid)
                     out[#out + 1] = {
                         kind = "recipe", index = i, name = name,
-                        difficulty = ctype, num = numAvailable or 0, recipeId = rid,
+                        difficulty = ctype, num = craftWindowCraftable(i, numAvailable), recipeId = rid,
                         icon = GetCraftIcon and GetCraftIcon(i) or nil,
                         link = link, color = linkColour(link),
                         requiredSkill = meta and meta.requiredSkill or nil,
@@ -367,6 +388,16 @@ function Engine:Craft(recipeId, index, qty)
     local liveIndex = self:ResolveIndex(recipeId) or index
     if not liveIndex then return end
     qty = math.max(1, qty or 1)
+    -- Tell the queue what we're about to craft so a queued recipe decrements as
+    -- it's made — through THIS one chokepoint, so it works whether the craft was
+    -- started by Craft Next OR the detail-panel Craft button (previously only
+    -- Craft Next tracked, so manual crafts left finished items stuck in queue).
+    -- The Craft window (Enchanting) makes exactly one per DoCraft — no repeat
+    -- arg — so the queue should expect a single success there, not `qty`.
+    local expected = self._isCraftWindow and 1 or qty
+    if addon.CraftQueue and addon.CraftQueue.TrackCraft then
+        addon.CraftQueue:TrackCraft(recipeId, expected)
+    end
     if self._isCraftWindow then
         if DoCraft then DoCraft(liveIndex) end
     else
@@ -401,6 +432,7 @@ end
 
 function Engine:OnEvent(event)
     if event == "TRADE_SKILL_SHOW" then
+        self._closePending = false   -- (re)opening: cancel any debounced teardown
         self._tradeOpen = true
         -- Hand off from the Craft window if it was open (mutual exclusion).
         -- CloseCraft fires CRAFT_CLOSE, but _tradeOpen is already true so the
@@ -410,6 +442,7 @@ function Engine:OnEvent(event)
         self:OnProfessionShow()
 
     elseif event == "CRAFT_SHOW" then
+        self._closePending = false
         self._craftOpen = true
         if CloseTradeSkill then CloseTradeSkill() end
         self._isCraftWindow = true
@@ -417,11 +450,11 @@ function Engine:OnEvent(event)
 
     elseif event == "TRADE_SKILL_CLOSE" then
         self._tradeOpen = false
-        if not self._craftOpen then self:OnProfessionClose() end
+        self:ScheduleClose()
 
     elseif event == "CRAFT_CLOSE" then
         self._craftOpen = false
-        if not self._tradeOpen then self:OnProfessionClose() end
+        self:ScheduleClose()
 
     elseif event == "TRADE_SKILL_UPDATE" or event == "CRAFT_UPDATE" then
         -- Skill rank / craftable counts may have changed (e.g. after a craft).
@@ -429,6 +462,31 @@ function Engine:OnEvent(event)
         -- _suppressUpdate guard breaks the expand-all → UPDATE → redraw →
         -- expand-all loop in GetRecipeList.
         if self._sessionOpen and not self._suppressUpdate then self:FireLiveUpdate() end
+    end
+end
+
+-- Debounced teardown. A profession SWITCH (and rival reskin addons such as
+-- Skillet that also hijack the trade/craft window) fire a *_CLOSE immediately
+-- followed by a *_SHOW for the new profession. Tearing down synchronously on the
+-- CLOSE collapsed our window in that gap — users running Skillet alongside TOGPM
+-- reported "switching professions closes the TOGPM window," and disabling Skillet
+-- made it go away. So we wait a short grace period and only tear down if BOTH
+-- windows are still closed (a real walk-away, not a handoff). The SHOW handler
+-- clears _closePending; the both-closed guard is the real safety net — it also
+-- covers the mutual-exclusion CloseTradeSkill / CloseCraft we fire ourselves
+-- (which re-sets the flag but leaves the other window open, so no teardown).
+function Engine:ScheduleClose()
+    self._closePending = true
+    local function check()
+        if self._closePending and not self._tradeOpen and not self._craftOpen then
+            self._closePending = false
+            self:OnProfessionClose()
+        end
+    end
+    if C_Timer and C_Timer.After then
+        C_Timer.After(0.2, check)
+    else
+        check()  -- no timer API (defensive): preserve the old immediate close
     end
 end
 

@@ -1,5 +1,31 @@
 # TOG Profession Master Changelog
 
+## [v0.8.1] (2026-05-31) — Crafting tab: Enchanting craft, queue completion, resizable window, bank counts & smarter search
+
+> Reported from **Classic Era Hardcore** play-testing. The Enchanting / craft-queue fixes could not be verified locally (no enchanter on the test account) — pushed for community testing.
+
+### New Features
+
+- **Crafting tab reagents now show bank / bags / needed.** The Missing Materials column previously showed only bags-on-hand against the needed amount; each reagent now reads `bank / bags / needed`. **bank** is the count from your last visit to your personal bank — a cached snapshot persisted between sessions (it reuses the existing Reagent Watch bank scan taken on `BANKFRAME_CLOSED`), so it can be slightly stale until your next bank visit; **bags** is live. A reagent you've stashed in the bank no longer reads as missing — the row turns red only when **bank + bags together** fall short of what's needed. Location: `GUI/CraftingTab.lua`, `Modules/ReagentWatch.lua`.
+
+- **Optional: clear the craft queue when switching professions.** The queue is intentionally **kept** across profession switches (so you can bounce between professions toward a single goal without rebuilding it). A new **Settings → Crafting** toggle — *"Clear craft queue when switching professions"*, **off by default** — empties the queue each time you change the Crafting tab's profession dropdown, for players who prefer a clean slate per profession. Location: `GUI/Settings.lua`, `GUI/CraftingTab.lua`.
+
+### Bug Fixes
+
+- **Enchanting (and any Vanilla/TBC Craft-window profession) couldn't be crafted from the Crafting tab — the Craft button stayed greyed out, the Have-Materials filter hid every enchant, and the craftable-count column read blank.** Root cause: the tab gated craftability on `GetCraftInfo`'s `numAvailable`, which is **unreliable on the classic Craft API** — it returns 0 for enchants even with reagents in hand (item-making professions like Alchemy were fine, which is why the bug looked Enchanting-specific). Confirmed against TradeSkillMaster, which ignores `numAvailable` entirely and derives the craftable count from materials. Fix: `CraftingEngine:GetRecipeList` now computes `num` for Craft-window recipes from reagents (`min(floor(have/need))`, matching TSM's `GetNumCraftable`), so the Craft button enables when you hold the mats, the Have-Materials filter keeps those enchants, and the count column is correct — all from one corrected number. The enchanting rod is a spell-focus (not a reagent), so it never skews the count. Trade-skill professions keep their reliable `numAvailable` and are unchanged. Location: `Modules/Crafting/CraftingEngine.lua`.
+
+- **Switching professions via the Crafting-tab dropdown closed the TOGPM window when another profession addon (e.g. Skillet) was loaded.** Root cause: two addons both hijack the trade/craft window, so a profession switch fires a window `CLOSE` immediately followed by a `SHOW`, and we tore down synchronously on the `CLOSE` — collapsing our window in that gap before the `SHOW` reopened it (disabling Skillet made it stop). Fix: the teardown is now debounced (`CraftingEngine:ScheduleClose`) — on a `CLOSE` we wait 0.2s and only fold the window up if **both** the trade-skill and craft sessions are still closed, so a profession-switch handoff (or a rival addon's event churn) can no longer close us. Location: `Modules/Crafting/CraftingEngine.lua`.
+
+- **Finished crafts didn't always drop off the craft queue.** Two gaps: (1) completion tracking only ran for the queue's **Craft Next** button — crafting a queued recipe with the detail-panel **Craft** button left the made item stuck in the queue, because that path never told the queue a craft had started; (2) on the Vanilla/TBC Craft window (Enchanting), the queue expected one `UNIT_SPELLCAST_SUCCEEDED` per item in the batch even though `DoCraft` makes exactly one item per call, so an enchant entry never counted down to zero. Fix: both craft buttons now route completion tracking through the single `CraftingEngine:Craft` chokepoint (new `CraftQueue:TrackCraft`), and the Craft window registers a single expected success — so a queued recipe decrements as it's made no matter which button started it. Location: `Modules/Crafting/CraftQueue.lua`, `Modules/Crafting/CraftingEngine.lua`.
+
+### Improvements
+
+- **The Crafting tab is now resizable.** It previously opened at a fixed 820×600 with the resize grip removed entirely. It now has a draggable grip (minimum 820×540, no maximum) and the layout reflows to fit: the recipe list grows in both directions while the detail panel stays pinned full-width along the bottom and the queue panel stays pinned to the right. The chosen size is remembered (shared with the Browser tab's resizable size). Reported in-game. Location: `GUI/CraftingTab.lua`, `GUI/MainWindow.lua`.
+
+- **Crafting and Professions search now matches each term independently across name + effect.** Effect text ships stat-first (e.g. `Agility +5`, `Weapon Damage +5`), so the old single-substring match couldn't find natural queries like `5 agi` or `5 agility` — `"5 agi"` simply isn't a substring of `"agility +5"`, which is why an Enchanting search for `5 agi` came back empty even though the effect-search feature was working. Search now splits the query on spaces and requires **every** term to appear somewhere in the recipe's name + effect, in any order, so `5 agi`, `agi 5`, `5 agility`, and `weapon damage` all match regardless of how the effect text is worded. Reported in-game. Location: `GUI/CraftingTab.lua`, `GUI/BrowserTab.lua`.
+
+---
+
 ## [v0.8.0] (2026-05-30) — Crafting tab, cost-to-craft, and the LibProfessionDB data library
 
 > **Heads-up:** this release moves the recipe database into the new standalone **LibProfessionDB** library and depends on it. It cannot load until LibProfessionDB is installed (it's a required dependency in the TOC / `.pkgmeta`), so it must not ship before that library is published.

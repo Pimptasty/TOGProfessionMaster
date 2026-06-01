@@ -71,6 +71,7 @@ L["CraftProfessionDesc"]  = "Choose one of your professions. Selecting it opens 
 L["CraftOpenToView"]      = "Open %s to view and craft its recipes."
 L["CraftOpenButton"]      = "Open %s"
 L["CraftCantOpenInCombat"] = "Can't open a profession while in combat."
+L["CraftEnchantViaBlizzard"] = "Enchants are applied from Blizzard's Craft window (the game blocks addons from doing it for you) — opened it; pick the enchant and click Create there."
 L["CraftQueueTitle"]      = "Queue (%d)"
 L["CraftQueueButton"]     = "Queue"
 L["CraftCraftNext"]       = "Craft Next"

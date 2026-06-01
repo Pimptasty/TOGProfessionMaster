@@ -1,5 +1,15 @@
 # TOG Profession Master Changelog
 
+## [v0.8.3] (2026-06-01) — Enchanting can be cast from the Crafting tab (protected-function fix)
+
+> The `DoCraft` error is gone for certain (we no longer call it); the secure-cast enchant path is pushed for **community testing** — there's no enchanter on the test account to verify it in-game.
+
+### Bug Fixes
+
+- **The `DoCraft` error is gone, and Enchanting should now craft from the Crafting tab.** Root cause of the long-running "can't enchant" bug: `DoCraft` — the Vanilla/TBC Craft API used for Enchanting — is a **protected** function, so an addon calling it from Lua trips `ADDON_ACTION_FORBIDDEN` and the craft is blocked. (That's why *only* Enchanting failed; `DoTradeSkill`, used by every other profession, isn't protected.) Fix — the same technique TradeSkillMaster uses: the **Craft button is now a secure action button** that, for an enchant, runs a `/cast <recipe>` macro. A `/cast` inside a secure macro is allowed, so the enchant casts and you click the target item to apply it — just like Blizzard's own Create button. Trade-skill professions keep the normal Lua craft (with batch quantity) via the button's PreClick. Craft Max / queued enchants still open Blizzard's Create button. Location: `GUI/CraftingTab.lua`, `Modules/Crafting/CraftingEngine.lua`, `Locale/enUS.lua`.
+
+---
+
 ## [v0.8.2] (2026-06-01) — Opt-in AH scan & crafting takeover, SoD recipe filtering, enchant-button fix, consumable buffs
 
 > **Heads-up:** this release adds **LibItemDB** as a required dependency (for consumable buff data). Like LibProfessionDB it must be published on CurseForge before this ships, or installs break on the missing dependency.

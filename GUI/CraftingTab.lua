@@ -770,11 +770,23 @@ function CraftingTab:BuildDetailPanel(parent)
     -- − and + buttons so the row looks full.
     local CR, CW = 12, DCTRL_W - 12
 
-    local craftBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    -- Craft is a SECURE action button so Enchanting can work: the Vanilla/TBC
+    -- Craft API is applied with DoCraft, which is PROTECTED (an addon calling it
+    -- trips ADDON_ACTION_FORBIDDEN). The only way an addon can apply an enchant is
+    -- a /cast in a SECURE macro (TSM does the same). So for the Craft window we
+    -- set a "/cast <recipe>" macro on this button per selection (RefreshDetail) and
+    -- the click casts it securely; for ordinary trade skills the macro is cleared
+    -- and PreClick runs the normal, non-protected Lua craft (DoTradeSkill, which
+    -- also supports batch quantity). PreClick is insecure but runs before the
+    -- secure cast, so the trade-skill path is unaffected.
+    local craftBtn = CreateFrame("Button", "TOGPMCraftButton", panel,
+        "UIPanelButtonTemplate, SecureActionButtonTemplate")
     craftBtn:SetSize(CW, 24)
     craftBtn:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -CR, -34)
     craftBtn:SetText(L["CraftButton"])
-    craftBtn:SetScript("OnClick", function()
+    craftBtn:RegisterForClicks("LeftButtonUp")
+    craftBtn:SetScript("PreClick", function()
+        if CraftingTab._craftIsSecure then return end  -- enchant: the secure /cast macro handles it
         local sel = CraftingTab._dpSel
         if sel and addon.CraftingEngine then
             addon.CraftingEngine:Craft(sel.recipeId, sel.index, CraftingTab._qty or 1)
@@ -895,6 +907,22 @@ function CraftingTab:RefreshDetail()
     local canCraft = (sel.num or 0) > 0
     if self._dpCraft.SetEnabled    then self._dpCraft:SetEnabled(canCraft)    end
     if self._dpCraftMax.SetEnabled then self._dpCraftMax:SetEnabled(canCraft) end
+
+    -- Point the (secure) Craft button at this recipe. Enchanting (Craft window)
+    -- must be cast via a secure /cast macro since Lua DoCraft is protected; the
+    -- recipe name IS the spell name. Trade skills clear the macro and let the
+    -- PreClick do the normal Lua craft. SetAttribute is forbidden in combat, so
+    -- guard it (you can't craft in combat anyway).
+    self._craftIsSecure = (Engine._isCraftWindow and sel.name and sel.name ~= "") and true or false
+    if self._dpCraft.SetAttribute and not (InCombatLockdown and InCombatLockdown()) then
+        if self._craftIsSecure then
+            self._dpCraft:SetAttribute("type", "macro")
+            self._dpCraft:SetAttribute("macrotext", "/cast " .. sel.name)
+        else
+            self._dpCraft:SetAttribute("type", nil)
+            self._dpCraft:SetAttribute("macrotext", nil)
+        end
+    end
 
     local reagents = Engine:GetReagents(self._selIndex)
     local missing, shown = false, 0

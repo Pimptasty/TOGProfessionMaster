@@ -443,15 +443,26 @@ function Engine:Craft(recipeId, index, qty)
     -- Craft Next tracked, so manual crafts left finished items stuck in queue).
     -- The Craft window (Enchanting) makes exactly one per DoCraft — no repeat
     -- arg — so the queue should expect a single success there, not `qty`.
-    local expected = self._isCraftWindow and 1 or qty
-    if addon.CraftQueue and addon.CraftQueue.TrackCraft then
-        addon.CraftQueue:TrackCraft(recipeId, expected)
-    end
+    -- The Vanilla/TBC Craft API (Enchanting) applies via DoCraft, which is a
+    -- PROTECTED function — an addon calling it trips ADDON_ACTION_FORBIDDEN and
+    -- the craft is blocked. (DoTradeSkill, used by every other profession, is
+    -- NOT protected.) So we cannot apply an enchant ourselves: pop Blizzard's own
+    -- Craft window so the player clicks its secure Create button, and say so once.
     if self._isCraftWindow then
-        if DoCraft then DoCraft(liveIndex) end
-    else
-        if DoTradeSkill then DoTradeSkill(liveIndex, qty) end
+        self:ShowDefaultUI()
+        local now = GetTime and GetTime() or 0
+        if now - (self._enchantNoticeAt or 0) > 8 then
+            self._enchantNoticeAt = now
+            addon:Print(addon.L and addon.L["CraftEnchantViaBlizzard"]
+                or "Enchants are applied from Blizzard's Craft window — opened it; click Create there.")
+        end
+        return
     end
+    -- Trade skills: track for the queue, then craft (the API handles repeats).
+    if addon.CraftQueue and addon.CraftQueue.TrackCraft then
+        addon.CraftQueue:TrackCraft(recipeId, qty)
+    end
+    if DoTradeSkill then DoTradeSkill(liveIndex, qty) end
 end
 
 -- ---------------------------------------------------------------------------

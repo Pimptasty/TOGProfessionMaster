@@ -905,7 +905,11 @@ function CraftingTab:RefreshDetail()
     self._dpNameBtn._fs:SetText(Color(sel.color or (addon.BrandColor or "ffFF8000"), sel.name))
     self._dpQty:SetText(tostring(self._qty or 1))
     local canCraft = (sel.num or 0) > 0
-    if self._dpCraft.SetEnabled    then self._dpCraft:SetEnabled(canCraft)    end
+    -- _dpCraft is a SECURE button (enchant /cast), so Enable/Disable is protected
+    -- during combat lockdown — guard it. _dpCraftMax is a normal button (safe).
+    if self._dpCraft.SetEnabled and not (InCombatLockdown and InCombatLockdown()) then
+        self._dpCraft:SetEnabled(canCraft)
+    end
     if self._dpCraftMax.SetEnabled then self._dpCraftMax:SetEnabled(canCraft) end
 
     -- Point the (secure) Craft button at this recipe. Enchanting (Craft window)
@@ -922,6 +926,23 @@ function CraftingTab:RefreshDetail()
             self._dpCraft:SetAttribute("type", nil)
             self._dpCraft:SetAttribute("macrotext", nil)
         end
+    end
+
+    -- Enchanting is applied one item at a time, so present a single "Enchant"
+    -- button: hide the quantity stepper, Craft Max and Queue, and pull Enchant up
+    -- to the top of the controls column. Trade skills keep "Craft" plus the full
+    -- stepper / Craft Max / Queue stack at their normal positions.
+    local isEnchant = Engine._isCraftWindow and true or false
+    self._dpCraft:SetText(isEnchant and L["CraftEnchantButton"] or L["CraftButton"])
+    -- Repositioning a SECURE button is combat-protected; guard it (the button
+    -- keeps its prior valid position until the next out-of-combat refresh).
+    if not (InCombatLockdown and InCombatLockdown()) then
+        self._dpCraft:ClearAllPoints()
+        self._dpCraft:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -12, isEnchant and -6 or -34)
+    end
+    if isEnchant then
+        self._dpMinus:Hide(); self._dpQty:Hide(); self._dpPlus:Hide(); self._dpMax:Hide()
+        self._dpCraftMax:Hide(); self._dpQueue:Hide()
     end
 
     local reagents = Engine:GetReagents(self._selIndex)
@@ -1048,7 +1069,10 @@ function CraftingTab:RefreshDetail()
     -- Auto-size the panel to its taller column (reagents vs controls) so there's
     -- no dead space below — the recipe list above grows into the freed room.
     local reagentsBottom = DREAG_TOP + shown * DREAG_H
-    self._detailH = math.max(math.max(reagentsBottom, DCTRL_BOT) + 10, 96)
+    -- Enchanting shows only the single Enchant button (top of the column), so its
+    -- controls block is short; trade skills use the full stepper/Craft/Max/Queue.
+    local ctrlBottom = isEnchant and 30 or DCTRL_BOT
+    self._detailH = math.max(math.max(reagentsBottom, ctrlBottom) + 10, 96)
     if self._anchorAll then self._anchorAll() end
 end
 

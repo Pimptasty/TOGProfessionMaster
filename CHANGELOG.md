@@ -1,5 +1,13 @@
 # TOG Profession Master Changelog
 
+## [v0.8.4] (2026-06-01) — Enchanting shows a single "Enchant" button
+
+### Improvements
+
+- **Enchanting now presents one clean "Enchant" button.** Because an enchant is applied to a single item, the Crafting tab's controls for Enchanting are simplified to just an **Enchant** button (the secure `/cast` from v0.8.3) — the quantity stepper, **Craft Max**, and **Queue** are hidden (none apply to one-at-a-time enchanting), the button moves to the top of the controls column, and the detail panel sizes down to suit. Every other profession keeps the full Craft / Craft Max / Queue stack with the quantity controls. Also hardened: the now-secure Craft button's enable / position / attribute changes are guarded against combat lockdown (they can't be changed mid-combat). Location: `GUI/CraftingTab.lua`.
+
+---
+
 ## [v0.8.3] (2026-06-01) — Enchanting can be cast from the Crafting tab (protected-function fix)
 
 > The `DoCraft` error is gone for certain (we no longer call it); the secure-cast enchant path is pushed for **community testing** — there's no enchanter on the test account to verify it in-game.

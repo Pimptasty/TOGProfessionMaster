@@ -325,8 +325,21 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
     -- them when lib-sourced; content-phase gating and known/rank checks below
     -- still apply.
     local libData = addon.recipeDBFromLib
+
+    -- SoD/Anniversary recipes leak into the Vanilla LibProfessionDB set (the 1.15
+    -- client's tables carry them), and they're not learnable on regular Era / HC.
+    -- Their spell IDs sit far above any real Vanilla recipe (<~30k) — every SoD
+    -- formula observed is 400k+ — so on a Vanilla client that ISN'T running
+    -- Season of Discovery, hide that ID range. This runs even on lib-sourced data
+    -- (the cross-expansion gates below are skipped for it; this one is not).
+    local SOD_RECIPE_ID_MIN = 200000
+    local hideSoD = (clientExp == 1) and not addon:IsSoD()
+
     for spellId, data in pairs(recipes) do
         local skip = false
+        if hideSoD and spellId >= SOD_RECIPE_ID_MIN then
+            skip = true
+        end
         if (not libData) and data.minExpansion and data.minExpansion > clientExp then
             -- Recipe was first introduced in a later expansion than this
             -- client supports. Wrath transmute on TBC, Cata recipe on
@@ -479,7 +492,7 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
                     -- those recipes at the top of the list.
                     requiredSkill = data.requiredSkill,
                     tiers         = data.difficulty,  -- {orange,yellow,green,grey} skill breakpoints
-                    effect        = data.effect,      -- searchable effect text
+                    effect        = addon:GetCraftedItemStatText(data.craftedItemId) or data.effect,  -- crafted gear/consumable stats (LibItemDB) win; enchant effect (ProfessionDB) is the fallback
                     known         = knownByChar(spellId)
                                     or (data.teaches and knownByChar(data.teaches))
                                     or (data.craftedItemId and knownByChar(data.craftedItemId))

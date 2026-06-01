@@ -255,10 +255,15 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
     -- fix that — "5" and "agi" each match in any order. Returns true on empty query.
     local _terms = {}
     for t in filter:gmatch("%S+") do _terms[#_terms + 1] = t end
-    local function searchMatches(name, effect)
+    local function searchMatches(name, effect, itemId)
         if #_terms == 0 then return true end
         local hay = (name or ""):lower()
         if effect then hay = hay .. " " .. effect:lower() end
+        -- Fold in the crafted item's full tooltip text so ANY word in it
+        -- (use/proc text, durations, requirements, flavor) is searchable, not just
+        -- the name + stat line. Cached per item; already lowercased.
+        local tt = itemId and addon:GetItemTooltipSearchText(itemId)
+        if tt then hay = hay .. " " .. tt end
         for _, term in ipairs(_terms) do
             if not hay:find(term, 1, true) then return false end
         end
@@ -295,6 +300,12 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
         local meta = addon.recipeDB and addon.recipeDB[thisProfId]
                                     and addon.recipeDB[thisProfId][recipeId]
         if not meta then return false end
+        -- SoD/Anniversary recipes leak into the Vanilla lib set (the 1.15 client's
+        -- tables carry them); their IDs are 400k+ while real Vanilla recipes are
+        -- under ~30k. Hide that range on a Vanilla client that isn't running
+        -- Season of Discovery. Must run BEFORE the lib early-return below, since
+        -- the lib data is exactly what carries them.
+        if clientExp == 1 and recipeId >= 200000 and not addon:IsSoD() then return false end
         -- LibProfessionDB data is already point-in-time per game version, so the
         -- cross-expansion gates below (which only existed to filter the old
         -- all-version merged union) are obsolete and would mis-fire — e.g. the
@@ -404,14 +415,19 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
             -- entries from the universal shipped DB.
             if viewKeep and profMetaDB and profMetaDB[recipeId]
                and passesClientGate(thisProfId, recipeId) then
-                local name   = addon:GetRecipeName(thisProfId, recipeId)
-                local effect = profMetaDB[recipeId].effect  -- enriched effect text
-                -- Match name + effect term-by-term (see searchMatches above), so
-                -- e.g. "5 damage", "agility", "5 agi" all find the right recipe
-                -- regardless of the stat-first effect-text wording.
-                if searchMatches(name, effect) then
-                    local craftedItemId = addon:GetRecipeCraftedItemId(thisProfId, recipeId)
-                    local itemLink      = craftedItemId and select(2, GetItemInfo(craftedItemId))
+                local name          = addon:GetRecipeName(thisProfId, recipeId)
+                local craftedItemId = addon:GetRecipeCraftedItemId(thisProfId, recipeId)
+                -- Effect/buff text: the shipped enchant effect, else the crafted
+                -- consumable's use-effect buff from LibItemDB (food/elixir/flask),
+                -- so those recipes are searchable by stat ("12 stam") and carry a
+                -- buff line in their tooltip too.
+                local effect = addon:GetCraftedItemStatText(craftedItemId)
+                if not effect or effect == "" then effect = profMetaDB[recipeId].effect end
+                -- Match name + effect + the crafted item's full tooltip text
+                -- term-by-term (see searchMatches above), so any word — stats,
+                -- use/proc text, durations, flavor — finds the recipe.
+                if searchMatches(name, effect, craftedItemId) then
+                    local itemLink = craftedItemId and select(2, GetItemInfo(craftedItemId))
                     table.insert(list, {
                         id            = recipeId,
                         name          = name,
@@ -1370,7 +1386,11 @@ function BrowserTab:BuildPool(parent)
                                 if rStr ~= "" then
                                     GameTooltip:AddDoubleLine(lStr, rStr, lr, lg, lb, rr, rg, rb)
                                 else
-                                    GameTooltip:AddLine(lStr, lr, lg, lb)
+                                    -- wrapText=true so long item lines (e.g. a flask's verbose
+                                    -- "Use:" text) wrap instead of stretching the tooltip across
+                                    -- the screen. With no unwrapped long line left, the tooltip
+                                    -- sizes to the header/stat lines.
+                                    GameTooltip:AddLine(lStr, lr, lg, lb, true)
                                 end
                             end
                         end

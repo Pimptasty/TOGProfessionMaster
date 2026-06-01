@@ -83,6 +83,7 @@ function CraftQueue:Clear()
     local q = queue()
     for i = #q, 1, -1 do q[i] = nil end
     self._active = nil
+    self._craftAll = false
     self:_Changed()
 end
 
@@ -141,6 +142,17 @@ function CraftQueue:CraftNext()
     Engine:Craft(e.recipeId, entry.index, count)
 end
 
+-- Craft All: work down the whole queue, crafting each eligible entry in turn.
+-- Launches the first batch now; as each finishes, _OnCraftSuccess chains to the
+-- next eligible entry. Stops when nothing is left to make, on interrupt/failure,
+-- or when the queue is cleared. (For Enchanting each item still waits for you to
+-- click its target — DoCraft makes one and hands you the cursor.)
+function CraftQueue:CraftAll()
+    if self:IsEmpty() then return end
+    self._craftAll = true
+    self:CraftNext()
+end
+
 -- Begin tracking a craft initiated through CraftingEngine:Craft (either the
 -- queue's Craft Next or the detail-panel Craft button). `count` is how many
 -- UNIT_SPELLCAST_SUCCEEDED events to expect for this batch (1 on the Vanilla/TBC
@@ -173,7 +185,21 @@ function CraftQueue:_OnCraftSuccess()
         if q[i].qty <= 0 then table.remove(q, i) end
     end
 
-    if active.remaining <= 0 then self._active = nil end
+    if active.remaining <= 0 then
+        self._active = nil
+        -- Craft All: this batch is done — chain to the next eligible entry after
+        -- a short beat so the trade-skill state settles. Stop if nothing's left.
+        if self._craftAll then
+            local function chain()
+                if self._craftAll and self:CanCraftNext() then
+                    self:CraftNext()
+                else
+                    self._craftAll = false
+                end
+            end
+            if C_Timer and C_Timer.After then C_Timer.After(0.1, chain) else chain() end
+        end
+    end
     self:_Changed()
 end
 
@@ -187,9 +213,11 @@ trackFrame:SetScript("OnEvent", function(_, event, unit)
     if event == "UNIT_SPELLCAST_SUCCEEDED" then
         CraftQueue:_OnCraftSuccess()
     else
-        -- Batch interrupted/failed: stop tracking; the unmade remainder stays
-        -- in the queue exactly as the completion model promises.
+        -- Batch interrupted/failed: stop tracking AND stop any Craft All run;
+        -- the unmade remainder stays in the queue exactly as the completion
+        -- model promises.
         CraftQueue._active = nil
+        CraftQueue._craftAll = false
         CraftQueue:_Changed()
     end
 end)

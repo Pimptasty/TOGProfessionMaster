@@ -15,6 +15,7 @@ required-dependencies:
   - versioncheck
   - deltasync
   - libprofessiondb
+  - libitemdb
 
 optional-dependencies:
   - togbankclassic

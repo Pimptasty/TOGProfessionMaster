@@ -234,6 +234,7 @@
         "GetCooldownLeft",
         "GetProfessionInfo",
         "GetProfessions",
+        "C_Engraving",
         "GetItemCount",
         "GetItemIcon",
         "IsInInstance",

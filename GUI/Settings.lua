@@ -110,6 +110,27 @@ local OPTIONS = {
             end,
         },
 
+        -- Whole-window UI scale. Lets the window (Crafting tab included) take
+        -- less screen space than the resize floor allows, by scaling every
+        -- element proportionally rather than shrinking the layout.
+        windowScale = {
+            name      = L["SettingsWindowScale"],
+            desc      = L["SettingsWindowScaleDesc"],
+            type      = "range",
+            order     = 4.5,
+            min       = 0.5,
+            max       = 1.5,
+            step      = 0.05,
+            isPercent = true,
+            get       = function() return tonumber(Ace.db.profile.windowScale) or 1 end,
+            set       = function(_, val)
+                Ace.db.profile.windowScale = val
+                if addon.MainWindow and addon.MainWindow.ApplyScale then
+                    addon.MainWindow:ApplyScale()
+                end
+            end,
+        },
+
         -- ---- Cooldowns -----------------------------------------------------
         cooldownsHeader = {
             name  = L["SettingsCooldownsHeader"],
@@ -131,6 +152,31 @@ local OPTIONS = {
             name  = L["SettingsCraftingHeader"],
             type  = "header",
             order = 12,
+        },
+
+        -- Off by default: opening a profession opens Blizzard's own crafting
+        -- window (with the TOGPM button on it to switch). Tick to open straight
+        -- into the TOGPM Crafting tab instead.
+        craftingTakeover = {
+            name  = L["SettingsCraftingTakeover"],
+            desc  = L["SettingsCraftingTakeoverDesc"],
+            type  = "toggle",
+            width = "full",
+            order = 12.04,
+            get   = function() return Ace.db.profile.craftingTakeover == true end,
+            set   = function(_, val) Ace.db.profile.craftingTakeover = val and true or false end,
+        },
+
+        -- Off by default. Reopen whichever crafting UI you used last (Blizzard
+        -- or TOGPM); when a choice is saved it overrides the toggle above.
+        craftingRememberLast = {
+            name  = L["SettingsCraftingRememberLast"],
+            desc  = L["SettingsCraftingRememberLastDesc"],
+            type  = "toggle",
+            width = "full",
+            order = 12.06,
+            get   = function() return Ace.db.profile.craftingRememberLast == true end,
+            set   = function(_, val) Ace.db.profile.craftingRememberLast = val and true or false end,
         },
 
         -- The craft queue is deliberately KEPT when you switch the Crafting-tab
@@ -241,6 +287,19 @@ local OPTIONS = {
             name  = L["SettingsAHHeader"],
             type  = "header",
             order = 19.7,
+        },
+
+        -- Off by default: the full getAll scan is a shared, ~once-per-15-min,
+        -- client-wide budget, so auto-firing it would starve a dedicated AH
+        -- addon's own scan. Opt-in only; tooltip spells out the trade-off.
+        autoScanAH = {
+            name  = L["SettingsAutoScanAH"],
+            desc  = L["SettingsAutoScanAHDesc"],
+            type  = "toggle",
+            width = "full",
+            order = 19.72,
+            get   = function() return Ace.db.profile.autoScanAH == true end,
+            set   = function(_, val) Ace.db.profile.autoScanAH = val and true or false end,
         },
 
         useAuctionator = {

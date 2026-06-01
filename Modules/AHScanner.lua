@@ -59,14 +59,16 @@ Ace:RegisterEvent("AUCTION_HOUSE_SHOW", function()
     if addon.callbacks then
         addon.callbacks:Fire("AH_OPEN_STATE_CHANGED", true)
     end
-    -- Auto full-scan to keep TOGPM's own price DB fresh for cost-to-craft. The
-    -- AH guy IS the button — no click needed. Skipped when the user has opted
-    -- into Auctionator pricing (then Auctionator's DB is the source) or when
-    -- a scan is already running. The legacy getAll throttle (~once/15 min) is
-    -- enforced inside StartFullScan, so re-opens inside the window no-op. The
-    -- 1s delay lets the AH UI finish initialising before we query.
-    local useAuc = Ace and Ace.db and Ace.db.profile and Ace.db.profile.useAuctionator
-    if not useAuc then
+    -- Auto full-scan keeps TOGPM's own price DB fresh for cost-to-craft + lights
+    -- up the [AH] buttons. It is OPT-IN (default OFF): the legacy getAll scan
+    -- draws from a shared, ~once-per-15-min, CLIENT-WIDE budget, so auto-firing it
+    -- on every AH open would starve a dedicated AH addon's own getAll
+    -- (Auctionator / TSM / etc.). Only fire when the user has ticked "Auto-scan
+    -- the Auction House on open". The getAll throttle is still enforced inside
+    -- StartFullScan; the 1s delay lets the AH UI finish initialising first. (The
+    -- per-tab "Scan AH" buttons do targeted per-item queries, NOT getAll, so they
+    -- keep working regardless of this setting.)
+    if Ace and Ace.db and Ace.db.profile and Ace.db.profile.autoScanAH then
         Ace:ScheduleTimer(function()
             if AH.IsOpen() then AH.StartFullScan(true) end
         end, 1.0)

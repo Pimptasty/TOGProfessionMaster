@@ -386,12 +386,27 @@ function MainWindow:Open(tabKey)
     self.frame = f
     self.tabs  = tg
 
+    self:ApplyScale()
     _escProxy:Show()
     -- Apply size BEFORE selecting the tab so the first Draw sees the
     -- correct frame dimensions (some tabs read frame width during Draw).
     local initialTab = tabKey or self.activeTab or "browser"
     self:ApplyTabSize(initialTab)
     tg:SelectTab(initialTab)
+end
+
+-- Whole-window UI scale (Settings → Display → "Window scale"). Scaling the root
+-- frame shrinks every element proportionally — text, recipe columns, the queue
+-- panel — so the window (and the Crafting tab) can take far less screen space
+-- than the resize floor allows without the layout overlapping. Independent of
+-- size: SetResizeBounds / the persisted width/height are in the frame's own
+-- coordinate space, so a scaled window still resizes and remembers its size; the
+-- on-screen footprint is size × scale. Clamped 0.5–1.5 (50%–150%).
+function MainWindow:ApplyScale()
+    if not (self.frame and self.frame.frame) then return end
+    local s = tonumber(Ace.db.profile.windowScale) or 1
+    if s < 0.5 then s = 0.5 elseif s > 1.5 then s = 1.5 end
+    self.frame.frame:SetScale(s)
 end
 
 -- ---------------------------------------------------------------------------

@@ -275,6 +275,7 @@ local SLASH_COMMANDS = {
     ["debug"]        = "ToggleDebug",
     ["craft"]        = "ToggleCraftingTakeover",
     ["spellcache"]   = "DumpSpellCache",
+    ["itemgaps"]     = "ReportItemDBGaps",
     ["dumprecipe"]   = "DumpRecipe",
     ["dumphashes"]   = "DumpHashes",
     ["dumpcooldowns"] = "DumpCooldowns",
@@ -971,6 +972,56 @@ function addon:DumpSpellCache()
     end
 end
 
+--- /togpm itemgaps [profId] — list crafted items whose stats LibItemDB is
+--- missing, so the gaps can be filled into LibItemDB. Reports two kinds: items
+--- not in ItemDB at all, and items present but returning no stats (some of those
+--- genuinely grant none — toys, bags, ammo, reagents — so eyeball before
+--- filling). Output is capped to keep chat usable; pass a profession id to scope.
+function addon:ReportItemDBGaps(args)
+    local DB = self:GetItemDB()
+    if not (DB and DB:IsReady()) then
+        Ace:Print("LibItemDB not ready (is the ItemDB addon enabled?).")
+        return
+    end
+    local rdb = self.recipeDB
+    if not rdb then Ace:Print("No recipe data loaded.") return end
+
+    local onlyProf = tonumber(strtrim(args or ""))
+    local total, unknown, nostat, shown = 0, 0, 0, 0
+    local CAP = 60
+    Ace:Print("|cffFF8000LibItemDB gaps|r — crafted items with no stat data:")
+    for pid, recipes in pairs(rdb) do
+        if recipes and (not onlyProf or pid == onlyProf) then
+            for _, m in pairs(recipes) do
+                local cid = m.craftedItemId
+                if cid then
+                    total = total + 1
+                    local known = DB:HasItem(cid)
+                    local stats = known and DB:GetStats(cid)
+                    if not known then
+                        unknown = unknown + 1
+                        if shown < CAP then
+                            shown = shown + 1
+                            Ace:Print(("  prof %d  item %d  \226\128\148 not in ItemDB"):format(pid, cid))
+                        end
+                    elseif not (stats and next(stats)) then
+                        nostat = nostat + 1
+                        if shown < CAP then
+                            shown = shown + 1
+                            Ace:Print(("  prof %d  item %d  %s \226\128\148 no stats"):format(pid, cid, DB:GetName(cid) or "?"))
+                        end
+                    end
+                end
+            end
+        end
+    end
+    Ace:Print(("Scanned %d crafted items: %d not in ItemDB, %d with no stats%s."):format(
+        total, unknown, nostat, (shown >= CAP) and (" (showing first " .. CAP .. ")") or ""))
+    if shown >= CAP then
+        Ace:Print("Tip: scope with /togpm itemgaps <profId> to list the rest.")
+    end
+end
+
 function addon:ToggleDebug(args)
     local arg = strtrim(args or ""):lower()
     if arg == "on" then
@@ -1404,6 +1455,109 @@ end
 function addon:GetRecipeCraftedItemId(profId, recipeId)
     local m = self:GetRecipeMeta(profId, recipeId)
     return m and m.craftedItemId
+end
+
+-- LibItemDB (optional standalone addon, read via LibStub — NOT embedded): the
+-- use-effect buff a consumable grants (food / elixir / flask / potion). Resolved
+-- lazily so it works whether ItemDB loaded before or after us.
+function addon:GetItemDB()
+    if self._itemDB == nil then
+        self._itemDB = (LibStub and LibStub("LibItemDB-1.0", true)) or false
+    end
+    return self._itemDB or nil
+end
+
+-- A crafted item's stats as a display/search string ("+5 Strength, +12 Stamina"),
+-- from LibItemDB. Uses GetStats, which MERGES equipment stats + use-effects — so
+-- this covers BOTH crafted gear (BS/Tailoring/LW: the equip stats) AND consumables
+-- (food/elixir/flask/potion: the use-effect buff) in one path. nil when ItemDB is
+-- absent / not ready / the item has no stats. Cached per item id (session-stable).
+-- KEYs are GetItemStats keys (_G[KEY] → localized name, also covers
+-- RESISTANCE<n>_NAME for armor/resistances); a few use-effect-only keys have no
+-- _G entry. An item that comes back nil/empty is a coverage GAP in LibItemDB
+-- (see addon:ReportItemDBGaps) unless it genuinely grants no stats.
+local EFFECT_CUSTOM_LABEL = {
+    CRIT_PCT = "Crit", SPELL_CRIT_PCT = "Spell Crit", HEALTH = "Health", MANA = "Mana",
+}
+function addon:GetCraftedItemStatText(itemId)
+    if not itemId then return nil end
+    self._itemStatText = self._itemStatText or {}
+    local cached = self._itemStatText[itemId]
+    if cached ~= nil then return cached or nil end
+
+    local DB = self:GetItemDB()
+    local stats = (DB and DB:IsReady() and DB:GetStats(itemId)) or nil
+    if not stats then
+        self._itemStatText[itemId] = false
+        return nil
+    end
+    local parts = {}
+    for k, v in pairs(stats) do
+        local label = _G[k] or EFFECT_CUSTOM_LABEL[k] or k
+        -- Whole numbers print as integers (+8 Agility); fractional values (e.g.
+        -- weapon DPS, 28.529411…) round to one decimal like the native tooltip
+        -- (+28.5 Damage Per Second) instead of trailing 8–10 digits.
+        local num
+        if type(v) == "number" and v ~= math.floor(v) then
+            num = ("%.1f"):format(v)
+        else
+            num = tostring(v)
+        end
+        parts[#parts + 1] = ("+%s %s"):format(num, label)
+    end
+    table.sort(parts)
+    local s = (#parts > 0) and table.concat(parts, ", ") or false
+    self._itemStatText[itemId] = s
+    return s or nil
+end
+
+-- The effect/buff text shown + searched for a recipe: the shipped enchant effect
+-- (ProfessionDB) when present, else the crafted consumable's use-effect buff
+-- (LibItemDB). Lets food/elixir/flask recipes be found by "12 stam" etc. and
+-- carry a buff line in their tooltip — the same `effect` field enchants use.
+-- Full searchable text of a crafted item's tooltip — name + stats + use/proc
+-- text + flavor + requirements — lowercased, for the "search anything" recipe
+-- search, so a query like "hour", "chance on hit", or "requires level 40"
+-- matches. LibItemDB stores stat *values*, not the prose, so this comes from the
+-- live client item tooltip, scraped once per item and cached. Items the client
+-- hasn't loaded yet aren't cached (GetItemInfo is pinged to warm them), so they
+-- become searchable once their data arrives. nil when there's nothing yet.
+local _ttScraper
+function addon:GetItemTooltipSearchText(itemId)
+    if not itemId then return nil end
+    self._itemTTText = self._itemTTText or {}
+    local cached = self._itemTTText[itemId]
+    if cached ~= nil then return cached or nil end
+    -- Don't scrape until the client has the item (an unloaded item tooltips
+    -- empty); calling GetItemInfo also warms it so it's ready next time.
+    if GetItemInfo and not GetItemInfo(itemId) then return nil end
+    if not _ttScraper then
+        _ttScraper = CreateFrame("GameTooltip", "TOGPMSearchScraper", UIParent, "GameTooltipTemplate")
+    end
+    if not _ttScraper.SetItemByID then return nil end
+    _ttScraper:SetOwner(UIParent, "ANCHOR_NONE")
+    _ttScraper:ClearLines()
+    _ttScraper:SetItemByID(itemId)
+    local parts = {}
+    for i = 1, _ttScraper:NumLines() do
+        local fs  = _G["TOGPMSearchScraperTextLeft" .. i]
+        local txt = fs and fs:GetText()
+        if txt and txt ~= "" then parts[#parts + 1] = txt:lower() end
+    end
+    local s = (#parts > 0) and table.concat(parts, " ") or false
+    self._itemTTText[itemId] = s
+    return s or nil
+end
+
+function addon:GetRecipeEffect(profId, recipeId)
+    local m = self:GetRecipeMeta(profId, recipeId)
+    if not m then return nil end
+    -- Crafted gear and consumables take their stats/buff from LibItemDB; the
+    -- ProfessionDB enchant effect is only the fallback for things LibItemDB has no
+    -- stats for (true enchants applied to gear).
+    local e = self:GetCraftedItemStatText(m.craftedItemId)
+    if e then return e end
+    return (m.effect and m.effect ~= "" and m.effect) or nil
 end
 
 -- v0.7.1: reverse lookup table — craftedItemId → recipeId (spell ID) per

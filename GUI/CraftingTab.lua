@@ -136,8 +136,16 @@ function CraftingTab:Draw(container)
     toolbar:AddChild(profDD)
 
     if not info then
+        -- No profession window is open yet, but the player deliberately navigated
+        -- to the Crafting tab — that IS "I want to craft in TOGPM", so just open
+        -- their (selected) profession for them instead of making them click the
+        -- button below. OpenProfession forces the resulting window into the TOGPM
+        -- tab (not Blizzard) regardless of the default-to-Blizzard takeover
+        -- setting, since they asked for it here. Can't cast in combat, so the
+        -- prompt + button below stay as the fallback. The button is also there if
+        -- the auto-open is somehow suppressed.
         local activeEntry = active and findProf(professions, active) or nil
-        if Engine and activeEntry and Engine:IsTakeoverEnabled()
+        if Engine and activeEntry
            and not (UnitAffectingCombat and UnitAffectingCombat("player")) then
             Engine:OpenProfession(activeEntry.castName or active)
         end
@@ -486,6 +494,12 @@ local function passesFilter(self, e)
         -- fix that: "5" and "agi" each appear, in any order.
         local hay = e.name:lower()
         if e.effect then hay = hay .. " " .. e.effect:lower() end
+        -- Fold in the crafted item's full tooltip text so ANY word in it (use/proc
+        -- text, durations, requirements, flavor) is searchable — not just the name
+        -- and stat line. Cached per item; already lowercased.
+        local cid = e.link and tonumber(e.link:match("item:(%d+)"))
+        local tt  = cid and addon:GetItemTooltipSearchText(cid)
+        if tt then hay = hay .. " " .. tt end
         for term in self._search:lower():gmatch("%S+") do
             if not hay:find(term, 1, true) then return false end
         end
@@ -553,7 +567,7 @@ local DREAG_POOL = 12      -- reagent rows (most recipes have ≤ 8)
 local DCTRL_W    = 230     -- right-hand controls column width
 local DREAG_H    = 13      -- reagent row height (tight, ~ font height)
 local DREAG_TOP  = 42      -- y-offset of the first reagent row from the panel top
-local DCTRL_BOT  = 86      -- controls block bottom offset (queue button bottom)
+local DCTRL_BOT  = 114     -- controls block bottom offset (Craft Max button bottom: stepper -6, Craft -34, Queue -62, Craft Max -90..-114)
 local DREAG_COST_W = 96    -- per-reagent cost column width (fits "NNNg NNs NNc" coin string)
 
 local function rawTip(frame, getTitle, getDesc)
@@ -656,9 +670,9 @@ function CraftingTab:BuildDetailPanel(parent)
 
     -- "Cost" column header — right edge aligns with the per-reagent cost values,
     -- which sit just left of the [Bank]/[AH] buttons. The buttons/count occupy a
-    -- fixed 148px on the right of each row (bank 44 + ah 30 + count 60 + gaps) —
-    -- the count column is 60 wide to fit the bank/bags/need triple — so the cost
-    -- column's right edge is the row's right inset (DCTRL_W+14) + 148.
+    -- fixed 148px on the right of each row (bank 44 + ah 30 + count 60 + gaps);
+    -- the count column is 60 wide to fit a bags/bank pair with 3-digit counts —
+    -- so the cost column's right edge is the row's right inset (DCTRL_W+14) + 148.
     local costHdr = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     costHdr:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(DCTRL_W + 162), -26)
     costHdr:SetWidth(DREAG_COST_W)
@@ -680,8 +694,9 @@ function CraftingTab:BuildDetailPanel(parent)
         ri:SetTexCoord(0.07, 0.93, 0.07, 0.93)
         row.icon = ri
 
-        -- Count column shows bank/bags/need (three values), so it's wider than a
-        -- plain have/need pair. Kept in sync with the costHdr offset above.
+        -- Count column shows the bags/bank inventory pair (the needed count is a
+        -- prefix on the name instead). 60 wide to fit 3-digit values comfortably;
+        -- kept in sync with the costHdr offset above.
         local cnt = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         cnt:SetPoint("RIGHT", row, "RIGHT", -2, 0)
         cnt:SetWidth(60)
@@ -770,7 +785,7 @@ function CraftingTab:BuildDetailPanel(parent)
 
     local queueBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     queueBtn:SetSize(CW, 24)
-    queueBtn:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -CR, -62)
+    queueBtn:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -CR, -90)
     queueBtn:SetText(L["CraftQueueButton"])
     queueBtn:SetScript("OnClick", function()
         local sel = CraftingTab._dpSel
@@ -781,6 +796,26 @@ function CraftingTab:BuildDetailPanel(parent)
     end)
     rawTip(queueBtn, function() return L["CraftQueueButton"] end, function() return L["CraftQueueDesc"] end)
     self._dpQueue = queueBtn
+
+    -- Craft Max: queue the most this recipe can make right now AND start crafting
+    -- it in one click (Skillet's "Create All"). Sits between Craft and Queue. Lets
+    -- you fan across several recipes — Craft Max each — to stack them up fast.
+    local craftMaxBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    craftMaxBtn:SetSize(CW, 24)
+    craftMaxBtn:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -CR, -62)
+    craftMaxBtn:SetText(L["CraftMaxButton"])
+    craftMaxBtn:SetScript("OnClick", function()
+        local sel  = CraftingTab._dpSel
+        local info = addon.CraftingEngine and addon.CraftingEngine:GetOpenInfo()
+        if sel and info and addon.CraftQueue then
+            local maxQ = math.max(1, sel.num or 1)
+            CraftingTab:SetQty(maxQ)
+            addon.CraftQueue:Add(info.profId, sel.recipeId, maxQ)
+            addon.CraftQueue:CraftNext()
+        end
+    end)
+    rawTip(craftMaxBtn, function() return L["CraftMaxButton"] end, function() return L["CraftMaxButtonDesc"] end)
+    self._dpCraftMax = craftMaxBtn
 
     -- Stepper row, aligned to the Craft button's edges (full width): − [qty] + MAX
     local minusBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
@@ -840,7 +875,7 @@ function CraftingTab:RefreshDetail()
 
     local widgets = { self._dpIcon, self._dpNameBtn, self._dpReagHdr, self._dpCostHdr,
                       self._dpMinus, self._dpQty, self._dpPlus, self._dpMax,
-                      self._dpCraft, self._dpQueue }
+                      self._dpCraft, self._dpQueue, self._dpCraftMax }
     if not sel then
         self._dpHint:Show()
         self._dpMiss:Hide()
@@ -857,7 +892,9 @@ function CraftingTab:RefreshDetail()
     self._dpIcon:SetTexture(sel.icon or 134400)
     self._dpNameBtn._fs:SetText(Color(sel.color or (addon.BrandColor or "ffFF8000"), sel.name))
     self._dpQty:SetText(tostring(self._qty or 1))
-    if self._dpCraft.SetEnabled then self._dpCraft:SetEnabled((sel.num or 0) > 0) end
+    local canCraft = (sel.num or 0) > 0
+    if self._dpCraft.SetEnabled    then self._dpCraft:SetEnabled(canCraft)    end
+    if self._dpCraftMax.SetEnabled then self._dpCraftMax:SetEnabled(canCraft) end
 
     local reagents = Engine:GetReagents(self._selIndex)
     local missing, shown = false, 0
@@ -866,11 +903,14 @@ function CraftingTab:RefreshDetail()
         local r   = reagents[i]
         if r then
             shown = i
-            -- Count column: bank / bags / need. Bags is live (GetItemCount);
-            -- bank is the cached snapshot from the player's last bank visit
-            -- (ReagentWatch persists it on BANKFRAME_CLOSED). "Enough" — and the
-            -- Missing-Materials flag — now counts bank + bags together, so a
-            -- reagent you have stashed in the bank no longer reads as missing.
+            -- The recipe's required count is shown as a "<n>x " PREFIX on the
+            -- name (reads "12x Greater Eternal Essence") — it used to be a third
+            -- number in the count column, which looked like an inventory figure.
+            -- The count column is now just your inventory: bags / bank — bags is
+            -- live (GetItemCount), bank is the cached snapshot from your last bank
+            -- visit (ReagentWatch persists it on BANKFRAME_CLOSED). "Enough" (and
+            -- the Missing-Materials flag) counts bags + bank together, so a
+            -- reagent stashed in the bank doesn't read as missing.
             local need = r.need or 0
             local bags = (r.itemId and GetItemCount and GetItemCount(r.itemId)) or r.have or 0
             local bankq = (r.itemId and addon.ReagentWatch and addon.ReagentWatch:GetBankCount(r.itemId)) or 0
@@ -878,9 +918,9 @@ function CraftingTab:RefreshDetail()
             if not enough then missing = true end
             row._link = r.link
             row.icon:SetTexture(r.texture or 134400)
-            row.nm:SetText(r.name or "?")
+            row.nm:SetText(Color("ffa0a0a0", need .. "x ") .. (r.name or "?"))
             row.cnt:SetText(Color(enough and "ff40c040" or "ffff4040",
-                ("%d/%d/%d"):format(bankq, bags, need)))
+                ("%d/%d"):format(bags, bankq)))
 
             -- Per-reagent line cost: unit price × needed. "—" when unpriced.
             if addon.Price and r.itemId then
@@ -932,18 +972,45 @@ function CraftingTab:RefreshDetail()
     -- "*" = one or more reagents unpriced (total is a lower bound); "~" = a
     -- contributing price is stale. "—" when nothing could be priced.
     if self._dpCost then
-        local label = Color("ffaaaaaa", L["CraftCostLabel"] .. ": ")
         local Pr = addon.Price
         if Pr then
+            local label = Color("ffaaaaaa", L["CraftCostLabel"] .. ": ")
             local total, priced, count, stale = Pr.CraftCostForReagents(reagents, 1)
+            local fullyPriced = (priced == count and count > 0)
+            local segs = {}
             if priced == 0 or count == 0 then
-                self._dpCost:SetText(label .. Color("ff888888", L["CraftCostNone"]))
+                segs[#segs + 1] = label .. Color("ff888888", L["CraftCostNone"])
             else
                 local money = Pr.Money(total)
                 local marks = (priced < count and " *" or "") .. (stale and " ~" or "")
                 if marks ~= "" then money = money .. Color("ffffd100", marks) end
-                self._dpCost:SetText(label .. money)
+                segs[#segs + 1] = label .. money
             end
+
+            -- AH sale price of the CRAFTED item (lowest buyout) + profit/loss vs the
+            -- crafting cost. Only when there's an actual AH price for the product
+            -- (a vendor price isn't a sale price), and — for profit — the craft cost
+            -- is fully known. Profit = sell price − craft cost: green = you'd make
+            -- coin, red = you'd lose it. (Assumes one craft yields one item and
+            -- ignores the AH cut — a first cut; refine later.)
+            local craftedId = sel.link and tonumber(sel.link:match("item:(%d+)"))
+            local ah
+            if craftedId and Pr.Get then
+                local p, src = Pr.Get(craftedId)
+                if p and (src == "auctionator" or src == "togpm-ah") then ah = p end
+            end
+            if ah then
+                segs[#segs + 1] = Color("ffaaaaaa", L["CraftAHPriceLabel"] .. ": ") .. Pr.Money(ah)
+                if fullyPriced then
+                    local profit = ah - total
+                    local col  = profit >= 0 and "ff40c040" or "ffff4040"
+                    local sign = profit >= 0 and "+" or "-"
+                    segs[#segs + 1] = Color("ffaaaaaa", L["CraftProfitLabel"] .. ": ")
+                        .. Color(col, sign .. Pr.Money(math.abs(profit)))
+                end
+            end
+
+            self._dpCost:SetText(table.concat(segs, "   "))
             self._dpCost:Show()
         else
             self._dpCost:Hide()
@@ -985,21 +1052,33 @@ function CraftingTab:BuildQueuePanel(parent)
     self._insertLine = line
 
     -- Craft Next | Clear All side by side, each taking half the width.
+    -- Three buttons on one row at the same total width as before: Craft Next |
+    -- Craft All | Clear All. Craft Next and Clear All take a fixed third at each
+    -- end; Craft All fills the middle between them.
+    local QBW = math.floor((QUEUE_W - 2 * Q_PAD - 2 * 4) / 3)
+
     local craftNext = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    craftNext:SetHeight(24)
-    craftNext:SetPoint("BOTTOMLEFT",  panel, "BOTTOMLEFT", Q_PAD, Q_PAD)
-    craftNext:SetPoint("BOTTOMRIGHT", panel, "BOTTOM",     -3,    Q_PAD)
+    craftNext:SetSize(QBW, 24)
+    craftNext:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", Q_PAD, Q_PAD)
     craftNext:SetText(L["CraftCraftNext"])
     craftNext:SetScript("OnClick", function() if addon.CraftQueue then addon.CraftQueue:CraftNext() end end)
     self._craftNextBtn = craftNext
 
     local clearAll = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    clearAll:SetHeight(24)
-    clearAll:SetPoint("BOTTOMLEFT",  panel, "BOTTOM",       3,     Q_PAD)
+    clearAll:SetSize(QBW, 24)
     clearAll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -Q_PAD, Q_PAD)
     clearAll:SetText(L["CraftClearAll"])
     clearAll:SetScript("OnClick", function() if addon.CraftQueue then addon.CraftQueue:Clear() end end)
     self._clearAllBtn = clearAll
+
+    -- Craft All: work down the whole queue, crafting each eligible recipe in turn.
+    local craftAll = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    craftAll:SetHeight(24)
+    craftAll:SetPoint("BOTTOMLEFT",  craftNext, "BOTTOMRIGHT", 4, 0)
+    craftAll:SetPoint("BOTTOMRIGHT", clearAll,  "BOTTOMLEFT", -4, 0)
+    craftAll:SetText(L["CraftCraftAll"])
+    craftAll:SetScript("OnClick", function() if addon.CraftQueue then addon.CraftQueue:CraftAll() end end)
+    self._craftAllBtn = craftAll
 
     self._queueRowPool = {}
     for _ = 1, QUEUE_POOL do
@@ -1101,12 +1180,12 @@ function CraftingTab:RefreshQueue()
         end
     end
 
+    local canCraftNext = addon.CraftQueue and addon.CraftQueue:CanCraftNext()
     if self._craftNextBtn then
-        if addon.CraftQueue and addon.CraftQueue:CanCraftNext() then
-            self._craftNextBtn:Enable()
-        else
-            self._craftNextBtn:Disable()
-        end
+        if canCraftNext then self._craftNextBtn:Enable() else self._craftNextBtn:Disable() end
+    end
+    if self._craftAllBtn then
+        if canCraftNext then self._craftAllBtn:Enable() else self._craftAllBtn:Disable() end
     end
 end
 

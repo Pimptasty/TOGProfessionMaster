@@ -23,6 +23,16 @@ addon.isMoP     = (build >= 50000 and build < 60000)
 -- `addon.isClassic` is true for vanilla-protocol builds (Classic Era, Anniversary).
 addon.isClassic = addon.isVanilla
 
+-- Season of Discovery runs on the same Vanilla (1.15) client/build as Era,
+-- Hardcore and Anniversary, so the build number can't tell them apart — but SoD
+-- is the only one with the rune-engraving system enabled. Live check (engraving
+-- state is reliable after login); used to gate SoD-only recipes that the shared
+-- 1.15 client tables (and thus LibProfessionDB's Vanilla set) carry but regular
+-- Era/HC/Anniversary realms can't learn.
+function addon:IsSoD()
+    return (C_Engraving and C_Engraving.IsEngravingEnabled and C_Engraving.IsEngravingEnabled()) and true or false
+end
+
 -- ---------------------------------------------------------------------------
 -- Bag / container API
 -- GetContainerItemInfo signature also changed, so we normalise the return

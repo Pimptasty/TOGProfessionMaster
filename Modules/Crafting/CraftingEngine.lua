@@ -59,22 +59,48 @@ Engine._showingDefault = false  -- Blizzard's frame is the active view this sess
 Engine._toggleBtn     = nil     -- "back to TOGPM" button injected on Blizzard's frame
 Engine._suppressUpdate = false  -- guard: ignore TRADE_SKILL_UPDATE while we mutate the list
 Engine._closePending  = false   -- a debounced teardown is scheduled (see ScheduleClose)
+Engine._forceTakeoverOnce = false -- next show opens TOGPM regardless of the default (set by OpenProfession)
+Engine._hookedFrames  = {}      -- Blizzard frames whose OnShow we've hooked to inject the TOGPM toggle button
 
 -- ---------------------------------------------------------------------------
--- Takeover setting (default ON). Persisted per-character alongside the other
--- UI prefs in Ace.db.char. A nil value means "never set" → default ON.
+-- Which crafting UI opens when you open a profession. Default: Blizzard's own
+-- window (with the TOGPM toggle button on it to switch). Two opt-in settings,
+-- both OFF by default:
+--   profile.craftingTakeover     — open the TOGPM Crafting tab instead
+--   profile.craftingRememberLast — reopen whichever UI you used last; when a
+--                                  choice is saved it WINS over craftingTakeover
+--   char.craftingLastUI          — "togpm" | "blizzard", the per-character last
+--                                  choice (recorded whenever a UI is shown)
+-- The TOGPM button on Blizzard's frame and the "WoW UI" button on our tab let
+-- the user switch at any time; that switch is what craftingLastUI captures.
 -- ---------------------------------------------------------------------------
 function Engine:IsTakeoverEnabled()
-    local db = Ace.db and Ace.db.char
-    if not db then return true end
-    if db.craftingTakeover == nil then return true end
-    return db.craftingTakeover and true or false
+    local p = Ace.db and Ace.db.profile
+    return (p and p.craftingTakeover) == true
 end
 
 function Engine:SetTakeoverEnabled(on)
-    if Ace.db and Ace.db.char then
-        Ace.db.char.craftingTakeover = on and true or false
+    if Ace.db and Ace.db.profile then
+        Ace.db.profile.craftingTakeover = on and true or false
     end
+end
+
+-- Decide whether a fresh profession show opens the TOGPM tab (true) or
+-- Blizzard's window (false). Remember-last wins when a per-character choice is
+-- saved; otherwise the craftingTakeover default (off → Blizzard) applies.
+function Engine:ShouldTakeoverOnShow()
+    local p = Ace.db and Ace.db.profile
+    if p and p.craftingRememberLast then
+        local last = Ace.db.char and Ace.db.char.craftingLastUI
+        if last == "togpm"    then return true  end
+        if last == "blizzard" then return false end
+    end
+    return self:IsTakeoverEnabled()
+end
+
+-- Record which crafting UI is now showing so "remember last" can reopen it.
+function Engine:_RecordLastUI(which)
+    if Ace.db and Ace.db.char then Ace.db.char.craftingLastUI = which end
 end
 
 -- ---------------------------------------------------------------------------
@@ -169,12 +195,20 @@ end
 -- castable and opens the trade-skill / craft window). TRADE_SKILL_SHOW /
 -- CRAFT_SHOW then fires and our handler takes over with live data. Casting is
 -- a no-op in combat (the window can't open then), so we guard and report it.
+--
+-- This is only ever called from the Crafting TAB (its profession dropdown / the
+-- "Open <profession>" button), i.e. the user explicitly wants the result IN
+-- TOGPM — so force the next show to open the TOGPM tab regardless of the
+-- default-to-Blizzard setting (otherwise clicking "Open Enchanting" inside the
+-- TOGPM tab would pop the Blizzard window instead). One-shot; consumed by the
+-- next OnProfessionShow.
 function Engine:OpenProfession(name)
     if not name then return end
     if UnitAffectingCombat and UnitAffectingCombat("player") then
         addon:Print(addon.L and addon.L["CraftCantOpenInCombat"] or "Can't open a profession in combat.")
         return false
     end
+    self._forceTakeoverOnce = true
     if CastSpellByName then CastSpellByName(name) end
     return true
 end
@@ -242,24 +276,39 @@ local function linkColour(link)
     return link and link:match("|c(%x%x%x%x%x%x%x%x)") or nil
 end
 
--- Craftable count for a Craft-window recipe (Vanilla/TBC Enchanting), derived
--- from reagents. GetCraftInfo's numAvailable is unreliable on the Craft API — it
--- reads 0 for enchants even with reagents in hand — which is why TSM ignores it
--- entirely and computes the count from mats (min over floor(have/need)); we do
--- the same. The enchanting ROD is a spell-focus (GetCraftSpellFocus), NOT a
--- reagent, so it never appears here and can't skew the count. Falls back to the
--- API's numAvailable if the reagent reads come back empty (defensive).
-local function craftWindowCraftable(index, numAvailable)
-    local n = GetCraftNumReagents and GetCraftNumReagents(index) or 0
-    if n == 0 then return numAvailable or 0 end
+-- Craftable count from reagents: min over floor(have/need). Repairs the API's
+-- numAvailable, which reads 0 for recipes that produce no item — enchants. That
+-- happens on BOTH the Craft API (GetCraftInfo) and, on clients that route
+-- Enchanting through the trade-skill UI instead, GetTradeSkillInfo — so the same
+-- repair has to cover both. `numReagents`/`reagentInfo` are the matching API
+-- pair; `fallback` is returned when there are no reagents to measure. The
+-- enchanting ROD is a spell-focus, not a reagent, so it never appears here.
+local function matsCraftable(numReagents, reagentInfo, index, fallback)
+    local n = numReagents and numReagents(index) or 0
+    if n == 0 then return fallback or 0 end
     local num = math.huge
     for j = 1, n do
-        local _, _, need, have = GetCraftReagentInfo(index, j)
+        local _, _, need, have = reagentInfo(index, j)
         if need and need > 0 then
             num = math.min(num, math.floor((have or 0) / need))
         end
     end
-    return (num == math.huge) and (numAvailable or 0) or num
+    return (num == math.huge) and (fallback or 0) or num
+end
+
+-- Craft window (Enchanting on Vanilla/TBC): numAvailable is unreliable (0 even
+-- with mats — TSM ignores it too), so derive from mats first.
+local function craftWindowCraftable(index, numAvailable)
+    return matsCraftable(GetCraftNumReagents, GetCraftReagentInfo, index, numAvailable)
+end
+
+-- Trade-skill window: numAvailable IS reliable for item-producing recipes, so
+-- trust it; only when it reads 0 fall back to a mats count. That rescues no-item
+-- recipes (e.g. Enchanting if this client routes it through the trade-skill UI)
+-- while leaving genuinely unmakeable rows at 0 (no mats → mats count is 0 too).
+local function tradeSkillCraftable(index, numAvailable)
+    if numAvailable and numAvailable > 0 then return numAvailable end
+    return matsCraftable(GetTradeSkillNumReagents, GetTradeSkillReagentInfo, index, numAvailable or 0)
 end
 
 function Engine:GetRecipeList()
@@ -286,7 +335,7 @@ function Engine:GetRecipeList()
                         link = link, color = linkColour(link),
                         requiredSkill = meta and meta.requiredSkill or nil,
                         tiers = meta and meta.difficulty or nil,  -- {orange,yellow,green,grey}
-                        effect = meta and meta.effect or nil,     -- searchable effect text
+                        effect = meta and (addon:GetCraftedItemStatText(meta.craftedItemId) or meta.effect) or nil,  -- crafted consumable's use-effect buff (LibItemDB) wins; enchant effect (ProfessionDB) is the fallback
                     }
                 end
             end
@@ -312,12 +361,12 @@ function Engine:GetRecipeList()
                     local meta = recipeMeta(profId, rid)
                     out[#out + 1] = {
                         kind = "recipe", index = i, name = name,
-                        difficulty = ttype, num = numAvailable or 0, recipeId = rid,
+                        difficulty = ttype, num = tradeSkillCraftable(i, numAvailable), recipeId = rid,
                         icon = GetTradeSkillIcon and GetTradeSkillIcon(i) or nil,
                         link = link, color = linkColour(link),
                         requiredSkill = meta and meta.requiredSkill or nil,
                         tiers = meta and meta.difficulty or nil,  -- {orange,yellow,green,grey}
-                        effect = meta and meta.effect or nil,     -- searchable effect text
+                        effect = meta and (addon:GetCraftedItemStatText(meta.craftedItemId) or meta.effect) or nil,  -- crafted consumable's use-effect buff (LibItemDB) wins; enchant effect (ProfessionDB) is the fallback
                     }
                 end
             end
@@ -496,9 +545,21 @@ end
 function Engine:OnProfessionShow()
     self._sessionOpen = true
 
-    -- Takeover disabled, or the user already chose the Blizzard UI this
+    -- Ensure our toggle button is wired to ride on Blizzard's frame whenever it
+    -- shows — even if a coexisting addon (TSM/Skillet) is what shows it, or it
+    -- ends up visible alongside our taken-over tab. So closing the TOGPM window
+    -- always leaves a way back on the Blizzard UI.
+    self:EnsureToggleHook()
+
+    -- A tab-initiated open (OpenProfession) forces the TOGPM tab this once,
+    -- overriding the default-to-Blizzard rule AND a mid-session Blizzard choice.
+    local force = self._forceTakeoverOnce
+    self._forceTakeoverOnce = false
+
+    -- Otherwise open Blizzard's window when takeover is off (the default), when
+    -- remember-last points there, or when the user already chose it this
     -- session → hand off to the default frame (suppressed at Init) and stop.
-    if (not self:IsTakeoverEnabled()) or self._showingDefault then
+    if not force and ((not self:ShouldTakeoverOnShow()) or self._showingDefault) then
         self:ShowDefaultUI()
         self:FireUpdate()
         return
@@ -522,6 +583,7 @@ function Engine:OnProfessionShow()
         self:ShowDefaultUI()
         return
     end
+    self:_RecordLastUI("togpm")
     self:FireUpdate()
 end
 
@@ -532,6 +594,7 @@ function Engine:OnProfessionClose()
     self._isCraftWindow = false
     self._showingDefault = false
     self._autoOpened    = false
+    self._forceTakeoverOnce = false
     self:HideToggleButton()
 
     -- If we auto-opened the window for this craft session and the user is
@@ -553,6 +616,7 @@ end
 function Engine:ShowDefaultUI()
     if not self._sessionOpen then return end
     self._showingDefault = true
+    self:_RecordLastUI("blizzard")
 
     -- Fold our own window away first so the two don't stack.
     if self._autoOpened and addon.MainWindow and addon.MainWindow.frame
@@ -584,6 +648,7 @@ end
 function Engine:ShowOurUI()
     if not self._sessionOpen then return end
     self._showingDefault = false
+    self:_RecordLastUI("togpm")
 
     local frame = self._isCraftWindow and _G.CraftFrame or _G.TradeSkillFrame
     if frame and frame:IsShown() then
@@ -624,6 +689,25 @@ end
 
 function Engine:HideToggleButton()
     if self._toggleBtn then self._toggleBtn:Hide() end
+end
+
+-- Make sure our "TOGPM" toggle button rides on Blizzard's trade/craft frame
+-- WHENEVER that frame is visible — not only when WE summon it via ShowDefaultUI.
+-- With another profession addon installed (TSM, Skillet) the Blizzard frame can
+-- be shown by it — or by the auto-open-into-TOGPM flow ending up alongside it —
+-- even while we've "taken over", and the player needs our button there to get
+-- back into TOGPM after closing our window. Hook each frame's OnShow once so the
+-- button reappears on every show, and show it immediately if the frame is
+-- already up (covers the handler-order race on the triggering event).
+function Engine:EnsureToggleHook()
+    for _, name in ipairs({ "TradeSkillFrame", "CraftFrame" }) do
+        local frame = _G[name]
+        if frame and not self._hookedFrames[frame] then
+            self._hookedFrames[frame] = true
+            frame:HookScript("OnShow", function() Engine:ShowToggleButton(frame) end)
+            if frame:IsShown() then self:ShowToggleButton(frame) end
+        end
+    end
 end
 
 -- ---------------------------------------------------------------------------

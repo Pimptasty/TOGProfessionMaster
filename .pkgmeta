@@ -23,8 +23,6 @@ optional-dependencies:
   - auctionator
   - auctioneer
   - tradeskill-master
-  - tsm-app-helper
-
 ignore:
   - .git/
   - .github/

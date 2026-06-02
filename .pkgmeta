@@ -21,9 +21,9 @@ optional-dependencies:
   - togbankclassic
   - greenwall
   - auctionator
-  - auc-advanced
-  - tradeskillmaster
-  - tradeskillmaster_apphelper
+  - auctioneer
+  - tradeskill-master
+  - tsm-app-helper
 
 ignore:
   - .git/

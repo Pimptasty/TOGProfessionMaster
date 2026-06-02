@@ -46,6 +46,79 @@ addon:DebugPrint("AH: modern API path =", tostring(AH._isModernAH))
 -- ---------------------------------------------------------------------------
 
 AH._isOpen = false
+AH._scanBtn = nil
+AH._scanBtnHookedFrames = AH._scanBtnHookedFrames or {}
+
+local function scanButtonIdleText()
+    return "|c" .. (addon.BrandColor or "ffFF8000") .. "TOGPM|r Scan"
+end
+
+local function scanButtonBusyText()
+    return "Scanning..."
+end
+
+function AH.UpdateScanButtonState()
+    local b = AH._scanBtn
+    if not b then return end
+    local busy = (AH._isScanning == true) or (AH._fullScanning == true)
+    if busy then
+        b:SetText(scanButtonBusyText())
+        b:Disable()
+        return
+    end
+    b:SetText(scanButtonIdleText())
+    if AH.IsOpen() then
+        b:Enable()
+    else
+        b:Disable()
+    end
+end
+
+function AH.ShowScanButton(frame)
+    if not frame then return end
+
+    local b = AH._scanBtn
+    if not b then
+        b = CreateFrame("Button", "TOGPMAHScanButton", frame, "UIPanelButtonTemplate")
+        b:SetSize(92, 18)
+        b:SetScript("OnClick", function()
+            if AH._fullScanning or AH._isScanning then return end
+            AH.StartFullScan(false)
+            AH.UpdateScanButtonState()
+        end)
+        b:SetScript("OnEnter", function(btn)
+            addon.Tooltip.Owner(btn)
+            GameTooltip:SetText(scanButtonIdleText(), 1, 1, 1)
+            GameTooltip:AddLine("Run a TOGPM full AH scan to refresh TOGPM's own pricing cache.", 0.9, 0.9, 0.9, true)
+            GameTooltip:AddLine("Independent of Auto-scan: this is a manual one-click scan.", 0.7, 0.7, 0.7, true)
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        AH._scanBtn = b
+    end
+
+    b:SetParent(frame)
+    b:ClearAllPoints()
+    b:SetPoint("TOPLEFT", frame, "TOPLEFT", 72, -15)
+    b:SetFrameStrata("HIGH")
+    b:Show()
+    AH.UpdateScanButtonState()
+end
+
+function AH.HideScanButton()
+    if AH._scanBtn then AH._scanBtn:Hide() end
+end
+
+function AH.EnsureScanButtonHook()
+    for _, name in ipairs({ "AuctionFrame", "AuctionHouseFrame" }) do
+        local frame = _G[name]
+        if frame and not AH._scanBtnHookedFrames[frame] then
+            AH._scanBtnHookedFrames[frame] = true
+            frame:HookScript("OnShow", function() AH.ShowScanButton(frame) end)
+            if frame:IsShown() then AH.ShowScanButton(frame) end
+        end
+    end
+end
 
 -- Fires the addon-wide AH_OPEN_STATE_CHANGED callback so per-tab UI can
 -- show/hide its [AH] buttons in real time when the user opens or closes
@@ -56,6 +129,8 @@ AH._isOpen = false
 -- replaces previous handlers — only the last subscriber would fire.
 Ace:RegisterEvent("AUCTION_HOUSE_SHOW", function()
     AH._isOpen = true
+    AH.EnsureScanButtonHook()
+    AH.UpdateScanButtonState()
     if addon.callbacks then
         addon.callbacks:Fire("AH_OPEN_STATE_CHANGED", true)
     end
@@ -76,6 +151,7 @@ Ace:RegisterEvent("AUCTION_HOUSE_SHOW", function()
 end)
 Ace:RegisterEvent("AUCTION_HOUSE_CLOSED", function()
     AH._isOpen = false
+    AH.HideScanButton()
     -- Auto-clear scan results — listings go stale fast and we don't want
     -- old prices lying around between AH visits. Cancels an in-progress
     -- scan first if one is running. The clear runs BEFORE the state-
@@ -92,6 +168,7 @@ Ace:RegisterEvent("AUCTION_HOUSE_CLOSED", function()
     AH._fullScanning = false
     AH._fullPending  = false
     AH.ClearResults()
+    AH.UpdateScanButtonState()
     if addon.callbacks then
         addon.callbacks:Fire("AH_OPEN_STATE_CHANGED", false)
     end
@@ -254,6 +331,7 @@ function AH.StartScan(items, opts)
     if type(items) ~= "table" or #items == 0 then return false, "no-items" end
 
     AH._isScanning   = true
+    AH.UpdateScanButtonState()
     AH._queue        = {}
     AH._results      = {}    -- fresh scan replaces previous results
     AH._opts         = opts or {}
@@ -277,6 +355,7 @@ function AH.StartScan(items, opts)
 
     if AH._totalItems == 0 then
         AH._isScanning = false
+        AH.UpdateScanButtonState()
         return false, "no-items"
     end
 
@@ -453,6 +532,7 @@ fullScanFrame:SetScript("OnEvent", function(_, event)
         fullUnregisterEvents()
         AH._fullScanning = false
         AH._fullSeen     = nil
+        AH.UpdateScanButtonState()
     end
 end)
 
@@ -476,6 +556,7 @@ local function fullStore()
     -- the next scan. Only the scanning flags reset here.
     AH._fullScanning = false
     AH._fullPending  = false
+    AH.UpdateScanButtonState()
     addon:Print(("AH full scan complete — priced %d items."):format(n))
     -- Tabs refresh their [AH] buttons / costs against the new data (same hook
     -- the targeted scan uses). Empty payload: prices went straight to addon.Price.
@@ -567,6 +648,7 @@ function AH.StartFullScan(auto)
         AH._fullSeen     = {}
         AH._fullScanning = true
         AH._fullPending  = true
+        AH.UpdateScanButtonState()
         C_AuctionHouse.ReplicateItems()
         return true
     end
@@ -583,6 +665,7 @@ function AH.StartFullScan(auto)
     end
     AH._fullSeen     = {}
     AH._fullScanning = true
+    AH.UpdateScanButtonState()
     -- Guard against a Classic AH-code error on the getAll result set.
     if ITEM_QUALITY_COLORS and not ITEM_QUALITY_COLORS[-1] then
         ITEM_QUALITY_COLORS[-1] = { r = 0, g = 0, b = 0 }
@@ -724,6 +807,7 @@ function AH._finishScan(reason)
     AH._isScanning     = false
     AH._currentItem    = nil
     AH._currentItemKey = nil
+    AH.UpdateScanButtonState()
 
     -- Summary line so the user sees at a glance whether the scan found
     -- anything. Counts items in the results map that have at least one

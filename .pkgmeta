@@ -20,6 +20,10 @@ required-dependencies:
 optional-dependencies:
   - togbankclassic
   - greenwall
+  - auctionator
+  - auc-advanced
+  - tradeskillmaster
+  - tradeskillmaster_apphelper
 
 ignore:
   - .git/

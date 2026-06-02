@@ -168,6 +168,7 @@ end
 
 -- State persisted across tab switches (reset on UI reload).
 BrowserTab._selectedProfId    = 0        -- 0 = All Professions (default)
+BrowserTab._selectedProfs     = nil      -- multi-select profession set
 BrowserTab._searchText        = ""
 BrowserTab._viewMode          = "guild"  -- "guild" | "mine" | "missing"
 BrowserTab._showAllRecipes    = false    -- v0.7.0 toolbar checkbox: when true,
@@ -238,7 +239,7 @@ end
 --                  by the list). When viewMode == "missing", ONLY no-crafter
 --                  rows are returned.
 local function BuildRecipeList(profId, viewMode, searchText, opts)
-    if profId == nil then return {} end
+    if profId == nil or (type(profId) == "table" and next(profId) == nil) then return {} end
     local gdb = GetGuildDb()
     if not gdb then return {} end
     local recipes = CollectRecipesForView(viewMode)
@@ -303,17 +304,33 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
         -- SoD/Anniversary recipes leak into the Vanilla lib set (the 1.15 client's
         -- tables carry them); their IDs are 400k+ while real Vanilla recipes are
         -- under ~30k. Hide that range on a Vanilla client that isn't running
-        -- Season of Discovery. Must run BEFORE the lib early-return below, since
-        -- the lib data is exactly what carries them.
+        -- Season of Discovery.
         if clientExp == 1 and recipeId >= 200000 and not addon:IsSoD() then return false end
-        -- LibProfessionDB data is already point-in-time per game version, so the
-        -- cross-expansion gates below (which only existed to filter the old
-        -- all-version merged union) are obsolete and would mis-fire — e.g. the
-        -- spellId>25000 heuristic would wrongly hide legitimate high-ID Vanilla
-        -- recipes. With version-scoped data, every loaded recipe belongs here.
-        if addon.recipeDBFromLib then return true end
         if meta.minExpansion and meta.minExpansion > clientExp then return false end
-        if (not meta.minExpansion) and clientExp == 1 and recipeId > 25000 then return false end
+        -- Non-SoD Vanilla: require spell presence for all recipes.
+        if clientExp == 1 and not addon:IsSoD() and GetSpellInfo and not GetSpellInfo(recipeId) then return false end
+        -- Non-SoD Vanilla cooking: blacklist known TBC recipes that leaked
+        -- into ProfessionDB Vanilla data (exist in 1.15 client but aren't
+        -- obtainable on Era/Anniversary).
+        local TBC_COOKING_BLACKLIST = { [30047] = true }  -- Crystal Throat Lozenge
+        if clientExp == 1 and not addon:IsSoD() and thisProfId == 185 and TBC_COOKING_BLACKLIST[recipeId] then
+            return false
+        end
+        -- Non-SoD Vanilla First Aid: blacklist TBC Netherweave bandage recipes.
+        local TBC_FIRSTAID_BLACKLIST = { [27032] = true, [27033] = true }  -- Netherweave Bandage, Heavy Netherweave Bandage
+        if clientExp == 1 and not addon:IsSoD() and thisProfId == 129 and TBC_FIRSTAID_BLACKLIST[recipeId] then
+            return false
+        end
+        if (not meta.minExpansion) and clientExp == 1 and recipeId > 25000 then
+            -- Vanilla client, untagged high-ID recipe: require BOTH spell
+            -- and item presence. TBC recipes like Crystal Throat Lozenge
+            -- have items in shared tables but no spell on Era clients.
+            local spellExists = GetSpellInfo and GetSpellInfo(recipeId) ~= nil
+            local itemExists = GetItemInfoInstant and (
+                (meta.itemId and GetItemInfoInstant(meta.itemId)) or
+                (meta.craftedItemId and GetItemInfoInstant(meta.craftedItemId)))
+            if not (spellExists and itemExists) then return false end
+        end
         if meta.requiredSkill and meta.requiredSkill > clientMaxSkill then return false end
         if meta.season then return false end
         return true
@@ -446,7 +463,11 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
         end
     end
 
-    if profId == 0 then
+    if type(profId) == "table" then
+        for pid in pairs(profId) do
+            processProf(pid, recipes[pid])
+        end
+    elseif profId == 0 then
         -- "All professions" view. Iterate the union of
         --   (a) profs with at least one crafter row in gdb.recipes, AND
         --   (b) profs in addon.recipeDB when showAll / missing is active
@@ -495,35 +516,41 @@ function BrowserTab:Draw(container)
     container:AddChild(toolbar)
 
     local profEntries = GetProfDropdownEntries()
-    local profList    = {}
-    local profOrder   = {}
-    for _, p in ipairs(profEntries) do
-        profList[p.profId]  = p.name
-        table.insert(profOrder, p.profId)
-    end
-
-    if Ace.db.profile.persistProfFilter and self._selectedProfId == 0 then
-        local saved = Ace.db.profile.savedProfFilter or 0
-        if saved ~= 0 and profList[saved] then
-            self._selectedProfId = saved
+    -- Initialize to "All Professions" (0) if no selection exists
+    if not self._selectedProfId then
+        if Ace.db.profile.persistProfFilter then
+            self._selectedProfId = Ace.db.profile.savedProfFilter or 0
+        else
+            self._selectedProfId = 0
         end
     end
 
-    local profDD = AceGUI:Create("Dropdown")
-    profDD:SetLabel("|c" .. (addon.BrandColor or "ffFF8000") .. L["PanelProfessions"] .. "|r")
-    profDD:SetWidth(180)
-    profDD:SetList(profList, profOrder)
-    profDD:SetValue(self._selectedProfId or 0)
-    profDD:SetCallback("OnValueChanged", function(_w, _e, value)
+    local profOrder = {}
+    local profLabelById = {}
+    for _, p in ipairs(profEntries) do
+        profOrder[#profOrder + 1] = p.profId
+        profLabelById[p.profId] = p.name
+    end
+
+    local profDropdown = AceGUI:Create("Dropdown")
+    profDropdown:SetLabel("|c" .. (addon.BrandColor or "ffFF8000") .. L["PanelProfessions"] .. "|r")
+    profDropdown:SetWidth(180)
+    addon.GUI.OffsetInputLabel(profDropdown)
+    profDropdown:SetList(profLabelById, profOrder)
+    -- Default to "All Professions" (0) when no selection exists
+    if not self._selectedProfId then
+        self._selectedProfId = 0
+    end
+    profDropdown:SetValue(self._selectedProfId)
+    profDropdown:SetCallback("OnValueChanged", function(_w, _e, value)
         self._selectedProfId = value
         if Ace.db.profile.persistProfFilter then
             Ace.db.profile.savedProfFilter = value
         end
         self:RefreshList()
     end)
-    addon.GUI.AttachTooltip(profDD, "Profession Filter",
-        "Filter the recipe list to a single profession, or show all.")
-    toolbar:AddChild(profDD)
+    addon.GUI.AttachTooltip(profDropdown, "Profession Filter", "Pick a profession to filter the recipe list.")
+    toolbar:AddChild(profDropdown)
 
     local sp = AceGUI:Create("Label")
     sp:SetWidth(8)
@@ -532,6 +559,7 @@ function BrowserTab:Draw(container)
     local search = AceGUI:Create("EditBox")
     search:SetLabel("|c" .. (addon.BrandColor or "ffFF8000") .. L["SearchPlaceholder"] .. "|r")
     search:SetWidth(220)
+    addon.GUI.OffsetInputLabel(search)
     search:SetText(self._searchText)
     search:DisableButton(true)
     search:SetCallback("OnTextChanged", function(_w, _e, text)
@@ -565,6 +593,7 @@ function BrowserTab:Draw(container)
     viewDD:SetValue(self._viewMode)
     viewDD:SetCallback("OnValueChanged", function(_w, _e, value)
         self._viewMode       = value
+        self._selectedProfs  = nil
         self._selectedProfId = 0
         self._selectedEntry  = nil
         C_Timer.After(0, function()
@@ -676,7 +705,7 @@ function BrowserTab:Draw(container)
     local recipeHdr = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     recipeHdr:ClearAllPoints()
     recipeHdr:SetPoint("LEFT", headerBar, "LEFT", 24, 0)
-    recipeHdr:SetText("|c" .. (addon.BrandColor or "ffFF8000") .. "Recipes|r")
+    recipeHdr:SetText(addon.UI.Brand("Recipes"))
 
     local recipeHdrHit = CreateFrame("Frame", nil, headerBar)
     recipeHdrHit:SetPoint("LEFT",  recipeHdr, "LEFT",  -2, 0)
@@ -693,7 +722,7 @@ function BrowserTab:Draw(container)
     local craftersHdr = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     craftersHdr:ClearAllPoints()
     craftersHdr:SetPoint("LEFT", headerBar, "LEFT", 186, 0)
-    craftersHdr:SetText("|c" .. (addon.BrandColor or "ffFF8000") .. L["CraftersColHeader"] .. "|r")
+    craftersHdr:SetText(addon.UI.Brand(L["CraftersColHeader"]))
 
     local craftersHdrHit = CreateFrame("Frame", nil, headerBar)
     craftersHdrHit:SetPoint("LEFT",  craftersHdr, "LEFT",  -2, 0)
@@ -720,6 +749,7 @@ function BrowserTab:Draw(container)
     -- live status table). We restore at the end of Draw, after FillList
     -- + content-height are settled.
     local scroll, savedScroll = addon.GUI.PersistentScroll.Acquire(self, {
+        key       = "browser",
         layout    = "List",
         fullWidth = true,
         onRelease = function()
@@ -1219,11 +1249,11 @@ function BrowserTab:FillList()
 
     scroll.LayoutFinished = nil
 
-    if self._selectedProfId == nil then
-        local hint = AceGUI:Create("Label")
-        hint:SetText(L["SelectProfHint"])
-        hint:SetFullWidth(true)
-        scroll:AddChild(hint)
+    if not self._selectedProfId then
+        local lbl = AceGUI:Create("Label")
+        lbl:SetText(L["SelectProfHint"])
+        lbl:SetFullWidth(true)
+        scroll:AddChild(lbl)
         return
     end
 
@@ -2040,6 +2070,7 @@ function BrowserTab:UpdateVirtualRows()
         local recipeIdx = firstIdx + i
         local entry     = recipes[recipeIdx]
         if entry then
+            addon.GUI.ApplyRowStripe(f, recipeIdx)
             f._entry = entry
             f.icon:SetTexture(entry.icon)
 

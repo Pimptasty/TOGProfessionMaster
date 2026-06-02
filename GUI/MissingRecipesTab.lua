@@ -252,17 +252,33 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
     local gdb         = addon:GetGuildDb()
     local profRecipes = gdb and gdb.recipes and gdb.recipes[profId]
     if profRecipes then
+        local function markKnown(id)
+            if id ~= nil then
+                local n = tonumber(id)
+                if n then knownSpells[n] = true end
+            end
+        end
         for recipeKey, rd in pairs(profRecipes) do
             if rd and rd.crafters and rd.crafters[charKey] then
-                -- The table key is the recipeId — for non-Enchanting it's
-                -- the crafted item ID, for Enchanting it's the spell ID.
-                knownSpells[recipeKey] = true
-                -- Also index by the spell taught (from addon.recipeDB) so
-                -- non-Enchanting recipes hit the cross-reference path.
+                -- Normalize all known key shapes into one set. Historical
+                -- data can contain spell IDs or crafted-item IDs depending on
+                -- client/version at scan time.
+                markKnown(recipeKey)
+                -- If recipeKey is a crafted-item id, map it back to spell id.
+                markKnown(addon.GetSpellIdForCraftedItem and addon:GetSpellIdForCraftedItem(profId, recipeKey))
+                -- Also index explicit scanner-side ids when present.
+                markKnown(rd.spellId)
+                markKnown(rd.teaches)
+                markKnown(rd.itemId)
+                markKnown(rd.craftedItemId)
+                -- Legacy cross-reference via recipeDB metadata.
                 local meta = addon.recipeDB and addon.recipeDB[profId]
                                             and addon.recipeDB[profId][recipeKey]
                 if meta and meta.teaches then
-                    knownSpells[meta.teaches] = true
+                    markKnown(meta.teaches)
+                end
+                if meta and meta.craftedItemId then
+                    markKnown(meta.craftedItemId)
                 end
             end
         end
@@ -319,11 +335,9 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
     else                        clientExp, clientMaxSkill = 5, 600
     end
 
-    -- LibProfessionDB ships version-scoped data, so the cross-expansion gates
-    -- (minExpansion / spellId>25000 / requiredSkill cap) are obsolete and would
-    -- mis-fire on it — they only existed to filter the old merged union. Skip
-    -- them when lib-sourced; content-phase gating and known/rank checks below
-    -- still apply.
+    -- Even with lib-backed recipe data, keep defensive client-validity gates
+    -- enabled: Season-of-Discovery and Anniversary content can still leak into
+    -- Era/HC clients through shared 1.15 data tables.
     local libData = addon.recipeDBFromLib
 
     -- SoD/Anniversary recipes leak into the Vanilla LibProfessionDB set (the 1.15
@@ -334,43 +348,58 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
     -- (the cross-expansion gates below are skipped for it; this one is not).
     local SOD_RECIPE_ID_MIN = 200000
     local hideSoD = (clientExp == 1) and not addon:IsSoD()
+    -- TBC cooking recipe IDs that contaminated Vanilla ProfessionDB data
+    -- (exist in 1.15 client spell tables but can't be learned on Era).
+    local TBC_COOKING_BLACKLIST = {
+        [30047] = true,  -- Crystal Throat Lozenge
+    }
+    -- TBC First Aid recipe IDs that contaminated Vanilla ProfessionDB data
+    -- (Netherweave bandages added in TBC, shouldn't show on Era/Anniversary).
+    local TBC_FIRSTAID_BLACKLIST = {
+        [27032] = true,  -- Netherweave Bandage
+        [27033] = true,  -- Heavy Netherweave Bandage
+    }
 
     for spellId, data in pairs(recipes) do
         local skip = false
         if hideSoD and spellId >= SOD_RECIPE_ID_MIN then
             skip = true
         end
-        if (not libData) and data.minExpansion and data.minExpansion > clientExp then
+        -- Non-SoD Vanilla: require spell presence for all recipes.
+        if hideSoD and GetSpellInfo and not GetSpellInfo(spellId) then
+            skip = true
+        end
+        -- Non-SoD Vanilla cooking: blacklist known TBC recipes that leaked
+        -- into ProfessionDB Vanilla data (exist in 1.15 client but aren't
+        -- obtainable on Era/Anniversary).
+        if hideSoD and profId == 185 and TBC_COOKING_BLACKLIST[spellId] then
+            skip = true
+        end
+        -- Non-SoD Vanilla First Aid: blacklist TBC Netherweave bandage recipes.
+        if hideSoD and profId == 129 and TBC_FIRSTAID_BLACKLIST[spellId] then
+            skip = true
+        end
+        if data.minExpansion and data.minExpansion > clientExp then
             -- Recipe was first introduced in a later expansion than this
             -- client supports. Wrath transmute on TBC, Cata recipe on
             -- Wrath, etc. — never learnable here regardless of phase or
             -- skill cap. PRIMARY cross-expansion gate.
             skip = true
-        elseif (not libData) and (not data.minExpansion) and clientExp == 1 and spellId > 25000 then
+        elseif (not data.minExpansion) and clientExp == 1 and spellId > 25000 then
             -- Defensive gate for Classic Era against untagged post-Vanilla
-            -- recipes. The build tool tags non-Vanilla recipes with
-            -- minExpansion>=2 but coverage is incomplete (~36% of Cooking,
-            -- ~30% of Leatherworking lack the tag). Most Vanilla recipe spell
-            -- IDs are in the 2000-25000 range, so an untagged spellId above
-            -- that on Vanilla is USUALLY post-Vanilla content the Era client
-            -- can't learn (TBC Crystal Throat Lozenge spell 30047, Cata
-            -- Smoked Redgill 470370, SoD/Anniversary Prowler Steak 1225758).
-            --
-            -- BUT a handful of legitimate late-Vanilla recipes (AQ/Naxx-era,
-            -- e.g. Dirge's Kickin' Chimaerok Chops spell 25659 / item 21025)
-            -- have IDs above 25000 too. So only skip when the recipe genuinely
-            -- isn't on THIS client — i.e. neither its scroll item nor its
-            -- crafted item exists in the client's item table. GetItemInfoInstant
-            -- is synchronous and returns nil for items the client doesn't know,
-            -- so a real Era recipe (items present) is kept while true
-            -- post-Vanilla content (items absent) is still hidden.
-            local existsHere = GetItemInfoInstant and (
+            -- recipes. Most Vanilla recipe spell IDs are in the 2000-25000
+            -- range, so untagged spellId > 25000 is USUALLY post-Vanilla.
+            -- Require BOTH spell presence AND item presence to pass —
+            -- TBC recipes like Crystal Throat Lozenge (spell 30047) have
+            -- items in shared 1.15 tables but no spell on Era clients.
+            local spellExists = GetSpellInfo and GetSpellInfo(spellId) ~= nil
+            local itemExists = GetItemInfoInstant and (
                 (data.itemId        and GetItemInfoInstant(data.itemId)) or
                 (data.craftedItemId and GetItemInfoInstant(data.craftedItemId)))
-            if not existsHere then
+            if not (spellExists and itemExists) then
                 skip = true
             end
-        elseif (not libData) and data.requiredSkill and data.requiredSkill > clientMaxSkill then
+        elseif data.requiredSkill and data.requiredSkill > clientMaxSkill then
             -- Recipe is from a future expansion the current client can't
             -- support. Hide it; the player will see it once they're on a
             -- later TOC variant.
@@ -384,18 +413,12 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
             skip = true
         elseif data.season then
             skip = true
-        elseif (not showAll) and knownByChar(spellId) then
-            skip = true
-        elseif (not showAll) and data.teaches and data.teaches ~= spellId and knownByChar(data.teaches) then
-            skip = true
-        elseif (not showAll) and data.craftedItemId and knownByChar(data.craftedItemId) then
-            -- Fallback when rd.spellId is nil in gdb.recipes — Classic Era's
-            -- BuildSpellNameCache walk doesn't enumerate every profession
-            -- recipe as a "spell" spellbook item, so the spellNameCache
-            -- lookup misses and rd.spellId stays nil. Non-Enchanting
-            -- gdb.recipes[profId] is keyed by crafted-item ID; matching on
-            -- data.craftedItemId catches the known set even without spellId
-            -- being populated on the scanner side.
+        elseif (not showAll) and (knownByChar(spellId)
+                                  or (data.teaches and knownByChar(data.teaches))
+                                  or (data.craftedItemId and knownByChar(data.craftedItemId))) then
+            -- Filter out recipes for spells the character already knows when
+            -- Show All is off. Consolidated check matches the entry.known
+            -- calculation below so filtering and display state stay in sync.
             skip = true
         elseif type(data.teaches) == "string" and RANK_CAPS[data.teaches] then
             -- Rank-up book (e.g. "Expert First Aid" raises max from 150
@@ -405,31 +428,6 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
             -- skillMax is already at or above the rank's cap they must
             -- have used the book to get there.
             if skillMax >= RANK_CAPS[data.teaches] then
-                skip = true
-            end
-        elseif GetSpellInfo and not GetSpellInfo(spellId) then
-            -- The current client doesn't know this spell. Combined with
-            -- "scroll item also doesn't exist on this client" → recipe is
-            -- unreachable and would render either as "? <fallback name>"
-            -- (no itemId) or as "#<itemId> (loading…)" (itemId exists in
-            -- our DB but not in the client's item table — never resolves).
-            -- Common cause: Classic-Era-exclusive recipes (Season of
-            -- Discovery, Anniversary additions) that ship in the unified
-            -- recipeDB because they appear in 1.15.x's SkillLineAbility,
-            -- but the TBC / Wrath / Cata / MoP clients have no record of
-            -- them. Examples:
-            --   spell 427061  "Mantle of the Second War"     itemId nil
-            --   spell 1224639 "Scarlet Soldier's Stompers"   itemId 238329
-            -- GetItemInfoInstant is used to detect "item doesn't exist on
-            -- this client" without false positives from cache misses
-            -- (regular GetItemInfo returns nil for either case but only
-            -- GetItemInfoInstant is synchronous — it pulls from a small
-            -- always-loaded table that has every item the client knows).
-            -- Filter is conservative: requires BOTH spell-unknown AND
-            -- item-unknown, so any recipe with either signal still shows.
-            local itemKnown = data.itemId and GetItemInfoInstant
-                              and GetItemInfoInstant(data.itemId)
-            if not itemKnown then
                 skip = true
             end
         end
@@ -583,6 +581,7 @@ function MissingRecipesTab:Draw(container)
     local charDD = AceGUI:Create("Dropdown")
     charDD:SetLabel(L["MissingCharacterLabel"])
     charDD:SetWidth(180)
+    addon.GUI.OffsetInputLabel(charDD)
     charDD:SetList(charList, charOrder)
     charDD:SetValue(self._charKey)
     charDD:SetCallback("OnValueChanged", function(_w, _e, value)
@@ -618,6 +617,7 @@ function MissingRecipesTab:Draw(container)
     local profDD = AceGUI:Create("Dropdown")
     profDD:SetLabel(L["MissingProfessionLabel"])
     profDD:SetWidth(180)
+    addon.GUI.OffsetInputLabel(profDD)
     profDD:SetList(profList, profOrder)
     profDD:SetValue(self._profId)
     profDD:SetCallback("OnValueChanged", function(_w, _e, value)
@@ -636,6 +636,7 @@ function MissingRecipesTab:Draw(container)
     local search = AceGUI:Create("EditBox")
     search:SetLabel(L["MissingSearchLabel"])
     search:SetWidth(200)
+    addon.GUI.OffsetInputLabel(search)
     search:SetText(self._searchText)
     search:DisableButton(true)
     search:SetCallback("OnTextChanged", function(_w, _e, text)
@@ -967,6 +968,23 @@ function MissingRecipesTab:BuildPool(parent)
                              or "?"
                 tip:SetText(name, 1, 1, 1, 1, true)
             end
+            -- v0.9.0: Optionally append [TOGPM] itemId / spellId footer
+            -- for troubleshooting recipe bleedthrough (SoD/TBC/etc.). Respects
+            -- the same tooltipShowIds toggle as the global item-tooltip hook.
+            local showIds = Ace and Ace.db and Ace.db.profile
+                            and Ace.db.profile.tooltipShowIds
+            if showIds then
+                local brandColor = addon.BrandColor or "ffFF8000"
+                local idParts = {}
+                if f._itemId  then table.insert(idParts, "itemId="  .. tostring(f._itemId))  end
+                if f._spellId then table.insert(idParts, "spellId=" .. tostring(f._spellId)) end
+                if #idParts > 0 then
+                    tip:AddLine(" ")
+                    tip:AddLine("|c" .. brandColor .. "[TOGPM]|r " ..
+                                "|c" .. brandColor .. table.concat(idParts, "  ") .. "|r",
+                                1, 1, 1, true)
+                end
+            end
             tip:AddLine(" ")
             tip:AddLine(L["MissingRowTooltipShift"], 0.7, 0.7, 0.7, true)
             tip:Show()
@@ -1022,6 +1040,7 @@ function MissingRecipesTab:UpdateVirtualRows()
         local listIdx = firstIdx + i
         local entry   = list[listIdx]
         if entry then
+            addon.GUI.ApplyRowStripe(f, listIdx)
             -- v0.5.0 keyed recipeDB by spell id; the row's entry.itemId is the
             -- recipe-scroll item that teaches the spell (when one exists —
             -- trainer-taught recipes have no scroll item). Use entry.itemId
@@ -1107,8 +1126,8 @@ function MissingRecipesTab:UpdateVirtualRows()
                 end
             end
             local nmText = color and ("|c" .. color .. displayName .. "|r") or displayName
-            if entry.known then
-                -- Show All marks recipes the character already knows with a check.
+            if self._showAll and entry.known then
+                -- Show All mode marks recipes the character already knows with a check.
                 nmText = "|TInterface\\Buttons\\UI-CheckBox-Check:0|t " .. nmText
             end
             f.nameLbl:SetText(nmText)
@@ -1287,6 +1306,7 @@ function MissingRecipesTab:FillList()
     -- the user back to the top mid-scroll (matches the BrowserTab and
     -- CooldownsTab fixes from v0.3.5).
     local scroll, savedScroll = addon.GUI.PersistentScroll.Acquire(self, {
+        key        = "missing",
         layout     = "List",
         fullWidth  = true,
         fullHeight = true,

@@ -74,6 +74,7 @@ local function getTabDefs()
         { value = "cooldowns", text = L["TabCooldowns"]      },
         { value = "missing",   text = L["TabMissingRecipes"] },
         { value = "crafting",  text = L["TabCrafting"]       },
+        { value = "ahprofit",  text = L["TabProfitPlanner"]  },
     }
 end
 
@@ -244,6 +245,15 @@ function MainWindow:Open(tabKey)
         cOnline  .. "Online|r \194\183 " ..
         cOffline .. "Offline|r"
 
+    local srcCol = addon.PriceSourceColors or {}
+    local sourceLegend = brand .. "Price sources:|r "
+        .. "|c" .. (srcCol["togpm-ah"] or (addon.BrandColor or "ffFF8000")) .. "[TOGPM]|r "
+        .. "|c" .. (srcCol["auctionator"] or "ff6da9ff") .. "[Auctionator]|r "
+        .. "|c" .. (srcCol["auctioneer-live"] or srcCol["auctioneer-app"] or "ff8fcf7f") .. "[Auctioneer Live]|r "
+        .. "|c" .. (srcCol["auctioneer-cached"] or "ff6fae61") .. "[Auctioneer Cached]|r "
+        .. "|c" .. (srcCol["tsm-live"] or "ff63d2ff") .. "[TSM Live]|r "
+        .. "|c" .. (srcCol["tsm-history"] or "ffe0b85a") .. "[TSM App]|r"
+
     local TAB_HELP = {
         browser = {
             title = "Profession Browser",
@@ -289,6 +299,32 @@ function MainWindow:Open(tabKey)
                 brand .. "Row actions:|r Hover the recipe name for an item tooltip, shift-click to link in chat. Click " .. brand .. "+|r to add the scroll to your Reagent Watch \226\128\148 you'll be alerted the moment it lands in your bags.",
                 " ",
                 brand .. "Sources:|r Each row tags how the recipe is obtained: " .. brand .. "Vendor|r, " .. brand .. "Drop|r, " .. brand .. "Quest|r, " .. brand .. "Crafted|r, " .. brand .. "Container|r, " .. brand .. "Fishing|r, or " .. brand .. "Trainer|r when shown.",
+            },
+        },
+        crafting = {
+            title = "Crafting",
+            lines = {
+                nameColorLegend,
+                " ",
+                "Craft your known recipes, queue batches, and compare cost vs sale value.",
+                " ",
+                brand .. "Cost rows:|r Reagent and output pricing now include source badges (e.g. [TOGPM], [Auctionator], [TSM]).",
+                " ",
+                sourceLegend,
+            },
+        },
+        ahprofit = {
+            title = L["TabProfitPlanner"],
+            lines = {
+                nameColorLegend,
+                " ",
+                "Profit ranking across recipes your own characters can craft.",
+                " ",
+                brand .. "Live AH Profit:|r Uses currently-available sale prices (Auctionator / TSM / TOGPM AH scan).",
+                " ",
+                brand .. "Historical Profit:|r Uses historical-style pricing (Auctionator / TSM AppHelper-backed data).",
+                " ",
+                sourceLegend,
             },
         },
 
@@ -425,6 +461,7 @@ local _TAB_SIZE_LOOKUP = {
     cooldowns = function() return addon.CooldownsTab      and addon.CooldownsTab.WINDOW_SIZE      end,
     missing   = function() return addon.MissingRecipesTab and addon.MissingRecipesTab.WINDOW_SIZE end,
     crafting  = function() return addon.CraftingTab       and addon.CraftingTab.WINDOW_SIZE       end,
+    ahprofit  = function() return addon.AHProfitTab       and addon.AHProfitTab.WINDOW_SIZE       end,
 }
 
 function MainWindow:ApplyTabSize(tabKey)
@@ -566,6 +603,10 @@ function MainWindow:DrawTab(group, container)
     elseif group == "crafting" then
         if addon.CraftingTab then
             addon.CraftingTab:Draw(container)
+        end
+    elseif group == "ahprofit" then
+        if addon.AHProfitTab then
+            addon.AHProfitTab:Draw(container)
         end
     end
 end

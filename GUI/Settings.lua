@@ -302,6 +302,19 @@ local OPTIONS = {
             set   = function(_, val) Ace.db.profile.autoScanAH = val and true or false end,
         },
 
+        useTOGPMAH = {
+            name  = L["SettingsUseTOGPMAH"],
+            desc  = L["SettingsUseTOGPMAHDesc"],
+            type  = "toggle",
+            width = "full",
+            order = 19.735,
+            get   = function()
+                if Ace.db.profile.useTOGPMAH == nil then return true end
+                return Ace.db.profile.useTOGPMAH == true
+            end,
+            set   = function(_, val) Ace.db.profile.useTOGPMAH = val and true or false end,
+        },
+
         useAuctionator = {
             name  = L["SettingsUseAuctionator"],
             desc  = L["SettingsUseAuctionatorDesc"],
@@ -309,7 +322,69 @@ local OPTIONS = {
             width = "full",
             order = 19.75,
             get   = function() return Ace.db.profile.useAuctionator == true end,
-            set   = function(_, val) Ace.db.profile.useAuctionator = val and true or false end,
+            set   = function(_, val)
+                Ace.db.profile.useAuctionator = val and true or false
+                if not val then
+                    Ace.db.profile.useAuctionatorHistorical = false
+                end
+            end,
+        },
+
+        useAuctionatorHistorical = {
+            name  = L["SettingsUseAuctionatorHistorical"],
+            desc  = L["SettingsUseAuctionatorHistoricalDesc"],
+            type  = "toggle",
+            width = "full",
+            order = 19.752,
+            disabled = function() return Ace.db.profile.useAuctionator ~= true end,
+            get   = function() return Ace.db.profile.useAuctionatorHistorical ~= false end,
+            set   = function(_, val) Ace.db.profile.useAuctionatorHistorical = val and true or false end,
+        },
+
+        useAuctioneer = {
+            name  = L["SettingsUseAuctioneer"],
+            desc  = L["SettingsUseAuctioneerDesc"],
+            type  = "toggle",
+            width = "full",
+            order = 19.755,
+            get   = function() return Ace.db.profile.useAuctioneer == true end,
+            set   = function(_, val)
+                Ace.db.profile.useAuctioneer = val and true or false
+                if not val then
+                    Ace.db.profile.useAuctioneerCached = false
+                end
+            end,
+        },
+
+        useAuctioneerCached = {
+            name  = L["SettingsUseAuctioneerCached"],
+            desc  = L["SettingsUseAuctioneerCachedDesc"],
+            type  = "toggle",
+            width = "full",
+            order = 19.757,
+            disabled = function() return Ace.db.profile.useAuctioneer ~= true end,
+            get   = function() return Ace.db.profile.useAuctioneerCached ~= false end,
+            set   = function(_, val) Ace.db.profile.useAuctioneerCached = val and true or false end,
+        },
+
+        useTSM = {
+            name  = "Use TradeSkillMaster pricing",
+            desc  = "When TradeSkillMaster is installed, allow TOGPM to use TSM live price sources for profit views. Off by default.",
+            type  = "toggle",
+            width = "full",
+            order = 19.76,
+            get   = function() return Ace.db.profile.useTSM == true end,
+            set   = function(_, val) Ace.db.profile.useTSM = val and true or false end,
+        },
+
+        useTSMAppHelper = {
+            name  = "Use TSM App Helper pricing",
+            desc  = "Requires TradeSkillMaster_AppHelper. Enables TSM historical-style price sources for profit views. Off by default.",
+            type  = "toggle",
+            width = "full",
+            order = 19.77,
+            get   = function() return Ace.db.profile.useTSMAppHelper == true end,
+            set   = function(_, val) Ace.db.profile.useTSMAppHelper = val and true or false end,
         },
 
         ahScanDelay = {

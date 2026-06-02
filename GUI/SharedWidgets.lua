@@ -10,6 +10,95 @@ local AceGUI = LibStub("AceGUI-3.0")
 local L      = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 
 addon.GUI = addon.GUI or {}
+addon.UI  = addon.UI or {}
+local UI = addon.UI
+
+function UI.Brand(text)
+    return "|c" .. (addon.BrandColor or "ffFF8000") .. tostring(text or "") .. "|r"
+end
+
+-- ---------------------------------------------------------------------------
+-- Shared sort helpers
+-- ---------------------------------------------------------------------------
+addon.GUI.Sort = addon.GUI.Sort or {}
+
+addon.GUI.Sort.Texture = addon.GUI.Sort.Texture or "Interface\\Calendar\\MoreArrow"
+
+-- FGI-style sort arrow: Blizzard's Calendar more-arrow texture, rotated
+-- up/down to indicate ascending / descending order.
+function addon.GUI.Sort.SetIndicator(texture, isAsc)
+    if not texture then return end
+    texture:SetTexture(addon.GUI.Sort.Texture)
+    if texture.SetTexCoord then
+        if isAsc then
+            texture:SetTexCoord(0.0, 0.9375, 0.6875, 0.0)
+        else
+            texture:SetTexCoord(0.0, 0.9375, 0.0, 0.6875)
+        end
+    end
+end
+
+function addon.GUI.Sort.Indicator(isAsc)
+    local indicator = "|T" .. addon.GUI.Sort.Texture .. ":14:14|t"
+    if isAsc then
+        return indicator
+    end
+    return indicator
+end
+
+-- Standard click behavior: same column toggles asc/desc, new column resets to asc.
+function addon.GUI.Sort.Next(currentCol, currentAsc, clickedCol)
+    if currentCol == clickedCol then
+        return clickedCol, not (currentAsc == true)
+    end
+    return clickedCol, true
+end
+
+-- Optional tri-state variant for tabs that support "unsorted" as a third click.
+-- click 1: unsorted/new col -> asc, click 2: desc, click 3: unsorted(nil)
+function addon.GUI.Sort.NextOrNone(currentCol, currentAsc, clickedCol)
+    if currentCol ~= clickedCol then
+        return clickedCol, true
+    end
+    if currentAsc == true then
+        return clickedCol, false
+    end
+    return nil, true
+end
+
+-- Shared header-arrow widget plumbing (FGI-style MoreArrow texture).
+-- Works for AceGUI header widgets and raw frame-backed header buttons.
+function addon.GUI.Sort.ConfigureHeaderIcon(widgetOrButton, isSorted, isAsc, justify)
+    if not widgetOrButton then return end
+    local host = widgetOrButton.frame or widgetOrButton
+    if not (host and host.CreateTexture) then return end
+
+    local tex = widgetOrButton._sortIcon
+    if not tex then
+        tex = host:CreateTexture(nil, "OVERLAY")
+        tex:SetSize(12, 12)
+        widgetOrButton._sortIcon = tex
+    end
+
+    tex:ClearAllPoints()
+    if justify == "RIGHT" then
+        tex:SetPoint("LEFT", host, "LEFT", 2, 0)
+    else
+        tex:SetPoint("RIGHT", host, "RIGHT", -2, 0)
+    end
+
+    if isSorted then
+        addon.GUI.Sort.SetIndicator(tex, isAsc)
+        tex:Show()
+    else
+        tex:Hide()
+        -- Detach the texture when hidden to prevent bleeding into other tabs
+        -- when AceGUI recycles this widget. ClearAllPoints alone isn't enough —
+        -- the texture stays parented and can show up overlapping headers in
+        -- tabs that reuse the widget but don't call ConfigureHeaderIcon.
+        tex:SetParent(nil)
+    end
+end
 
 -- ---------------------------------------------------------------------------
 -- Pool detach
@@ -77,6 +166,7 @@ end
 --
 -- Usage:
 --   local scroll, saved = addon.GUI.PersistentScroll.Acquire(self, {
+--       key = "browser",
 --       layout = "List", fullWidth = true, fullHeight = true,
 --       onRelease = function() self:DetachPool() end,
 --   })
@@ -90,6 +180,36 @@ end
 -- For "jump to top on filter change" call sites, use Reset(self, scroll).
 
 addon.GUI.PersistentScroll = addon.GUI.PersistentScroll or {}
+
+local function _GetScrollStore()
+    local db = addon.lib and addon.lib.db
+    if not (db and db.char) then return nil end
+    db.char.frames = db.char.frames or {}
+    db.char.frames.scrollTabs = db.char.frames.scrollTabs or {}
+    return db.char.frames.scrollTabs
+end
+
+addon.GUI.RowStripe = addon.GUI.RowStripe or {
+    evenAlpha   = 0.04,
+    headerAlpha = 0.08,
+}
+
+function addon.GUI.ApplyRowStripe(frame, rowIndex, alpha)
+    if not frame then return end
+    local bg = frame._stripeBg
+    if not bg and frame.CreateTexture then
+        bg = frame:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints(frame)
+        frame._stripeBg = bg
+    end
+    if not bg then return end
+    local useAlpha = alpha
+    if useAlpha == nil then
+        local stripes = addon.GUI.RowStripe or {}
+        useAlpha = ((rowIndex or 0) % 2 == 0) and (stripes.evenAlpha or 0.04) or 0
+    end
+    bg:SetColorTexture(1, 1, 1, useAlpha)
+end
 
 -- The class LayoutFinished is what auto-sizes scroll.content to fit its
 -- AceGUI children — without it AceGUI's FixScroll sees viewheight==0 and
@@ -127,7 +247,18 @@ end
 -- into the status table via the default OnValueChanged handler).
 function addon.GUI.PersistentScroll.Acquire(tab, opts)
     opts = opts or {}
-    tab._scrollStatus = tab._scrollStatus or { scrollvalue = 0 }
+    local key = opts.key
+    if key then
+        local store = _GetScrollStore()
+        if store then
+            store[key] = store[key] or { scrollvalue = 0 }
+            tab._scrollStatus = store[key]
+        else
+            tab._scrollStatus = tab._scrollStatus or { scrollvalue = 0 }
+        end
+    else
+        tab._scrollStatus = tab._scrollStatus or { scrollvalue = 0 }
+    end
     local saved = tab._scrollStatus.scrollvalue or 0
 
     -- Reset BOTH fields so any synchronous FixScroll during FillRows
@@ -404,6 +535,57 @@ function addon.GUI.AttachTooltip(widget, title, desc)
     end
 end
 
+addon.GUI.InputLabelOffsetX = addon.GUI.InputLabelOffsetX or 4
+
+-- Dropdown/EditBox labels are raw FontStrings anchored by AceGUI above the
+-- control body. Several tabs had local +2/+4px nudges to stop those labels
+-- visually colliding with the control below. Centralise that here so every
+-- labeled input uses the same offset, and restore the original points on
+-- release so pooled AceGUI widgets don't leak the tweak into other owners.
+function addon.GUI.OffsetInputLabel(widget, dx)
+    if not (widget and widget.label and widget.label.GetNumPoints and widget.label.GetPoint) then
+        return
+    end
+    local useDx = dx
+    if useDx == nil then
+        useDx = addon.GUI.InputLabelOffsetX or 4
+    end
+    if widget._togpmInputLabelOffset == useDx then
+        return
+    end
+
+    local originalPoints = {}
+    for i = 1, widget.label:GetNumPoints() do
+        local point, relativeTo, relativePoint, xOfs, yOfs = widget.label:GetPoint(i)
+        originalPoints[#originalPoints + 1] = {
+            point = point,
+            relativeTo = relativeTo,
+            relativePoint = relativePoint,
+            xOfs = xOfs or 0,
+            yOfs = yOfs or 0,
+        }
+    end
+    if #originalPoints == 0 then return end
+
+    widget.label:ClearAllPoints()
+    for _, p in ipairs(originalPoints) do
+        widget.label:SetPoint(p.point, p.relativeTo, p.relativePoint, p.xOfs + useDx, p.yOfs)
+    end
+    widget._togpmInputLabelOffset = useDx
+
+    local prevOnRelease = widget.events and widget.events.OnRelease
+    widget:SetCallback("OnRelease", function(self)
+        if self.label then
+            self.label:ClearAllPoints()
+            for _, p in ipairs(originalPoints) do
+                self.label:SetPoint(p.point, p.relativeTo, p.relativePoint, p.xOfs, p.yOfs)
+            end
+        end
+        self._togpmInputLabelOffset = nil
+        if prevOnRelease then prevOnRelease(self) end
+    end)
+end
+
 -- ---------------------------------------------------------------------------
 -- Column header
 -- ---------------------------------------------------------------------------
@@ -429,7 +611,7 @@ function addon.GUI.MakeColumnHeader(opts)
            "MakeColumnHeader: missing required option (parent / label / width)")
 
     local lbl = AceGUI:Create("InteractiveLabel")
-    lbl:SetText("|c" .. (addon.BrandColor or "ffFF8000") .. opts.label .. "|r")
+    lbl:SetText(UI.Brand(opts.label))
     lbl:SetWidth(opts.width)
     if opts.justifyH and lbl.SetJustifyH then
         lbl:SetJustifyH(opts.justifyH)
@@ -453,6 +635,8 @@ function addon.GUI.MakeColumnHeader(opts)
     opts.parent:AddChild(lbl)
     return lbl
 end
+
+UI.AttachTooltip = addon.GUI.AttachTooltip
 
 -- Suppress unused-warn for L since callers pass strings already localised.
 local _ = L

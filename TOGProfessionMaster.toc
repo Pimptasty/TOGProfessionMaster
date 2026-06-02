@@ -9,7 +9,7 @@
 ## SavedVariablesPerCharacter:
 ## X-Curse-Project-ID: 1513588
 ## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0, DeltaSync, ProfessionDB, ItemDB
-## OptionalDeps: TOGBankClassic, GreenWall, Auctionator
+## OptionalDeps: TOGBankClassic, GreenWall, Auctionator, Auc-Advanced, TradeSkillMaster, TradeSkillMaster_AppHelper
 
 libs\LibDataBroker-1.1.lua
 libs\LibDBIcon-1.0.lua
@@ -64,6 +64,7 @@ GUI\CooldownsTab.lua
 GUI\ShoppingListTab.lua
 GUI\MissingRecipesTab.lua
 GUI\CraftingTab.lua
+GUI\AHProfitTab.lua
 GUI\ReagentTracker.lua
 GUI\Settings.lua
 Tooltip.lua

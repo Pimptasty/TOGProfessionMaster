@@ -21,6 +21,35 @@ addon.ColorCrafter     = "ffaaaaaa"   -- muted gray for other crafters
 addon.ColorOnline      = "ffffffff"   -- white for online guild members
 addon.ColorOffline     = "ff888888"   -- dark gray for offline guild members
 
+-- Price-source metadata (labels + colors) shared by any UI that surfaces where
+-- a number came from (TOGPM scan vs Auctionator vs TSM vs vendor fallback).
+addon.PriceSourceLabels = {
+    ["togpm-ah"]            = "TOGPM Live AH",
+    ["auctionator"]         = "Auctionator Live",
+    ["auctioneer-live"]     = "Auctioneer Live",
+    ["auctioneer-cached"]   = "Auctioneer Cached",
+    ["auctioneer-app"]      = "Auctioneer Cached",
+    ["tsm-live"]            = "TSM Live",
+    ["auctionator-history"] = "Auctionator History",
+    ["tsm-history"]         = "TSM App",
+    ["auctionator-vendor"]  = "Auctionator Vendor",
+    ["togpm-vendor"]        = "TOGPM Vendor",
+    ["vendor-static"]       = "Static Vendor",
+}
+addon.PriceSourceColors = {
+    ["togpm-ah"]            = addon.BrandColor,
+    ["auctionator"]         = "ff6da9ff",
+    ["auctioneer-live"]     = "ff8fcf7f",
+    ["auctioneer-cached"]   = "ff6fae61",
+    ["auctioneer-app"]      = "ff6fae61",
+    ["tsm-live"]            = "fff0c44f",
+    ["auctionator-history"] = "ff3f7bd1",
+    ["tsm-history"]         = "ffe39a3b",
+    ["auctionator-vendor"]  = "ff4f8fe8",
+    ["togpm-vendor"]        = "ff9a9a9a",
+    ["vendor-static"]       = "ff777777",
+}
+
 -- Version (resolved from .toc, works on all Classic builds)
 local _GetAddOnMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
 addon.Version = _GetAddOnMetadata(addonName, "Version") or "dev"
@@ -185,7 +214,23 @@ local SETTINGS_DEFAULTS = {
         -- auto-scanned AH prices (Modules/AHScanner full scan on AH open) plus
         -- the shipped vendor table. Tick this to ALSO read Auctionator's price
         -- DB (preferred over our scan when present). Read in Modules/Price.lua.
+        useTOGPMAH = true,
         useAuctionator = false,
+        useAuctionatorHistorical = true,
+
+        -- Optional Auctioneer pricing bridge. When enabled and Auctioneer is
+        -- installed, TOGPM can use Auctioneer's market-value estimate.
+        -- `useAuctioneerCached` adds a second-stage fallback to Auctioneer
+        -- stat engines when no market value exists.
+        useAuctioneer = false,
+        useAuctioneerCached = true,
+
+        -- TSM integrations are explicit opt-in, mirroring Auctionator's default.
+        -- `useTSM` enables direct reads from TradeSkillMaster's in-game API.
+        -- `useTSMAppHelper` enables historical-style TSM sources that depend on
+        -- desktop-app-fed data. Both are off by default.
+        useTSM = false,
+        useTSMAppHelper = false,
 
         -- Global item tooltip lines. Both OFF by default — opt-in via
         -- Settings to keep the addon's tooltip footprint minimal until the
@@ -280,6 +325,7 @@ local SLASH_COMMANDS = {
     ["dumphashes"]   = "DumpHashes",
     ["dumpcooldowns"] = "DumpCooldowns",
     ["transmutedebug"] = "DumpTransmuteDiag",
+    ["dumpprice"]   = "DumpPrice",
     ["forcebroadcast"] = "ForceBroadcast",
     ["backfill"]     = "RunBackfill",
     ["myalts"]       = "DumpMyAlts",
@@ -972,6 +1018,55 @@ function addon:DumpSpellCache()
     end
 end
 
+--- /togpm dumpprice <itemId|itemLink> — print the current price-resolution
+-- output plus Auctioneer live/cached diagnostics for one item.
+function addon:DumpPrice(args)
+    local raw = strtrim(args or "")
+    local itemId = tonumber(raw)
+    if not itemId and raw ~= "" then
+        itemId = tonumber(raw:match("item:(%d+)"))
+    end
+    if not itemId then
+        Ace:Print("Usage: /togpm dumpprice <itemId|itemLink>")
+        return
+    end
+
+    if not addon.Price then
+        Ace:Print("|cffff4444Price module not loaded|r")
+        return
+    end
+
+    local itemName = (GetItemInfo and GetItemInfo(itemId)) or ("item:" .. tostring(itemId))
+    Ace:Print(("|cffda8cffPrice diagnostic|r for %s (%d)"):format(tostring(itemName), itemId))
+
+    local p, src, age = addon.Price.Get(itemId)
+    Ace:Print(("  Get: %s  src=%s  age=%s"):format(
+        p and addon.Price.Money(p) or "nil",
+        tostring(src),
+        tostring(age)))
+
+    local liveP, liveSrc = addon.Price.GetSaleLive(itemId)
+    Ace:Print(("  GetSaleLive: %s  src=%s"):format(
+        liveP and addon.Price.Money(liveP) or "nil",
+        tostring(liveSrc)))
+
+    local histP, histSrc = addon.Price.GetSaleHistorical(itemId)
+    Ace:Print(("  GetSaleHistorical: %s  src=%s"):format(
+        histP and addon.Price.Money(histP) or "nil",
+        tostring(histSrc)))
+
+    local diag = addon.Price.GetAuctioneerDiagnostics and addon.Price.GetAuctioneerDiagnostics(itemId)
+    if diag then
+        Ace:Print(("  Auctioneer toggles: useAuctioneer=%s useAuctioneerCached=%s"):format(
+            tostring(diag.useAuctioneer), tostring(diag.useAuctioneerCached)))
+        Ace:Print(("  Auctioneer API: ready=%s hasAlgorithmAPI=%s hasModuleRegistry=%s serverKey=%s"):format(
+            tostring(diag.ready), tostring(diag.hasAlgorithmAPI), tostring(diag.hasModuleRegistry), tostring(diag.serverKey)))
+        Ace:Print(("  Auctioneer values: live=%s cached=%s"):format(
+            diag.live and addon.Price.Money(diag.live) or "nil",
+            diag.cached and addon.Price.Money(diag.cached) or "nil"))
+    end
+end
+
 --- /togpm itemgaps [profId] — list crafted items whose stats LibItemDB is
 --- missing, so the gaps can be filled into LibItemDB. Reports two kinds: items
 --- not in ItemDB at all, and items present but returning no stats (some of those
@@ -1107,6 +1202,7 @@ function Ace:PrintHelp()
     self:Print("  /togpm sync         \226\128\148 " .. L["SlashHelpSync"])
     self:Print("  /togpm status       \226\128\148 " .. L["SlashHelpStatus"])
     self:Print("  /togpm versioncheck \226\128\148 " .. L["SlashHelpVersionCheck"])
+    self:Print("  /togpm dumpprice <itemId|itemLink> \226\128\148 Dump full price diagnostics for an item")
     self:Print("  /togpm debug        \226\128\148 " .. L["SlashHelpDebug"])
     self:Print("  /togpm help         \226\128\148 " .. L["SlashHelpHelp"])
 end

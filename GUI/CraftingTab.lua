@@ -64,6 +64,24 @@ CraftingTab._sortAsc  = true
 
 local function Brand(text) return "|c" .. (addon.BrandColor or "ffFF8000") .. text .. "|r" end
 local function Color(hex, text) return "|c" .. hex .. text .. "|r" end
+local function PriceSourceTag(src)
+    if not (src and addon.Price and addon.Price.GetSourceColor) then return "" end
+    local short = {
+        ["togpm-ah"] = "TOGPM",
+        ["auctionator"] = "AUC",
+        ["auctioneer-live"] = "AUCN-L",
+        ["auctioneer-cached"] = "AUCN-C",
+        ["auctioneer-app"] = "AUCN-C",
+        ["tsm-live"] = "TSM",
+        ["auctionator-history"] = "AUC-H",
+        ["tsm-history"] = "TSM-H",
+        ["auctionator-vendor"] = "AUC-V",
+        ["togpm-vendor"] = "VEND",
+        ["vendor-static"] = "VEND",
+    }
+    local col = addon.Price.GetSourceColor(src)
+    return " " .. "|c" .. col .. "[" .. (short[src] or src) .. "]|r"
+end
 
 local Ace = addon.lib
 local function savedProf() return Ace.db and Ace.db.char and Ace.db.char.craftSelProf or nil end
@@ -232,7 +250,8 @@ function CraftingTab:Draw(container)
     self:UpdateHeaderText()
 
     -- Recipe list (virtual scroll).
-    local scroll = addon.GUI.PersistentScroll.Acquire(self, {
+    local scroll, savedScroll = addon.GUI.PersistentScroll.Acquire(self, {
+        key = "crafting",
         layout = "List", fullWidth = true, fullHeight = true,
         onRelease = function() self:DetachPool() end,
     })
@@ -246,9 +265,19 @@ function CraftingTab:Draw(container)
         for _, f in ipairs(self._pool) do f:SetParent(scroll.content) end
     end
     if scroll.scrollbar then
-        scroll.scrollbar:SetScript("OnValueChanged", function(bar, value)
-            if bar.obj and bar.obj.SetScroll then bar.obj:SetScroll(value) end
+        local bar = scroll.scrollbar
+        local prev = bar:GetScript("OnValueChanged")
+        bar:SetScript("OnValueChanged", function(bar2, value)
+            if bar2.obj and bar2.obj.SetScroll then bar2.obj:SetScroll(value) end
             self:UpdateVirtualRows()
+        end)
+
+        local prevOnRelease = scroll.events and scroll.events.OnRelease
+        scroll:SetCallback("OnRelease", function(widget)
+            if bar and bar.SetScript then
+                bar:SetScript("OnValueChanged", prev)
+            end
+            if prevOnRelease then prevOnRelease(widget) end
         end)
     end
 
@@ -296,6 +325,9 @@ function CraftingTab:Draw(container)
 
     AnchorAll()
     self:FillList()
+    addon.GUI.PersistentScroll.Restore(scroll, savedScroll, function()
+        self:UpdateVirtualRows()
+    end)
     self:RefreshDetail()
     self:RefreshQueue()
 end
@@ -316,7 +348,7 @@ function CraftingTab:BuildHeaders(parent)
         local fs = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetAllPoints()
         fs:SetJustifyH(justify)
-        b._fs, b._col, b._base = fs, col, base
+        b._fs, b._col, b._base, b._justify = fs, col, base, justify
         b:SetScript("OnClick", function() CraftingTab:OnHeaderClick(col) end)
         b:SetScript("OnEnter", function()
             addon.Tooltip.Owner(b)
@@ -336,18 +368,13 @@ end
 function CraftingTab:UpdateHeaderText()
     if not self._headerBtns then return end
     for _, b in ipairs(self._headerBtns) do
-        local arrow = ""
-        if self._sortCol == b._col then arrow = self._sortAsc and "  ^" or "  v" end
-        b._fs:SetText(Brand(b._base .. arrow))
+        b._fs:SetText(Brand(b._base))
+        addon.GUI.Sort.ConfigureHeaderIcon(b, self._sortCol == b._col, self._sortAsc, b._justify)
     end
 end
 
 function CraftingTab:OnHeaderClick(col)
-    if self._sortCol == col then
-        if self._sortAsc then self._sortAsc = false else self._sortCol = nil end
-    else
-        self._sortCol, self._sortAsc = col, true
-    end
+    self._sortCol, self._sortAsc = addon.GUI.Sort.NextOrNone(self._sortCol, self._sortAsc, col)
     self:UpdateHeaderText()
     self:FillList()
 end
@@ -443,16 +470,19 @@ function CraftingTab:UpdateVirtualRows()
 
     for i = 1, POOL_SIZE do
         local f = pool[i]
-        local e = rows[firstIdx + i]
+        local rowIdx = firstIdx + i
+        local e = rows[rowIdx]
         if e then
             f._kind = e.kind
             if e.kind == "header" then
+                addon.GUI.ApplyRowStripe(f, rowIdx, 0)
                 f._index, f._recipeId, f._link = nil, nil, nil
                 f.icon:Hide(); f.skillLbl:Hide(); f.countLbl:Hide(); f.selTex:Hide()
                 f.nameLbl:SetPoint("LEFT", f, "LEFT", 8, 0)
                 f.nameLbl:SetWidth(0)  -- let category headers run full width
                 f.nameLbl:SetText(Brand(e.name))
             else
+                addon.GUI.ApplyRowStripe(f, rowIdx)
                 f._index, f._recipeId, f._link = e.index, e.recipeId, e.link
                 f.icon:SetTexture(e.icon or 134400); f.icon:Show()
                 f.nameLbl:SetPoint("LEFT", f, "LEFT", NAME_X, 0)
@@ -470,7 +500,7 @@ function CraftingTab:UpdateVirtualRows()
                 f.countLbl:Show()
                 if selected then f.selTex:Show() else f.selTex:Hide() end
             end
-            local y = -((firstIdx + i - 1) * ROW_HEIGHT)
+            local y = -((rowIdx - 1) * ROW_HEIGHT)
             f:ClearAllPoints()
             f:SetPoint("TOPLEFT",  scroll.content, "TOPLEFT",  0, y)
             f:SetPoint("TOPRIGHT", scroll.content, "TOPRIGHT", 0, y)
@@ -568,7 +598,7 @@ local DCTRL_W    = 230     -- right-hand controls column width
 local DREAG_H    = 13      -- reagent row height (tight, ~ font height)
 local DREAG_TOP  = 42      -- y-offset of the first reagent row from the panel top
 local DCTRL_BOT  = 114     -- controls block bottom offset (Craft Max button bottom: stepper -6, Craft -34, Queue -62, Craft Max -90..-114)
-local DREAG_COST_W = 96    -- per-reagent cost column width (fits "NNNg NNs NNc" coin string)
+local DREAG_COST_W = 132   -- per-reagent cost/source width (coin string + source tag, expands left)
 
 local function rawTip(frame, getTitle, getDesc)
     frame:SetScript("OnEnter", function()
@@ -973,9 +1003,9 @@ function CraftingTab:RefreshDetail()
 
             -- Per-reagent line cost: unit price × needed. "—" when unpriced.
             if addon.Price and r.itemId then
-                local p = addon.Price.Get(r.itemId)
+                local p, src = addon.Price.Get(r.itemId)
                 if p then
-                    row.cost:SetText(addon.Price.Money(p * (r.need or 1)))
+                    row.cost:SetText(addon.Price.Money(p * (r.need or 1)) .. PriceSourceTag(src))
                 else
                     row.cost:SetText(Color("ff888888", "—"))
                 end
@@ -1043,13 +1073,16 @@ function CraftingTab:RefreshDetail()
             -- coin, red = you'd lose it. (Assumes one craft yields one item and
             -- ignores the AH cut — a first cut; refine later.)
             local craftedId = sel.link and tonumber(sel.link:match("item:(%d+)"))
-            local ah
+            local ah, ahSrc
             if craftedId and Pr.Get then
                 local p, src = Pr.Get(craftedId)
-                if p and (src == "auctionator" or src == "togpm-ah") then ah = p end
+                if p and (src == "auctionator" or src == "togpm-ah") then
+                    ah, ahSrc = p, src
+                end
             end
             if ah then
-                segs[#segs + 1] = Color("ffaaaaaa", L["CraftAHPriceLabel"] .. ": ") .. Pr.Money(ah)
+                segs[#segs + 1] = Color("ffaaaaaa", L["CraftAHPriceLabel"] .. ": ")
+                    .. Pr.Money(ah) .. PriceSourceTag(ahSrc)
                 if fullyPriced then
                     local profit = ah - total
                     local col  = profit >= 0 and "ff40c040" or "ffff4040"

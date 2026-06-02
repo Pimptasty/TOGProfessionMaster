@@ -29,6 +29,7 @@ CooldownsTab._readyOnly = false
 -- Two-level cooldown filter: profession (0 = All) → specific cooldown
 -- ("all" = All within that profession). Two AceGUI dropdowns on the toolbar.
 CooldownsTab._filterProf = 0
+CooldownsTab._filterProfs = nil
 CooldownsTab._filterCd   = "all"
 -- Scope filter: "guild" shows every guild member's cooldowns,
 -- "mine" narrows to the local player's own characters. Mirrors the
@@ -288,6 +289,10 @@ local frameScripts = addon.AceGUIFrameScripts
 -- (Removed: GetAvailableWidth + ComputeColWidths. The cooldowns tab now
 -- uses fixed COL_W widths so rows don't reflow during resize-drag — same
 -- smoothness as the Missing/Browser tabs which also use fixed widths.)
+
+-- Keep row height consistent with MissingRecipesTab so text baselines align
+-- visually the same across both locked-size tabs.
+local ROW_HEIGHT = 16
 
 -- ---------------------------------------------------------------------------
 -- Helpers
@@ -855,7 +860,7 @@ function CooldownsTab:Draw(container)
 
     local readyBtn = AceGUI:Create("Button")
     readyBtn:SetText(self._readyOnly and L["ShowAll"] or L["ReadyOnly"])
-    readyBtn:SetWidth(100)
+    readyBtn:SetWidth(90)
     readyBtn:SetCallback("OnClick", function(_widget)
         self._readyOnly = not self._readyOnly
         _widget:SetText(self._readyOnly and L["ShowAll"] or L["ReadyOnly"])
@@ -899,34 +904,46 @@ function CooldownsTab:Draw(container)
         return (profList[a] or ""):lower() < (profList[b] or ""):lower()
     end)
 
-    -- Validate persisted selection against the rebuilt profession list — if
-    -- the user was filtered to a profession that's no longer available
-    -- (e.g. they switched WoW versions), fall back to All.
-    if self._filterProf ~= 0 and not profList[self._filterProf] then
-        self._filterProf = 0
-        self._filterCd   = "all"
+    if not self._filterProfId then
+        self._filterProfId = 0
     end
 
-    local profDD = AceGUI:Create("Dropdown")
-    profDD:SetLabel("|c" .. brand .. L["FilterColProfession"] .. "|r")
-    profDD:SetWidth(160)
-    profDD:SetList(profList, profOrder)
-    profDD:SetValue(self._filterProf or 0)
-    profDD:SetCallback("OnValueChanged", function(_w, _e, value)
-        self._filterProf = value
-        self._filterCd   = "all"  -- reset specific-cooldown filter on profession change
+    local multiProfOrder = {}
+    for _, profId in ipairs(profOrder) do
+        if profId ~= 0 then
+            multiProfOrder[#multiProfOrder + 1] = profId
+        end
+    end
+
+    -- Add "All Professions" at the start
+    local profDropdownList = { [0] = L["AllProfessions"] }
+    local profDropdownOrder = { 0 }
+    for _, profId in ipairs(multiProfOrder) do
+        profDropdownList[profId] = profList[profId]
+        profDropdownOrder[#profDropdownOrder + 1] = profId
+    end
+
+    local profDropdown = AceGUI:Create("Dropdown")
+    profDropdown:SetLabel("|c" .. brand .. L["FilterColProfession"] .. "|r")
+    profDropdown:SetWidth(135)
+    addon.GUI.OffsetInputLabel(profDropdown)
+    profDropdown:SetList(profDropdownList, profDropdownOrder)
+    profDropdown:SetValue(self._filterProfId or 0)
+    profDropdown:SetCallback("OnValueChanged", function(_w, _e, value)
+        self._filterProfId = value
+        self._filterCd = "all"  -- reset specific-cooldown filter on profession change
         self:RedrawTable(container)
     end)
-    addon.GUI.AttachTooltip(profDD, L["FilterColProfession"], L["FilterProfessionDesc"])
-    toolbar:AddChild(profDD)
+    addon.GUI.AttachTooltip(profDropdown, L["FilterColProfession"], "Pick a profession to filter cooldowns.")
+    toolbar:AddChild(profDropdown)
 
     -- Cooldown dropdown is only meaningful once a specific profession is
     -- selected. Skip rendering it when profession is "All" — keeps the
     -- toolbar compact and avoids a "Cooldown ▼" stub that does nothing.
-    if (self._filterProf or 0) ~= 0 then
+    if self._filterProfId and self._filterProfId ~= 0 then
         local cdList  = { ["all"] = L["AllCooldowns"] }
         local cdOrder = { "all" }
-        for _, cd in ipairs(COOLDOWN_BY_PROFESSION[self._filterProf] or {}) do
+        for _, cd in ipairs(COOLDOWN_BY_PROFESSION[self._filterProfId] or {}) do
             if cd.isAvailable() then
                 cdList[cd.id] = L[cd.labelKey] or cd.id
                 cdOrder[#cdOrder + 1] = cd.id
@@ -942,9 +959,10 @@ function CooldownsTab:Draw(container)
 
         local cdDD = AceGUI:Create("Dropdown")
         cdDD:SetLabel("|c" .. brand .. L["FilterColCooldown"] .. "|r")
-        cdDD:SetWidth(180)
+        cdDD:SetWidth(155)
         cdDD:SetList(cdList, cdOrder)
         cdDD:SetValue(self._filterCd or "all")
+        addon.GUI.OffsetInputLabel(cdDD)
         cdDD:SetCallback("OnValueChanged", function(_w, _e, value)
             self._filterCd = value
             self:RedrawTable(container)
@@ -960,10 +978,11 @@ function CooldownsTab:Draw(container)
     -- the existing profession/cooldown filters above.
     local viewDD = AceGUI:Create("Dropdown")
     viewDD:SetLabel("|c" .. brand .. L["FilterColView"] .. "|r")
-    viewDD:SetWidth(140)
+    viewDD:SetWidth(115)
     viewDD:SetList({ guild = L["ViewGuild"], mine = L["ViewMine"] },
                    { "guild", "mine" })
     viewDD:SetValue(self._viewMode or "guild")
+    addon.GUI.OffsetInputLabel(viewDD)
     viewDD:SetCallback("OnValueChanged", function(_w, _e, value)
         self._viewMode = value
         self:RedrawTable(container)
@@ -991,26 +1010,27 @@ function CooldownsTab:Draw(container)
         noItemsError  = "No reagents to scan in the current view.",
         getItems      = function()
             local rows = BuildRows(self._readyOnly, self._viewMode)
-            local profId = self._filterProf or 0
+            local profId = self._filterProfId or 0
             local cdId   = self._filterCd   or "all"
             if profId ~= 0 then
                 local kept = {}
-                if cdId == "all" then
+                for _, row in ipairs(rows) do
+                    if ProfessionMatchesRow(profId, row) then
+                        kept[#kept + 1] = row
+                    end
+                end
+                rows = kept
+            end
+            if profId ~= 0 and cdId ~= "all" then
+                local kept = {}
+                local cdEntry
+                for _, cd in ipairs(COOLDOWN_BY_PROFESSION[profId] or {}) do
+                    if cd.id == cdId then cdEntry = cd; break end
+                end
+                if cdEntry then
                     for _, row in ipairs(rows) do
-                        if ProfessionMatchesRow(profId, row) then
+                        if cdEntry.match(row) then
                             kept[#kept + 1] = row
-                        end
-                    end
-                else
-                    local cdEntry
-                    for _, cd in ipairs(COOLDOWN_BY_PROFESSION[profId] or {}) do
-                        if cd.id == cdId then cdEntry = cd; break end
-                    end
-                    if cdEntry then
-                        for _, row in ipairs(rows) do
-                            if cdEntry.match(row) then
-                                kept[#kept + 1] = row
-                            end
                         end
                     end
                 end
@@ -1083,6 +1103,7 @@ function CooldownsTab:Draw(container)
     -- to call Restore() after FillRows + DoLayout so SetScroll can
     -- derive a correct offset from the now-known content height.
     local scroll, saved = addon.GUI.PersistentScroll.Acquire(self, {
+        key        = "cooldowns",
         layout     = "List",
         fullWidth  = true,
         fullHeight = true,
@@ -1103,31 +1124,32 @@ function CooldownsTab:DrawHeaders(parent, container)
     local cw = self._colWidths or { char = 190, col2 = 456, time = 80 }
     local cols = {
         { key = "char", label = L["ColCharacter"], width = cw.char,
-          tip = "Character", tipDesc = "The guild member who has this cooldown. Right-click a row to whisper them." },
+          tip = "Character", tipDesc = "The guild member who has this cooldown. Right-click a row to whisper them.", justify = "LEFT" },
         { key = "cd",   label = L["ColCooldown"],  width = cw.col2,
-          tip = "Cooldown", tipDesc = "The name of the profession cooldown spell." },
+          tip = "Cooldown", tipDesc = "The name of the profession cooldown spell.", justify = "LEFT" },
         { key = "time", label = L["ColTimeLeft"],  width = cw.time,
-          tip = "Time Left", tipDesc = "How long until this cooldown is ready. Green = ready now." },
+          tip = "Time Left", tipDesc = "How long until this cooldown is ready. Green = ready now.", justify = "RIGHT" },
     }
+
+    self._headerCols = cols
+    self._headerWidgets = {}
 
     for _, col in ipairs(cols) do
         local key = col.key
-        addon.GUI.MakeColumnHeader({
+        local w = addon.GUI.MakeColumnHeader({
             parent       = parent,
             label        = col.label,
             width        = col.width,
+            justifyH     = col.justify,
             tooltipTitle = col.tip,
             tooltipDesc  = col.tipDesc,
             onClick      = function()
-                if self._sortCol == key then
-                    self._sortAsc = not self._sortAsc
-                else
-                    self._sortCol = key
-                    self._sortAsc = true
-                end
+                self._sortCol, self._sortAsc = addon.GUI.Sort.Next(self._sortCol, self._sortAsc, key)
                 self:RedrawTable(container)
             end,
         })
+        addon.GUI.Sort.ConfigureHeaderIcon(w, self._sortCol == key, self._sortAsc, col.justify)
+        self._headerWidgets[key] = w
     end
 end
 
@@ -1146,26 +1168,28 @@ function CooldownsTab:FillRows(scroll)
     -- ProfessionMatchesRow is the union of all of X's cooldown predicates,
     -- so adding a new entry to COOLDOWN_BY_PROFESSION automatically extends
     -- both the profession-level match and the cooldown dropdown.
-    local profId = self._filterProf or 0
+    local profId = self._filterProfId or 0
     local cdId   = self._filterCd   or "all"
     if profId ~= 0 then
         local kept = {}
-        if cdId == "all" then
+        for _, row in ipairs(rows) do
+            if ProfessionMatchesRow(profId, row) then
+                kept[#kept + 1] = row
+            end
+        end
+        rows = kept
+    end
+
+    if profId ~= 0 and cdId ~= "all" then
+        local kept = {}
+        local cdEntry
+        for _, cd in ipairs(COOLDOWN_BY_PROFESSION[profId] or {}) do
+            if cd.id == cdId then cdEntry = cd; break end
+        end
+        if cdEntry then
             for _, row in ipairs(rows) do
-                if ProfessionMatchesRow(profId, row) then
+                if cdEntry.match(row) then
                     kept[#kept + 1] = row
-                end
-            end
-        else
-            local cdEntry
-            for _, cd in ipairs(COOLDOWN_BY_PROFESSION[profId] or {}) do
-                if cd.id == cdId then cdEntry = cd; break end
-            end
-            if cdEntry then
-                for _, row in ipairs(rows) do
-                    if cdEntry.match(row) then
-                        kept[#kept + 1] = row
-                    end
                 end
             end
         end
@@ -1198,8 +1222,8 @@ function CooldownsTab:FillRows(scroll)
         return
     end
 
-    for _, row in ipairs(rows) do
-        self:DrawRow(scroll, row, now)
+    for rowIndex, row in ipairs(rows) do
+        self:DrawRow(scroll, row, now, rowIndex)
     end
 end
 
@@ -1234,7 +1258,7 @@ local function getSpecBonus(row, gdb)
     return nil
 end
 
-function CooldownsTab:DrawRow(parent, row, now)
+function CooldownsTab:DrawRow(parent, row, now, rowIndex)
     -- Responsive column widths shared by charLbl / col2 / timeLbl below.
     -- Computed once in Draw() per redraw; falls back to preferred values
     -- if Draw hasn't run yet (defensive — shouldn't happen in practice).
@@ -1253,15 +1277,19 @@ function CooldownsTab:DrawRow(parent, row, now)
         timeColor = "|cffff2200"   -- red: >= 24h
     end
 
-    local _fp, _fs, _ff = GameFontNormalSmall:GetFont()
-    local function sf(w) w:SetFont(_fp, _fs, _ff or "") end
-    -- nowrap helper is module-level (defined near the top of this file)
-    -- so it's also reachable from DrawHeaders and the group popup.
-
     local rowGroup = AceGUI:Create("SimpleGroup")
     rowGroup:SetLayout("Flow")
     rowGroup:SetFullWidth(true)
+    if rowGroup.SetAutoAdjustHeight then rowGroup:SetAutoAdjustHeight(false) end
+    rowGroup:SetHeight(ROW_HEIGHT)
     parent:AddChild(rowGroup)
+    local rf = rowGroup.frame
+    addon.GUI.ApplyRowStripe(rf, rowIndex or 1)
+    local rawChildren = {}
+    local function track(frame)
+        rawChildren[#rawChildren + 1] = frame
+        return frame
+    end
 
     -- Shared whisper helper (right-click on char label OR anywhere on the row)
     local function openWhisper(target)
@@ -1288,12 +1316,29 @@ function CooldownsTab:DrawRow(parent, row, now)
             openWhisper(fullKey)
         end
     end
-    rowGroup.frame:EnableMouse(true)
+    rf:EnableMouse(true)
     frameScripts(rowGroup, {
         OnMouseDown = function(f, button)
             if button == "RightButton" then doWhisper(f) end
         end,
     })
+    local prevOnRelease = rowGroup.events and rowGroup.events.OnRelease
+    rowGroup:SetCallback("OnRelease", function(widget)
+        addon.GUI.DetachPool(rawChildren)
+        if prevOnRelease then prevOnRelease(widget) end
+    end)
+
+    local function NewText(name, parentFrame, width, justify)
+        local fs = parentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        fs:SetHeight(ROW_HEIGHT)
+        fs:SetWidth(width)
+        fs:SetJustifyH(justify or "LEFT")
+        fs:SetJustifyV("MIDDLE")
+        fs:SetWordWrap(false)
+        return fs
+    end
+
+    local x = 0
 
     -- ── Column 1: Character (190px) — online=white, offline=grey ─────────────
     -- On TBC/Wrath, the first SPEC_ICON_W pixels are reserved for the spec-
@@ -1302,18 +1347,20 @@ function CooldownsTab:DrawRow(parent, row, now)
     local gdb        = addon:GetGuildDb()
     if SPEC_SLOT_RESERVED then
         local specSpellId, specBonusType = getSpecBonus(row, gdb)
-        -- InteractiveLabel (not Label) — has native SetCallback dispatch for
-        -- OnEnter/OnLeave; AceGUI clears widget.events on release so the
-        -- pool-recycling hazard in CLAUDE.md doesn't bite us.
-        local specIcon = AceGUI:Create("InteractiveLabel")
-        specIcon:SetWidth(SPEC_ICON_W)
-        specIcon:SetImageSize(12, 12)
+        local specHit = track(CreateFrame("Frame", nil, rf))
+        specHit:SetSize(SPEC_ICON_W, ROW_HEIGHT)
+        specHit:SetPoint("LEFT", rf, "LEFT", x, 0)
+        local specIcon = specHit:CreateTexture(nil, "ARTWORK")
+        specIcon:SetSize(12, 12)
+        specIcon:SetPoint("CENTER", specHit, "CENTER", 0, 0)
         if specSpellId then
             local tex = GetSpellTexture(specSpellId)
             if tex then
-                specIcon:SetImage(tex, 0.08, 0.92, 0.08, 0.92)
-                specIcon:SetCallback("OnEnter", function(_widget)
-                    addon.Tooltip.Owner(_widget.frame)
+                specIcon:SetTexture(tex)
+                specIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                specHit:EnableMouse(true)
+                specHit:SetScript("OnEnter", function()
+                    addon.Tooltip.Owner(specHit)
                     local specName = GetSpellInfo(specSpellId) or ""
                     GameTooltip:SetText(specName, 1, 1, 1)
                     local bonusLine = (specBonusType == "guaranteed")
@@ -1322,13 +1369,12 @@ function CooldownsTab:DrawRow(parent, row, now)
                     GameTooltip:AddLine(bonusLine, 0.7, 0.85, 1.0, true)
                     GameTooltip:Show()
                 end)
-                specIcon:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+                specHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
             end
         end
-        rowGroup:AddChild(specIcon)
+        x = x + SPEC_ICON_W
     end
 
-    local charLbl = AceGUI:Create("InteractiveLabel")
     local GuildCache = addon.Scanner and addon.Scanner.GuildCache
     local online = GuildCache and GuildCache:IsPlayerOnline(row.charKey) or false
     local displayName = row.shortName
@@ -1358,21 +1404,24 @@ function CooldownsTab:DrawRow(parent, row, now)
     local colorOnline  = "|c" .. (addon.ColorOnline  or "ffffffff")
     local colorOffline = "|c" .. (addon.ColorOffline or "ffaaaaaa")
     local nameColor = isYou and colorYou or (online and colorOnline or colorOffline)
+    local charHit = track(CreateFrame("Button", nil, rf))
+    charHit:SetSize(cw.char - SPEC_ICON_W, ROW_HEIGHT)
+    charHit:SetPoint("LEFT", rf, "LEFT", x, 0)
+    charHit:RegisterForClicks("AnyUp")
+    local charLbl = NewText(nil, charHit, cw.char - SPEC_ICON_W, "LEFT")
+    charLbl:SetPoint("LEFT", charHit, "LEFT", 0, 0)
     charLbl:SetText(nameColor .. displayName .. "|r")
-    charLbl:SetWidth(cw.char - SPEC_ICON_W)
-    sf(charLbl)
-    nowrap(charLbl)
-    charLbl:SetCallback("OnClick", function(_widget, _event, button)
-        if button == "RightButton" then doWhisper(_widget.frame) end
+    charHit:SetScript("OnClick", function(_, button)
+        if button == "RightButton" then doWhisper(charHit) end
     end)
-    charLbl:SetCallback("OnEnter", function(_widget)
-        addon.Tooltip.Owner(_widget.frame)
+    charHit:SetScript("OnEnter", function()
+        addon.Tooltip.Owner(charHit)
         GameTooltip:SetText(row.shortName, 1, 1, 1)
         GameTooltip:AddLine(L["TooltipWhisperRightClick"], 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
-    charLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-    rowGroup:AddChild(charLbl)
+    charHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    x = x + cw.char
 
     -- ── Column 2: fixed 306px container — ALL cooldown content lives inside here ──
     -- This SimpleGroup acts as a hard column boundary: charLbl ends at 190px,
@@ -1414,17 +1463,17 @@ function CooldownsTab:DrawRow(parent, row, now)
     local iconColW, cdNameW, reagentW, ahW, bankW, mailW =
         ComputeCol2InnerWidths(cw.col2, itemId ~= nil, hasAH, hasBank)
 
-    local col2 = AceGUI:Create("SimpleGroup")
-    col2:SetLayout("Flow")
-    col2:SetWidth(cw.col2)
-    rowGroup:AddChild(col2)
+    local col2 = track(CreateFrame("Frame", nil, rf))
+    col2:SetSize(cw.col2, ROW_HEIGHT)
+    col2:SetPoint("LEFT", rf, "LEFT", x, 0)
+    local x2 = 0
 
-    -- Icon widget (image only, empty text).
-    -- Keeping it separate from the name avoids AceGUI's Label threshold:
-    -- when (width - imageWidth) < 200 it stacks text below the icon vertically.
-    local iconW = AceGUI:Create("Label")
-    iconW:SetWidth(iconColW)
-    iconW:SetImageSize(12, 12)
+    local iconCell = track(CreateFrame("Frame", nil, col2))
+    iconCell:SetSize(iconColW, ROW_HEIGHT)
+    iconCell:SetPoint("LEFT", col2, "LEFT", x2, 0)
+    local iconW = iconCell:CreateTexture(nil, "ARTWORK")
+    iconW:SetSize(12, 12)
+    iconW:SetPoint("CENTER", iconCell, "CENTER", 0, 0)
 
     -- Resolve icon texture
     local iconTexture
@@ -1439,7 +1488,8 @@ function CooldownsTab:DrawRow(parent, row, now)
             iconItem:ContinueOnItemLoad(function()
                 local t = select(10, GetItemInfo(row.iconItemId))
                 if t then
-                    iconW:SetImage(t, 0.08, 0.92, 0.08, 0.92)
+                    iconW:SetTexture(t)
+                    iconW:SetTexCoord(0.08, 0.92, 0.08, 0.92)
                 end
             end)
             iconTexture = row.spellId and GetSpellTexture(row.spellId)
@@ -1448,20 +1498,25 @@ function CooldownsTab:DrawRow(parent, row, now)
         iconTexture = row.spellId and GetSpellTexture(row.spellId)
     end
     if iconTexture then
-        iconW:SetImage(iconTexture, 0.08, 0.92, 0.08, 0.92)
+        iconW:SetTexture(iconTexture)
+        iconW:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    else
+        iconW:SetTexture(nil)
     end
-    col2:AddChild(iconW)
+    x2 = x2 + iconColW
 
     -- Cooldown name (text only — no image, so no stacking threshold applies)
-    local cdNameLbl = AceGUI:Create("InteractiveLabel")
-    cdNameLbl:SetWidth(cdNameW)
     local cdText = row.isGroup and ("[+] " .. row.cdName) or row.cdName
+    local cdHit = track(CreateFrame("Button", nil, col2))
+    cdHit:SetSize(cdNameW, ROW_HEIGHT)
+    cdHit:SetPoint("LEFT", col2, "LEFT", x2, 0)
+    cdHit:RegisterForClicks("AnyUp")
+    local cdNameLbl = NewText(nil, cdHit, cdNameW, "LEFT")
+    cdNameLbl:SetPoint("LEFT", cdHit, "LEFT", 0, 0)
     cdNameLbl:SetText(cdText)
-    sf(cdNameLbl)
-    nowrap(cdNameLbl)
     if row.isGroup then
-        cdNameLbl:SetCallback("OnEnter", function(_widget)
-            addon.Tooltip.Owner(_widget.frame)
+        cdHit:SetScript("OnEnter", function()
+            addon.Tooltip.Owner(cdHit)
             if row.isTransmuteGroup then
                 GameTooltip:AddLine(L["TooltipClickTransmutes"], 1, 1, 1)
             else
@@ -1469,14 +1524,14 @@ function CooldownsTab:DrawRow(parent, row, now)
             end
             GameTooltip:Show()
         end)
-        cdNameLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-        cdNameLbl:SetCallback("OnClick", function(_widget, _event, button)
-            if button == "LeftButton" then self:ShowGroupPopup(row, now, _widget) end
+        cdHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        cdHit:SetScript("OnClick", function(_, button)
+            if button == "LeftButton" then self:ShowGroupPopup(row, now, cdHit) end
         end)
     else
-        cdNameLbl:SetCallback("OnEnter", function(_widget)
+        cdHit:SetScript("OnEnter", function()
             if row.spellId then
-                addon.Tooltip.Owner(_widget.frame)
+                addon.Tooltip.Owner(cdHit)
                 if GetSpellInfo(row.spellId) then
                     GameTooltip:SetHyperlink("spell:" .. row.spellId)
                 else
@@ -1485,17 +1540,19 @@ function CooldownsTab:DrawRow(parent, row, now)
                 GameTooltip:Show()
             end
         end)
-        cdNameLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+        cdHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
-    col2:AddChild(cdNameLbl)
+    x2 = x2 + cdNameW
 
     -- Reagent + [Bank] + mail — all inside col2, only when a reagent exists
     if itemId then
         -- Reagent name
-        local reagentLbl = AceGUI:Create("InteractiveLabel")
-        reagentLbl:SetWidth(reagentW)
-        sf(reagentLbl)
-        nowrap(reagentLbl)
+        local reagentHit = track(CreateFrame("Button", nil, col2))
+        reagentHit:SetSize(reagentW, ROW_HEIGHT)
+        reagentHit:SetPoint("LEFT", col2, "LEFT", x2, 0)
+        reagentHit:RegisterForClicks("AnyUp")
+        local reagentLbl = NewText(nil, reagentHit, reagentW, "LEFT")
+        reagentLbl:SetPoint("LEFT", reagentHit, "LEFT", 0, 0)
         local reagentName = GetItemInfo(itemId)
         if reagentName then
             reagentLbl:SetText("|cffaaaaaa" .. reagentName .. "|r")
@@ -1507,19 +1564,19 @@ function CooldownsTab:DrawRow(parent, row, now)
                 if name then reagentLbl:SetText("|cffaaaaaa" .. name .. "|r") end
             end)
         end
-        reagentLbl:SetCallback("OnEnter", function(_widget)
-            addon.Tooltip.Owner(_widget.frame)
+        reagentHit:SetScript("OnEnter", function()
+            addon.Tooltip.Owner(reagentHit)
             GameTooltip:SetHyperlink("item:" .. itemId)
             GameTooltip:Show()
         end)
-        reagentLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-        reagentLbl:SetCallback("OnClick", function(_widget, _event, button)
+        reagentHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        reagentHit:SetScript("OnClick", function(_, button)
             if button == "LeftButton" and IsShiftKeyDown() then
                 local link = select(2, GetItemInfo(itemId))
                 if link then HandleModifiedItemClick(link) end
             end
         end)
-        col2:AddChild(reagentLbl)
+        x2 = x2 + reagentW
 
         -- [AH] button — sits to the LEFT of [Bank] in the Flow order.
         -- Visible only when the AH scanner has cached listings for this
@@ -1528,73 +1585,79 @@ function CooldownsTab:DrawRow(parent, row, now)
         -- explicit preference for the Cooldowns tab (Professions tab uses
         -- the opposite [Bank] [AH] order on its reagent rows).
         if hasAH then
-            local ahBtn = AceGUI:Create("InteractiveLabel")
-            ahBtn:SetText("|cFF88CCFF[AH]|r")
-            ahBtn:SetWidth(ahW)
-            sf(ahBtn)
-            ahBtn:SetCallback("OnClick", function()
+            local ahBtn = track(CreateFrame("Button", nil, col2))
+            ahBtn:SetSize(ahW, ROW_HEIGHT)
+            ahBtn:SetPoint("LEFT", col2, "LEFT", x2, 0)
+            local ahLbl = NewText(nil, ahBtn, ahW, "LEFT")
+            ahLbl:SetPoint("LEFT", ahBtn, "LEFT", 0, 0)
+            ahLbl:SetText("|cFF88CCFF[AH]|r")
+            ahBtn:SetScript("OnClick", function()
                 local name = GetItemInfo(itemId)
                 if name then addon.AH.SearchFor(name) end
             end)
-            ahBtn:SetCallback("OnEnter", function(_widget)
-                addon.Tooltip.Owner(_widget.frame)
+            ahBtn:SetScript("OnEnter", function()
+                addon.Tooltip.Owner(ahBtn)
                 GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1)
                 GameTooltip:AddLine(L["TooltipAHDescReagent"], nil, nil, nil, true)
                 GameTooltip:Show()
             end)
-            ahBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-            col2:AddChild(ahBtn)
+            ahBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            x2 = x2 + ahW
         end
 
         -- [Bank] button
         if hasBank then
-            local bankBtn = AceGUI:Create("InteractiveLabel")
-            bankBtn:SetText("|cFF88FF88[Bank]|r")
-            bankBtn:SetWidth(bankW)
-            sf(bankBtn)
-            bankBtn:SetCallback("OnClick", function()
+            local bankBtn = track(CreateFrame("Button", nil, col2))
+            bankBtn:SetSize(bankW, ROW_HEIGHT)
+            bankBtn:SetPoint("LEFT", col2, "LEFT", x2, 0)
+            local bankLbl = NewText(nil, bankBtn, bankW, "LEFT")
+            bankLbl:SetPoint("LEFT", bankBtn, "LEFT", 0, 0)
+            bankLbl:SetText("|cFF88FF88[Bank]|r")
+            bankBtn:SetScript("OnClick", function()
                 local name = GetItemInfo(itemId)
                 local link = select(2, GetItemInfo(itemId))
                 addon.Bank.ShowRequestDialog(itemId, name, link)
             end)
-            bankBtn:SetCallback("OnEnter", function(_widget)
-                addon.Tooltip.Owner(_widget.frame)
+            bankBtn:SetScript("OnEnter", function()
+                addon.Tooltip.Owner(bankBtn)
                 GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1)
                 GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
                 GameTooltip:Show()
             end)
-            bankBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-            col2:AddChild(bankBtn)
+            bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            x2 = x2 + bankW
         end
 
         -- Mail icon — use embedded texture tag (no SetImage) so this widget has
         -- the same line height as all other text widgets and doesn't inflate the row.
-        local mailBtn = AceGUI:Create("InteractiveLabel")
-        mailBtn:SetText("|TInterface\\Icons\\INV_Letter_15:0:0|t")
-        mailBtn:SetWidth(mailW)
-        sf(mailBtn)
-        mailBtn:SetCallback("OnClick", function()
+        local mailBtn = track(CreateFrame("Button", nil, col2))
+        mailBtn:SetSize(mailW, ROW_HEIGHT)
+        mailBtn:SetPoint("LEFT", col2, "LEFT", x2, 0)
+        local mailIcon = mailBtn:CreateTexture(nil, "ARTWORK")
+        mailIcon:SetSize(12, 12)
+        mailIcon:SetPoint("CENTER", mailBtn, "CENTER", 0, 0)
+        mailIcon:SetTexture("Interface\\Icons\\INV_Letter_15")
+        mailBtn:SetScript("OnClick", function()
             local cdName    = row.isTransmuteGroup and L["Transmute"] or row.cdName
             local outputName = row.outputName or cdName
             CdMail_PrepareSupplyMail(row.charKey, cdName, outputName, itemId, row.reagentQty or 1)
         end)
-        mailBtn:SetCallback("OnEnter", function(_widget)
-            addon.Tooltip.Owner(_widget.frame)
+        mailBtn:SetScript("OnEnter", function()
+            addon.Tooltip.Owner(mailBtn)
             GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1)
             GameTooltip:AddLine(L["MailBtnTooltipDesc"] or "Open a mailbox, then click to attach reagents.", nil, nil, nil, true)
             GameTooltip:Show()
         end)
-        mailBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-        col2:AddChild(mailBtn)
+        mailBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
 
     -- ── Column 3: Time Remaining — always at the right, never displaced ───
-    local timeLbl = AceGUI:Create("Label")
+    local timeHit = track(CreateFrame("Frame", nil, rf))
+    timeHit:SetSize(cw.time, ROW_HEIGHT)
+    timeHit:SetPoint("LEFT", rf, "LEFT", cw.char + cw.col2, 0)
+    local timeLbl = NewText(nil, timeHit, cw.time, "RIGHT")
+    timeLbl:SetPoint("LEFT", timeHit, "LEFT", 0, 0)
     timeLbl:SetText(timeColor .. timeStr .. "|r")
-    timeLbl:SetWidth(cw.time)
-    sf(timeLbl)
-    nowrap(timeLbl)
-    rowGroup:AddChild(timeLbl)
 
     -- ── Optional "!" cooldown-ready alarm toggle (own characters only) ─────
     -- Mirrors the Browser tab's per-recipe alert "!" button. Cyan when armed,
@@ -1605,26 +1668,26 @@ function CooldownsTab:DrawRow(parent, row, now)
     -- alerting on them isn't part of this feature.
     if isYou and addon.CooldownAlerts then
         local CA = addon.CooldownAlerts
-        local alertBtn = AceGUI:Create("InteractiveLabel")
+        local alertBtn = track(CreateFrame("Button", nil, rf))
+        alertBtn:SetSize(18, ROW_HEIGHT)
+        alertBtn:SetPoint("LEFT", rf, "LEFT", cw.char + cw.col2 + cw.time, 0)
+        local alertLbl = NewText(nil, alertBtn, 18, "CENTER")
+        alertLbl:SetPoint("CENTER", alertBtn, "CENTER", 0, 0)
         local function paint(btn, armed)
-            btn:SetText(armed and "|cff00ffff!|r" or "|cff666666!|r")
+            alertLbl:SetText(armed and "|cff00ffff!|r" or "|cff666666!|r")
         end
         paint(alertBtn, CA:IsArmed(row))
-        alertBtn:SetWidth(18)
-        sf(alertBtn)
-        nowrap(alertBtn)
-        alertBtn:SetCallback("OnClick", function(_widget)
+        alertBtn:SetScript("OnClick", function()
             local newState = CA:Toggle(row)
-            paint(_widget, newState)
+            paint(alertBtn, newState)
         end)
-        alertBtn:SetCallback("OnEnter", function(_widget)
-            addon.Tooltip.Owner(_widget.frame)
+        alertBtn:SetScript("OnEnter", function()
+            addon.Tooltip.Owner(alertBtn)
             local enabled = CA:IsArmed(row)
             GameTooltip:SetText(enabled and L["CooldownAlertDisable"] or L["CooldownAlertEnable"], 1, 1, 1)
             GameTooltip:Show()
         end)
-        alertBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-        rowGroup:AddChild(alertBtn)
+        alertBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
 end
 

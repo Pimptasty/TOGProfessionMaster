@@ -146,7 +146,9 @@ function ShoppingListTab:FillShoppingList(container)
         return
     end
 
+    local rowIndex = 0
     for spellId, entry in pairs(bl) do
+        rowIndex = rowIndex + 1
         local spellName = GetSpellInfo(spellId) or tostring(spellId)
         local qty       = (entry and entry.quantity) or 1
 
@@ -154,6 +156,7 @@ function ShoppingListTab:FillShoppingList(container)
         row:SetLayout("Flow")
         row:SetFullWidth(true)
         container:AddChild(row)
+        addon.GUI.ApplyRowStripe(row.frame, rowIndex)
 
         -- [x] remove
         local removeBtn = AceGUI:Create("Button")
@@ -251,10 +254,11 @@ function ShoppingListTab:FillMissingReagents(container)
     container:AddChild(hdr)
 
     local function Hdr(text, width)
-        local l = AceGUI:Create("Label")
-        l:SetText("|cffffd100" .. text .. "|r")
-        l:SetWidth(width)
-        hdr:AddChild(l)
+        addon.GUI.MakeColumnHeader({
+            parent = hdr,
+            label = text,
+            width = width,
+        })
     end
     Hdr(L["ColItem"],     200)
     Hdr(L["ColHave"],      50)
@@ -262,11 +266,12 @@ function ShoppingListTab:FillMissingReagents(container)
     Hdr(L["ColShort"],     50)
 
     -- Rows
-    for _, entry in ipairs(list) do
+    for rowIndex, entry in ipairs(list) do
         local row = AceGUI:Create("SimpleGroup")
         row:SetLayout("Flow")
         row:SetFullWidth(true)
         container:AddChild(row)
+        addon.GUI.ApplyRowStripe(row.frame, rowIndex)
 
         local itemColour = entry.shortfall > 0 and "|cffff4444" or "|cff00ff00"
         local itemLbl = AceGUI:Create("InteractiveLabel")
@@ -334,6 +339,7 @@ function ShoppingListTab:FillReagentWatch(container)
     local inputBox = AceGUI:Create("EditBox")
     inputBox:SetLabel(L["WatchInputLabel"])
     inputBox:SetWidth(200)
+    addon.GUI.OffsetInputLabel(inputBox)
     addRow:AddChild(inputBox)
 
     local addBtn = AceGUI:Create("Button")
@@ -383,11 +389,12 @@ function ShoppingListTab:FillReagentWatch(container)
         return
     end
 
-    for _, entry in ipairs(list) do
+    for rowIndex, entry in ipairs(list) do
         local row = AceGUI:Create("SimpleGroup")
         row:SetLayout("Flow")
         row:SetFullWidth(true)
         container:AddChild(row)
+        addon.GUI.ApplyRowStripe(row.frame, rowIndex)
 
         -- [x] remove
         local removeBtn = AceGUI:Create("Button")

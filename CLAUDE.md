@@ -144,6 +144,12 @@ All tabs follow the same structure:
 2. Wait for their answer before writing the changelog entry or running `git commit`.
 3. Stage **all** modified and untracked addon files — never cherry-pick only the files you worked on. Run `git status` first and add everything relevant.
 
+**Release tagging (Always Follow):**
+
+- Release tags MUST use the template **`TOGProfessionMaster-vX.Y.Z`** (e.g. `TOGProfessionMaster-v0.9.1`) — **never** a bare `vX.Y.Z`. Every release tag in this repo follows this format; the BigWigs packager + CurseForge release rely on it.
+- Pushing any tag triggers the release workflow (`.github/workflows/release.yml` fires on `tags: '**'`), which packages and publishes to CurseForge. Only create/push a tag when the user explicitly asks.
+- Tag the exact commit being released (annotated tag) and push it: `git tag -a TOGProfessionMaster-vX.Y.Z -m "..." <sha>` then `git push origin TOGProfessionMaster-vX.Y.Z`.
+
 **Changelog rules:**
 
 - `CHANGELOG.md` lives at the repo root. Update it on every commit — never skip it.

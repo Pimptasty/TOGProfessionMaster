@@ -192,6 +192,10 @@ function CraftingTab:Draw(container)
         self:FillList()
     end)
     addon.GUI.AttachTooltip(search, L["SearchPlaceholder"], L["CraftSearchDesc"])
+    -- TSM-style search field: magnifying-glass icon instead of a text label.
+    -- No keepLabelSpace — this search sits next to an unlabeled checkbox, so the
+    -- box stays at the unlabeled height to line up with it.
+    addon.GUI.StyleSearchBox(search)
     toolbar:AddChild(search)
 
     local haveBtn = AceGUI:Create("CheckBox")
@@ -274,6 +278,7 @@ function CraftingTab:Draw(container)
 
         local prevOnRelease = scroll.events and scroll.events.OnRelease
         scroll:SetCallback("OnRelease", function(widget)
+            self:DetachPool()
             if bar and bar.SetScript then
                 bar:SetScript("OnValueChanged", prev)
             end
@@ -345,18 +350,30 @@ function CraftingTab:BuildHeaders(parent)
         local b = CreateFrame("Button", nil, hf)
         b:SetPoint("TOPLEFT", hf, "TOPLEFT", x, 0)
         b:SetSize(w, 18)
+        -- Brand-coloured hover glow behind the header (shared helper — same look
+        -- as the Profit/Cooldowns AceGUI headers). Created before the fontstring
+        -- so it sits on BACKGROUND beneath the OVERLAY text.
+        b._glow = addon.GUI.MakeHeaderHoverGlow(b)
         local fs = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetAllPoints()
-        fs:SetJustifyH(justify)
-        b._fs, b._col, b._base, b._justify = fs, col, base, justify
+        -- Centred header text with the sort arrow placed beside it (via
+        -- ConfigureCenteredHeaderIcon in UpdateHeaderText), matching the rest of
+        -- the addon. Data cells keep their own justification; `justify` is still
+        -- stored on the button as a record of the column's data alignment.
+        fs:SetJustifyH("CENTER")
+        b._fs, b._col, b._base, b._justify, b._width = fs, col, base, justify, w
         b:SetScript("OnClick", function() CraftingTab:OnHeaderClick(col) end)
         b:SetScript("OnEnter", function()
+            if b._glow then b._glow:Show() end
             addon.Tooltip.Owner(b)
             GameTooltip:SetText(base, 1, 1, 1)
             GameTooltip:AddLine(L["CraftSortHint"], nil, nil, nil, true)
             GameTooltip:Show()
         end)
-        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        b:SetScript("OnLeave", function()
+            if b._glow then b._glow:Hide() end
+            GameTooltip:Hide()
+        end)
         self._headerBtns[#self._headerBtns + 1] = b
     end
 
@@ -369,7 +386,7 @@ function CraftingTab:UpdateHeaderText()
     if not self._headerBtns then return end
     for _, b in ipairs(self._headerBtns) do
         b._fs:SetText(Brand(b._base))
-        addon.GUI.Sort.ConfigureHeaderIcon(b, self._sortCol == b._col, self._sortAsc, b._justify)
+        addon.GUI.Sort.ConfigureCenteredHeaderIcon(b, self._sortCol == b._col, self._sortAsc, b._width)
     end
 end
 
@@ -1330,6 +1347,26 @@ end
 -- Cleanup + refresh hooks
 -- ===========================================================================
 function CraftingTab:DetachPool()
+    -- Clean up sort icon textures on header buttons before detaching. The icon
+    -- is detached + nil'd (ConfigureCenteredHeaderIcon recreates it on the next
+    -- UpdateHeaderText, so it self-heals). The hover glow is only created once in
+    -- BuildHeaders (the header buttons persist across redraws — see Draw), so we
+    -- merely HIDE it here rather than detach/nil it; it rides with _headerFrame's
+    -- own DetachPool reparent below and is reused on the next Draw.
+    if self._headerBtns then
+        for _, btn in ipairs(self._headerBtns) do
+            if btn._sortIcon then
+                btn._sortIcon:Hide()
+                btn._sortIcon:SetParent(nil)
+                btn._sortIcon:ClearAllPoints()
+                btn._sortIcon = nil
+            end
+            if btn._glow then
+                btn._glow:Hide()
+            end
+        end
+    end
+    
     addon.GUI.DetachPool(self._pool)
     addon.GUI.DetachPool(self._queuePanel)
     addon.GUI.DetachPool(self._headerFrame)

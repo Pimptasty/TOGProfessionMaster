@@ -1107,6 +1107,7 @@ function CooldownsTab:Draw(container)
         layout     = "List",
         fullWidth  = true,
         fullHeight = true,
+        onRelease  = function() self:DetachPopup() end,
     })
     container:AddChild(scroll)
     self._scroll    = scroll
@@ -1115,6 +1116,16 @@ function CooldownsTab:Draw(container)
     self:FillRows(scroll)
     if scroll.DoLayout then scroll:DoLayout() end
     addon.GUI.PersistentScroll.Restore(scroll, saved)
+end
+
+function CooldownsTab:DetachPopup()
+    if self._groupPopup then
+        if self._groupPopup._closeOnClick then
+            addon.GUI.DetachPool(self._groupPopup._closeOnClick)
+        end
+        addon.GUI.DetachPool(self._groupPopup)
+        self._groupPopup = nil
+    end
 end
 
 function CooldownsTab:DrawHeaders(parent, container)
@@ -1139,8 +1150,12 @@ function CooldownsTab:DrawHeaders(parent, container)
         local w = addon.GUI.MakeColumnHeader({
             parent       = parent,
             label        = col.label,
+            -- Headers are centred over their columns with the sort arrow placed
+            -- beside the text (shared ConfigureCenteredHeaderIcon below), matching
+            -- the Profit Planner tab. Data cells keep their own justification.
             width        = col.width,
-            justifyH     = col.justify,
+            justifyH     = "CENTER",
+            hoverGlow    = true,
             tooltipTitle = col.tip,
             tooltipDesc  = col.tipDesc,
             onClick      = function()
@@ -1148,7 +1163,20 @@ function CooldownsTab:DrawHeaders(parent, container)
                 self:RedrawTable(container)
             end,
         })
-        addon.GUI.Sort.ConfigureHeaderIcon(w, self._sortCol == key, self._sortAsc, col.justify)
+        addon.GUI.Sort.ConfigureCenteredHeaderIcon(w, self._sortCol == key, self._sortAsc, col.width)
+        
+        -- Clean up sort icon when widget is released back to AceGUI pool
+        local prevOnRelease = w.events and w.events.OnRelease
+        w:SetCallback("OnRelease", function(widget)
+            if widget._sortIcon then
+                widget._sortIcon:Hide()
+                widget._sortIcon:SetParent(nil)
+                widget._sortIcon:ClearAllPoints()
+                widget._sortIcon = nil
+            end
+            if prevOnRelease then prevOnRelease(widget) end
+        end)
+        
         self._headerWidgets[key] = w
     end
 end
@@ -1781,6 +1809,7 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
     end)
     popup:EnableMouse(true)
     popup:SetScript("OnMouseDown", function() end)  -- block click-through
+    popup._closeOnClick = closeOnClick  -- store reference for cleanup
 
     -- The popup itself sits at TOOLTIP strata, which is the same strata as
     -- GameTooltip — so GameTooltip's default frame level loses to the popup's

@@ -303,6 +303,12 @@ local SETTINGS_DEFAULTS = {
         -- top-down. Each entry: { profId = N, recipeId = N, qty = N }.
         craftSelProf    = nil,
         craftQueue      = {},
+
+        -- Profit tab: last-selected subtab ("live" or "history").
+        profitSubTab    = "live",
+        
+        -- Main window: last-selected main tab (saved across reloads).
+        lastMainTab     = "browser",
     },
 }
 

@@ -412,6 +412,12 @@ function MainWindow:Open(tabKey)
         -- above (it persists w/h whenever activeTab == "browser"), so by
         -- the time we leave Browser the saved value is already correct.
         self.activeTab = group
+        -- Persist main tab selection so reopening the window returns to the last
+        -- used tab. The settings DB is addon.lib.db (AceDB on the Ace object);
+        -- there is no addon.db, so the previous code here silently no-oped.
+        if addon.lib and addon.lib.db and addon.lib.db.char then
+            addon.lib.db.char.lastMainTab = group
+        end
         self:ApplyTabSize(group)
         _widget:ReleaseChildren()
         self:DrawTab(group, _widget)
@@ -426,7 +432,9 @@ function MainWindow:Open(tabKey)
     _escProxy:Show()
     -- Apply size BEFORE selecting the tab so the first Draw sees the
     -- correct frame dimensions (some tabs read frame width during Draw).
-    local initialTab = tabKey or self.activeTab or "browser"
+    -- Load saved tab from db.char, falling back to "browser" if none saved
+    local savedTab = addon.lib and addon.lib.db and addon.lib.db.char and addon.lib.db.char.lastMainTab
+    local initialTab = tabKey or savedTab or self.activeTab or "browser"
     self:ApplyTabSize(initialTab)
     tg:SelectTab(initialTab)
 end
@@ -562,6 +570,27 @@ end
 -- Tab routing
 -- ---------------------------------------------------------------------------
 
+-- Set the root frame's bottom-left status-bar text. Safe no-op when the window
+-- isn't open. Used for the version string (default, reset on every tab switch
+-- in DrawTab) and per-tab status lines such as the Profit Planner row count.
+function MainWindow:SetStatusText(text)
+    if self.frame and self.frame.SetStatusText then
+        self.frame:SetStatusText(text or "")
+    end
+end
+
+-- The version string is canonical and always leads the status bar. Tabs append
+-- their own info (e.g. Profit Planner's row count) as a suffix after it; pass
+-- nil/empty to show just the version.
+function MainWindow:SetStatusSuffix(suffix)
+    local base = addon.Version or ""
+    if suffix and suffix ~= "" then
+        self:SetStatusText(base .. "    " .. suffix)
+    else
+        self:SetStatusText(base)
+    end
+end
+
 function MainWindow:DrawTab(group, container)
     -- Clear any container.LayoutFinished override left over from the
     -- previously-active tab. Missing and Browser install their own
@@ -588,6 +617,12 @@ function MainWindow:DrawTab(group, container)
     -- part of their Draw, which is fine — only the inter-tab leftover
     -- needs to be wiped.
     container.LayoutFinished = nil
+
+    -- Reset the status bar to the addon version on every tab switch. Tabs that
+    -- want a custom status line (Profit Planner writes its row count here) over-
+    -- write it during their own Draw; this guarantees it reverts when you leave.
+    self:SetStatusText(addon.Version)
+
     if group == "browser" then
         if addon.BrowserTab then
             addon.BrowserTab:Draw(container)
@@ -658,7 +693,11 @@ end
 -- ---------------------------------------------------------------------------
 
 function addon:OpenBrowser()
-    MainWindow:Toggle("browser")
+    -- Generic "open the addon" entry (minimap click, bare /togpm). Pass NO tab
+    -- so Open() restores the last-used tab (db.char.lastMainTab); it falls back
+    -- to "browser" only when nothing is saved. Passing "browser" here would
+    -- override the saved tab and always force the Professions tab.
+    MainWindow:Toggle()
 end
 
 -- addon:OpenReagents() is defined in GUI/ReagentTracker.lua

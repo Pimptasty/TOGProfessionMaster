@@ -557,9 +557,7 @@ function BrowserTab:Draw(container)
     toolbar:AddChild(sp)
 
     local search = AceGUI:Create("EditBox")
-    search:SetLabel("|c" .. (addon.BrandColor or "ffFF8000") .. L["SearchPlaceholder"] .. "|r")
     search:SetWidth(220)
-    addon.GUI.OffsetInputLabel(search)
     search:SetText(self._searchText)
     search:DisableButton(true)
     search:SetCallback("OnTextChanged", function(_w, _e, text)
@@ -567,6 +565,10 @@ function BrowserTab:Draw(container)
         self:RefreshList()
     end)
     addon.GUI.AttachTooltip(search, L["SearchPlaceholder"], L["CraftSearchDesc"])
+    -- TSM-style search field: magnifying-glass icon instead of a text label
+    -- (call after AttachTooltip so the icon's OnRelease cleanup chains).
+    -- keepLabelSpace=true: aligns with the labeled dropdowns in this row.
+    addon.GUI.StyleSearchBox(search, true)
     toolbar:AddChild(search)
 
     local sp2 = AceGUI:Create("Label")

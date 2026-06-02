@@ -23,9 +23,16 @@ local COL = {
     profession = 78,
     crafters   = 112,
     source     = 92,
-    cost       = 72,
-    sell       = 72,
-    profit     = 72,
+    -- Money columns: wide enough to space the coin values comfortably apart,
+    -- but the total row extent must stay inside the window's usable content
+    -- width (~840px after the nested frame/tab insets on the 920px minWidth)
+    -- so Profit and the scrollbar aren't pushed off the right edge and the
+    -- Profit header doesn't wrap. 112 each lands the last column at ~821px,
+    -- clear of the scrollbar, while still spacing the coin values well apart
+    -- (the original 72 was cramped; Copilot's 142 overflowed the window).
+    cost       = 112,
+    sell       = 112,
+    profit     = 112,
 }
 
 local PAD = 2
@@ -55,6 +62,13 @@ BuildLayout()
 
 local BRAND = "|c" .. (addon.BrandColor or "ffFF8000")
 local RESET = "|r"
+
+-- Special keys for the profession dropdown's Select All / Clear All rows.
+-- They are real toggle items (so clicking them never closes the pullout),
+-- but we reset them to unchecked the instant they fire so they act as
+-- one-shot buttons rather than persistent checkboxes.
+local SELECT_ALL_KEY = "__togpm_select_all__"
+local CLEAR_ALL_KEY  = "__togpm_clear_all__"
 
 local SUBTABS = {
     { value = "live", text = L["ProfitSubtabLive"] },
@@ -186,16 +200,28 @@ function ProfitTab:SyncProfessionSelection(filter, options)
         end
     end
 
-    local any = false
-    for _, p in ipairs(options.professions or {}) do
-        if filter.professions[p] then
-            any = true
-            break
-        end
-    end
-    if not any then
+    -- Apply the "all except Enchanting" default ONLY the first time this filter
+    -- is built. After the user has interacted, an empty selection is intentional
+    -- (Clear All, or unticking every box) and must not be re-populated on the
+    -- next redraw.
+    if not filter._professionsInitialized then
+        filter._professionsInitialized = true
+        local any = false
         for _, p in ipairs(options.professions or {}) do
-            filter.professions[p] = true
+            if filter.professions[p] then
+                any = true
+                break
+            end
+        end
+        if not any then
+            -- Default to all professions EXCEPT Enchanting (profession ID 333).
+            -- Use the localized name so this works on all clients.
+            local enchantingName = addon.PROF_NAMES and addon.PROF_NAMES[333]
+            for _, p in ipairs(options.professions or {}) do
+                if p ~= enchantingName then
+                    filter.professions[p] = true
+                end
+            end
         end
     end
 end
@@ -336,8 +362,11 @@ function ProfitTab:ApplyFilters(rows)
     local search = (filter.search or ""):lower()
     for _, row in ipairs(rows or {}) do
         local ok = true
-        if filter.professionFilter and filter.professionFilter ~= "All" then
-            ok = (filter.professionFilter == row.profession)
+        -- Multi-select profession filter. An explicit (non-nil) selection set
+        -- always applies; an EMPTY set means "no professions selected" and
+        -- intentionally matches no rows (do not treat empty as "show all").
+        if filter.professions then
+            ok = filter.professions[row.profession] and true or false
         end
         if ok and filter.crafterFilter and filter.crafterFilter ~= "All" then
             local hit = false
@@ -386,6 +415,19 @@ function ProfitTab:RedrawCurrentTable()
     end
 end
 
+-- The row count lives in the main window's bottom-left status bar rather than
+-- an in-tab label — it keeps the toolbar area clean and avoids fighting AceGUI
+-- Label's fontstring re-anchoring. Only write it while the Profit Planner tab
+-- is the active tab so a stray refresh can't clobber another tab's status line;
+-- MainWindow:DrawTab restores the version string when you switch away.
+function ProfitTab:SetCountText(text)
+    local mw = addon.MainWindow
+    if mw and mw.activeTab == "ahprofit" and mw.SetStatusSuffix then
+        -- Version stays first in the status bar; the row count follows it.
+        mw:SetStatusSuffix(text)
+    end
+end
+
 function ProfitTab:RefreshRowsInPlace(resetToTop)
     if not self._baseRows then
         self:RedrawCurrentTable()
@@ -406,9 +448,7 @@ function ProfitTab:RefreshRowsInPlace(resetToTop)
         self:UpdateRows()
     end
 
-    if self._countLabel then
-        self._countLabel:SetText(BRAND .. ("Rows: %d"):format(#self._rows) .. RESET)
-    end
+    self:SetCountText(BRAND .. ("Rows: %d"):format(#self._rows) .. RESET)
 end
 
 local function charShort(charKey)
@@ -570,24 +610,54 @@ function ProfitTab:BuildToolbar(parent, mode, options)
 
     local brand = addon.BrandColor or "ffFF8000"
 
-    -- Profession dropdown
-    local profList = { ["All"] = "All Professions" }
-    local profOrder = { "All" }
+    -- Profession multi-select dropdown. Native AceGUI multiselect Dropdown so
+    -- it lines up with the Crafters/Sources dropdowns and the checkbox pullout
+    -- stays open while ticking professions. Select All / Clear All are added as
+    -- toggle rows at the top — toggles never close the pullout, and we reset
+    -- them to unchecked the instant they fire so they behave as buttons.
+    local profList = {
+        [SELECT_ALL_KEY] = "Select All",
+        [CLEAR_ALL_KEY]  = "Clear All",
+    }
+    local profOrder = { SELECT_ALL_KEY, CLEAR_ALL_KEY }
     for _, p in ipairs(options.professions or {}) do
         profList[p] = p
         profOrder[#profOrder + 1] = p
     end
+
     local profDropdown = AceGUI:Create("Dropdown")
-    profDropdown:SetLabel("|c" .. brand .. L["FilterColProfession"] .. "|r")
+    profDropdown:SetLabel("|c" .. brand .. "Professions|r")
     profDropdown:SetWidth(170)
     addon.GUI.OffsetInputLabel(profDropdown)
+    profDropdown:SetMultiselect(true)
     profDropdown:SetList(profList, profOrder)
-    profDropdown:SetValue(filter.professionFilter or "All")
-    profDropdown:SetCallback("OnValueChanged", function(_w, _e, value)
-        filter.professionFilter = value
+
+    -- Apply the saved/defaulted checked state to the profession rows.
+    for _, p in ipairs(options.professions or {}) do
+        profDropdown:SetItemValue(p, (filter.professions and filter.professions[p]) and true or false)
+    end
+
+    profDropdown:SetCallback("OnValueChanged", function(_w, _e, key, checked)
+        if key == SELECT_ALL_KEY or key == CLEAR_ALL_KEY then
+            -- Reset the action row so it never displays as a checked entry.
+            profDropdown:SetItemValue(key, false)
+            local want = (key == SELECT_ALL_KEY)
+            local sel = {}
+            for _, p in ipairs(options.professions or {}) do
+                profDropdown:SetItemValue(p, want)
+                if want then sel[p] = true end
+            end
+            filter.professions = sel
+            self:RefreshRowsInPlace(true)
+            return
+        end
+        local sel = filter.professions or {}
+        if checked then sel[key] = true else sel[key] = nil end
+        filter.professions = sel
         self:RefreshRowsInPlace(true)
     end)
-    addon.GUI.AttachTooltip(profDropdown, L["FilterColProfession"], "Pick a profession to filter recipes.")
+    addon.GUI.AttachTooltip(profDropdown, "Professions",
+        "Filter recipes by profession. Tick multiple professions — the menu stays open. Use Select All / Clear All at the top.")
     toolbar:AddChild(profDropdown)
 
     -- Crafter dropdown
@@ -611,9 +681,7 @@ function ProfitTab:BuildToolbar(parent, mode, options)
     toolbar:AddChild(crafterDropdown)
 
     local search = AceGUI:Create("EditBox")
-    search:SetLabel("|c" .. brand .. L["SearchPlaceholder"] .. "|r")
     search:SetWidth(210)
-    addon.GUI.OffsetInputLabel(search)
     search:SetText(filter.search or "")
     search:DisableButton(true)
     search:SetCallback("OnTextChanged", function(_w, _e, text)
@@ -623,12 +691,23 @@ function ProfitTab:BuildToolbar(parent, mode, options)
         self:RefreshRowsInPlace(true)
     end)
     addon.GUI.AttachTooltip(search, L["SearchPlaceholder"], L["CraftSearchDesc"])
+    -- TSM-style search field: magnifying-glass icon instead of a text label
+    -- (call after AttachTooltip so the icon's OnRelease cleanup chains).
+    -- keepLabelSpace=true: aligns with the labeled dropdowns in this row.
+    addon.GUI.StyleSearchBox(search, true)
     toolbar:AddChild(search)
 
     local positive = AceGUI:Create("CheckBox")
     positive:SetLabel("+ Profit only")
     positive:SetWidth(110)
     positive:SetValue(filter.positiveOnly and true or false)
+    -- Checkboxes carry no top label, so AceGUI's Flow heuristic (alignoffset =
+    -- height/2 = 12) rides the box + text a few px above the labeled dropdown
+    -- controls. Lowering the alignment point shifts it down onto the same centre
+    -- line (Flow anchors at Y = alignoffset - prevAlignoffset, so a smaller value
+    -- moves it down). Restored on release so the shared AceGUI pool isn't polluted.
+    positive.alignoffset = 10
+    positive:SetCallback("OnRelease", function(w) w.alignoffset = nil end)
     positive:SetCallback("OnValueChanged", function(_w, _e, val)
         filter.positiveOnly = val and true or false
         self:RedrawCurrentTable()
@@ -662,37 +741,70 @@ function ProfitTab:BuildHeaders(parent)
     hdr:SetLayout("Flow")
     hdr:SetFullWidth(true)
 
+    -- Leading spacer = the recipe data column's X (left margin + icon + gap), so
+    -- the first header column starts exactly over the recipe data column. Using
+    -- X.recipe rather than ICON_W+ICON_GAP also accounts for BuildLayout's 4px
+    -- left margin — omitting it was the start of the header→row drift.
     local spacer = AceGUI:Create("Label")
-    spacer:SetWidth(ICON_W + ICON_GAP)
+    spacer:SetWidth(X.recipe)
     spacer:SetText(" ")
     hdr:AddChild(spacer)
 
+    -- Every header is CENTER-justified over its column, and the sort arrow is
+    -- placed just to the right of the (centered) header text by the shared
+    -- addon.GUI.Sort.ConfigureCenteredHeaderIcon — not at the column's far edge.
+    -- The DATA cells keep their own justification (set in BuildPool): names left,
+    -- money right.
     local cols = {
-        { key = "recipe",     label = "Recipe",       width = COL.recipe,     tip = "Crafted item.", justify = "LEFT"  },
-        { key = "profession", label = "Profession",   width = COL.profession, tip = "Profession that crafts this recipe.", justify = "LEFT"  },
-        { key = "crafters",   label = "Your Crafters", width = COL.crafters,  tip = "Your characters that know this recipe.", justify = "LEFT"  },
-        { key = "source",     label = "Price Source", width = COL.source,     tip = "Provider used for sale price.", justify = "LEFT"  },
-        { key = "cost",       label = "Craft Cost",   width = COL.cost,       tip = "Material cost for one craft.", justify = "RIGHT" },
-        { key = "sell",       label = "Sell Price",   width = COL.sell,       tip = "Current or historical sell price for one item.", justify = "RIGHT" },
-        { key = "profit",     label = "Profit",       width = COL.profit,     tip = "Sell minus craft cost.", justify = "RIGHT" },
+        { key = "recipe",     label = "Recipe",        width = COL.recipe,     tip = "Crafted item." },
+        { key = "profession", label = "Profession",    width = COL.profession, tip = "Profession that crafts this recipe." },
+        { key = "crafters",   label = "Your Crafters", width = COL.crafters,   tip = "Your characters that know this recipe." },
+        { key = "source",     label = "Price Source",  width = COL.source,     tip = "Provider used for sale price." },
+        { key = "cost",       label = "Craft Cost",    width = COL.cost,       tip = "Material cost for one craft." },
+        { key = "sell",       label = "Sell Price",    width = COL.sell,       tip = "Current or historical sell price for one item." },
+        { key = "profit",     label = "Profit",        width = COL.profit,     tip = "Sell minus craft cost." },
     }
 
     self._headerCols = cols
     self._headerWidgets = {}
 
-    for _, col in ipairs(cols) do
+    for i, col in ipairs(cols) do
+        if i > 1 then
+            -- Data columns are separated by PAD px, but Flow places header widgets
+            -- edge-to-edge. A PAD-wide spacer before each subsequent header keeps
+            -- every header column span aligned with its data column (without it the
+            -- headers drift left, cumulatively, one PAD per column).
+            local gap = AceGUI:Create("Label")
+            gap:SetWidth(PAD)
+            gap:SetText(" ")
+            hdr:AddChild(gap)
+        end
         local w = addon.GUI.MakeColumnHeader({
             parent = hdr,
             label = col.label,
             width = col.width,
-            justifyH = col.justify,
+            justifyH = "CENTER",
+            hoverGlow = true,
             tooltipTitle = col.label,
             tooltipDesc = col.tip .. " Click to sort.",
             onClick = function()
                 self:OnHeaderClick(col.key)
             end,
         })
-        addon.GUI.Sort.ConfigureHeaderIcon(w, self._sortCol == col.key, self._sortAsc, col.justify)
+        addon.GUI.Sort.ConfigureCenteredHeaderIcon(w, self._sortCol == col.key, self._sortAsc, col.width)
+
+        -- Clean up sort icon when widget is released back to AceGUI pool
+        local prevOnRelease = w.events and w.events.OnRelease
+        w:SetCallback("OnRelease", function(widget)
+            if widget._sortIcon then
+                widget._sortIcon:Hide()
+                widget._sortIcon:SetParent(nil)
+                widget._sortIcon:ClearAllPoints()
+                widget._sortIcon = nil
+            end
+            if prevOnRelease then prevOnRelease(widget) end
+        end)
+        
         self._headerWidgets[col.key] = w
     end
 
@@ -705,7 +817,7 @@ function ProfitTab:UpdateHeaderText()
         local w = self._headerWidgets[col.key]
         if w then
             w:SetText(BRAND .. col.label .. RESET)
-            addon.GUI.Sort.ConfigureHeaderIcon(w, self._sortCol == col.key, self._sortAsc, col.justify)
+            addon.GUI.Sort.ConfigureCenteredHeaderIcon(w, self._sortCol == col.key, self._sortAsc, col.width)
         end
     end
 end
@@ -791,11 +903,17 @@ function ProfitTab:SortRows(rows)
 end
 
 function ProfitTab:DetachPool()
+    -- Hide tooltip if it's showing for this tab's elements.
+    if GameTooltip then
+        GameTooltip:Hide()
+    end
+
+    -- The profession dropdown is now a native AceGUI child of the toolbar and
+    -- is released by container:ReleaseChildren(); no manual detach required.
     addon.GUI.DetachPool(self._pool)
     self._scroll = nil
     self._rows = nil
     self._baseRows = nil
-    self._countLabel = nil
 end
 
 function ProfitTab:BuildPool(parent)
@@ -867,18 +985,36 @@ function ProfitTab:BuildPool(parent)
 
         f:SetScript("OnEnter", function(rf)
             if not rf._row then return end
-            addon.Tooltip.Owner(rf)
-            GameTooltip:SetText(rf._row.recipe, 1, 1, 1)
-            GameTooltip:AddLine("Profession: " .. rf._row.profession, 0.9, 0.9, 0.9)
-            GameTooltip:AddLine("Crafters: " .. rf._row.crafters, 0.9, 0.9, 0.9)
-            if rf._row.source then
-                GameTooltip:AddLine("Source: " .. (addon.Price and addon.Price.ColorizeSource(rf._row.source) or rf._row.source), 1, 1, 1, true)
+            local row = rf._row
+            -- Always anchor tooltip to BOTTOMLEFT (bottom-right of cursor) for profit tab rows
+            GameTooltip:SetOwner(rf, "ANCHOR_BOTTOMLEFT")
+            
+            -- Show actual game item tooltip
+            if row.itemLink then
+                GameTooltip:SetHyperlink(row.itemLink)
+            elseif row.displayItemId then
+                GameTooltip:SetItemByID(row.displayItemId)
+            elseif row.itemId then
+                GameTooltip:SetItemByID(row.itemId)
             else
-                GameTooltip:AddLine("Source: |cff888888No price|r", 1, 1, 1, true)
+                -- Fallback if no item info available
+                GameTooltip:SetText(row.recipe, 1, 1, 1)
             end
-            if rf._row.source and rf._row.age and rf._row.age > 14 * 24 * 60 * 60 then
-                GameTooltip:AddLine("Source price is stale (>14 days)", 1, 0.82, 0)
+            
+            -- Add profit planner details
+            GameTooltip:AddLine(" ")  -- Blank line separator
+            GameTooltip:AddLine("Profit Planner:", 1, 0.82, 0)
+            GameTooltip:AddLine("Profession: " .. row.profession, 0.9, 0.9, 0.9)
+            GameTooltip:AddLine("Crafters: " .. row.crafters, 0.9, 0.9, 0.9)
+            if row.source then
+                GameTooltip:AddLine("Price Source: " .. (addon.Price and addon.Price.ColorizeSource(row.source) or row.source), 1, 1, 1, true)
+            else
+                GameTooltip:AddLine("Price Source: |cff888888No price|r", 1, 1, 1, true)
             end
+            if row.source and row.age and row.age > 14 * 24 * 60 * 60 then
+                GameTooltip:AddLine("Price is stale (>14 days old)", 1, 0.82, 0)
+            end
+            
             GameTooltip:Show()
         end)
         f:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -949,11 +1085,8 @@ function ProfitTab:DrawTable(container, mode)
     local filterOptions = self:BuildFilterOptions(baseRows)
     self:BuildToolbar(container, mode, filterOptions)
 
-    local countLbl = AceGUI:Create("InteractiveLabel")
-    countLbl:SetFullWidth(true)
-    countLbl:SetText(BRAND .. "Loading..." .. RESET)
-    container:AddChild(countLbl)
-    self._countLabel = countLbl
+    -- Row count is shown in the window status bar (see SetCountText), not here.
+    self:SetCountText(BRAND .. "Loading..." .. RESET)
 
     self:BuildHeaders(container)
 
@@ -1002,11 +1135,17 @@ function ProfitTab:DrawTable(container, mode)
         self:UpdateRows()
     end)
 
-    countLbl:SetText(BRAND .. ("Rows: %d"):format(#self._rows) .. RESET)
+    self:SetCountText(BRAND .. ("Rows: %d"):format(#self._rows) .. RESET)
 end
 
 function ProfitTab:Draw(container)
     container:SetLayout("Fill")
+
+    -- Load saved subtab selection from persistent storage. The settings DB is
+    -- addon.lib.db (there is no addon.db), so the old reference silently failed.
+    local db = addon.lib and addon.lib.db and addon.lib.db.char
+    local savedSubTab = db and db.profitSubTab or "live"
+    self._subTab = savedSubTab
 
     local tabs = AceGUI:Create("TabGroup")
     tabs:SetFullWidth(true)
@@ -1015,10 +1154,14 @@ function ProfitTab:Draw(container)
     tabs:SetTabs(SUBTABS)
     tabs:SetCallback("OnGroupSelected", function(widget, _, group)
         self._subTab = group
+        -- Save subtab selection to persist across reloads
+        if db then
+            db.profitSubTab = group
+        end
         widget:ReleaseChildren()
         self:DrawTable(widget, group == "history" and "history" or "live")
     end)
 
     container:AddChild(tabs)
-    tabs:SelectTab(self._subTab or "live")
+    tabs:SelectTab(self._subTab)
 end

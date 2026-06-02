@@ -289,6 +289,12 @@ local OPTIONS = {
             order = 19.7,
         },
 
+        ahDataSourceNote = {
+            name  = "|cffFFD100Note:|r Changes to the data source checkboxes below require a |cffFF4040/reload|r to take effect.",
+            type  = "header",
+            order = 19.705,
+        },
+
         -- Off by default: the full getAll scan is a shared, ~once-per-15-min,
         -- client-wide budget, so auto-firing it would starve a dedicated AH
         -- addon's own scan. Opt-in only; tooltip spells out the trade-off.

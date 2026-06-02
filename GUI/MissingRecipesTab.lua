@@ -52,6 +52,12 @@ MissingRecipesTab._searchText      = ""
 MissingRecipesTab._includeTrainer  = false
 MissingRecipesTab._canLearnOnly    = false
 MissingRecipesTab._showAll         = false   -- show every recipe (known + missing)
+-- Sort state for the clickable Recipe / Skill / Sources headers. Defaults to
+-- skill ascending, which matches BuildMissingList's natural order (and shows the
+-- arrow on the Skill column on first open). "recipe" sorts by display name,
+-- "source" by the formatted sources text.
+MissingRecipesTab._sortCol         = "skill"
+MissingRecipesTab._sortAsc         = true
 MissingRecipesTab._container       = nil
 MissingRecipesTab._listSection     = nil
 MissingRecipesTab._customTip       = nil  -- lazy-init via GetCustomTip
@@ -353,12 +359,6 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
     local TBC_COOKING_BLACKLIST = {
         [30047] = true,  -- Crystal Throat Lozenge
     }
-    -- TBC First Aid recipe IDs that contaminated Vanilla ProfessionDB data
-    -- (Netherweave bandages added in TBC, shouldn't show on Era/Anniversary).
-    local TBC_FIRSTAID_BLACKLIST = {
-        [27032] = true,  -- Netherweave Bandage
-        [27033] = true,  -- Heavy Netherweave Bandage
-    }
 
     for spellId, data in pairs(recipes) do
         local skip = false
@@ -373,10 +373,6 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
         -- into ProfessionDB Vanilla data (exist in 1.15 client but aren't
         -- obtainable on Era/Anniversary).
         if hideSoD and profId == 185 and TBC_COOKING_BLACKLIST[spellId] then
-            skip = true
-        end
-        -- Non-SoD Vanilla First Aid: blacklist TBC Netherweave bandage recipes.
-        if hideSoD and profId == 129 and TBC_FIRSTAID_BLACKLIST[spellId] then
             skip = true
         end
         if data.minExpansion and data.minExpansion > clientExp then
@@ -634,9 +630,7 @@ function MissingRecipesTab:Draw(container)
     -- AceGUI redraw. Cancelling-and-rescheduling means only the final value
     -- after the user pauses ~200ms actually rebuilds.
     local search = AceGUI:Create("EditBox")
-    search:SetLabel(L["MissingSearchLabel"])
     search:SetWidth(200)
-    addon.GUI.OffsetInputLabel(search)
     search:SetText(self._searchText)
     search:DisableButton(true)
     search:SetCallback("OnTextChanged", function(_w, _e, text)
@@ -648,6 +642,10 @@ function MissingRecipesTab:Draw(container)
         end)
     end)
     AttachWidgetTooltip(search, L["MissingSearchTooltipTitle"], L["MissingSearchTooltipDesc"])
+    -- TSM-style search field: magnifying-glass icon instead of a text label
+    -- (call after the tooltip so the icon's OnRelease cleanup chains).
+    -- keepLabelSpace=true: aligns with the labeled dropdowns in this row.
+    addon.GUI.StyleSearchBox(search, true)
     toolbar:AddChild(search)
 
     local sp3 = AceGUI:Create("Label"); sp3:SetWidth(8); toolbar:AddChild(sp3)
@@ -1186,6 +1184,60 @@ function MissingRecipesTab:UpdateVirtualRows()
     end
 end
 
+-- Apply the active column sort to the (already search-filtered) list, in place.
+-- Recipe name resolution mirrors the search filter: scroll-item name, then spell
+-- name, then the stored fallback — best-effort for cold-cache items (they re-sort
+-- correctly on the next refresh as the item cache fills). Skill keeps unknown
+-- (nil) ranks last in BOTH directions so blank-data rows never bury the list.
+function MissingRecipesTab:SortList(list)
+    local col = self._sortCol
+    if not col or type(list) ~= "table" then return end
+    local asc = self._sortAsc == true
+
+    -- Precompute the text sort key once per entry so the comparator doesn't call
+    -- GetItemInfo O(n log n) times (skill sorts on the numeric field directly).
+    local key
+    if col == "recipe" or col == "source" then
+        key = {}
+        for _, e in ipairs(list) do
+            if col == "recipe" then
+                local n = (e.itemId and GetItemInfo and GetItemInfo(e.itemId))
+                          or (GetSpellInfo and GetSpellInfo(e.spellId))
+                          or e.name or ""
+                key[e] = tostring(n):lower()
+            else
+                key[e] = (e.sourcesText or ""):lower()
+            end
+        end
+    end
+
+    local function cmp(x, y)
+        if asc then return x < y else return x > y end
+    end
+    -- Effective learn skill = requiredSkill, falling back to the orange
+    -- difficulty tier (tiers[1]) — same gate resolution BuildMissingList uses.
+    -- This keeps recipes like Basic Campfire (no requiredSkill but orange=1)
+    -- sorting by their real skill instead of being treated as unknown. Only
+    -- recipes with NEITHER value are genuinely unknown and sort last.
+    local function skillOf(e)
+        return e.requiredSkill or (e.tiers and e.tiers[1])
+    end
+    table.sort(list, function(a, b)
+        if col == "skill" then
+            local ar, br = skillOf(a), skillOf(b)
+            if ar ~= br then
+                if ar == nil then return false end  -- unknown skill always last
+                if br == nil then return true end
+                return cmp(ar, br)
+            end
+        else
+            local ka, kb = key[a], key[b]
+            if ka ~= kb then return cmp(ka, kb) end
+        end
+        return (a.spellId or 0) < (b.spellId or 0)  -- stable tiebreak
+    end)
+end
+
 function MissingRecipesTab:FillList()
     local section = self._listSection
     if not section then return end
@@ -1241,6 +1293,7 @@ function MissingRecipesTab:FillList()
         end
     end
 
+    self:SortList(list)
     self._list = list
 
     local brand = addon.BrandColor or "ffFF8000"
@@ -1273,24 +1326,55 @@ function MissingRecipesTab:FillList()
     hdr:SetLayout("Flow")
     hdr:SetFullWidth(true)
     section:AddChild(hdr)
-    local function H(text, w, justifyH, tipTitle, tipDesc)
-        addon.GUI.MakeColumnHeader({
+    local function H(text, w, justifyH, tipTitle, tipDesc, sortKey)
+        -- Sortable columns (sortKey set) get the shared sort treatment: centred
+        -- text, the arrow beside it (ConfigureCenteredHeaderIcon), a brand hover
+        -- glow, a click-to-sort handler, and a "Click to sort." tooltip hint —
+        -- matching the Profit / Cooldowns / Crafting headers. Plain spacers and
+        -- label-only headers pass no sortKey and stay as they were.
+        local desc = tipDesc
+        if sortKey and desc then
+            desc = desc .. " " .. (L["CraftSortHint"] or "Click to sort.")
+        end
+        local widget = addon.GUI.MakeColumnHeader({
             parent       = hdr,
             label        = text,
             width        = w,
-            justifyH     = justifyH,
+            justifyH     = sortKey and "CENTER" or justifyH,
+            hoverGlow    = sortKey ~= nil,
             tooltipTitle = tipTitle,
-            tooltipDesc  = tipDesc,
+            tooltipDesc  = desc,
+            onClick      = sortKey and function()
+                self._sortCol, self._sortAsc =
+                    addon.GUI.Sort.Next(self._sortCol, self._sortAsc, sortKey)
+                self:RefreshList()
+            end or nil,
         })
+        if sortKey then
+            addon.GUI.Sort.ConfigureCenteredHeaderIcon(
+                widget, self._sortCol == sortKey, self._sortAsc, w)
+            -- Clean up the sort-icon texture when the pooled widget is released
+            -- (chains MakeColumnHeader's hover-glow OnRelease via prevOnRelease).
+            local prevOnRelease = widget.events and widget.events.OnRelease
+            widget:SetCallback("OnRelease", function(wdg)
+                if wdg._sortIcon then
+                    wdg._sortIcon:Hide()
+                    wdg._sortIcon:SetParent(nil)
+                    wdg._sortIcon:ClearAllPoints()
+                    wdg._sortIcon = nil
+                end
+                if prevOnRelease then prevOnRelease(wdg) end
+            end)
+        end
     end
     H("",                    22)
     H(countText,             240, nil,
-        L["MissingHdrCountTitle"], L["MissingHdrCountDesc"])
+        L["MissingHdrCountTitle"], L["MissingHdrCountDesc"], "recipe")
     H(L["MissingColSkill"],  104, "LEFT",
-        L["MissingHdrSkillTitle"], L["MissingHdrSkillDesc"])
+        L["MissingHdrSkillTitle"], L["MissingHdrSkillDesc"], "skill")
     H("",                    16)  -- 8 + 8 nudge so Sources header sits over its data column
     H(L["MissingColSource"], 180, nil,
-        L["MissingHdrSourceTitle"], L["MissingHdrSourceDesc"])
+        L["MissingHdrSourceTitle"], L["MissingHdrSourceDesc"], "source")
     H("",                    24)
 
     -- Stash hdr.frame so the AnchorAll function (set on container.LayoutFinished

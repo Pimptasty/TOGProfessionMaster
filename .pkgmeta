@@ -37,3 +37,4 @@ ignore:
   - ".markdownlint.json"
   - ".markdownlintignore"
   - "CLAUDE.md"
+  - "CHANGELOG_ARCHIVE.md"

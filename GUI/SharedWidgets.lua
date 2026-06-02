@@ -88,6 +88,13 @@ function addon.GUI.Sort.ConfigureHeaderIcon(widgetOrButton, isSorted, isAsc, jus
     end
 
     if isSorted then
+        -- Re-attach to the host before showing. When this column was last
+        -- UNsorted we detached the texture (SetParent(nil), see below); a
+        -- parentless texture never renders, so tabs that REUSE their header
+        -- widgets across sorts (e.g. AHProfitTab's UpdateHeaderText, which
+        -- doesn't rebuild the headers) would otherwise lose the arrow the
+        -- first time the sort column changes and never get it back.
+        tex:SetParent(host)
         addon.GUI.Sort.SetIndicator(tex, isAsc)
         tex:Show()
     else
@@ -98,6 +105,82 @@ function addon.GUI.Sort.ConfigureHeaderIcon(widgetOrButton, isSorted, isAsc, jus
         -- tabs that reuse the widget but don't call ConfigureHeaderIcon.
         tex:SetParent(nil)
     end
+end
+
+-- Sort-arrow placement for CENTER-justified headers. Unlike ConfigureHeaderIcon
+-- (which pins the arrow to the column edge — the left/right convention the
+-- Browser/Crafting/Missing tabs use), this places the arrow a few px to the
+-- RIGHT of the *visible header text*, measured from the column centre via
+-- GetStringWidth. Use it on tabs whose headers are centred over their columns
+-- (Profit Planner, Cooldowns) so the arrow hugs the text everywhere alike.
+--
+-- The widget owns its texture as `widget._sortIcon`; callers must clean it up on
+-- the widget's OnRelease / DetachPool (Hide + SetParent(nil) + ClearAllPoints +
+-- nil) exactly as they do for ConfigureHeaderIcon, so it doesn't bleed across the
+-- pool. Only the asc/desc look is shared, via SetIndicator. `width` is the column
+-- width; it falls back to the host frame's current width.
+--
+-- Works for both AceGUI header widgets (host = widget.frame, text = widget.label)
+-- and raw frame-backed headers (host = widget itself, text = widget._fs) — so
+-- the Profit/Cooldowns AceGUI headers and the Crafting tab's raw button headers
+-- share one centred-arrow implementation.
+addon.GUI.Sort.ArrowSize = addon.GUI.Sort.ArrowSize or 12
+addon.GUI.Sort.ArrowGap  = addon.GUI.Sort.ArrowGap or 3
+
+function addon.GUI.Sort.ConfigureCenteredHeaderIcon(widget, isSorted, isAsc, width)
+    if not widget then return end
+    local host = widget.frame or widget
+    if not (host and host.CreateTexture) then return end
+    local fs = widget.label or widget._fs
+    local size = addon.GUI.Sort.ArrowSize
+    local tex = widget._sortIcon
+    if not tex then
+        tex = host:CreateTexture(nil, "OVERLAY")
+        tex:SetSize(size, size)
+        widget._sortIcon = tex
+    end
+    if not isSorted then
+        tex:Hide()
+        return
+    end
+    -- Re-attach before showing (it may have been detached when last hidden, or
+    -- by the caller's OnRelease cleanup); a parentless texture never renders.
+    tex:SetParent(host)
+    addon.GUI.Sort.SetIndicator(tex, isAsc)
+
+    local hostW = width or (host.GetWidth and host:GetWidth()) or 0
+    local textW = (fs and fs.GetStringWidth and fs:GetStringWidth()) or 0
+    -- Text is centred in [0, hostW], so its right edge is at hostW/2 + textW/2.
+    local x = (hostW / 2) + (textW / 2) + addon.GUI.Sort.ArrowGap
+    -- Never let the arrow spill past the column's right edge.
+    local maxX = hostW - size
+    if maxX < 0 then maxX = 0 end
+    if x > maxX then x = maxX end
+    tex:ClearAllPoints()
+    tex:SetPoint("LEFT", host, "LEFT", x, 0)
+    tex:Show()
+end
+
+-- Create a brand-coloured hover glow texture on `frame` (returned hidden). It's
+-- WoW's UI-QuestTitleHighlight (whose own edges fade, giving the "blended" look)
+-- tinted to the brand colour via SetVertexColor — the single source of truth, and
+-- no SetGradient (whose API differs across clients). Callers wire show/hide to
+-- their own mouseover handling and clean the texture up on release/detach. Shared
+-- so AceGUI headers (MakeColumnHeader) and raw frame headers (Crafting) glow the
+-- same. Returns nil if `frame` can't host a texture.
+function addon.GUI.MakeHeaderHoverGlow(frame)
+    if not (frame and frame.CreateTexture) then return nil end
+    local glow = frame:CreateTexture(nil, "BACKGROUND")
+    glow:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+    glow:SetBlendMode("ADD")
+    glow:SetAllPoints(frame)
+    local hex = addon.BrandColor or "ffFF8000"
+    local r = (tonumber(hex:sub(3, 4), 16) or 255) / 255
+    local g = (tonumber(hex:sub(5, 6), 16) or 128) / 255
+    local b = (tonumber(hex:sub(7, 8), 16) or 0) / 255
+    glow:SetVertexColor(r, g, b)
+    glow:Hide()
+    return glow
 end
 
 -- ---------------------------------------------------------------------------
@@ -586,6 +669,65 @@ function addon.GUI.OffsetInputLabel(widget, dx)
     end)
 end
 
+-- Style an AceGUI EditBox as a TSM-style search field: drop the visible text
+-- label and place WoW's universal magnifying-glass icon (the texture
+-- SearchBoxTemplate itself uses) inside on the left, with the typed text inset
+-- to clear it. The icon reads as "search" so no text label is needed.
+--
+-- keepLabelSpace: when true, keep a BLANK label (a single space) so the box stays
+-- on the same control line as LABELED siblings (dropdowns) in a Flow toolbar —
+-- SetLabel("") shrinks the EditBox to the unlabeled height and raises it, which
+-- would misalign it from those dropdowns. Pass false/nil when the search box's
+-- toolbar neighbours are themselves unlabeled (e.g. the Crafting tab, where it
+-- sits next to a label-less checkbox) so they stay aligned.
+--
+-- Call this AFTER AttachTooltip so its OnRelease cleanup chains (not stomps).
+-- On release the icon is detached and the text insets restored, so the pooled
+-- EditBox never carries a stray magnifying glass into the next addon that
+-- recycles it. Safe no-op on non-EditBox widgets.
+function addon.GUI.StyleSearchBox(widget, keepLabelSpace)
+    if not (widget and widget.type == "EditBox" and widget.editbox) then return widget end
+    widget:SetLabel(keepLabelSpace and " " or "")
+    local eb = widget.editbox
+
+    local icon = widget._searchIcon
+    if not icon then
+        icon = widget.frame:CreateTexture(nil, "OVERLAY")
+        icon:SetTexture("Interface\\Common\\UI-Searchbox-Icon")
+        icon:SetVertexColor(0.7, 0.7, 0.7)
+        widget._searchIcon = icon
+    end
+    icon:SetParent(widget.frame)
+    icon:SetSize(14, 14)
+    icon:ClearAllPoints()
+    icon:SetPoint("LEFT", eb, "LEFT", 1, -2)
+    icon:Show()
+
+    if eb.SetTextInsets and eb.GetTextInsets then
+        if not widget._origTextInsets then
+            widget._origTextInsets = { eb:GetTextInsets() }
+        end
+        eb:SetTextInsets(18, 0, 0, 0)
+    end
+
+    local prevOnRelease = widget.events and widget.events.OnRelease
+    widget:SetCallback("OnRelease", function(self)
+        local i = self._searchIcon
+        if i then
+            i:Hide()
+            i:SetParent(nil)
+            i:ClearAllPoints()
+            self._searchIcon = nil
+        end
+        if self.editbox and self.editbox.SetTextInsets and self._origTextInsets then
+            self.editbox:SetTextInsets(unpack(self._origTextInsets))
+            self._origTextInsets = nil
+        end
+        if prevOnRelease then prevOnRelease(self) end
+    end)
+    return widget
+end
+
 -- ---------------------------------------------------------------------------
 -- Column header
 -- ---------------------------------------------------------------------------
@@ -630,6 +772,54 @@ function addon.GUI.MakeColumnHeader(opts)
 
     if opts.onClick then
         lbl:SetCallback("OnClick", function() opts.onClick() end)
+    end
+
+    -- opts.hoverGlow: a soft brand-coloured glow that fades in behind the header
+    -- on mouseover, signalling "click to sort" (modelled on TOGBankClassic's
+    -- Requests tab, which tints WoW's UI-QuestTitleHighlight). The texture's own
+    -- edge-fade gives the blended look; SetVertexColor tints it to the brand
+    -- colour (single source of truth) — no SetGradient, which differs across
+    -- clients. Opt-in so only sortable-header tabs (Profit, Cooldowns) light up.
+    --
+    -- AttachTooltip above already registered OnEnter/OnLeave, so we CHAIN them
+    -- (widget.events holds one callback per event). OnRelease hides + detaches
+    -- the texture so it can't bleed into another addon that recycles this pooled
+    -- widget; tab callers chain their own OnRelease via prevOnRelease, so setting
+    -- it here composes rather than conflicts.
+    if opts.hoverGlow then
+        local glow = lbl._togpmHeaderGlow
+        if not glow then
+            glow = addon.GUI.MakeHeaderHoverGlow(lbl.frame)
+            lbl._togpmHeaderGlow = glow
+        else
+            -- Recycled widget already has one — re-attach and reset it.
+            glow:SetParent(lbl.frame)
+            glow:ClearAllPoints()
+            glow:SetAllPoints(lbl.frame)
+            glow:Hide()
+        end
+
+        local prevEnter = lbl.events and lbl.events.OnEnter
+        lbl:SetCallback("OnEnter", function(self, ...)
+            if self._togpmHeaderGlow then self._togpmHeaderGlow:Show() end
+            if prevEnter then prevEnter(self, ...) end
+        end)
+        local prevLeave = lbl.events and lbl.events.OnLeave
+        lbl:SetCallback("OnLeave", function(self, ...)
+            if self._togpmHeaderGlow then self._togpmHeaderGlow:Hide() end
+            if prevLeave then prevLeave(self, ...) end
+        end)
+        local prevRelease = lbl.events and lbl.events.OnRelease
+        lbl:SetCallback("OnRelease", function(self, ...)
+            local tex = self._togpmHeaderGlow
+            if tex then
+                tex:Hide()
+                tex:SetParent(nil)
+                tex:ClearAllPoints()
+                self._togpmHeaderGlow = nil
+            end
+            if prevRelease then prevRelease(self, ...) end
+        end)
     end
 
     opts.parent:AddChild(lbl)

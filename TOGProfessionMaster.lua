@@ -453,10 +453,11 @@ function Ace:OnEnable()
     self:RegisterEvent("PLAYER_LOGOUT",         "OnPlayerLogout")
 
     -- Crafter online alert: fire when a guild member comes online. Roster
-    -- transitions are sourced from GuildCache-1.0 (bundled inside the standalone
-    -- DeltaSync addon, MINOR>=2) which exposes CallbackHandler-1.0 callbacks
-    -- driven by both GUILD_ROSTER_UPDATE diffs and CHAT_MSG_SYSTEM parsing.
-    local GuildCache = LibStub("GuildCache-1.0", true)
+    -- transitions are sourced from LibGuildRoster-1.0 (the standalone GuildRoster
+    -- addon, pulled in via DeltaSync's dependency chain) which exposes
+    -- CallbackHandler-1.0 callbacks driven by both GUILD_ROSTER_UPDATE diffs and
+    -- CHAT_MSG_SYSTEM parsing.
+    local GuildCache = LibStub("LibGuildRoster-1.0", true)
     if GuildCache and GuildCache.RegisterCallback then
         GuildCache:RegisterCallback("OnMemberOnline", function(_, name)
             addon:OnCrafterCameOnline(name)
@@ -1364,9 +1365,22 @@ function addon:IsVisibleCrafter(charKey, crafterTag)
         return false
     end
 
-    -- Tag matches current guild. Check libguildroster directly.
     local GC = self.Scanner and self.Scanner.GuildCache
-    if GC and GC:IsInGuild(charKey) then return true end
+
+    -- Membership can only be judged once the roster lib is loaded AND has
+    -- completed its first stabilized build. LibGuildRoster:IsInGuild is a strict
+    -- membership check, whereas the retired GuildCache returned true on an
+    -- unbuilt roster. If the lib is absent or not yet ready, treat a
+    -- tag-matching crafter as visible and DO NOT flag it — otherwise an
+    -- early-login refresh (GetNumGuildMembers() still 0) or a lib-load failure
+    -- would queue legitimate members for the deferred purge sweep and silently
+    -- delete their data. Erring visible here is the safe, behavior-preserving
+    -- choice; a real ex-member is re-evaluated and purged on the next refresh
+    -- once the roster is ready.
+    if not GC or (GC.IsReady and not GC:IsReady()) then return true end
+
+    -- Tag matches current guild. Confirm membership via LibGuildRoster.
+    if GC:IsInGuild(charKey) then return true end
 
     -- Not in roster directly — keep alive if they're an alt of someone IN
     -- the roster (bank alts of in-guild mains stay visible).
@@ -1438,31 +1452,54 @@ function addon:RunPendingPurge()
     local gdb = self:GetGuildDb()
     if not gdb.pendingPurge or not next(gdb.pendingPurge) then return 0 end
 
+    -- Never delete based on an unconfirmed roster. The sweep is scheduled off
+    -- LibGuildRoster's OnRosterReady so this normally passes; but if the lib is
+    -- missing or hasn't finished its first build, bail and keep the flags for a
+    -- later, confirmable sweep. Deleting now would destroy data for members the
+    -- roster simply can't vouch for yet (e.g. flags accumulated while the roster
+    -- lib was unavailable).
+    local GC = self.Scanner and self.Scanner.GuildCache
+    if not GC or (GC.IsReady and not GC:IsReady()) then
+        addon:DebugPrint("Purge skipped — roster not ready/confirmable")
+        return 0
+    end
+
     local count = 0
     for charKey in pairs(gdb.pendingPurge) do
-        -- Walk every recipe's crafters list and strip this charKey.
-        for _, profRecipes in pairs(gdb.recipes or {}) do
-            for _, rd in pairs(profRecipes) do
-                if rd.crafters then rd.crafters[charKey] = nil end
+        -- Re-validate at sweep time. A charKey can land in pendingPurge from an
+        -- early-login refresh, or a period when the roster lib was unavailable,
+        -- yet still be a real member. Only delete those the now-ready roster
+        -- confirms are gone (left the guild, or wrong-guild stale data); a
+        -- confirmed member or own alt just has its stale flag dropped.
+        if self:IsMyCharacter(charKey)
+            or GC:IsInGuild(charKey)
+            or self:IsAltOfInRosterCharacter(charKey) then
+            -- Still present — keep the data; the flag is cleared by the wipe below.
+        else
+            -- Walk every recipe's crafters list and strip this charKey.
+            for _, profRecipes in pairs(gdb.recipes or {}) do
+                for _, rd in pairs(profRecipes) do
+                    if rd.crafters then rd.crafters[charKey] = nil end
+                end
             end
-        end
-        if gdb.cooldowns       then gdb.cooldowns[charKey]       = nil end
-        if gdb.skills          then gdb.skills[charKey]          = nil end
-        if gdb.specializations then gdb.specializations[charKey] = nil end
-        if gdb.factions        then gdb.factions[charKey]        = nil end
-        if gdb.syncTimes       then gdb.syncTimes[charKey]       = nil end
-        if gdb.altGroups then
-            gdb.altGroups[charKey] = nil
-            -- Also strip charKey from other owners' alt arrays.
-            for _, alts in pairs(gdb.altGroups) do
-                if type(alts) == "table" then
-                    for i = #alts, 1, -1 do
-                        if alts[i] == charKey then table.remove(alts, i) end
+            if gdb.cooldowns       then gdb.cooldowns[charKey]       = nil end
+            if gdb.skills          then gdb.skills[charKey]          = nil end
+            if gdb.specializations then gdb.specializations[charKey] = nil end
+            if gdb.factions        then gdb.factions[charKey]        = nil end
+            if gdb.syncTimes       then gdb.syncTimes[charKey]       = nil end
+            if gdb.altGroups then
+                gdb.altGroups[charKey] = nil
+                -- Also strip charKey from other owners' alt arrays.
+                for _, alts in pairs(gdb.altGroups) do
+                    if type(alts) == "table" then
+                        for i = #alts, 1, -1 do
+                            if alts[i] == charKey then table.remove(alts, i) end
+                        end
                     end
                 end
             end
+            count = count + 1
         end
-        count = count + 1
     end
 
     -- Drop guildRegistry entries whose last crafter just got purged.

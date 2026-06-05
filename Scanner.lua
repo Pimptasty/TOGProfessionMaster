@@ -172,7 +172,7 @@ local PROF_NAME_TO_ID = {
 -- ---------------------------------------------------------------------------
 
 function Scanner:InitDeltaSync()
-    -- DeltaSync-1.0 and GuildCache-1.0 are declared as ## Dependencies in the
+    -- DeltaSync-1.0 and LibGuildRoster-1.0 are declared as ## Dependencies in the
     -- .toc — version compatibility is the responsibility of the dependency
     -- declaration, not a runtime hardcoded version check here.
     local DS = LibStub("DeltaSync-1.0", true)
@@ -181,9 +181,9 @@ function Scanner:InitDeltaSync()
         return
     end
 
-    local GuildCache = LibStub("GuildCache-1.0", true)
+    local GuildCache = LibStub("LibGuildRoster-1.0", true)
     if not GuildCache then
-        addon:DebugPrint("Scanner: GuildCache-1.0 not found — guild sync disabled")
+        addon:DebugPrint("Scanner: LibGuildRoster-1.0 not found — guild sync disabled")
         return
     end
 
@@ -304,7 +304,7 @@ function Scanner:InitDeltaSync()
             local gdb = addon:GetGuildDb()
             if not gdb then return false end
             local me = GuildCache:GetNormalizedPlayer()
-            for _, name in ipairs(GuildCache:GetOnlineGuildMembers()) do
+            for _, name in ipairs(GuildCache:GetOnlineMembers()) do
                 if name ~= me and not (gdb.hashes and gdb.hashes["cooldown:" .. name]) then
                     return true
                 end
@@ -323,7 +323,7 @@ function Scanner:InitDeltaSync()
         -- DeltaComms.lua — every send site gets a guard before dispatch.
         onSyncAccepted = function(itemKey, sender)
             addon:DebugPrint("Scanner: onSyncAccepted itemKey=", itemKey, "sender=", sender)
-            if Scanner.GuildCache and not Scanner.GuildCache:IsPlayerOnline(sender) then
+            if Scanner.GuildCache and not Scanner.GuildCache:IsOnline(sender) then
                 addon:DebugPrint("Scanner:   → skip RequestData — peer offline:", sender)
                 return
             end
@@ -606,7 +606,7 @@ function addon:PrintStatus()
     -- GuildCache handle is stashed on Scanner — reach across explicitly.
     local GuildCache = Scanner.GuildCache
     if GuildCache then
-        local online = GuildCache:GetOnlineGuildMembers()
+        local online = GuildCache:GetOnlineMembers()
         addon:Print("Online guild members: " .. #online)
         for _, name in ipairs(online) do
             local inGdb = gdb and gdb.guildData and gdb.guildData[name]
@@ -1954,7 +1954,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
             -- Online gate (mirrors onSyncAccepted above): peer may have
             -- gone offline between sending us their subhashes and our
             -- follow-up leaf-data request landing on the wire.
-            if Scanner.GuildCache and not Scanner.GuildCache:IsPlayerOnline(sender) then
+            if Scanner.GuildCache and not Scanner.GuildCache:IsOnline(sender) then
                 addon:DebugPrint("Scanner:   → skip leaf-data RequestData — peer offline:", sender)
             else
                 DS:RequestData(sender, { type = "leaf-data", keys = toRequest })

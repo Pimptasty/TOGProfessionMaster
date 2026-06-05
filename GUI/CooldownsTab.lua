@@ -1404,7 +1404,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
     end
 
     local GuildCache = addon.Scanner and addon.Scanner.GuildCache
-    local online = GuildCache and GuildCache:IsPlayerOnline(row.charKey) or false
+    local online = GuildCache and GuildCache:IsOnline(row.charKey) or false
     local displayName = row.shortName
     local isYou = addon:IsMyCharacter(row.charKey)
 
@@ -1419,7 +1419,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
     elseif not online and gdb and gdb.altGroups and gdb.altGroups[row.charKey] then
         -- Crafter offline — check if one of their alts is online.
         for _, altCk in ipairs(gdb.altGroups[row.charKey]) do
-            if altCk ~= row.charKey and GuildCache and GuildCache:IsPlayerOnline(altCk) then
+            if altCk ~= row.charKey and GuildCache and GuildCache:IsOnline(altCk) then
                 local altShort = altCk:match("^(.-)%-") or altCk
                 displayName = altShort .. " (" .. row.shortName .. ")"
                 online = true

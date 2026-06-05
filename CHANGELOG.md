@@ -1,5 +1,18 @@
 # TOG Profession Master Changelog
 
+## [v0.10.0] (2026-06-05) - Roster engine migration (LibGuildRoster-1.0)
+
+### Improvements
+
+- **Roster engine migrated to LibGuildRoster-1.0.** Guild-roster data (membership, online state, and the join/leave/online callbacks) now comes from the standalone LibGuildRoster-1.0 library (the GuildRoster addon) instead of the retired GuildCache-1.0. This is the foundation for upcoming cross-guild support. GuildRoster is now a dependency and installs automatically. Location: `Scanner.lua`, `TOGProfessionMaster.lua`, `Tooltip.lua`, `GUI/BrowserTab.lua`, `GUI/CooldownsTab.lua`.
+
+### Bug Fixes
+
+- **Pending-purge sweep now re-validates before deleting.** The timed sweep that removes departed members' data re-checks each flagged character against the live roster, deletes only confirmed non-members, and bails entirely if the roster isn't ready — closing any path where a legitimate guildmate's crafter data could be removed by a stale or early-login purge flag. Location: `TOGProfessionMaster.lua` (`RunPendingPurge`).
+- **Visibility gate hardened against an unbuilt roster.** A tag-matching crafter is shown (not flagged for purge) while the roster library is absent or still loading, restoring the pre-migration leniency and preventing early-login false-flags. Location: `TOGProfessionMaster.lua` (`IsVisibleCrafter`).
+
+---
+
 ## [v0.9.1] (2026-06-02) - Profit Planner UX, addon-wide sortable headers, search icons & persistence fixes
 
 ### New Features

@@ -96,10 +96,10 @@ local function FindCrafters(itemID)
                     seen[seenKey] = true
                     local name      = charKey:match("^(.-)%-") or charKey
                     local skillData = gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
-                    local online    = GuildCache and GuildCache:IsPlayerOnline(charKey) or false
+                    local online    = GuildCache and GuildCache:IsOnline(charKey) or false
                     if not online and gdb.altGroups and gdb.altGroups[charKey] then
                         for _, altCk in ipairs(gdb.altGroups[charKey]) do
-                            if altCk ~= charKey and GuildCache and GuildCache:IsPlayerOnline(altCk) then
+                            if altCk ~= charKey and GuildCache and GuildCache:IsOnline(altCk) then
                                 online = true
                                 break
                             end

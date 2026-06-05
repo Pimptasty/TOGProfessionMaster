@@ -355,11 +355,11 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
                 end
             elseif thisViewMode ~= "mine" and addon:IsVisibleCrafter(ck, tag) then
                 local shortName   = ck:match("^(.-)%-") or ck
-                local online      = GuildCache and GuildCache:IsPlayerOnline(ck) or false
+                local online      = GuildCache and GuildCache:IsOnline(ck) or false
                 local displayName = shortName
                 if not online and gdb.altGroups and gdb.altGroups[ck] then
                     for _, altCk in ipairs(gdb.altGroups[ck]) do
-                        if altCk ~= ck and GuildCache and GuildCache:IsPlayerOnline(altCk) then
+                        if altCk ~= ck and GuildCache and GuildCache:IsOnline(altCk) then
                             local altShort = altCk:match("^(.-)%-") or altCk
                             displayName = altShort .. " (" .. shortName .. ")"
                             online = true

@@ -1772,18 +1772,25 @@ function Scanner:BuildLeafPayload(itemKey)
     elseif itemKey:sub(1, 9) == "crafters:" then
         local profId = tonumber(itemKey:sub(10))
         if not profId or not gdb.recipes or not gdb.recipes[profId] then return nil end
-        -- v0.7.0: bare {[recipeId] = {[charKey] = true}}. Per-crafter guild tag
-        -- is NOT shipped — receivers compute it locally from their current
-        -- guild context (inbound data always arrived through the receiver's
-        -- own guild channel, so all crafters in the payload share the
-        -- receiver's current guild tag at receive time).
+        -- v0.10.2: ship the per-crafter ORIGIN guild tag (already stored in gdb
+        -- as crafters[ck] = guildTag) instead of a bare `true`. This lets a
+        -- relaying "bridge" member rebroadcast cross-guild ("sister") crafters
+        -- into its home guild WITHOUT them being re-stamped as the home guild —
+        -- attribution survives the relay. Backward compatible both ways:
+        --   * the crafters-leaf HASH is unaffected (ComputeCraftersHash
+        --     normalizes every value to true before hashing), so old/new clients
+        --     stay in sync — no version bump, no desync churn;
+        --   * old receivers iterate keys and treat any truthy value as present,
+        --     degrading to the pre-v0.10.2 "tag by my own guild" behavior.
+        -- The receiver (MergeCraftersIntoGdb) prefers the shipped string tag and
+        -- falls back to its sender-derived tag for legacy `true` values.
         local crafters = {}
         local hasCrafters = false
         for recipeId, rd in pairs(gdb.recipes[profId]) do
             if rd.crafters and next(rd.crafters) then
                 local set = {}
                 for ck, v in pairs(rd.crafters) do
-                    if v then set[ck] = true end
+                    if v then set[ck] = v end
                 end
                 if next(set) then
                     crafters[recipeId] = set
@@ -2068,7 +2075,15 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
                 end
                 if not existing.crafters then existing.crafters = {} end
                 for ck, v in pairs(ckSet) do
-                    if v and type(ck) == "string" then existing.crafters[ck] = tag end
+                    if v and type(ck) == "string" then
+                        -- v0.10.2: prefer the per-crafter origin tag shipped in
+                        -- the leaf (a guild-tag string) so relayed cross-guild
+                        -- data keeps its true guild attribution instead of being
+                        -- re-stamped with the broadcaster's guild. Legacy
+                        -- payloads ship `true` → fall back to the sender-derived
+                        -- tag (originTag, == our own tag for intra-guild data).
+                        existing.crafters[ck] = (type(v) == "string") and v or tag
+                    end
                 end
             end
         end

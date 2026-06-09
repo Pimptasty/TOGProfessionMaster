@@ -1,5 +1,20 @@
 # TOG Profession Master Changelog
 
+## [v0.10.2-beta] (2026-06-09) - Cross-guild relay attribution & diagnostics (beta)
+
+> **Beta build.** Continues the cross-guild work from v0.10.1-beta. Backward-compatible and dormant until an allied guild is configured. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+** (both install/update automatically). For cross-guild relay to work, **all** participating players need this build.
+
+### New Features
+
+- **Cross-guild diagnostics panel.** A live, read-only status section on **Settings → Cross-Guild** showing dependency status (DeltaSync/RosterSync, LibGuildRoster/multi-roster), known rosters (home + each sister) with member counts, configured allied guilds, crafter counts per guild, and persisted allied rosters with feed timestamps. Plus a "Pull from player" field to trigger a pull without the slash command. Location: `GUI/Settings.lua`.
+- **`/togpm xgdiag` command.** Dumps the same cross-guild diagnostics to chat as plain lines for easy copy-paste when troubleshooting. Location: `GUI/Settings.lua`, `TOGProfessionMaster.lua`.
+
+### Bug Fixes
+
+- **Cross-guild attribution now survives relays.** The crafters sync leaf previously shipped bare character keys with no guild tag, on the assumption that every crafter in a payload belonged to the receiver's guild. In a confederation that assumption breaks: when a member who holds sister-guild data rebroadcasts it into their home guild, those sister crafters were re-stamped as the home guild and then hidden/purged by the visibility gate (not in the home roster). The leaf now ships each crafter's **origin guild tag** (already stored locally), so a relaying "bridge" member can propagate allied-guild crafters into their home guild with attribution intact. The leaf **hash is unchanged** (it already normalized values before hashing), so old and new clients stay in sync — but both ends of a relay must run this build for tags to be preserved. Location: `Scanner.lua` (`BuildLeafPayload`, `MergeCraftersIntoGdb`).
+
+---
+
 ## [v0.10.1-beta] (2026-06-09) - Cross-guild profession sharing (beta)
 
 > **Beta build.** This is the first testable cut of cross-guild sharing. It is fully backward-compatible — single-guild users are unaffected and the feature stays dormant until an allied guild is configured — but the cross-guild round-trip has not yet been validated with live players. Please report issues. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+** (both install/update automatically).

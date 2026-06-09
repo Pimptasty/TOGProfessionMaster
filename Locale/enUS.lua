@@ -312,6 +312,12 @@ L["SettingsSisterGuilds"]     = "Allied guild names"
 L["SettingsSisterGuildsDesc"] = "One guild name per line, exactly as it appears in-game (no faction prefix)."
 L["SettingsTabGeneral"]       = "General"
 L["SettingsTabCrossGuild"]    = "Cross-Guild"
+L["SettingsCrossGuildDiagHeader"] = "Diagnostics"
+L["SettingsCrossGuildDiagRefresh"] = "Refresh"
+L["SettingsCrossGuildDiagRefreshDesc"] = "Re-read the live cross-guild state and update the panel above."
+L["SettingsCrossGuildPullHeader"] = "Manual pull (testing)"
+L["SettingsCrossGuildPull"]   = "Pull from player"
+L["SettingsCrossGuildPullDesc"] = "Enter the name of an online member of an allied guild to pull their roster + crafter data now. Same as /togpm pullroster. The diagnostics above refresh automatically."
 
 -- ---------------------------------------------------------------------------
 -- Sync log

@@ -17,6 +17,125 @@ if not AceConfig or not AceDialog then
 end
 
 -- ---------------------------------------------------------------------------
+-- Cross-guild diagnostics
+-- A live, read-only snapshot rendered as a "description" on the Cross-Guild
+-- tab so testers can see cross-guild state at a glance instead of running /run
+-- probes: dependency status, known rosters (home + sisters) with counts, the
+-- configured allied guilds, crafter counts per guild, and persisted sister
+-- rosters. The description's `name` is a function, so AceConfig re-evaluates it
+-- every render — the Refresh button just forces a re-render via NotifyChange.
+-- ---------------------------------------------------------------------------
+
+local function og(s) return "|c" .. (addon.BrandColor or "ffFF8000") .. s .. "|r" end
+
+local function countPairs(t)
+    local n = 0
+    if type(t) == "table" then for _ in pairs(t) do n = n + 1 end end
+    return n
+end
+
+local function BuildCrossGuildDiagnostics()
+    local lines = {}
+    local GR  = addon.Scanner and addon.Scanner.GuildRoster
+    local DS  = addon.Scanner and addon.Scanner.DS
+    local gdb = addon:GetGuildDb()
+
+    -- Dependencies -----------------------------------------------------------
+    lines[#lines + 1] = og("Dependencies")
+    if DS then
+        lines[#lines + 1] = "  DeltaSync: loaded  (RosterSync: " ..
+            (DS.RequestRosterSync and "|cff00ff00yes|r" or "|cffff4040no|r") .. ")"
+    else
+        lines[#lines + 1] = "  DeltaSync: |cffff4040not loaded|r"
+    end
+    if GR then
+        lines[#lines + 1] = "  LibGuildRoster: loaded  (multi-roster: " ..
+            (GR.SetSisterRoster and "|cff00ff00yes|r" or "|cffff4040no|r") .. ")"
+    else
+        lines[#lines + 1] = "  LibGuildRoster: |cffff4040not loaded|r"
+    end
+
+    -- Known rosters ----------------------------------------------------------
+    lines[#lines + 1] = " "
+    lines[#lines + 1] = og("Known rosters")
+    if GR and GR.GetKnownRosters then
+        local homeKey = GR.GetHomeGuildKey and GR:GetHomeGuildKey() or nil
+        local known   = GR:GetKnownRosters() or {}
+        if #known == 0 then
+            lines[#lines + 1] = "  |cffaaaaaa(none yet)|r"
+        else
+            for _, k in ipairs(known) do
+                local n   = countPairs(GR.GetRoster and GR:GetRoster(k))
+                local tag = (k == homeKey) and " |cff00ccff(home)|r" or " |cffffd100(sister)|r"
+                lines[#lines + 1] = string.format("  %s%s  \226\128\148  %d members", k, tag, n)
+            end
+        end
+    else
+        lines[#lines + 1] = "  |cffaaaaaa(roster library unavailable)|r"
+    end
+
+    -- Configured allied guilds ----------------------------------------------
+    lines[#lines + 1] = " "
+    lines[#lines + 1] = og("Configured allied guilds")
+    local sisters = addon:GetSisterGuilds() or {}
+    if #sisters == 0 then
+        lines[#lines + 1] = "  |cffaaaaaa(none configured \226\128\148 add one above)|r"
+    else
+        for _, name in ipairs(sisters) do
+            lines[#lines + 1] = "  " .. name
+        end
+    end
+
+    -- Crafter data by guild --------------------------------------------------
+    lines[#lines + 1] = " "
+    lines[#lines + 1] = og("Crafter data by guild")
+    if gdb then
+        local byTag = {}   -- tag -> set of distinct charKeys
+        for _, profRecipes in pairs(gdb.recipes or {}) do
+            for _, rd in pairs(profRecipes) do
+                if rd.crafters then
+                    for ck, tag in pairs(rd.crafters) do
+                        byTag[tag] = byTag[tag] or {}
+                        byTag[tag][ck] = true
+                    end
+                end
+            end
+        end
+        local reg = gdb.guildRegistry or {}
+        local any = false
+        for tag, cks in pairs(byTag) do
+            any = true
+            local info = reg[tag]
+            local nm   = (info and info.name) or ("tag " .. tostring(tag))
+            lines[#lines + 1] = string.format("  %s  \226\128\148  %d crafters", nm, countPairs(cks))
+        end
+        if not any then lines[#lines + 1] = "  |cffaaaaaa(no crafter data)|r" end
+    end
+
+    -- Persisted sister rosters ----------------------------------------------
+    if gdb and type(gdb.sisterRosters) == "table" and next(gdb.sisterRosters) then
+        lines[#lines + 1] = " "
+        lines[#lines + 1] = og("Persisted allied rosters (survive /reload)")
+        for key, entry in pairs(gdb.sisterRosters) do
+            local mc  = (type(entry) == "table" and type(entry.members) == "table") and #entry.members or 0
+            local fed = (type(entry) == "table" and entry.fedAt) and date("%H:%M:%S", entry.fedAt) or "?"
+            lines[#lines + 1] = string.format("  %s  \226\128\148  %d members (fed %s)", key, mc, fed)
+        end
+    end
+
+    return table.concat(lines, "\n")
+end
+
+-- /togpm xgdiag — dump the same cross-guild diagnostics to chat (raw print, no
+-- addon prefix) so it's easy to copy-paste for troubleshooting.
+function addon:PrintCrossGuildDiagnostics()
+    print("|c" .. (addon.BrandColor or "ffFF8000") .. "TOGPM cross-guild diagnostics|r")
+    for line in (BuildCrossGuildDiagnostics() .. "\n"):gmatch("(.-)\n") do
+        print(line)
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Option table
 -- ---------------------------------------------------------------------------
 
@@ -657,7 +776,55 @@ local OPTIONS = {
             width     = "full",
             order     = 45,
             get = function() return table.concat(addon:GetSisterGuilds(), "\n") end,
-            set = function(_, val) addon:SetSisterGuilds(val) end,
+            set = function(_, val)
+                addon:SetSisterGuilds(val)
+                if AceRegistry then AceRegistry:NotifyChange("TOGProfessionMaster") end
+            end,
+        },
+
+        -- ---- Diagnostics ---------------------------------------------------
+        diagHeader = {
+            name  = L["SettingsCrossGuildDiagHeader"],
+            type  = "header",
+            order = 50,
+        },
+
+        diagText = {
+            name     = function() return BuildCrossGuildDiagnostics() end,
+            type     = "description",
+            fontSize = "medium",
+            order    = 51,
+        },
+
+        diagRefresh = {
+            name  = L["SettingsCrossGuildDiagRefresh"],
+            desc  = L["SettingsCrossGuildDiagRefreshDesc"],
+            type  = "execute",
+            order = 52,
+            func  = function()
+                if AceRegistry then AceRegistry:NotifyChange("TOGProfessionMaster") end
+            end,
+        },
+
+        -- ---- Manual pull (testing) -----------------------------------------
+        pullHeader = {
+            name  = L["SettingsCrossGuildPullHeader"],
+            type  = "header",
+            order = 60,
+        },
+
+        pullInput = {
+            name  = L["SettingsCrossGuildPull"],
+            desc  = L["SettingsCrossGuildPullDesc"],
+            type  = "input",
+            width = "full",
+            order = 61,
+            get   = function() return "" end,
+            set   = function(_, val)
+                local peer = strtrim(val or "")
+                if peer ~= "" then addon:PullSisterRoster(peer) end
+                if AceRegistry then AceRegistry:NotifyChange("TOGProfessionMaster") end
+            end,
         },
 
             },  -- crossguild.args

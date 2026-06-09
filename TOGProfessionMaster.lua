@@ -345,6 +345,7 @@ local SLASH_COMMANDS = {
     ["backfill"]     = "RunBackfill",
     ["myalts"]       = "DumpMyAlts",
     ["pullroster"]   = "PullSisterRoster",
+    ["xgdiag"]       = "PrintCrossGuildDiagnostics",
     ["help"]         = "PrintHelp",
 }
 

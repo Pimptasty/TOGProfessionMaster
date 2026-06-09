@@ -1,5 +1,32 @@
 # TOG Profession Master Changelog
 
+## [v0.10.1-beta] (2026-06-09) - Cross-guild profession sharing (beta)
+
+> **Beta build.** This is the first testable cut of cross-guild sharing. It is fully backward-compatible — single-guild users are unaffected and the feature stays dormant until an allied guild is configured — but the cross-guild round-trip has not yet been validated with live players. Please report issues. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+** (both install/update automatically).
+
+### New Features
+
+- **Cross-guild profession sharing (beta).** TOGPM can now share recipe/crafter data between two socially-linked guilds that can't reach each other over the normal guild addon channel. Configure an allied guild under **Settings → Cross-Guild**, and your crafters become discoverable to them (and theirs to you). Built on directed peer-to-peer whispers — no extra chat channel required. Location: `GUI/Settings.lua`, `Scanner.lua`, `TOGProfessionMaster.lua`.
+- **Sister-guild roster tracking.** Allied-guild rosters are pulled, persisted across `/reload`, and kept live via LibGuildRoster-1.0's multi-roster store, so allied crafters survive a session restart and stay correctly attributed to their own guild. Location: `Scanner.lua` (`PersistSisterRoster`, `RefeedSisterRosters`, `OnSisterRosterUpdated`).
+- **`/togpm pullroster <player>` command.** Manually pull an online allied-guild member's roster **and** crafter data on demand — the testing/bootstrap path before automatic discovery lands. Location: `TOGProfessionMaster.lua`.
+
+### Improvements
+
+- **Settings window is now tabbed.** Options are organized into General and Cross-Guild tabs (with room for officer/GM-only settings as features grow). Location: `GUI/Settings.lua`.
+- **Each guild stays authoritative for its own membership.** Cross-guild data exchange shares only a guild's *own* crafters and is opt-in (nothing is served until you configure an allied guild), so attribution can never bleed between guilds in a multi-guild confederation. Location: `Scanner.lua` (`BuildFullGuildPayload`).
+
+### Bug Fixes
+
+- **Settings window position, size, and selected tab now persist across `/reload`.** The standalone options window kept its geometry in a runtime-only table; it's now backed by SavedVariables (`.char.frames.settings`), matching the main window. Location: `GUI/Settings.lua`.
+
+### Known Limitations (beta)
+
+- Allied-guild crafters currently display as **offline** — live presence arrives with automatic `/who` discovery in a later beta.
+- Cooldown sharing is **not** yet cross-guild (crafter data only this build).
+- Allied data must be bootstrapped with `/togpm pullroster <name>`; automatic discovery is not in this build.
+
+---
+
 ## [v0.10.0] (2026-06-05) - Roster engine migration (LibGuildRoster-1.0)
 
 ### Improvements

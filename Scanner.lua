@@ -136,9 +136,9 @@ Scanner._lastBroadcastAt  = 0
 -- Default of 30 is in effect until the first recount lands ~21s after PEW.
 Scanner._broadcastSeconds = 30
 
--- DeltaSync + GuildCache LibStub handles (assigned in InitDeltaSync)
+-- DeltaSync + GuildRoster LibStub handles (assigned in InitDeltaSync)
 Scanner.DS         = nil
-Scanner.GuildCache = nil
+Scanner.GuildRoster = nil
 
 -- ---------------------------------------------------------------------------
 -- English profession name → skill line ID
@@ -166,6 +166,67 @@ local PROF_NAME_TO_ID = {
 }
 
 -- ---------------------------------------------------------------------------
+-- Cross-guild sister-roster sync (v0.10.1)
+-- ---------------------------------------------------------------------------
+-- RosterSync (in DeltaSync) pulls an allied guild's roster over whispers and
+-- writes it into LibGuildRoster's sister-roster store, then fires
+-- onSisterRosterUpdated. We persist a copy into SavedVariables so the data
+-- survives /reload before the next live pull, and re-feed those copies on login.
+
+-- Snapshot a sister guild's roster from LibGuildRoster into SavedVariables.
+function Scanner:PersistSisterRoster(guildKey)
+    local GR = self.GuildRoster
+    if not GR or not GR.GetRoster then return end
+    local roster = GR:GetRoster(guildKey)
+    if not roster then return end
+    local members = {}
+    for charKey, m in pairs(roster) do
+        members[#members + 1] = {
+            name  = charKey,
+            class = m and m.class,
+            level = m and m.level,
+            rank  = m and m.rank,
+        }
+    end
+    local gdb = addon:GetGuildDb()
+    if not gdb then return end
+    gdb.sisterRosters = gdb.sisterRosters or {}
+    gdb.sisterRosters[guildKey] = {
+        members = members,
+        meta    = (GR.GetRosterMeta and GR:GetRosterMeta(guildKey)) or nil,
+        fedAt   = GetServerTime and GetServerTime() or nil,
+    }
+end
+
+-- Fired by RosterSync after a sister roster lands in LibGuildRoster: persist a
+-- copy and refresh the UI.
+function Scanner:OnSisterRosterUpdated(guildKey)
+    self:PersistSisterRoster(guildKey)
+    addon:DebugPrint("Scanner: sister roster updated:", guildKey)
+    if addon.callbacks then
+        addon.callbacks:Fire("GUILD_DATA_UPDATED", "sister:" .. tostring(guildKey))
+    end
+end
+
+-- Re-feed persisted sister rosters into LibGuildRoster on login so cross-guild
+-- queries / the visibility gate work before the first live /who-driven pull.
+function Scanner:RefeedSisterRosters()
+    local GR = self.GuildRoster
+    if not GR or not GR.SetSisterRoster then return end
+    local gdb = addon:GetGuildDb()
+    local stored = gdb and gdb.sisterRosters
+    if type(stored) ~= "table" then return end
+    local n = 0
+    for guildKey, entry in pairs(stored) do
+        if type(entry) == "table" and type(entry.members) == "table" then
+            GR:SetSisterRoster(guildKey, entry.members, entry.meta)
+            n = n + 1
+        end
+    end
+    if n > 0 then addon:DebugPrint("Scanner: re-fed", n, "persisted sister roster(s)") end
+end
+
+-- ---------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------
 -- DeltaSync initialisation
 -- Called on PLAYER_ENTERING_WORLD (initial login or UI reload only).
@@ -181,8 +242,8 @@ function Scanner:InitDeltaSync()
         return
     end
 
-    local GuildCache = LibStub("LibGuildRoster-1.0", true)
-    if not GuildCache then
+    local GuildRoster = LibStub("LibGuildRoster-1.0", true)
+    if not GuildRoster then
         addon:DebugPrint("Scanner: LibGuildRoster-1.0 not found — guild sync disabled")
         return
     end
@@ -217,6 +278,13 @@ function Scanner:InitDeltaSync()
                 for _, itemKey in ipairs(baseline.keys) do
                     Scanner:BroadcastLeafToGuild(itemKey)
                 end
+            elseif baseline.type == "sister-pull" then
+                -- A sister-guild peer is requesting our full guild dataset for
+                -- cross-guild sharing. Respond directly over WHISPER — they're
+                -- not on our GUILD channel, so a broadcast would never reach
+                -- them. Their merge tags our crafters with our guild's tag.
+                local payload = Scanner:BuildFullGuildPayload()
+                if payload then DS:SendData(sender, payload, false) end
             end
         end,
 
@@ -237,7 +305,22 @@ function Scanner:InitDeltaSync()
     })
 
     self.DS         = DS
-    self.GuildCache = GuildCache
+    self.GuildRoster = GuildRoster
+
+    -- Cross-guild ("sister roster") sync. Opt-in / feature-detected: a DeltaSync
+    -- build without RosterSync, or a LibGuildRoster without the sister API,
+    -- simply skips this and single-guild sync is unaffected. RosterSync owns the
+    -- wire and writes received rosters into LibGuildRoster itself; our callback
+    -- persists a copy and refreshes the UI. Discovery (/who) and the pull trigger
+    -- come in a later step — this wires the plumbing + login re-feed only.
+    if DS.InitRosterSync and GuildRoster.SetSisterRoster then
+        DS:InitRosterSync({
+            onSisterRosterUpdated = function(guildKey)
+                Scanner:OnSisterRosterUpdated(guildKey)
+            end,
+        })
+        self:RefeedSisterRosters()
+    end
 
     -- v0.2.0 hash migration: drop legacy v0.1.x leaf keys and ensure all
     -- expected v0.2.0 leaves exist.  Idempotent — safe to run on every PEW.
@@ -303,8 +386,8 @@ function Scanner:InitDeltaSync()
         hasMissingItems = function()
             local gdb = addon:GetGuildDb()
             if not gdb then return false end
-            local me = GuildCache:GetNormalizedPlayer()
-            for _, name in ipairs(GuildCache:GetOnlineMembers()) do
+            local me = GuildRoster:GetNormalizedPlayer()
+            for _, name in ipairs(GuildRoster:GetOnlineMembers()) do
                 if name ~= me and not (gdb.hashes and gdb.hashes["cooldown:" .. name]) then
                     return true
                 end
@@ -318,12 +401,12 @@ function Scanner:InitDeltaSync()
         -- Online gate: skip if the peer went offline between their broadcast
         -- and this dispatch. DeltaSync has its own internal offline check
         -- but that races with GUILD_ROSTER_UPDATE propagation; gating here
-        -- catches the common case where GuildCache has already seen the
+        -- catches the common case where GuildRoster has already seen the
         -- offline transition. Mirrors the TOGBankClassic pattern from
         -- DeltaComms.lua — every send site gets a guard before dispatch.
         onSyncAccepted = function(itemKey, sender)
             addon:DebugPrint("Scanner: onSyncAccepted itemKey=", itemKey, "sender=", sender)
-            if Scanner.GuildCache and not Scanner.GuildCache:IsOnline(sender) then
+            if Scanner.GuildRoster and not Scanner.GuildRoster:IsOnline(sender) then
                 addon:DebugPrint("Scanner:   → skip RequestData — peer offline:", sender)
                 return
             end
@@ -561,7 +644,7 @@ function addon:PrintStatus()
         addon:Print("  aceComm="     .. tostring(stats.useAceComm or false)
             .. "  registered=" .. tostring(stats.registered or false)
             .. "  p2p="        .. tostring(stats.p2pEnabled or false)
-            .. "  guildCache=" .. tostring(Scanner.GuildCache ~= nil))
+            .. "  guildRoster=" .. tostring(Scanner.GuildRoster ~= nil))
 
         -- Communication prefixes (7 channels)
         if DS.prefixes then
@@ -603,10 +686,10 @@ function addon:PrintStatus()
 
     -- ── Online roster ────────────────────────────────────────────────────────
     -- PrintStatus runs on `addon` (function addon:PrintStatus), but the
-    -- GuildCache handle is stashed on Scanner — reach across explicitly.
-    local GuildCache = Scanner.GuildCache
-    if GuildCache then
-        local online = GuildCache:GetOnlineMembers()
+    -- GuildRoster handle is stashed on Scanner — reach across explicitly.
+    local GuildRoster = Scanner.GuildRoster
+    if GuildRoster then
+        local online = GuildRoster:GetOnlineMembers()
         addon:Print("Online guild members: " .. #online)
         for _, name in ipairs(online) do
             local inGdb = gdb and gdb.guildData and gdb.guildData[name]
@@ -673,9 +756,9 @@ function Scanner:OnTradeSkillEvent()
     local isLinked, linkedPlayer = IsTradeSkillLinked()
     if isLinked then
         -- Only store linked data if the player is a guildmate.
-        if linkedPlayer and self.GuildCache then
-            local normKey = self.GuildCache:NormalizeName(linkedPlayer)
-            if normKey and self.GuildCache:IsInGuild(normKey) then
+        if linkedPlayer and self.GuildRoster then
+            local normKey = self.GuildRoster:NormalizeName(linkedPlayer)
+            if normKey and self.GuildRoster:IsInGuild(normKey) then
                 self:ScanTradeSkillInto(normKey, true)
             end
         end
@@ -1758,6 +1841,104 @@ function Scanner:BuildLeafPayload(itemKey)
     return payload
 end
 
+-- Cross-guild (v0.10.1): build a payload carrying ONLY our own guild's crafter
+-- leaves, served over a directed WHISPER to a sister-guild peer that asked via a
+-- "sister-pull" request.
+--
+-- Two correctness rules baked in:
+--   1. Serve only crafters tagged with OUR home guild tag. The crafters: leaf
+--      ships bare charKeys and the receiver tags them all with our guildKey, so
+--      re-serving sister data we previously pulled would re-tag THEIR members as
+--      ours — cross-guild attribution corruption. Filtering by tag keeps each
+--      guild authoritative for its own membership.
+--   2. Opt-in: only share if we participate in a confederation (have an allied
+--      guild configured). Non-participating users never serve their data.
+--
+-- Cooldowns / account-char groups are intentionally NOT shared cross-guild yet
+-- (crafters — "who can craft X" — are the core value; cooldown sharing needs its
+-- own member-filtering and comes later). Returns nil when guildless, not opted
+-- in, or we have no own-guild crafters.
+function Scanner:BuildFullGuildPayload()
+    local gdb = addon:GetGuildDb()
+    if not gdb then return nil end
+    if not addon:GetGuildKey() then return nil end          -- never serve no-guild data
+    if #addon:GetSisterGuilds() == 0 then return nil end     -- opt-in gate
+
+    local myTag = addon:GetCurrentGuildTag()
+    local out = {
+        charKey   = addon:GetCharacterKey(),
+        guildKey  = addon:GetGuildKey(),
+        timestamp = GetServerTime(),
+        leaves    = {},
+    }
+    local skillsOut, specsOut, lastScanOut = {}, {}, {}
+
+    for profId, profRecipes in pairs(gdb.recipes or {}) do
+        local crafters, ourCks, has = {}, {}, false
+        for recipeId, rd in pairs(profRecipes) do
+            if rd.crafters then
+                local set = {}
+                for ck, t in pairs(rd.crafters) do
+                    if t == myTag then set[ck] = true; ourCks[ck] = true; has = true end
+                end
+                if next(set) then crafters[recipeId] = set end
+            end
+        end
+        if has then
+            local key   = "crafters:" .. profId
+            local entry = gdb.hashes and gdb.hashes[key]
+            out.leaves[key] = {
+                data      = crafters,
+                hash      = entry and entry.hash      or 0,
+                updatedAt = entry and entry.updatedAt or 0,
+            }
+            if gdb.skills then
+                local s = {}
+                for ck in pairs(ourCks) do
+                    local cs = gdb.skills[ck] and gdb.skills[ck][profId]
+                    if cs then s[ck] = { skillRank = cs.skillRank, skillMax = cs.skillMax } end
+                end
+                if next(s) then skillsOut[profId] = s end
+            end
+            if gdb.specializations then
+                local sp = {}
+                for ck in pairs(ourCks) do
+                    local sid = gdb.specializations[ck] and gdb.specializations[ck][profId]
+                    if sid then sp[ck] = sid end
+                end
+                if next(sp) then specsOut[profId] = sp end
+            end
+            if gdb.lastScan then
+                for ck in pairs(ourCks) do
+                    local ls = gdb.lastScan[ck]
+                    if ls and ls[profId] then
+                        lastScanOut[ck] = lastScanOut[ck] or {}
+                        lastScanOut[ck][profId] = ls[profId]
+                    end
+                end
+            end
+        end
+    end
+
+    if not next(out.leaves) then return nil end
+    if next(skillsOut)   then out.skills          = skillsOut   end
+    if next(specsOut)    then out.specializations = specsOut    end
+    if next(lastScanOut) then out.lastScan        = lastScanOut end
+    return out
+end
+
+-- Cross-guild (v0.10.1): ask an online sister-guild peer for their full guild
+-- dataset over a directed WHISPER. Their onDataRequest serves it back via
+-- whisper; our OnGuildDataReceived merges it, tagging crafters with their
+-- guild's tag. The host supplies the peer (manual /togpm pullroster, or the
+-- future /who discovery).
+function Scanner:RequestSisterData(peer)
+    local DS = self.DS
+    if not DS or not DS.RequestData or not peer or peer == "" then return end
+    DS:RequestData(peer, { type = "sister-pull" })
+    addon:DebugPrint("Scanner: requested sister data from", peer)
+end
+
 -- ---------------------------------------------------------------------------
 -- Receive & merge guild data
 -- ---------------------------------------------------------------------------
@@ -1845,7 +2026,7 @@ end
 ---                             Triggers wipe-then-re-add for the sender's
 ---                             charKey so unlearned recipes get removed.
 ---                             Relayed data (false) is union-add only.
-function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderClaimsOwnScan)
+function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderClaimsOwnScan, originTag)
     if type(crafters) ~= "table" then return end
     if not gdb.recipes[profId] then gdb.recipes[profId] = {} end
     local profRecipes = gdb.recipes[profId]
@@ -1855,11 +2036,12 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
     -- unknown rows, but the UI hides them anyway — no point bloating the DB.
     local localProfDB = addon.recipeDB and addon.recipeDB[profId]
 
-    -- Receiver-side guild tag: inbound DeltaSync data always arrives via our
-    -- own guild channel, so every crafter in the payload gets tagged with
-    -- the current player's guild tag (or PersonalTag if guildless, though
-    -- that case shouldn't reach the wire — broadcasts gate on a real guild).
-    local tag = addon:GetCurrentGuildTag()
+    -- Per-crafter guild tag. originTag is the SENDER's guild tag, derived from
+    -- the payload's guildKey by OnGuildDataReceived — correct for both intra-
+    -- guild data (equals our own tag) and cross-guild "sister" data (the
+    -- sender's guild). Falls back to our current guild tag for legacy payloads
+    -- that carry no guildKey, preserving the original receiver-tags behavior.
+    local tag = originTag or addon:GetCurrentGuildTag()
 
     if senderClaimsOwnScan and senderKey then
         for _, rd in pairs(profRecipes) do
@@ -1914,9 +2096,9 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     end
 
     local DS         = self.DS
-    local GuildCache = self.GuildCache
-    if GuildCache then
-        senderKey = GuildCache:NormalizeName(senderKey) or senderKey
+    local GuildRoster = self.GuildRoster
+    if GuildRoster then
+        senderKey = GuildRoster:NormalizeName(senderKey) or senderKey
     end
 
     -- Ignore echoes of our own broadcast.
@@ -1936,6 +2118,12 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     end
     local now = GetServerTime()
 
+    -- Sender's guild tag, derived from the payload's guildKey. For intra-guild
+    -- data this equals our own tag; for cross-guild "sister" data it's the
+    -- sender's guild, so merged crafters are attributed to the right guild.
+    -- nil for legacy payloads without a guildKey (merge falls back to ours).
+    local senderTag = data.guildKey and addon:GuildTagFromKey(data.guildKey) or nil
+
     -- ── Subhashes response ─────────────────────────────────────────────────
     -- Peer broadcast their per-character sub-hashes for a roll-up parent.
     -- Compare locally, request individual leaves we differ on.
@@ -1954,7 +2142,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
             -- Online gate (mirrors onSyncAccepted above): peer may have
             -- gone offline between sending us their subhashes and our
             -- follow-up leaf-data request landing on the wire.
-            if Scanner.GuildCache and not Scanner.GuildCache:IsOnline(sender) then
+            if Scanner.GuildRoster and not Scanner.GuildRoster:IsOnline(sender) then
                 addon:DebugPrint("Scanner:   → skip leaf-data RequestData — peer offline:", sender)
             else
                 DS:RequestData(sender, { type = "leaf-data", keys = toRequest })
@@ -2070,7 +2258,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                         and type(data.skills[profId]) == "table"
                         and data.skills[profId][senderKey] ~= nil
                     self:MergeCraftersIntoGdb(gdb, profId, leafData,
-                        senderKey, senderClaimsOwnScan)
+                        senderKey, senderClaimsOwnScan, senderTag)
                     -- Skills (per-charKey rank/max) ride along on crafters payloads.
                     if type(data.skills) == "table"
                        and type(data.skills[profId]) == "table" then

@@ -174,6 +174,10 @@ local GUILD_DB_DEFAULTS = {
 
         -- Sync log ring buffer (Modules/SyncLog.lua caps at 200 entries).
         syncLog = {},
+
+        -- v0.10.1 cross-guild: persisted sister-guild rosters, re-fed into
+        -- LibGuildRoster on login. [guildKey] = { members, meta, fedAt }.
+        sisterRosters = {},
     },
 }
 
@@ -262,6 +266,11 @@ local SETTINGS_DEFAULTS = {
         -- would never auto-select — the override mechanism is the only way
         -- those locales reach players on enUS / zhTW / etc. clients.
         uiLanguageOverride = "auto",
+
+        -- Cross-guild: user-configured allied ("sister") guild names that TOGPM
+        -- shares profession data with. Flat list of display names; faction is
+        -- derived from the current player when forming "Faction-GuildName" keys.
+        sisterGuilds = {},
     },
     char = {
         -- Shopping list: [spellId] = { quantity = N }
@@ -306,7 +315,7 @@ local SETTINGS_DEFAULTS = {
 
         -- Profit tab: last-selected subtab ("live" or "history").
         profitSubTab    = "live",
-        
+
         -- Main window: last-selected main tab (saved across reloads).
         lastMainTab     = "browser",
     },
@@ -335,6 +344,7 @@ local SLASH_COMMANDS = {
     ["forcebroadcast"] = "ForceBroadcast",
     ["backfill"]     = "RunBackfill",
     ["myalts"]       = "DumpMyAlts",
+    ["pullroster"]   = "PullSisterRoster",
     ["help"]         = "PrintHelp",
 }
 
@@ -457,9 +467,9 @@ function Ace:OnEnable()
     -- addon, pulled in via DeltaSync's dependency chain) which exposes
     -- CallbackHandler-1.0 callbacks driven by both GUILD_ROSTER_UPDATE diffs and
     -- CHAT_MSG_SYSTEM parsing.
-    local GuildCache = LibStub("LibGuildRoster-1.0", true)
-    if GuildCache and GuildCache.RegisterCallback then
-        GuildCache:RegisterCallback("OnMemberOnline", function(_, name)
+    local GuildRoster = LibStub("LibGuildRoster-1.0", true)
+    if GuildRoster and GuildRoster.RegisterCallback then
+        GuildRoster:RegisterCallback("OnMemberOnline", function(_, name)
             addon:OnCrafterCameOnline(name)
         end)
 
@@ -470,7 +480,7 @@ function Ace:OnEnable()
         -- the buffer, walk addon.guildDb.global.pendingPurge and delete
         -- every reference for each flagged charKey (departed members
         -- queued by display-time visibility checks).
-        GuildCache:RegisterCallback("OnRosterReady", function()
+        GuildRoster:RegisterCallback("OnRosterReady", function()
             self:ScheduleTimer(function() addon:RunPendingPurge() end, 60)
         end)
     end
@@ -695,6 +705,29 @@ function addon:OpenReagents()   addon:DebugPrint("OpenReagents — UI not yet lo
 function addon:ShowMinimapButton() addon:DebugPrint("ShowMinimapButton — UI not yet loaded") end
 function addon:OpenPurge()      addon:DebugPrint("OpenPurge — UI not yet loaded") end
 function addon:ForceSync()      addon:DebugPrint("ForceSync — sync not yet loaded") end
+
+-- /togpm pullroster <Name[-Realm]> — manually pull an allied guild's roster
+-- from a known online member. Test trigger for cross-guild sync; the automatic
+-- /who discovery comes in a later step. Routes through DeltaSync RosterSync over
+-- a whisper; on success the sister roster lands in LibGuildRoster and is
+-- persisted (watch for "sister roster updated" in debug output).
+function addon:PullSisterRoster(args)
+    local peer = strtrim(args or "")
+    if peer == "" then
+        Ace:Print("Usage: /togpm pullroster <Name> (an online member of an allied guild)")
+        return
+    end
+    local DS = addon.Scanner and addon.Scanner.DS
+    if not DS or not DS.RequestRosterSync then
+        Ace:Print("|cffff4444Cross-guild sync unavailable|r (DeltaSync RosterSync not loaded).")
+        return
+    end
+    Ace:Print("Requesting roster + profession data from " .. peer .. " ...")
+    DS:RequestRosterSync(peer)
+    if addon.Scanner and addon.Scanner.RequestSisterData then
+        addon.Scanner:RequestSisterData(peer)
+    end
+end
 
 --- /togpm dumprecipe <name> — find a recipe by exact name and print its
 -- stored fields + reagent table to chat. Used to diagnose missing itemLink
@@ -1331,6 +1364,62 @@ function addon:GetCurrentGuildTag()
     return self:GetGuildTagFor(guildKey, faction, guildName)
 end
 
+-- Derive the guild tag for an arbitrary "Faction-GuildName" key (e.g. a sister
+-- guild's, learned from inbound cross-guild data), registering it in
+-- guildRegistry so the UI can resolve tag → name. Returns PersonalTag for a
+-- nil/empty key. Like GetCurrentGuildTag, but for a key other than our own.
+function addon:GuildTagFromKey(guildKey)
+    if not guildKey or guildKey == "" then return addon.PersonalTag end
+    local faction, name = guildKey:match("^([^%-]+)%-(.+)$")
+    return self:GetGuildTagFor(guildKey, faction, name)
+end
+
+-- ---------------------------------------------------------------------------
+-- Cross-guild ("sister guild") configuration
+-- ---------------------------------------------------------------------------
+
+-- The user-configured list of allied guild display names TOGPM shares
+-- profession data with. Stored in the shared settings profile; nil-safe.
+function addon:GetSisterGuilds()
+    return (Ace.db and Ace.db.profile and Ace.db.profile.sisterGuilds) or {}
+end
+
+-- Parse newline-separated text from the settings input into a trimmed,
+-- case-insensitively de-duplicated list of guild names and store it.
+function addon:SetSisterGuilds(text)
+    local out, seen = {}, {}
+    for line in tostring(text or ""):gmatch("[^\r\n]+") do
+        local name = line:gsub("^%s+", ""):gsub("%s+$", "")
+        if name ~= "" and not seen[name:lower()] then
+            seen[name:lower()] = true
+            out[#out + 1] = name
+        end
+    end
+    if Ace.db and Ace.db.profile then
+        Ace.db.profile.sisterGuilds = out
+    end
+end
+
+-- The configured sister guilds as "Faction-GuildName" keys for the current
+-- player's faction, excluding the player's own home guild (you never
+-- sister-sync your own guild). Cross-faction confederations can't sync —
+-- /who and whispers don't cross factions — so the current faction is assumed.
+-- Returns an empty table when unconfigured or guildless.
+function addon:GetSisterGuildKeys()
+    local names = self:GetSisterGuilds()
+    if #names == 0 then return {} end
+    local faction = UnitFactionGroup("player") or "Neutral"
+    local homeKey = self:GetGuildKey()
+    local keys = {}
+    for _, name in ipairs(names) do
+        local key = faction .. "-" .. name
+        if key ~= homeKey then
+            keys[#keys + 1] = key
+        end
+    end
+    return keys
+end
+
 -- ---------------------------------------------------------------------------
 -- v0.7.0 display-time visibility gate
 -- ---------------------------------------------------------------------------
@@ -1351,10 +1440,20 @@ function addon:IsVisibleCrafter(charKey, crafterTag)
 
     local myTag = self:GetCurrentGuildTag()
 
-    -- Tag mismatch = stale data from a previous guild. Flag for purge so the
-    -- timed sweep cleans them up. Covers "you left Guild A and joined Guild B"
-    -- and "you left Guild A and are now guildless" symmetrically.
+    -- Tag mismatch = either stale data from a previous guild, OR a tracked
+    -- SISTER guild (cross-guild sharing). Keep the crafter if LibGuildRoster
+    -- confirms the charKey belongs to any roster we hold (their sister roster);
+    -- while the roster lib isn't ready, don't purge a sister-tagged crafter
+    -- (cold-start guard — the sister roster may not be re-fed yet). Otherwise
+    -- it's genuinely stale → flag for the timed purge sweep.
     if crafterTag ~= myTag then
+        if crafterTag ~= addon.PersonalTag then
+            local GR = self.Scanner and self.Scanner.GuildRoster
+            if GR and GR.IsInAnyRoster then
+                if GR:IsInAnyRoster(charKey) then return true end
+                if GR.IsReady and not GR:IsReady() then return true end
+            end
+        end
         self:FlagForPurge(charKey)
         return false
     end
@@ -1365,7 +1464,7 @@ function addon:IsVisibleCrafter(charKey, crafterTag)
         return false
     end
 
-    local GC = self.Scanner and self.Scanner.GuildCache
+    local GC = self.Scanner and self.Scanner.GuildRoster
 
     -- Membership can only be judged once the roster lib is loaded AND has
     -- completed its first stabilized build. LibGuildRoster:IsInGuild is a strict
@@ -1396,7 +1495,7 @@ function addon:IsAltOfInRosterCharacter(charKey)
     local gdb = self:GetGuildDb()
     local altGroups = gdb and gdb.altGroups
     if not altGroups then return false end
-    local GC = self.Scanner and self.Scanner.GuildCache
+    local GC = self.Scanner and self.Scanner.GuildRoster
     if not GC then return false end
 
     for ownerKey, alts in pairs(altGroups) do
@@ -1458,7 +1557,7 @@ function addon:RunPendingPurge()
     -- later, confirmable sweep. Deleting now would destroy data for members the
     -- roster simply can't vouch for yet (e.g. flags accumulated while the roster
     -- lib was unavailable).
-    local GC = self.Scanner and self.Scanner.GuildCache
+    local GC = self.Scanner and self.Scanner.GuildRoster
     if not GC or (GC.IsReady and not GC:IsReady()) then
         addon:DebugPrint("Purge skipped — roster not ready/confirmable")
         return 0
@@ -1472,9 +1571,11 @@ function addon:RunPendingPurge()
         -- confirms are gone (left the guild, or wrong-guild stale data); a
         -- confirmed member or own alt just has its stale flag dropped.
         if self:IsMyCharacter(charKey)
+            or (GC.IsInAnyRoster and GC:IsInAnyRoster(charKey))
             or GC:IsInGuild(charKey)
             or self:IsAltOfInRosterCharacter(charKey) then
-            -- Still present — keep the data; the flag is cleared by the wipe below.
+            -- Still present (home or a tracked sister guild) — keep the data;
+            -- the flag is cleared by the wipe below.
         else
             -- Walk every recipe's crafters list and strip this charKey.
             for _, profRecipes in pairs(gdb.recipes or {}) do

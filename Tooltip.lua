@@ -80,7 +80,7 @@ local function FindCrafters(itemID)
     local gdb = addon:GetGuildDb()
     if not gdb or not gdb.recipes then return nil end
 
-    local GuildCache = addon.Scanner and addon.Scanner.GuildCache
+    local GuildRoster = addon.Scanner and addon.Scanner.GuildRoster
     local roster     = {}
     local seen       = {}  -- dedup same (charKey, profId) appearing via multiple recipe matches
 
@@ -96,10 +96,10 @@ local function FindCrafters(itemID)
                     seen[seenKey] = true
                     local name      = charKey:match("^(.-)%-") or charKey
                     local skillData = gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
-                    local online    = GuildCache and GuildCache:IsOnline(charKey) or false
+                    local online    = GuildRoster and GuildRoster:IsOnline(charKey) or false
                     if not online and gdb.altGroups and gdb.altGroups[charKey] then
                         for _, altCk in ipairs(gdb.altGroups[charKey]) do
-                            if altCk ~= charKey and GuildCache and GuildCache:IsOnline(altCk) then
+                            if altCk ~= charKey and GuildRoster and GuildRoster:IsOnline(altCk) then
                                 online = true
                                 break
                             end

@@ -306,6 +306,12 @@ L["SettingsViewLog"]        = "View sync log"
 L["SettingsViewLogDesc"]    = "Open a scrollable list of recent sync events (last 200)."
 L["SettingsClearLog"]       = "Clear sync log"
 L["SettingsClearLogConfirm"]= "Clear all sync log entries?"
+L["SettingsCrossGuildHeader"] = "Cross-Guild Sharing"
+L["SettingsCrossGuildDesc"]   = "Share profession data across allied guilds. List each allied guild below (one per line, exact in-game name); TOGPM finds their online members and syncs recipes, cooldowns, and rosters with your guild. Allied guilds must be on the same faction."
+L["SettingsSisterGuilds"]     = "Allied guild names"
+L["SettingsSisterGuildsDesc"] = "One guild name per line, exactly as it appears in-game (no faction prefix)."
+L["SettingsTabGeneral"]       = "General"
+L["SettingsTabCrossGuild"]    = "Cross-Guild"
 
 -- ---------------------------------------------------------------------------
 -- Sync log

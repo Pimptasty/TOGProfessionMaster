@@ -24,7 +24,14 @@ local OPTIONS = {
     name    = "TOG Profession Master",
     handler = addon,
     type    = "group",
+    childGroups = "tab",
     args = {
+
+        general = {
+            name  = L["SettingsTabGeneral"],
+            type  = "group",
+            order = 1,
+            args = {
 
         -- ---- Display -------------------------------------------------------
         displayHeader = {
@@ -625,6 +632,36 @@ local OPTIONS = {
                 if addon.SyncLog then addon.SyncLog:Clear() end
             end,
         },
+
+            },  -- general.args
+        },      -- general tab
+
+        crossguild = {
+            name  = L["SettingsTabCrossGuild"],
+            type  = "group",
+            order = 2,
+            args = {
+
+        crossGuildDesc = {
+            name     = L["SettingsCrossGuildDesc"],
+            type     = "description",
+            fontSize = "medium",
+            order    = 44,
+        },
+
+        sisterGuilds = {
+            name      = L["SettingsSisterGuilds"],
+            desc      = L["SettingsSisterGuildsDesc"],
+            type      = "input",
+            multiline = 5,
+            width     = "full",
+            order     = 45,
+            get = function() return table.concat(addon:GetSisterGuilds(), "\n") end,
+            set = function(_, val) addon:SetSisterGuilds(val) end,
+        },
+
+            },  -- crossguild.args
+        },      -- crossguild tab
     },
 }
 
@@ -635,6 +672,20 @@ local OPTIONS = {
 hooksecurefunc(Ace, "OnInitialize", function(_self)
     AceConfig:RegisterOptionsTable("TOGProfessionMaster", OPTIONS)
     AceDialog:AddToBlizOptions("TOGProfessionMaster", "TOG Profession Master")
+
+    -- Persist the standalone settings window's position/size and selected tab
+    -- across /reload. AceConfigDialog keeps per-app status (Status[appName] =
+    -- { status = window geometry, groups = selected tab }) in a runtime-only
+    -- table, so it resets on reload. Back it with a SavedVariables table —
+    -- Ace.db.char.frames.settings — mirroring the main window's persistence.
+    Ace.db.char.frames = Ace.db.char.frames or {}
+    local frames = Ace.db.char.frames
+    if type(frames.settings) ~= "table" then frames.settings = {} end
+    frames.settings.status   = frames.settings.status   or {}
+    frames.settings.children = frames.settings.children or {}
+    frames.settings.groups   = frames.settings.groups   or {}
+    AceDialog.Status = AceDialog.Status or {}
+    AceDialog.Status["TOGProfessionMaster"] = frames.settings
 end)
 
 -- ---------------------------------------------------------------------------

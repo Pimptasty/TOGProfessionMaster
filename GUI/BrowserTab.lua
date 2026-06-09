@@ -338,7 +338,7 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
 
     local function buildCrafterList(profRecipeData, thisViewMode)
         if not profRecipeData or not profRecipeData.crafters then return nil end
-        local GuildCache  = addon.Scanner and addon.Scanner.GuildCache
+        local GuildRoster  = addon.Scanner and addon.Scanner.GuildRoster
         local crafterObjs = {}
         local youSelf, youAlts = nil, {}
         for ck, tag in pairs(profRecipeData.crafters) do
@@ -355,11 +355,11 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
                 end
             elseif thisViewMode ~= "mine" and addon:IsVisibleCrafter(ck, tag) then
                 local shortName   = ck:match("^(.-)%-") or ck
-                local online      = GuildCache and GuildCache:IsOnline(ck) or false
+                local online      = GuildRoster and GuildRoster:IsOnline(ck) or false
                 local displayName = shortName
                 if not online and gdb.altGroups and gdb.altGroups[ck] then
                     for _, altCk in ipairs(gdb.altGroups[ck]) do
-                        if altCk ~= ck and GuildCache and GuildCache:IsOnline(altCk) then
+                        if altCk ~= ck and GuildRoster and GuildRoster:IsOnline(altCk) then
                             local altShort = altCk:match("^(.-)%-") or altCk
                             displayName = altShort .. " (" .. shortName .. ")"
                             online = true

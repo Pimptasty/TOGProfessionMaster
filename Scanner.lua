@@ -201,6 +201,15 @@ end
 -- Fired by RosterSync after a sister roster lands in LibGuildRoster: persist a
 -- copy and refresh the UI.
 function Scanner:OnSisterRosterUpdated(guildKey)
+    -- Accept gate: only federate rosters for guilds we have configured as
+    -- sisters. A roster pushed/served for an unlisted guild is rejected and
+    -- removed — nothing cross-guild happens without the guild being on the list.
+    if not addon:IsSisterGuildKey(guildKey) then
+        local GR = self.GuildRoster
+        if GR and GR.RemoveSisterRoster then GR:RemoveSisterRoster(guildKey) end
+        addon:DebugPrint("Scanner: rejected unlisted sister roster", guildKey)
+        return
+    end
     self:PersistSisterRoster(guildKey)
     addon:DebugPrint("Scanner: sister roster updated:", guildKey)
     if addon.callbacks then
@@ -210,6 +219,8 @@ end
 
 -- Re-feed persisted sister rosters into LibGuildRoster on login so cross-guild
 -- queries / the visibility gate work before the first live /who-driven pull.
+-- Skips (and forgets) any persisted roster whose guild is no longer on the
+-- allied-guild list, so a de-configured guild can't be resurrected on login.
 function Scanner:RefeedSisterRosters()
     local GR = self.GuildRoster
     if not GR or not GR.SetSisterRoster then return end
@@ -218,7 +229,9 @@ function Scanner:RefeedSisterRosters()
     if type(stored) ~= "table" then return end
     local n = 0
     for guildKey, entry in pairs(stored) do
-        if type(entry) == "table" and type(entry.members) == "table" then
+        if not addon:IsSisterGuildKey(guildKey) then
+            stored[guildKey] = nil   -- stale: dropped from the list since last save
+        elseif type(entry) == "table" and type(entry.members) == "table" then
             GR:SetSisterRoster(guildKey, entry.members, entry.meta)
             n = n + 1
         end
@@ -280,11 +293,40 @@ function Scanner:InitDeltaSync()
                 end
             elseif baseline.type == "sister-pull" then
                 -- A sister-guild peer is requesting our full guild dataset for
-                -- cross-guild sharing. Respond directly over WHISPER — they're
-                -- not on our GUILD channel, so a broadcast would never reach
-                -- them. Their merge tags our crafters with our guild's tag.
-                local payload = Scanner:BuildFullGuildPayload()
-                if payload then DS:SendData(sender, payload, false) end
+                -- cross-guild sharing. BILATERAL CONSENT GATE: serve only when
+                --   (a) WE list THEIR guild  (baseline.parent ∈ our sisters), and
+                --   (b) THEY list OUR guild  (our home key ∈ baseline.keys, the
+                --       sister-key set they attach as a consent proof).
+                -- This makes a one-sided config inert and refuses any stranger /
+                -- accidental / malicious puller from a guild we don't federate
+                -- with. Respond over WHISPER — they're not on our GUILD channel.
+                local reqHome    = baseline.parent
+                local reqSisters = (type(baseline.keys) == "table") and baseline.keys or {}
+                local myHome     = addon:GetGuildKey()
+                local consentOk  = myHome and reqHome
+                    and addon:IsSisterGuildKey(reqHome)   -- we consent to them
+                    and reqSisters[myHome] and true       -- they consent to us
+                -- Anti-spoof: if we ALREADY hold their claimed guild's roster,
+                -- the requester must actually be a member of it — defeats a
+                -- stranger forging parent/keys for a guild we list. On first
+                -- contact (no roster yet) we trust the bilateral-config claim;
+                -- the roster is bootstrapped by the (public) roster pull.
+                local identityOk = true
+                local GR = Scanner.GuildRoster
+                if consentOk and GR and GR.GetRoster and GR.IsInGuildScoped then
+                    if GR:GetRoster(reqHome) then
+                        local who = (GR.NormalizeName and GR:NormalizeName(sender)) or sender
+                        if not GR:IsInGuildScoped(who, reqHome) then identityOk = false end
+                    end
+                end
+                if consentOk and identityOk then
+                    local payload = Scanner:BuildFullGuildPayload()
+                    if payload then DS:SendData(sender, payload, false) end
+                else
+                    addon:DebugPrint("Scanner: refused sister-pull from", sender,
+                        "— gate failed (consent=", tostring(consentOk),
+                        "identity=", tostring(identityOk), "reqHome=", tostring(reqHome), ")")
+                end
             end
         end,
 
@@ -1942,7 +1984,16 @@ end
 function Scanner:RequestSisterData(peer)
     local DS = self.DS
     if not DS or not DS.RequestData or not peer or peer == "" then return end
-    DS:RequestData(peer, { type = "sister-pull" })
+    -- Attach our identity + consent proof so the provider's bilateral gate can
+    -- verify mutual federation: parent = our home guild key (so they can check
+    -- they list us), keys = our sister-guild key SET (so they can confirm we
+    -- list them). Only {hash, version, keys, type, parent} survive baseline
+    -- serialization, hence this encoding.
+    DS:RequestData(peer, {
+        type   = "sister-pull",
+        parent = addon:GetGuildKey(),
+        keys   = addon:GetSisterGuildKeySet(),
+    })
     addon:DebugPrint("Scanner: requested sister data from", peer)
 end
 
@@ -2050,6 +2101,13 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
     -- that carry no guildKey, preserving the original receiver-tags behavior.
     local tag = originTag or addon:GetCurrentGuildTag()
 
+    -- Federation merge gate: only STORE crafters whose guild tag is our home,
+    -- our own alts, or a CONFIGURED sister. Data for a guild we don't federate
+    -- with — even when it arrives relayed inside a home-guild broadcast — is
+    -- dropped, never stored and never re-relayed. With no sisters configured the
+    -- set collapses to {home, personal}, giving purely-local operation.
+    local allowedTags = addon:GetAllowedGuildTagSet()
+
     if senderClaimsOwnScan and senderKey then
         for _, rd in pairs(profRecipes) do
             if rd.crafters then rd.crafters[senderKey] = nil end
@@ -2076,11 +2134,13 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
                 if not existing.crafters then existing.crafters = {} end
                 for ck, v in pairs(ckSet) do
                     if v and type(ck) == "string" then
+                        -- Resolve the crafter's effective tag.
+                        local effTag
                         if type(v) == "string" then
                             -- Explicit shipped origin tag (v0.10.2+ peer) is
                             -- authoritative — preserves cross-guild attribution
                             -- through a relay.
-                            existing.crafters[ck] = v
+                            effTag = v
                         else
                             -- Legacy bare `true`: tag by the sender's guild, BUT
                             -- never let it clobber an attribution we already hold.
@@ -2093,10 +2153,16 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
                             -- purged — keeping a known tag here is always safe.
                             local cur = existing.crafters[ck]
                             if cur and cur ~= addon.PersonalTag and cur ~= tag then
-                                existing.crafters[ck] = cur
+                                effTag = cur
                             else
-                                existing.crafters[ck] = tag
+                                effTag = tag
                             end
+                        end
+                        -- Federation gate: store only home / own / configured-
+                        -- sister tags. Unlisted-guild data is dropped (and an
+                        -- existing allowed tag, if any, is preserved untouched).
+                        if allowedTags[effTag] then
+                            existing.crafters[ck] = effTag
                         end
                     end
                 end
@@ -2146,6 +2212,19 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
         addon:DebugPrint("Scanner: BAIL — no gdb sender=", sender)
         return
     end
+
+    -- Cross-guild ACCEPT gate: a payload whose guildKey is neither our home
+    -- guild nor a CONFIGURED sister comes from a guild we don't federate with —
+    -- drop it whole. (Relayed sister data rides inside a home-guild payload with
+    -- guildKey == ours and is filtered per-crafter by the merge gate instead;
+    -- legacy payloads carry no guildKey and are treated as home/intra-guild.)
+    if data.guildKey and data.guildKey ~= addon:GetGuildKey()
+       and not addon:IsSisterGuildKey(data.guildKey) then
+        addon:DebugPrint("Scanner: BAIL — cross-guild data from unlisted guild",
+            data.guildKey, "sender=", sender)
+        return
+    end
+
     local now = GetServerTime()
 
     -- Sender's guild tag, derived from the payload's guildKey. For intra-guild

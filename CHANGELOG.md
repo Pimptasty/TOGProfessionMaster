@@ -1,5 +1,21 @@
 # TOG Profession Master Changelog
 
+## [v0.10.4-beta] (2026-06-09) - Cross-guild bilateral federation gate (beta)
+
+> **Beta build.** Security model for cross-guild sharing. Backward-compatible; single-guild operation is unchanged. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+**.
+
+### New Features
+
+- **Bilateral federation — both guilds must list each other.** Cross-guild data now only flows when **both** sides have configured each other as allied guilds. A one-sided config does nothing; a stranger, an accidental config, or a malicious puller from a guild you don't list gets nothing. Enforced by gating every direction:
+  - **Serve gate:** we hand over our data only if we list the requester's guild **and** the request proves they list us (it carries their guild key + sister-guild set). Plus an anti-spoof check — once we hold the requester's guild roster, the requester must actually be a member of it.
+  - **Accept gate:** we ingest cross-guild data only from a guild on our list.
+  - **Merge gate:** every crafter is kept only if its guild tag is our home, our own alts, or a *listed* sister — so data for an unlisted guild is dropped even when it arrives relayed inside a home-guild broadcast, and is never re-relayed.
+  - **Roster gate:** we persist/re-feed a sister roster only for a guild we list; a de-configured guild can't be resurrected on login.
+  - **De-configure cleanup:** removing a guild from the list (or receiving a federated removal) tears down its roster and stops its data from displaying.
+- **No allied guilds configured → purely local operation.** With an empty list the permitted-tag set collapses to home + your own alts, so the addon does nothing cross-guild at all. Location: `Scanner.lua`, `TOGProfessionMaster.lua`.
+
+---
+
 ## [v0.10.3-beta] (2026-06-09) - Cross-guild config propagation & churn fix (beta)
 
 > **Beta build.** Continues the cross-guild work. Backward-compatible and dormant until an allied guild is configured. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+**. For the relay/anti-churn behavior, **all participating beta players need this build** — a peer on an older build re-broadcasts relayed crafters with the guild tag stripped.

@@ -1404,12 +1404,36 @@ function addon:SetSisterGuilds(text)
         end
     end
     if Ace.db and Ace.db.profile then
+        -- Capture which sister guilds we're DROPPING so we can tear down their
+        -- federated roster + data — everything gates on the list, so a removed
+        -- guild must stop being served, accepted, displayed, and re-fed.
+        local oldKeys = self:GetSisterGuildKeySet()
         Ace.db.profile.sisterGuilds   = out
         -- Stamp a fresh server-time so this edit wins the last-writer race, then
         -- gossip it to the home guild immediately (config-propagation MVP).
         Ace.db.profile.sisterGuildsTs = (GetServerTime and GetServerTime()) or (time and time()) or 0
+        local newKeys = self:GetSisterGuildKeySet()
+        for key in pairs(oldKeys) do
+            if not newKeys[key] then self:DropSisterGuildData(key) end
+        end
         self:BroadcastSisterConfig()
     end
+end
+
+-- Tear down a sister guild we no longer federate with: remove its roster from
+-- LibGuildRoster, drop our persisted copy (so login re-feed doesn't resurrect
+-- it), and let the visibility gate purge its now-unrostered crafters on the next
+-- refresh. Called when a guild is removed from the allied-guild list.
+function addon:DropSisterGuildData(guildKey)
+    if not guildKey then return end
+    local Scanner = self.Scanner
+    local GR = Scanner and Scanner.GuildRoster
+    if GR and GR.RemoveSisterRoster then GR:RemoveSisterRoster(guildKey) end
+    local gdb = self:GetGuildDb()
+    if gdb and type(gdb.sisterRosters) == "table" then
+        gdb.sisterRosters[guildKey] = nil
+    end
+    self:DebugPrint("Cross-guild: dropped de-configured sister guild", guildKey)
 end
 
 -- ---------------------------------------------------------------------------
@@ -1466,8 +1490,15 @@ function addon:OnSisterConfigReceived(prefix, message, _distribution, sender)
     for _, name in ipairs(payload.g) do
         if type(name) == "string" and name ~= "" then clean[#clean + 1] = name end
     end
+    -- Tear down any guild this adopted config drops (same as a manual edit), so
+    -- a federated removal also stops the gates/display for that guild.
+    local oldKeys = self:GetSisterGuildKeySet()
     Ace.db.profile.sisterGuilds   = clean
     Ace.db.profile.sisterGuildsTs = incomingTs
+    local newKeys = self:GetSisterGuildKeySet()
+    for key in pairs(oldKeys) do
+        if not newKeys[key] then self:DropSisterGuildData(key) end
+    end
     self:DebugPrint("Cross-guild: adopted sister config from", sender, "(ts", incomingTs, ",", #clean, "guild(s))")
 
     local AceRegistry = LibStub("AceConfigRegistry-3.0", true)
@@ -1499,6 +1530,40 @@ function addon:GetSisterGuildKeys()
         end
     end
     return keys
+end
+
+-- A { guildKey -> true } set of our configured sister guilds. Used as the
+-- "consent proof" we attach to outbound cross-guild requests and to gate
+-- inbound traffic. O(1) membership test vs. the array form above.
+function addon:GetSisterGuildKeySet()
+    local set = {}
+    for _, key in ipairs(self:GetSisterGuildKeys()) do set[key] = true end
+    return set
+end
+
+-- True if guildKey is one of our configured sister guilds. The single source of
+-- truth for "may I exchange cross-guild data with this guild?" — every serve /
+-- accept / roster gate calls this, so an unlisted guild (a stranger, an
+-- accidental config, a malicious puller) is refused everywhere.
+function addon:IsSisterGuildKey(guildKey)
+    if not guildKey or guildKey == "" then return false end
+    return self:GetSisterGuildKeySet()[guildKey] == true
+end
+
+-- The set of guild TAGS whose crafter data we are permitted to STORE and RELAY:
+-- our own alts (PersonalTag), our home guild, and every configured sister guild.
+-- The merge gate drops any crafter whose tag is not in here, which (a) discards
+-- data for guilds we don't federate with — even when it arrives relayed inside a
+-- home-guild broadcast — and (b) gives the "no sister list => purely local guild
+-- operation" behavior for free (the set collapses to home + personal). Rebuilt
+-- on demand so it always reflects the current (possibly just-federated) config.
+function addon:GetAllowedGuildTagSet()
+    local set = { [addon.PersonalTag] = true }
+    if self:GetGuildKey() then set[self:GetCurrentGuildTag()] = true end
+    for _, key in ipairs(self:GetSisterGuildKeys()) do
+        set[self:GuildTagFromKey(key)] = true
+    end
+    return set
 end
 
 -- ---------------------------------------------------------------------------

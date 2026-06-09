@@ -2076,13 +2076,28 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
                 if not existing.crafters then existing.crafters = {} end
                 for ck, v in pairs(ckSet) do
                     if v and type(ck) == "string" then
-                        -- v0.10.2: prefer the per-crafter origin tag shipped in
-                        -- the leaf (a guild-tag string) so relayed cross-guild
-                        -- data keeps its true guild attribution instead of being
-                        -- re-stamped with the broadcaster's guild. Legacy
-                        -- payloads ship `true` → fall back to the sender-derived
-                        -- tag (originTag, == our own tag for intra-guild data).
-                        existing.crafters[ck] = (type(v) == "string") and v or tag
+                        if type(v) == "string" then
+                            -- Explicit shipped origin tag (v0.10.2+ peer) is
+                            -- authoritative — preserves cross-guild attribution
+                            -- through a relay.
+                            existing.crafters[ck] = v
+                        else
+                            -- Legacy bare `true`: tag by the sender's guild, BUT
+                            -- never let it clobber an attribution we already hold.
+                            -- An un-updated guildmate re-broadcasting a relayed
+                            -- sister crafter strips the tag; without this guard a
+                            -- single old client flips the crafter back to the home
+                            -- guild → the gate purges it → endless add/purge churn
+                            -- (mixed-version rollout). The roster gate, not the
+                            -- tag, decides visibility, so a genuine leaver is still
+                            -- purged — keeping a known tag here is always safe.
+                            local cur = existing.crafters[ck]
+                            if cur and cur ~= addon.PersonalTag and cur ~= tag then
+                                existing.crafters[ck] = cur
+                            else
+                                existing.crafters[ck] = tag
+                            end
+                        end
                     end
                 end
             end

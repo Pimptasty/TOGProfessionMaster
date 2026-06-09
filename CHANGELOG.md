@@ -1,5 +1,23 @@
 # TOG Profession Master Changelog
 
+## [v0.10.3-beta] (2026-06-09) - Cross-guild config propagation & churn fix (beta)
+
+> **Beta build.** Continues the cross-guild work. Backward-compatible and dormant until an allied guild is configured. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+**. For the relay/anti-churn behavior, **all participating beta players need this build** — a peer on an older build re-broadcasts relayed crafters with the guild tag stripped.
+
+### New Features
+
+- **Allied-guild config now propagates across your guild.** The allied-guild list you set under Settings → Cross-Guild is broadcast to the rest of your guild (on change, every ~12 minutes, and via a new **Sync now** button), so every member participates — essential once editing becomes officer-only. Conflict resolution is last-writer-wins by the timestamp captured when the list was set; members re-broadcast what they hold without clobbering a newer edit. A member holding no config never broadcasts. Location: `TOGProfessionMaster.lua`, `GUI/Settings.lua`.
+
+### Bug Fixes
+
+- **Relayed cross-guild crafters no longer churn under mixed addon versions.** Because guild sync is gossip, a single guildmate on an older build (no per-crafter tags) re-broadcasts relayed sister crafters with the tag stripped; the receiver then re-stamped them as the home guild, the visibility gate purged them (not in the home roster), the relay re-added them, and the cycle repeated — counts visibly oscillating with no membership change. The merge now treats an explicit shipped tag as authoritative and **never lets a tagless (older-build) broadcast overwrite an attribution it already holds**, so a known cross-guild crafter stops flipping. The roster gate still decides visibility, so genuine leavers are still purged. Location: `Scanner.lua` (`MergeCraftersIntoGdb`).
+
+### Improvements
+
+- **Diagnostics: orphan breakdown.** The Cross-Guild diagnostics now show, per allied guild, how many crafters match the roster vs. are orphaned (with a few example keys), making it easy to tell roster-matching issues from genuine non-members. Location: `GUI/Settings.lua`.
+
+---
+
 ## [v0.10.2-beta] (2026-06-09) - Cross-guild relay attribution & diagnostics (beta)
 
 > **Beta build.** Continues the cross-guild work from v0.10.1-beta. Backward-compatible and dormant until an allied guild is configured. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+** (both install/update automatically). For cross-guild relay to work, **all** participating players need this build.

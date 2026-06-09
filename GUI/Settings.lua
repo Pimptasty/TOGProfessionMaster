@@ -101,13 +101,35 @@ local function BuildCrossGuildDiagnostics()
                 end
             end
         end
-        local reg = gdb.guildRegistry or {}
-        local any = false
+        local reg   = gdb.guildRegistry or {}
+        local myTag = addon:GetCurrentGuildTag()
+        local any   = false
         for tag, cks in pairs(byTag) do
             any = true
-            local info = reg[tag]
-            local nm   = (info and info.name) or ("tag " .. tostring(tag))
-            lines[#lines + 1] = string.format("  %s  \226\128\148  %d crafters", nm, countPairs(cks))
+            local info  = reg[tag]
+            local nm    = (info and info.name) or ("tag " .. tostring(tag))
+            local total = countPairs(cks)
+            if tag == myTag or tag == addon.PersonalTag or not (GR and GR.IsInAnyRoster) then
+                lines[#lines + 1] = string.format("  %s  \226\128\148  %d crafters", nm, total)
+            else
+                -- Sister/foreign tag: the gate keeps only crafters whose key is
+                -- found in a known roster; the rest get purged. Break it down so
+                -- we can see whether the misses are alts (recognizable mains'
+                -- alts) or a key-normalization issue (e.g. all on one realm).
+                local inRoster, orphans = 0, {}
+                for ck in pairs(cks) do
+                    if GR:IsInAnyRoster(ck) then
+                        inRoster = inRoster + 1
+                    elseif #orphans < 6 then
+                        orphans[#orphans + 1] = ck
+                    end
+                end
+                lines[#lines + 1] = string.format("  %s  \226\128\148  %d crafters (%d in roster, |cffff6060%d orphaned|r)",
+                    nm, total, inRoster, total - inRoster)
+                if #orphans > 0 then
+                    lines[#lines + 1] = "    e.g. " .. table.concat(orphans, ", ")
+                end
+            end
         end
         if not any then lines[#lines + 1] = "  |cffaaaaaa(no crafter data)|r" end
     end
@@ -780,6 +802,14 @@ local OPTIONS = {
                 addon:SetSisterGuilds(val)
                 if AceRegistry then AceRegistry:NotifyChange("TOGProfessionMaster") end
             end,
+        },
+
+        syncConfigBtn = {
+            name  = L["SettingsCrossGuildSyncNow"],
+            desc  = L["SettingsCrossGuildSyncNowDesc"],
+            type  = "execute",
+            order = 46,
+            func  = function() addon:BroadcastSisterConfig() end,
         },
 
         -- ---- Diagnostics ---------------------------------------------------

@@ -318,6 +318,8 @@ L["SettingsCrossGuildDiagRefreshDesc"] = "Re-read the live cross-guild state and
 L["SettingsCrossGuildPullHeader"] = "Manual pull (testing)"
 L["SettingsCrossGuildPull"]   = "Pull from player"
 L["SettingsCrossGuildPullDesc"] = "Enter the name of an online member of an allied guild to pull their roster + crafter data now. Same as /togpm pullroster. The diagnostics above refresh automatically."
+L["SettingsCrossGuildSyncNow"]     = "Sync allied-guild list to my guild now"
+L["SettingsCrossGuildSyncNowDesc"] = "Broadcast your allied-guild list to your guild immediately so other members pick it up. It also propagates automatically when you change it and every ~12 minutes."
 
 -- ---------------------------------------------------------------------------
 -- Sync log

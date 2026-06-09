@@ -486,6 +486,13 @@ function Ace:OnEnable()
         end)
     end
 
+    -- Cross-guild config propagation (gossip): receive guildmates' allied-guild
+    -- lists, announce ours shortly after login, and re-broadcast every ~12 min
+    -- so members who log in later converge. See addon:BroadcastSisterConfig.
+    self:RegisterComm(addon.SisterCfgPrefix, "OnSisterConfigComm")
+    self:ScheduleTimer(function() addon:BroadcastSisterConfig() end, 20)
+    self:ScheduleRepeatingTimer(function() addon:BroadcastSisterConfig() end, 720)
+
     addon:DebugPrint("OnEnable complete.")
 end
 
@@ -1397,8 +1404,81 @@ function addon:SetSisterGuilds(text)
         end
     end
     if Ace.db and Ace.db.profile then
-        Ace.db.profile.sisterGuilds = out
+        Ace.db.profile.sisterGuilds   = out
+        -- Stamp a fresh server-time so this edit wins the last-writer race, then
+        -- gossip it to the home guild immediately (config-propagation MVP).
+        Ace.db.profile.sisterGuildsTs = (GetServerTime and GetServerTime()) or (time and time()) or 0
+        self:BroadcastSisterConfig()
     end
+end
+
+-- ---------------------------------------------------------------------------
+-- Cross-guild config propagation (gossip)
+-- The allied-guild list must reach every home-guild member — eventually only
+-- officers can EDIT it, so members can only RECEIVE it. Model: broadcast on
+-- change, on a ~12-minute repeating timer, and on demand (the "Sync now"
+-- button); last-writer-wins by the server-time stamp captured when
+-- SetSisterGuilds ran. Re-broadcasts carry the ORIGINAL stamp, so a member
+-- relaying can't clobber a newer officer edit. A member holding no config
+-- (ts 0) never broadcasts, so an empty list can't win the race against a real
+-- one — and a member who logs in later converges within one timer interval.
+-- ---------------------------------------------------------------------------
+
+addon.SisterCfgPrefix = "TOGPMxgc"   -- AceComm prefix (must be <= 16 chars)
+
+function addon:GetSisterGuildsTs()
+    return (Ace.db and Ace.db.profile and tonumber(Ace.db.profile.sisterGuildsTs)) or 0
+end
+
+-- Serialize + send our current allied-guild list on GUILD. No-op when we hold
+-- nothing (ts 0), so empties never participate in the last-writer race.
+function addon:BroadcastSisterConfig()
+    if not (Ace.db and Ace.db.profile) then return end
+    local ts = self:GetSisterGuildsTs()
+    if ts <= 0 then return end
+    local guilds = self:GetSisterGuilds()
+    local ok, msg = pcall(function() return Ace:Serialize({ g = guilds, t = ts }) end)
+    if ok and type(msg) == "string" then
+        Ace:SendCommMessage(addon.SisterCfgPrefix, msg, "GUILD")
+        self:DebugPrint("Cross-guild: broadcast sister config (ts", ts, ",", #guilds, "guild(s))")
+    end
+end
+
+-- A guildmate sent their allied-guild list. Last-writer-wins by stamp; adopt a
+-- strictly-newer config WITHOUT re-stamping (keep the origin ts so gossip
+-- converges) and without re-broadcasting (the on-change broadcast already
+-- reached every online member; the periodic timer covers latecomers).
+function addon:OnSisterConfigReceived(prefix, message, _distribution, sender)
+    if prefix ~= addon.SisterCfgPrefix then return end
+    -- Drop our own echo.
+    local GR = self.Scanner and self.Scanner.GuildRoster
+    local me = self:GetCharacterKey()
+    local normSender = (GR and GR.NormalizeName and GR:NormalizeName(sender)) or sender
+    if sender == me or normSender == me then return end
+
+    local success, payload = Ace:Deserialize(message)
+    if not success or type(payload) ~= "table" then return end
+    local incomingTs = tonumber(payload.t) or 0
+    if incomingTs <= self:GetSisterGuildsTs() then return end   -- not newer → ignore
+    if type(payload.g) ~= "table" then return end
+
+    local clean = {}
+    for _, name in ipairs(payload.g) do
+        if type(name) == "string" and name ~= "" then clean[#clean + 1] = name end
+    end
+    Ace.db.profile.sisterGuilds   = clean
+    Ace.db.profile.sisterGuildsTs = incomingTs
+    self:DebugPrint("Cross-guild: adopted sister config from", sender, "(ts", incomingTs, ",", #clean, "guild(s))")
+
+    local AceRegistry = LibStub("AceConfigRegistry-3.0", true)
+    if AceRegistry then AceRegistry:NotifyChange("TOGProfessionMaster") end
+    if self.callbacks then self.callbacks:Fire("GUILD_DATA_UPDATED", "sisterconfig") end
+end
+
+-- AceComm dispatches to a named method on the addon object (Ace); bounce to the
+-- addon-namespace handler above.
+function Ace:OnSisterConfigComm(prefix, message, distribution, sender)
+    addon:OnSisterConfigReceived(prefix, message, distribution, sender)
 end
 
 -- The configured sister guilds as "Faction-GuildName" keys for the current

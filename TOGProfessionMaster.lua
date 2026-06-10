@@ -493,6 +493,14 @@ function Ace:OnEnable()
     self:ScheduleTimer(function() addon:BroadcastSisterConfig() end, 20)
     self:ScheduleRepeatingTimer(function() addon:BroadcastSisterConfig() end, 720)
 
+    -- Cross-guild ROSTER propagation (Part B): receive relayed sister rosters,
+    -- and broadcast any we hold so members who never pulled still get the
+    -- canonical roster the visibility gate needs. Suppression keeps it to ~one
+    -- broadcaster per interval. See addon:BroadcastSisterRosters.
+    self:RegisterComm(addon.SisterRosterPrefix, "OnSisterRosterComm")
+    self:ScheduleTimer(function() addon:BroadcastSisterRosters() end, 35)
+    self:ScheduleRepeatingTimer(function() addon:BroadcastSisterRosters() end, 300)
+
     addon:DebugPrint("OnEnable complete.")
 end
 
@@ -1510,6 +1518,90 @@ end
 -- addon-namespace handler above.
 function Ace:OnSisterConfigComm(prefix, message, distribution, sender)
     addon:OnSisterConfigReceived(prefix, message, distribution, sender)
+end
+
+-- ---------------------------------------------------------------------------
+-- Cross-guild ROSTER propagation (Part B)
+-- The visibility gate keeps a sister crafter only if their charKey is in a
+-- sister roster we hold. A member who configured the allied guild (via the
+-- config gossip above) but never PULLED its roster would therefore purge every
+-- relayed sister crafter — so the roster must reach the whole guild too, not
+-- just the puller. A member who holds a sister roster broadcasts it on the GUILD
+-- channel; others apply it. A "recently-seen by hash" suppression means only ~one
+-- holder broadcasts per interval no matter how many hold it, and whoever holds
+-- it can take over if the usual broadcaster logs off. Gated by IsSisterGuildKey
+-- on receive, so an unlisted guild's roster is never accepted.
+-- ---------------------------------------------------------------------------
+
+addon.SisterRosterPrefix = "TOGPMxgr"   -- AceComm prefix (<= 16 chars)
+addon._seenSisterRoster  = addon._seenSisterRoster or {}   -- guildKey -> { hash, t }
+local SISTERROSTER_SUPPRESS = 270       -- seconds; skip if seen this hash recently
+
+-- Broadcast each held sister roster to our home guild, unless we saw the same
+-- roster (by hash) circulate recently.
+function addon:BroadcastSisterRosters()
+    local GR = self.Scanner and self.Scanner.GuildRoster
+    if not GR or not GR.GetKnownRosters or not GR.GetRoster then return end
+    if #self:GetSisterGuilds() == 0 then return end
+    local homeKey = self:GetGuildKey()
+    local now = (GetServerTime and GetServerTime()) or (time and time()) or 0
+    for _, key in ipairs(GR:GetKnownRosters()) do
+        if key ~= homeKey and self:IsSisterGuildKey(key) then
+            local hash = (GR.GetRosterHash and GR:GetRosterHash(key)) or 0
+            local seen = self._seenSisterRoster[key]
+            if not (seen and seen.hash == hash and (now - seen.t) < SISTERROSTER_SUPPRESS) then
+                local roster, members = GR:GetRoster(key) or {}, {}
+                for ck, m in pairs(roster) do
+                    members[#members + 1] = { n = ck, c = m and m.class, l = m and m.level }
+                end
+                if #members > 0 then
+                    local ok, msg = pcall(function() return Ace:Serialize({ k = key, h = hash, m = members }) end)
+                    if ok and type(msg) == "string" then
+                        Ace:SendCommMessage(self.SisterRosterPrefix, msg, "GUILD")
+                        -- Record our own send so we suppress next interval too
+                        -- (broadcasting duty rotates rather than pinning one member).
+                        self._seenSisterRoster[key] = { hash = hash, t = now }
+                        self:DebugPrint("Cross-guild: broadcast sister roster", key, "(", #members, "members, hash", hash, ")")
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- A home guildmate relayed a sister roster. Apply it (if we don't already hold
+-- the same one), gated by IsSisterGuildKey, and note it as circulating.
+function addon:OnSisterRosterReceived(prefix, message, _distribution, sender)
+    if prefix ~= self.SisterRosterPrefix then return end
+    local GR = self.Scanner and self.Scanner.GuildRoster
+    if not GR or not GR.SetSisterRoster then return end
+    local success, payload = Ace:Deserialize(message)
+    if not success or type(payload) ~= "table" then return end
+    local key = payload.k
+    if not self:IsSisterGuildKey(key) then return end          -- federation gate
+    local hash = tonumber(payload.h) or 0
+    self._seenSisterRoster[key] = { hash = hash, t = (GetServerTime and GetServerTime()) or 0 }
+    -- Skip if we already hold this exact roster (avoid redundant re-feeds).
+    local mine = GR.GetRosterHash and GR:GetRosterHash(key) or nil
+    if mine and mine == hash then return end
+    if type(payload.m) ~= "table" then return end
+    local members = {}
+    for _, e in ipairs(payload.m) do
+        if type(e) == "table" and type(e.n) == "string" then
+            members[#members + 1] = { name = e.n, class = e.c, level = e.l }
+        end
+    end
+    if #members == 0 then return end
+    GR:SetSisterRoster(key, members, { via = sender })
+    -- Persist (so it survives /reload) + refresh UI, WITHOUT re-broadcasting —
+    -- the suppression above keeps the relay from echoing around the guild.
+    if self.Scanner.PersistSisterRoster then self.Scanner:PersistSisterRoster(key) end
+    if self.callbacks then self.callbacks:Fire("GUILD_DATA_UPDATED", "sisterroster:relay") end
+    self:DebugPrint("Cross-guild: applied relayed sister roster", key, "from", sender, "(", #members, "members)")
+end
+
+function Ace:OnSisterRosterComm(prefix, message, distribution, sender)
+    addon:OnSisterRosterReceived(prefix, message, distribution, sender)
 end
 
 -- The configured sister guilds as "Faction-GuildName" keys for the current

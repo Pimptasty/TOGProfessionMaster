@@ -212,6 +212,13 @@ function Scanner:OnSisterRosterUpdated(guildKey)
     end
     self:PersistSisterRoster(guildKey)
     addon:DebugPrint("Scanner: sister roster updated:", guildKey)
+    -- Part B: a fresh pull should reach the rest of the guild quickly rather
+    -- than waiting for the periodic tick. Suppression dedupes if others already
+    -- hold it. Gossip-relayed rosters apply via addon:OnSisterRosterReceived,
+    -- which does NOT route here, so this fires only for our own pulls — no echo.
+    if C_Timer and C_Timer.After then
+        C_Timer.After(10, function() addon:BroadcastSisterRosters() end)
+    end
     if addon.callbacks then
         addon.callbacks:Fire("GUILD_DATA_UPDATED", "sister:" .. tostring(guildKey))
     end

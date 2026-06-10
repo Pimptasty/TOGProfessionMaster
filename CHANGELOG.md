@@ -1,5 +1,19 @@
 # TOG Profession Master Changelog
 
+## [v0.10.5-beta] (2026-06-09) - Roster propagation & Browser search fix (beta)
+
+> **Beta build.** Completes the cross-guild "anyone is a transfer point" model. Backward-compatible; single-guild operation is unchanged. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+**.
+
+### New Features
+
+- **Sister-roster propagation (Part B).** The visibility gate keeps an allied crafter only if their character is in a sister roster you hold — so a member who configured an allied guild but never *pulled* its roster would purge every relayed crafter. Now a member who holds a sister roster broadcasts it on the guild channel and everyone applies it, so the whole guild sees allied crafters, not just the puller. A "recently-seen by hash" suppression keeps it to ~one broadcaster per interval (duty rotates if that member logs off), fresh pulls propagate within ~10s, and receipt is gated by the allied-guild list (an unlisted guild's roster is never accepted). This is the piece that makes federated members churn-free without each pulling. Location: `TOGProfessionMaster.lua`, `Scanner.lua`.
+
+### Bug Fixes
+
+- **Browser (recipe) search no longer freezes on each keystroke.** Two causes: the search box rebuilt the whole list synchronously on every character (no debounce — the fix that was already in Missing Recipes had never been applied here), and the per-recipe crafter list was built *before* the search filter ran, so every keystroke walked every recipe's crafter set — which grew heavier as cross-guild sharing added crafters. The search now debounces (~200ms) and applies the cheap client-version + name/effect filters before the expensive crafter-list build, so excluded recipes are skipped. Location: `GUI/BrowserTab.lua`.
+
+---
+
 ## [v0.10.4-beta] (2026-06-09) - Cross-guild bilateral federation gate (beta)
 
 > **Beta build.** Security model for cross-guild sharing. Backward-compatible; single-guild operation is unchanged. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+**.

@@ -404,33 +404,18 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
         end
 
         for recipeId in pairs(recipeIdSet) do
-            local rd       = profRecipes and profRecipes[recipeId]
-            local crafters = rd and buildCrafterList(rd, viewMode) or {}
-            local hasAny   = (#crafters > 0)
+            local rd = profRecipes and profRecipes[recipeId]
 
-            -- View-mode filter (after crafter-list is built so we can use its size)
-            local viewKeep
-            if viewMode == "mine" then
-                -- Crafted by one of my own characters
-                viewKeep = false
-                if rd and rd.crafters then
-                    for ck in pairs(rd.crafters) do
-                        if addon:IsMyCharacter(ck) then viewKeep = true; break end
-                    end
-                end
-            elseif viewMode == "missing" then
-                viewKeep = (not hasAny)
-            else  -- "guild" (default)
-                viewKeep = showAll or hasAny
-            end
-
-            -- Only consider recipes the local addon DB knows; unknown recipeIds
-            -- (sender's newer addon ships content we don't) get hidden silently.
-            -- v0.7.5: AND only when the recipe is gated as valid on the current
-            -- client version — see passesClientGate above. Without this, "Show
-            -- all recipes" on a Vanilla client surfaced Wrath / Cata / MoP
-            -- entries from the universal shipped DB.
-            if viewKeep and profMetaDB and profMetaDB[recipeId]
+            -- Cheap gates BEFORE the expensive per-recipe crafter-list build.
+            -- Only recipes the local addon DB knows + valid on this client
+            -- version are considered (unknown / wrong-expansion recipeIds are
+            -- hidden silently — see passesClientGate). Neither this gate nor the
+            -- name/effect search filter needs the crafter list, so a recipe the
+            -- client can't use OR that doesn't match the search skips
+            -- buildCrafterList entirely. That iteration walks every crafter and
+            -- runs the visibility gate per crafter, and cross-guild sharing grew
+            -- those sets — doing it only for kept recipes keeps search snappy.
+            if profMetaDB and profMetaDB[recipeId]
                and passesClientGate(thisProfId, recipeId) then
                 local name          = addon:GetRecipeName(thisProfId, recipeId)
                 local craftedItemId = addon:GetRecipeCraftedItemId(thisProfId, recipeId)
@@ -444,20 +429,41 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
                 -- term-by-term (see searchMatches above), so any word — stats,
                 -- use/proc text, durations, flavor — finds the recipe.
                 if searchMatches(name, effect, craftedItemId) then
-                    local itemLink = craftedItemId and select(2, GetItemInfo(craftedItemId))
-                    table.insert(list, {
-                        id            = recipeId,
-                        name          = name,
-                        effect        = effect,
-                        profName      = profName,
-                        profIconId    = profIconId,
-                        icon          = addon:GetRecipeIcon(thisProfId, recipeId),
-                        craftedItemId = craftedItemId,
-                        itemLink      = itemLink,
-                        reagents      = addon:GetRecipeReagents(thisProfId, recipeId),
-                        crafters      = crafters,
-                        greyed        = (not hasAny),  -- v0.7.0: rendered de-emphasized
-                    })
+                    local crafters = rd and buildCrafterList(rd, viewMode) or {}
+                    local hasAny   = (#crafters > 0)
+
+                    -- View-mode filter (needs the crafter-list size).
+                    local viewKeep
+                    if viewMode == "mine" then
+                        -- Crafted by one of my own characters
+                        viewKeep = false
+                        if rd and rd.crafters then
+                            for ck in pairs(rd.crafters) do
+                                if addon:IsMyCharacter(ck) then viewKeep = true; break end
+                            end
+                        end
+                    elseif viewMode == "missing" then
+                        viewKeep = (not hasAny)
+                    else  -- "guild" (default)
+                        viewKeep = showAll or hasAny
+                    end
+
+                    if viewKeep then
+                        local itemLink = craftedItemId and select(2, GetItemInfo(craftedItemId))
+                        table.insert(list, {
+                            id            = recipeId,
+                            name          = name,
+                            effect        = effect,
+                            profName      = profName,
+                            profIconId    = profIconId,
+                            icon          = addon:GetRecipeIcon(thisProfId, recipeId),
+                            craftedItemId = craftedItemId,
+                            itemLink      = itemLink,
+                            reagents      = addon:GetRecipeReagents(thisProfId, recipeId),
+                            crafters      = crafters,
+                            greyed        = (not hasAny),  -- v0.7.0: rendered de-emphasized
+                        })
+                    end
                 end
             end
         end
@@ -560,9 +566,19 @@ function BrowserTab:Draw(container)
     search:SetWidth(220)
     search:SetText(self._searchText)
     search:DisableButton(true)
+    -- OnTextChanged fires on every keystroke; debounce so each character typed
+    -- doesn't trigger a full BuildRecipeList + virtual-scroll redraw (which got
+    -- heavier as cross-guild crafters grew the per-recipe crafter sets). Cancel-
+    -- and-reschedule means only the value after the user pauses ~200ms rebuilds.
+    -- Mirrors MissingRecipesTab. RefreshList rebuilds only the scroll list, not
+    -- this EditBox, so focus/cursor are preserved while typing.
     search:SetCallback("OnTextChanged", function(_w, _e, text)
         self._searchText = text
-        self:RefreshList()
+        if self._searchTimer then self._searchTimer:Cancel() end
+        self._searchTimer = C_Timer.NewTimer(0.2, function()
+            self._searchTimer = nil
+            self:RefreshList()
+        end)
     end)
     addon.GUI.AttachTooltip(search, L["SearchPlaceholder"], L["CraftSearchDesc"])
     -- TSM-style search field: magnifying-glass icon instead of a text label

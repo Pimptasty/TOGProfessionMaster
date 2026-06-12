@@ -1,5 +1,26 @@
 # TOG Profession Master Changelog
 
+## [v0.10.6] (2026-06-12) - Cross-guild profession sharing & crafting hands-off
+
+First stable release of cross-guild profession sharing (matured across the v0.10.x beta line) plus new crafting-window controls. **Fully backward-compatible** — single-guild use is unchanged, and cross-guild sharing stays completely dormant until you configure an allied guild. Cross-guild requires DeltaSync **v3.1.0+** and GuildRoster **v6+** (both install/update automatically).
+
+### New Features
+
+- **Cross-guild profession sharing.** Share recipe and crafter data between two socially-linked guilds that can't reach each other over the normal guild addon channel. An **officer or the guild leader** sets the allied guild under **Settings → Cross-Guild** (the list is guild-wide and members see it read-only); once **both** guilds list each other (it's bilateral — a one-sided config does nothing, and a guild you don't list can't pull or inject anything), their crafters become visible to each other. The allied-guild list propagates across your guild automatically, allied rosters are shared so **every** member sees the crafters (not just whoever pulled them), and a live **Diagnostics** panel plus `/togpm xgdiag` show exactly what's synced. With no allied guild configured, the addon does nothing cross-guild — purely local. Location: `Scanner.lua`, `TOGProfessionMaster.lua`, `GUI/Settings.lua`.
+- **Crafting hands-off mode** — *Settings → Crafting, on by default.* TOGPM no longer opens or forces a crafting window when you open a profession; Blizzard's window (or another addon such as TSM / Skillet) owns it, so no second window appears beside it. The TOGPM toggle button still rides on the Blizzard window when it's shown, and the Crafting tab stays available from the main window. **If you previously enabled "Open the TOGPM Crafting tab automatically," untick this to keep that behavior.** Requires `/reload`. Location: `Modules/Crafting/CraftingEngine.lua`.
+- **Hide the Crafting tab** — *Settings → Crafting.* Removes the Crafting tab from the main window entirely, for those who craft with another addon. Requires `/reload`. Location: `GUI/MainWindow.lua`.
+
+### Bug Fixes
+
+- **Browser performance overhaul — instant tab open and instant search.** The recipe list (the expensive part: DB lookups, the per-crafter visibility gate, item tooltip text) is now built **once** and cached, and pre-warmed in the background after login — sliced across frames so it's invisible — so opening the Professions tab and switching professions are instant instead of taking a second or more. Searching just filters the cache (no rebuild, no per-keystroke freeze). This removes the multi-second tab-load and search stutter that had grown as cross-guild sharing enlarged the crafter sets. Location: `GUI/BrowserTab.lua`, `TOGProfessionMaster.lua`.
+
+### Improvements
+
+- **Settings window is tabbed** (General / Cross-Guild) and remembers its position, size, and selected tab across `/reload`.
+- **Roster engine** runs on the standalone LibGuildRoster-1.0 (GuildRoster addon), an auto-installed dependency — the foundation for cross-guild support.
+
+---
+
 ## [v0.10.5-beta] (2026-06-09) - Roster propagation & Browser search fix (beta)
 
 > **Beta build.** Completes the cross-guild "anyone is a transfer point" model. Backward-compatible; single-guild operation is unchanged. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+**.

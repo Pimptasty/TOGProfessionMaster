@@ -69,13 +69,19 @@ MainWindow.activeTab = "browser"
 -- time, after ApplyLocaleOverride has had a chance to mutate the AceLocale
 -- table. A file-scope table would freeze the strings at module load.
 local function getTabDefs()
-    return {
+    local defs = {
         { value = "browser",   text = L["TabProfessions"]    },
         { value = "cooldowns", text = L["TabCooldowns"]      },
         { value = "missing",   text = L["TabMissingRecipes"] },
-        { value = "crafting",  text = L["TabCrafting"]       },
-        { value = "ahprofit",  text = L["TabProfitPlanner"]  },
     }
+    -- The Crafting tab is omitted entirely when the user opts out of TOGPM's
+    -- crafting UI (profile.hideCraftingTab). Built per-open so toggling it +
+    -- /reload reflects immediately.
+    if not (Ace.db and Ace.db.profile and Ace.db.profile.hideCraftingTab) then
+        defs[#defs + 1] = { value = "crafting", text = L["TabCrafting"] }
+    end
+    defs[#defs + 1] = { value = "ahprofit", text = L["TabProfitPlanner"] }
+    return defs
 end
 
 -- ---------------------------------------------------------------------------
@@ -412,6 +418,14 @@ function MainWindow:Open(tabKey)
         -- above (it persists w/h whenever activeTab == "browser"), so by
         -- the time we leave Browser the saved value is already correct.
         self.activeTab = group
+        -- A tab SELECTION is a user navigation (hardware event), so it's the one
+        -- safe moment to let the Crafting tab auto-cast/open the selected
+        -- profession. Event-driven re-draws (FireUpdate → DrawTab) bypass this
+        -- callback, so they can't trigger the protected CastSpellByName. The flag
+        -- is consumed in CraftingTab:Draw.
+        if group == "crafting" and addon.CraftingTab then
+            addon.CraftingTab._autoOpenOnUserNav = true
+        end
         -- Persist main tab selection so reopening the window returns to the last
         -- used tab. The settings DB is addon.lib.db (AceDB on the Ace object);
         -- there is no addon.db, so the previous code here silently no-oped.
@@ -435,6 +449,14 @@ function MainWindow:Open(tabKey)
     -- Load saved tab from db.char, falling back to "browser" if none saved
     local savedTab = addon.lib and addon.lib.db and addon.lib.db.char and addon.lib.db.char.lastMainTab
     local initialTab = tabKey or savedTab or self.activeTab or "browser"
+    -- Never select a tab that isn't in the current set (e.g. a saved/forced
+    -- "crafting" when the Crafting tab is hidden) — that would render hidden-tab
+    -- content with no tab to leave it. Fall back to Browser.
+    local valid = false
+    for _, def in ipairs(getTabDefs()) do
+        if def.value == initialTab then valid = true; break end
+    end
+    if not valid then initialTab = "browser" end
     self:ApplyTabSize(initialTab)
     tg:SelectTab(initialTab)
 end

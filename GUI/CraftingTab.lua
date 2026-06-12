@@ -154,16 +154,20 @@ function CraftingTab:Draw(container)
     toolbar:AddChild(profDD)
 
     if not info then
-        -- No profession window is open yet, but the player deliberately navigated
-        -- to the Crafting tab — that IS "I want to craft in TOGPM", so just open
-        -- their (selected) profession for them instead of making them click the
-        -- button below. OpenProfession forces the resulting window into the TOGPM
-        -- tab (not Blizzard) regardless of the default-to-Blizzard takeover
-        -- setting, since they asked for it here. Can't cast in combat, so the
-        -- prompt + button below stay as the fallback. The button is also there if
-        -- the auto-open is somehow suppressed.
+        -- No profession window is open yet. If the player just NAVIGATED to the
+        -- Crafting tab (a user click — MainWindow sets _autoOpenOnUserNav on the
+        -- tab callback), auto-open their selected profession so they don't have
+        -- to click the button below. This is gated on that flag because
+        -- OpenProfession casts a spell (CastSpellByName), a PROTECTED function:
+        -- it's allowed from a hardware-event path (the tab click) but BLOCKED
+        -- from an event-driven re-draw (e.g. a profession just closed →
+        -- FireUpdate → Draw → not info). The prompt + button below are the
+        -- always-safe fallback — the button's OnClick is a hardware event — and
+        -- cover combat (can't cast) and the suppressed-auto-open case.
+        local allowAuto = self._autoOpenOnUserNav
+        self._autoOpenOnUserNav = nil    -- consume: one auto-open per navigation
         local activeEntry = active and findProf(professions, active) or nil
-        if Engine and activeEntry
+        if allowAuto and Engine and activeEntry
            and not (UnitAffectingCombat and UnitAffectingCombat("player")) then
             Engine:OpenProfession(activeEntry.castName or active)
         end

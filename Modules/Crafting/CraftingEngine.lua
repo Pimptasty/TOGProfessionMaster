@@ -79,6 +79,17 @@ function Engine:IsTakeoverEnabled()
     return (p and p.craftingTakeover) == true
 end
 
+-- Master switch (default ON): when hands-off, TOGPM does NOT touch the crafting
+-- window at all — it doesn't unregister Blizzard's auto-show, force a window, or
+-- inject the toggle button. Blizzard's UI (or TSM/Skillet) owns the window; we
+-- only track the session so the manually-opened Crafting tab still works. nil
+-- (never set) reads as ON so existing installs default to hands-off.
+function Engine:IsHandsOff()
+    local p = Ace.db and Ace.db.profile
+    if not p or p.craftingHandsOff == nil then return true end
+    return p.craftingHandsOff == true
+end
+
 function Engine:SetTakeoverEnabled(on)
     if Ace.db and Ace.db.profile then
         Ace.db.profile.craftingTakeover = on and true or false
@@ -471,10 +482,16 @@ end
 local eventFrame = CreateFrame("Frame")
 
 function Engine:Init()
-    -- Suppress Blizzard's auto-show. AceEvent (Scanner) is unaffected.
-    UIParent:UnregisterEvent("TRADE_SKILL_SHOW")
-    if HAS_CRAFT_WINDOW then
-        UIParent:UnregisterEvent("CRAFT_SHOW")
+    -- Suppress Blizzard's auto-show ONLY when we're going to manage the window
+    -- ourselves. In hands-off mode (default) we leave UIParent's handler intact
+    -- so Blizzard's window (or whatever TSM/Skillet does) behaves natively — we
+    -- never put a second window on screen. We still register our own event frame
+    -- below either way, because the Crafting tab relies on the session tracking.
+    if not self:IsHandsOff() then
+        UIParent:UnregisterEvent("TRADE_SKILL_SHOW")
+        if HAS_CRAFT_WINDOW then
+            UIParent:UnregisterEvent("CRAFT_SHOW")
+        end
     end
 
     eventFrame:RegisterEvent("TRADE_SKILL_SHOW")
@@ -555,6 +572,40 @@ end
 -- ---------------------------------------------------------------------------
 function Engine:OnProfessionShow()
     self._sessionOpen = true
+
+    -- Hands-off (default): never add a window the user didn't ask for. Two cases:
+    if self:IsHandsOff() then
+        local force = self._forceTakeoverOnce
+        self._forceTakeoverOnce = false
+        if force then
+            -- Explicit tab action: the user navigated to the TOGPM Crafting tab
+            -- (OpenProfession casts the profession to read it, which pops the
+            -- Blizzard/TSM window). Suppress that window — we just show our tab.
+            -- ShowOurUI hides it safely (the trade-skill session stays open, so
+            -- the tab reads live data) and shows our tab; the tab's "WoW UI"
+            -- button brings Blizzard back. Call it immediately (when UIParent's
+            -- handler already showed the frame, it's hidden the same frame → no
+            -- flicker) AND deferred (covers the frame being shown/created after
+            -- this handler). ShowOurUI also fires the view update.
+            self:ShowOurUI()
+            if C_Timer and C_Timer.After then
+                C_Timer.After(0, function() self:ShowOurUI() end)
+            end
+        else
+            -- Automatic profession open: stay fully hands-off, but keep our
+            -- "TOGPM" toggle button riding on Blizzard's frame whenever it shows
+            -- so a non-TSM user can still jump to the TOGPM Crafting tab. A TSM
+            -- user whose Blizzard frame stays hidden never sees the button (its
+            -- OnShow hook never fires) — exactly what they want. The deferred
+            -- call covers Blizzard's load-on-demand frame not existing yet.
+            self:EnsureToggleHook()
+            if C_Timer and C_Timer.After then
+                C_Timer.After(0, function() self:EnsureToggleHook() end)
+            end
+            self:FireUpdate()
+        end
+        return
+    end
 
     -- Ensure our toggle button is wired to ride on Blizzard's frame whenever it
     -- shows — even if a coexisting addon (TSM/Skillet) is what shows it, or it

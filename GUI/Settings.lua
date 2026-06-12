@@ -302,15 +302,49 @@ local OPTIONS = {
             order = 12,
         },
 
+        -- ON by default: TOGPM stays out of the crafting window when you open a
+        -- profession — Blizzard's UI (or TSM/Skillet) owns it, and no second
+        -- window appears beside it. The Crafting tab is still usable from the
+        -- main window. Untick to let TOGPM manage the window (legacy takeover
+        -- behavior below applies). Needs /reload.
+        craftingHandsOff = {
+            name  = L["SettingsCraftingHandsOff"],
+            desc  = L["SettingsCraftingHandsOffDesc"],
+            type  = "toggle",
+            width = "full",
+            order = 12.01,
+            get   = function() return Ace.db.profile.craftingHandsOff ~= false end,  -- default ON
+            set   = function(_, val)
+                Ace.db.profile.craftingHandsOff = val and true or false
+                addon:Print(L["SettingsCraftingReloadHint"])
+            end,
+        },
+
+        -- Off by default. Remove the Crafting tab from the main window entirely.
+        hideCraftingTab = {
+            name  = L["SettingsHideCraftingTab"],
+            desc  = L["SettingsHideCraftingTabDesc"],
+            type  = "toggle",
+            width = "full",
+            order = 12.02,
+            get   = function() return Ace.db.profile.hideCraftingTab == true end,
+            set   = function(_, val)
+                Ace.db.profile.hideCraftingTab = val and true or false
+                addon:Print(L["SettingsCraftingReloadHint"])
+            end,
+        },
+
         -- Off by default: opening a profession opens Blizzard's own crafting
         -- window (with the TOGPM button on it to switch). Tick to open straight
-        -- into the TOGPM Crafting tab instead.
+        -- into the TOGPM Crafting tab instead. Only applies when "Don't take
+        -- over the crafting window" is OFF.
         craftingTakeover = {
             name  = L["SettingsCraftingTakeover"],
             desc  = L["SettingsCraftingTakeoverDesc"],
             type  = "toggle",
             width = "full",
             order = 12.04,
+            disabled = function() return Ace.db.profile.craftingHandsOff ~= false end,
             get   = function() return Ace.db.profile.craftingTakeover == true end,
             set   = function(_, val) Ace.db.profile.craftingTakeover = val and true or false end,
         },
@@ -323,6 +357,7 @@ local OPTIONS = {
             type  = "toggle",
             width = "full",
             order = 12.06,
+            disabled = function() return Ace.db.profile.craftingHandsOff ~= false end,
             get   = function() return Ace.db.profile.craftingRememberLast == true end,
             set   = function(_, val) Ace.db.profile.craftingRememberLast = val and true or false end,
         },
@@ -790,6 +825,15 @@ local OPTIONS = {
             order    = 44,
         },
 
+        -- A read-only notice shown to non-officers (the input below is disabled
+        -- for them). Officers don't see it (hidden).
+        sisterGuildsReadOnly = {
+            name     = L["SettingsSisterGuildsReadOnly"],
+            type     = "description",
+            order    = 44.5,
+            hidden   = function() return addon:CanEditSisterGuilds() end,
+        },
+
         sisterGuilds = {
             name      = L["SettingsSisterGuilds"],
             desc      = L["SettingsSisterGuildsDesc"],
@@ -797,6 +841,9 @@ local OPTIONS = {
             multiline = 5,
             width     = "full",
             order     = 45,
+            -- Guild-wide list: officer/GM only may edit (it federates to every
+            -- member). Members see it greyed/read-only.
+            disabled  = function() return not addon:CanEditSisterGuilds() end,
             get = function() return table.concat(addon:GetSisterGuilds(), "\n") end,
             set = function(_, val)
                 addon:SetSisterGuilds(val)

@@ -86,6 +86,61 @@ LibStub("AceCommQueue-1.0"):Embed(Ace)
 -- CallbackHandler-1.0 ships with Ace3 so it is always available.
 addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
 
+-- ---------------------------------------------------------------------------
+-- Warmer — frame-budgeted background task runner
+-- ---------------------------------------------------------------------------
+-- Heavy UI list builds (e.g. the Browser recipe list) are enqueued here as
+-- coroutines that call addon.Warmer:Yield() between safe units of work. An
+-- OnUpdate driver resumes them for at most `budgetMs` per frame, so a big build
+-- runs in invisible slices across the idle time after login instead of stalling
+-- a frame the user didn't ask for. Tabs pre-warm their caches through this so
+-- opening them is instant; a synchronous on-demand build remains the fallback
+-- (Yield() is a no-op when not actually inside a coroutine).
+-- ---------------------------------------------------------------------------
+local Warmer = { _queue = {}, budgetMs = 4 }
+addon.Warmer = Warmer
+
+local warmFrame = CreateFrame("Frame")
+warmFrame:Hide()
+warmFrame:SetScript("OnUpdate", function()
+    local q = Warmer._queue
+    local start = debugprofilestop()
+    while q[1] do
+        local co = q[1]
+        local ok, err = coroutine.resume(co)
+        if not ok then
+            addon:DebugPrint("Warmer: task error:", err)
+            table.remove(q, 1)
+        elseif coroutine.status(co) == "dead" then
+            table.remove(q, 1)
+        end
+        if debugprofilestop() - start > Warmer.budgetMs then return end
+    end
+    warmFrame:Hide()   -- queue drained: stop ticking
+end)
+
+-- Enqueue a function to run in the background. It should call Warmer:Yield()
+-- periodically (between recipes, etc.) so the driver can slice it across frames.
+function Warmer:Queue(fn)
+    self._queue[#self._queue + 1] = coroutine.create(fn)
+    warmFrame:Show()
+end
+
+-- Cooperative yield — only yields when actually running inside one of our
+-- coroutines, so the SAME build function is safe to call synchronously on demand.
+function Warmer:Yield()
+    if coroutine.running() then coroutine.yield() end
+end
+
+-- Drop all pending tasks (in-flight coroutines are abandoned mid-build; whatever
+-- they were updating keeps its previous value). A re-warm calls this first so a
+-- fresh enqueue supersedes a stale one instead of piling up. NOTE: clears the
+-- WHOLE queue — fine while the Browser is the only consumer; revisit (per-owner
+-- tasks) if other tabs start warming too.
+function Warmer:Clear()
+    wipe(self._queue)
+end
+
 -- Convenient shorthand used throughout the addon files.
 -- `addon.lib:RegisterEvent(...)` → Ace's event system.
 -- `addon.lib:Print(...)` → prefixed chat output.
@@ -190,6 +245,18 @@ local SETTINGS_DEFAULTS = {
         debug             = false,
         persistProfFilter = false,
         savedProfFilter   = 0,
+        -- Crafting window management.
+        --   craftingHandsOff = true (DEFAULT): TOGPM does NOT take over or force
+        --     a crafting window when you open a profession — Blizzard's own UI
+        --     (or another addon such as TSM/Skillet) owns it. The Crafting tab
+        --     is still usable from the main window; only the auto-takeover and
+        --     the injected toggle button are suppressed. Changing this needs a
+        --     /reload (the event wiring is set at load). When OFF, the legacy
+        --     craftingTakeover / craftingRememberLast behavior applies.
+        --   hideCraftingTab = false (DEFAULT): when true, the Crafting tab is
+        --     removed from the main window entirely.
+        craftingHandsOff  = true,
+        hideCraftingTab   = false,
         -- Crafter alerts
         crafterAlert              = true,
         crafterAlertSuppressAV    = false,
@@ -1394,6 +1461,19 @@ end
 -- Cross-guild ("sister guild") configuration
 -- ---------------------------------------------------------------------------
 
+-- Officer gate: only the GM, or an officer (a rank that can edit officer notes),
+-- may CHANGE the allied-guild list. The list is guild-wide — it federates to
+-- every member — so letting anyone edit it would let one person redirect the
+-- whole guild's cross-guild sharing, or grief it. Members still SEE the list
+-- (read-only) and still relay it (gossip); they just can't author a new one.
+-- Guildless players can't configure cross-guild at all.
+function addon:CanEditSisterGuilds()
+    if not (IsInGuild and IsInGuild()) then return false end
+    if IsGuildLeader and IsGuildLeader() then return true end
+    if CanEditOfficerNote and CanEditOfficerNote() then return true end
+    return false
+end
+
 -- The user-configured list of allied guild display names TOGPM shares
 -- profession data with. Stored in the shared settings profile; nil-safe.
 function addon:GetSisterGuilds()
@@ -1402,7 +1482,14 @@ end
 
 -- Parse newline-separated text from the settings input into a trimmed,
 -- case-insensitively de-duplicated list of guild names and store it.
+-- Officer-only (CanEditSisterGuilds) — backstop for a direct call; the Settings
+-- input is also disabled for non-officers, and members get the list via the
+-- config gossip (OnSisterConfigReceived), not through here.
 function addon:SetSisterGuilds(text)
+    if not self:CanEditSisterGuilds() then
+        self:Print(L["SettingsSisterGuildsOfficerOnly"])
+        return
+    end
     local out, seen = {}, {}
     for line in tostring(text or ""):gmatch("[^\r\n]+") do
         local name = line:gsub("^%s+", ""):gsub("%s+$", "")

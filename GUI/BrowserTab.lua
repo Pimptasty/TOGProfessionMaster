@@ -229,47 +229,75 @@ local function CollectRecipesForView(_viewMode)
     return gdb and gdb.recipes or {}
 end
 
--- BuildRecipeList(profId, viewMode, searchText, opts)
---   profId       — 0 for "all professions", otherwise the profession spell ID
---   viewMode     — "guild" / "mine" / "missing"
---   searchText   — substring filter (case-insensitive)
---   opts         — { showAll = bool }  v0.7.0 toolbar: when showAll is set,
---                  also yield rows for recipes in addon.recipeDB that have no
---                  visible crafters in the current guild (rendered greyed out
---                  by the list). When viewMode == "missing", ONLY no-crafter
---                  rows are returned.
-local function BuildRecipeList(profId, viewMode, searchText, opts)
+-- Recipe list pipeline (split so the slow part runs once and search is cheap):
+--   BuildFullList(profId, viewMode, opts) — the expensive, search-INDEPENDENT
+--     build (DB lookups, per-crafter visibility gate, tooltip text). Cached +
+--     background-warmed. profId 0 = all professions; viewMode "guild"/"mine"/
+--     "missing"; opts.showAll also yields no-crafter rows (greyed); viewMode
+--     "missing" yields ONLY no-crafter rows.
+--   FilterList(full, searchText) — cheap per-keystroke search over the cache.
+--   GetFullList / FillList — read the cache (or build on a miss), then FilterList.
+--
+-- Cheap search filter over an already-built full list. Every whitespace term
+-- must appear in the row's precomputed `searchText` (name + effect + item
+-- tooltip, lowercased), order-independent — tokens so "5 agi" matches the
+-- stat-first "Agility +5". Empty query returns the full list unchanged. THIS is
+-- what runs on every keystroke now: no DB reads, no visibility gate, no tooltip
+-- scans — those all happened once when the full list was built and cached.
+local function FilterList(full, searchText)
+    local filter = searchText and searchText:lower() or ""
+    if filter == "" then return full end
+    local terms = {}
+    for t in filter:gmatch("%S+") do terms[#terms + 1] = t end
+    if #terms == 0 then return full end
+    local out = {}
+    for _, row in ipairs(full) do
+        local hay  = row.searchText or ""
+        local keep = true
+        for _, term in ipairs(terms) do
+            if not hay:find(term, 1, true) then keep = false; break end
+        end
+        if keep then out[#out + 1] = row end
+    end
+    return out
+end
+
+-- Stable cache key for a (profId, viewMode, showAll) build. profId may be a
+-- number (0 = All), or a SET table (multi-select professions) — the latter is
+-- folded to a sorted, comma-joined string so the same selection always maps to
+-- the same key regardless of table identity.
+local function listCacheKey(profId, viewMode, showAll)
+    local pk
+    if type(profId) == "table" then
+        local ids = {}
+        for k in pairs(profId) do ids[#ids + 1] = tostring(k) end
+        table.sort(ids)
+        pk = "{" .. table.concat(ids, ",") .. "}"
+    else
+        pk = tostring(profId)
+    end
+    return pk .. "|" .. tostring(viewMode or "guild") .. "|" .. (showAll and "1" or "0")
+end
+
+-- Build the FULL, search-INDEPENDENT recipe list for a profession/view. This is
+-- the expensive half — DB lookups, the per-crafter visibility gate, and the
+-- per-item tooltip search text — so it runs ONCE and is cached (and pre-warmed
+-- in the background via addon.Warmer); search then just FilterList()s the cache.
+-- Yields between recipes (addon.Warmer:Yield) so the warm can slice it across
+-- frames without stuttering; that's a no-op when called synchronously on demand.
+-- Each row carries `searchText` for the cheap filter above.
+local function BuildFullList(profId, viewMode, opts)
     if profId == nil or (type(profId) == "table" and next(profId) == nil) then return {} end
     local gdb = GetGuildDb()
     if not gdb then return {} end
     local recipes = CollectRecipesForView(viewMode)
 
     local myKey   = addon:GetCharacterKey()
-    local filter  = searchText and searchText:lower() or ""
     local showAll = opts and opts.showAll or false
     local list    = {}
-
-    -- Term-by-term search: every whitespace-separated term in the query must
-    -- appear somewhere in "name effect", order-independent. Effect text is
-    -- stat-first ("Agility +5"), so a single whole-string match would miss the
-    -- natural "5 agi" / "5 agility" (it isn't a substring of "agility +5"). Tokens
-    -- fix that — "5" and "agi" each match in any order. Returns true on empty query.
-    local _terms = {}
-    for t in filter:gmatch("%S+") do _terms[#_terms + 1] = t end
-    local function searchMatches(name, effect, itemId)
-        if #_terms == 0 then return true end
-        local hay = (name or ""):lower()
-        if effect then hay = hay .. " " .. effect:lower() end
-        -- Fold in the crafted item's full tooltip text so ANY word in it
-        -- (use/proc text, durations, requirements, flavor) is searchable, not just
-        -- the name + stat line. Cached per item; already lowercased.
-        local tt = itemId and addon:GetItemTooltipSearchText(itemId)
-        if tt then hay = hay .. " " .. tt end
-        for _, term in ipairs(_terms) do
-            if not hay:find(term, 1, true) then return false end
-        end
-        return true
-    end
+    -- Yield counter spanning the WHOLE build (across professions for profId 0),
+    -- so the background warm slices evenly even when each profession is small.
+    local _yieldN = 0
 
     -- v0.7.5: per-client expansion cap. The shipped recipeDB is a universal
     -- union of every recipe across every expansion (wago.tools' MoP build
@@ -404,66 +432,71 @@ local function BuildRecipeList(profId, viewMode, searchText, opts)
         end
 
         for recipeId in pairs(recipeIdSet) do
+            _yieldN = _yieldN + 1
+            -- Yield to the Warmer every 25 recipes so a BACKGROUND build slices
+            -- across frames (invisible). No-op when called synchronously. We
+            -- yield BETWEEN recipes, never inside buildCrafterList, so each
+            -- crafter walk stays atomic even if sync mutates gdb between frames.
+            if _yieldN % 25 == 0 then addon.Warmer:Yield() end
             local rd = profRecipes and profRecipes[recipeId]
 
-            -- Cheap gates BEFORE the expensive per-recipe crafter-list build.
             -- Only recipes the local addon DB knows + valid on this client
-            -- version are considered (unknown / wrong-expansion recipeIds are
-            -- hidden silently — see passesClientGate). Neither this gate nor the
-            -- name/effect search filter needs the crafter list, so a recipe the
-            -- client can't use OR that doesn't match the search skips
-            -- buildCrafterList entirely. That iteration walks every crafter and
-            -- runs the visibility gate per crafter, and cross-guild sharing grew
-            -- those sets — doing it only for kept recipes keeps search snappy.
+            -- version are kept (unknown / wrong-expansion recipeIds hidden
+            -- silently — see passesClientGate). NO search filter here: this is
+            -- the full, search-INDEPENDENT list — FilterList() does the search.
             if profMetaDB and profMetaDB[recipeId]
                and passesClientGate(thisProfId, recipeId) then
                 local name          = addon:GetRecipeName(thisProfId, recipeId)
                 local craftedItemId = addon:GetRecipeCraftedItemId(thisProfId, recipeId)
                 -- Effect/buff text: the shipped enchant effect, else the crafted
                 -- consumable's use-effect buff from LibItemDB (food/elixir/flask),
-                -- so those recipes are searchable by stat ("12 stam") and carry a
-                -- buff line in their tooltip too.
+                -- so those recipes are searchable by stat ("12 stam").
                 local effect = addon:GetCraftedItemStatText(craftedItemId)
                 if not effect or effect == "" then effect = profMetaDB[recipeId].effect end
-                -- Match name + effect + the crafted item's full tooltip text
-                -- term-by-term (see searchMatches above), so any word — stats,
-                -- use/proc text, durations, flavor — finds the recipe.
-                if searchMatches(name, effect, craftedItemId) then
-                    local crafters = rd and buildCrafterList(rd, viewMode) or {}
-                    local hasAny   = (#crafters > 0)
 
-                    -- View-mode filter (needs the crafter-list size).
-                    local viewKeep
-                    if viewMode == "mine" then
-                        -- Crafted by one of my own characters
-                        viewKeep = false
-                        if rd and rd.crafters then
-                            for ck in pairs(rd.crafters) do
-                                if addon:IsMyCharacter(ck) then viewKeep = true; break end
-                            end
+                local crafters = rd and buildCrafterList(rd, viewMode) or {}
+                local hasAny   = (#crafters > 0)
+
+                -- View-mode filter (needs the crafter-list size).
+                local viewKeep
+                if viewMode == "mine" then
+                    -- Crafted by one of my own characters
+                    viewKeep = false
+                    if rd and rd.crafters then
+                        for ck in pairs(rd.crafters) do
+                            if addon:IsMyCharacter(ck) then viewKeep = true; break end
                         end
-                    elseif viewMode == "missing" then
-                        viewKeep = (not hasAny)
-                    else  -- "guild" (default)
-                        viewKeep = showAll or hasAny
                     end
+                elseif viewMode == "missing" then
+                    viewKeep = (not hasAny)
+                else  -- "guild" (default)
+                    viewKeep = showAll or hasAny
+                end
 
-                    if viewKeep then
-                        local itemLink = craftedItemId and select(2, GetItemInfo(craftedItemId))
-                        table.insert(list, {
-                            id            = recipeId,
-                            name          = name,
-                            effect        = effect,
-                            profName      = profName,
-                            profIconId    = profIconId,
-                            icon          = addon:GetRecipeIcon(thisProfId, recipeId),
-                            craftedItemId = craftedItemId,
-                            itemLink      = itemLink,
-                            reagents      = addon:GetRecipeReagents(thisProfId, recipeId),
-                            crafters      = crafters,
-                            greyed        = (not hasAny),  -- v0.7.0: rendered de-emphasized
-                        })
-                    end
+                if viewKeep then
+                    -- Precompute the searchable text ONCE — name + effect + the
+                    -- crafted item's full tooltip (use/proc/durations/flavor),
+                    -- lowercased — so FilterList is a cheap string match per
+                    -- keystroke instead of re-scanning tooltips every time.
+                    local hay = (name or ""):lower()
+                    if effect and effect ~= "" then hay = hay .. " " .. effect:lower() end
+                    local tt = craftedItemId and addon:GetItemTooltipSearchText(craftedItemId)
+                    if tt then hay = hay .. " " .. tt end
+                    local itemLink = craftedItemId and select(2, GetItemInfo(craftedItemId))
+                    table.insert(list, {
+                        id            = recipeId,
+                        name          = name,
+                        effect        = effect,
+                        profName      = profName,
+                        profIconId    = profIconId,
+                        icon          = addon:GetRecipeIcon(thisProfId, recipeId),
+                        craftedItemId = craftedItemId,
+                        itemLink      = itemLink,
+                        reagents      = addon:GetRecipeReagents(thisProfId, recipeId),
+                        crafters      = crafters,
+                        greyed        = (not hasAny),  -- v0.7.0: rendered de-emphasized
+                        searchText    = hay,
+                    })
                 end
             end
         end
@@ -1261,6 +1294,56 @@ function BrowserTab:RefreshList()
     self:FillList()
 end
 
+-- Cache of full (search-independent) lists, keyed by listCacheKey. Filled lazily
+-- on a miss and pre-warmed in the background by :Warm(); FillList reads it then
+-- applies the cheap search filter.
+BrowserTab._listCache = BrowserTab._listCache or {}
+
+-- Return the full list for a build — from cache, or built synchronously on a
+-- miss (the warm hasn't reached this key yet). The warm runs the SAME
+-- BuildFullList, just sliced across frames.
+function BrowserTab:GetFullList(profId, viewMode, showAll)
+    local key    = listCacheKey(profId, viewMode, showAll)
+    local cached = self._listCache[key]
+    if cached then return cached end
+    local full = BuildFullList(profId, viewMode, { showAll = showAll })
+    self._listCache[key] = full
+    return full
+end
+
+-- Pre-warm the cache in the background (invisible, chunked via addon.Warmer) so
+-- opening the tab — and switching professions within it — is instant. Warms the
+-- default guild view for All Professions plus each profession the guild has data
+-- for. Safe to re-run (debounced) on data change: each coroutine overwrites its
+-- cache entry in place, so the previous list keeps serving until the rebuild
+-- finishes — never a blank/jarring moment.
+function BrowserTab:Warm()
+    local gdb = GetGuildDb()
+    if not gdb then return end
+    addon.Warmer:Clear()   -- supersede any in-flight warm so we don't pile up
+    self._listCache = self._listCache or {}
+    local cache = self._listCache
+    local viewMode, showAll = "guild", false
+
+    local function queue(profId)
+        addon.Warmer:Queue(function()
+            cache[listCacheKey(profId, viewMode, showAll)] =
+                BuildFullList(profId, viewMode, { showAll = showAll })
+        end)
+    end
+
+    -- Queue the most-likely-first views FIRST so they're ready soonest:
+    -- All Professions (the default), then the saved profession filter if set.
+    local queued = {}
+    queue(0); queued[0] = true
+    local saved = Ace.db.profile.persistProfFilter and Ace.db.profile.savedProfFilter
+    if saved and saved ~= 0 and not queued[saved] then queue(saved); queued[saved] = true end
+    -- Then each profession the guild has data for, so switching is instant too.
+    for profId in pairs(gdb.recipes or {}) do
+        if not queued[profId] then queue(profId); queued[profId] = true end
+    end
+end
+
 function BrowserTab:FillList()
     local scroll = self._scroll
     if not scroll then return end
@@ -1275,11 +1358,11 @@ function BrowserTab:FillList()
         return
     end
 
-    local recipes = BuildRecipeList(
-        self._selectedProfId,
-        self._viewMode,
-        self._searchText,
-        { showAll = self._showAllRecipes })
+    -- Get the full (search-independent) list from cache — pre-warmed in the
+    -- background, or built on demand on a miss — then apply the cheap search
+    -- filter. Searching never rebuilds; it just re-filters this cached list.
+    local full    = self:GetFullList(self._selectedProfId, self._viewMode, self._showAllRecipes)
+    local recipes = FilterList(full, self._searchText)
     if #recipes == 0 then
         local lbl = AceGUI:Create("Label")
         lbl:SetText(self._searchText ~= "" and L["NoMatchingRecipes"] or L["NoDataYet"])
@@ -2153,3 +2236,29 @@ end
 -- owns one global handler that refreshes the active tab's scan button
 -- and runs the tab's onRefresh hook — for browser, that hook re-fills
 -- the shopping list section + the detail panel.)
+
+-- ---------------------------------------------------------------------------
+-- Background cache warming
+-- ---------------------------------------------------------------------------
+-- Pre-build the recipe cache in the idle time after login so opening the
+-- Professions tab (and searching within it) is instant, and re-warm — coalesced
+-- — when guild/cross-guild data changes so the cache stays current without a
+-- foreground rebuild. Both run through addon.Warmer, sliced across frames so
+-- they never stutter. While a re-warm is in flight the previous cache keeps
+-- serving, so the open tab never blanks. (Trade-off: the open tab can show data
+-- up to ~one debounce stale; that's the cost of never hitching, which is the
+-- behavior we want.)
+do
+    local rewarmTimer
+    local function scheduleRewarm()
+        if rewarmTimer then rewarmTimer:Cancel() end
+        rewarmTimer = C_Timer.NewTimer(10, function()
+            rewarmTimer = nil
+            BrowserTab:Warm()
+        end)
+    end
+    -- First warm a short while after load, once gdb + the roster have settled.
+    C_Timer.After(8, function() BrowserTab:Warm() end)
+    -- Re-warm on guild/cross-guild data changes (debounced).
+    addon:RegisterCallback("GUILD_DATA_UPDATED", scheduleRewarm)
+end

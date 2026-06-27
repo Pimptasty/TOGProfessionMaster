@@ -413,6 +413,7 @@ local SLASH_COMMANDS = {
     ["myalts"]       = "DumpMyAlts",
     ["pullroster"]   = "PullSisterRoster",
     ["xgdiag"]       = "PrintCrossGuildDiagnostics",
+    ["commtest"]     = "RunCommTest",
     ["help"]         = "PrintHelp",
 }
 
@@ -1326,6 +1327,7 @@ function Ace:PrintHelp()
     self:Print("  /togpm status       \226\128\148 " .. L["SlashHelpStatus"])
     self:Print("  /togpm versioncheck \226\128\148 " .. L["SlashHelpVersionCheck"])
     self:Print("  /togpm dumpprice <itemId|itemLink> \226\128\148 Dump full price diagnostics for an item")
+    self:Print("  /togpm commtest [name] \226\128\148 Probe which addon-message channels the server relays")
     self:Print("  /togpm debug        \226\128\148 " .. L["SlashHelpDebug"])
     self:Print("  /togpm help         \226\128\148 " .. L["SlashHelpHelp"])
 end

@@ -1,5 +1,15 @@
 # TOG Profession Master Changelog
 
+## [v0.10.7] (2026-06-27) - Private-server addon-comm diagnostics
+
+Groundwork for running TOGPM on privately-hosted **Cataclysm 4.3.4 (build 15595)** servers such as **Whitemane "Maelstrom"**, where some emulation cores leave the Cataclysm per-channel addon opcodes (`CMSG_MESSAGECHAT_ADDON_GUILD`, …) unhandled and silently drop guild addon traffic — which makes the sync stack look dead even though the addon loads fine. This release adds a diagnostic to pinpoint exactly which addon-message channels a given server relays. **No change to existing behavior** — it's a new, opt-in command; nothing in the live sync path was touched.
+
+### New Features
+
+- **`/togpm commtest [name]` — addon-channel diagnostic probe.** Fires a tagged addon message on every distribution (GUILD, WHISPER→self, a temporary CHANNEL, and PARTY/RAID when grouped), listens briefly for which ones echo back, then prints a copy-pasteable verdict including the client build number. The **GUILD self-echo is the decisive test** and works solo — on a healthy core you receive your own guild addon message; if the server drops guild addon traffic you get nothing. It probes **both** the raw `SendAddonMessage` path and your actual AceComm + AceCommQueue send path, so a server-side drop is distinguishable from a wrapper/chunking issue. Pass a player name to add a real two-player WHISPER probe. Run it on your home realm (control) and on the private server (test); the diff identifies the broken channel and which fallback (WHISPER/CHANNEL) is viable. Cross-version safe — uses `C_ChatInfo` where present, bare globals on 4.3.4, registers prefixes only where that API exists, and deliberately uses an `OnUpdate` timer instead of `C_Timer` (which the original 4.3.4 client lacks). Location: `Modules/CommTest.lua`.
+
+---
+
 ## [v0.10.6] (2026-06-12) - Cross-guild profession sharing & crafting hands-off
 
 First stable release of cross-guild profession sharing (matured across the v0.10.x beta line) plus new crafting-window controls. **Fully backward-compatible** — single-guild use is unchanged, and cross-guild sharing stays completely dormant until you configure an allied guild. Cross-guild requires DeltaSync **v3.1.0+** and GuildRoster **v6+** (both install/update automatically).

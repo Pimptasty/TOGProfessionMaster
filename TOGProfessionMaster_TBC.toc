@@ -52,6 +52,7 @@ Scanner.lua
 Modules\HashManager.lua
 Modules\ReagentWatch.lua
 Modules\SyncLog.lua
+Modules\CommTest.lua
 Modules\AHScanner.lua
 Modules\Price.lua
 Modules\CooldownAlerts.lua

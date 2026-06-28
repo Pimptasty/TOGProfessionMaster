@@ -1,5 +1,19 @@
 # TOG Profession Master Changelog
 
+## [v0.10.8] (2026-06-28) - Fix: commtest missing from per-flavor TOCs
+
+Follow-up to v0.10.7. The new diagnostic shipped in only one of the addon's five TOC files, so it never loaded on the very clients it was built for. This release wires it into all of them.
+
+### Bug Fixes
+
+- **`/togpm commtest` now loads on TBC / Wrath / Cata / MoP clients.** v0.10.7 added `Modules/CommTest.lua` to only the base `TOGProfessionMaster.toc`. WoW loads the *flavor-specific* TOC when one exists, so on TBC/Wrath/Cata/Mists clients — including privately-hosted Cataclysm servers like **Whitemane "Maelstrom"** — the file was never in the load list, `RunCommTest` stayed undefined, and `/togpm commtest` silently fell through to the help menu (the command's help line still showed because that lives in the always-loaded main file, which is what made it look present). Added the line to all four flavor TOCs (`_TBC`, `_Wrath`, `_Cata`, `_Mists`) so the diagnostic is available on every supported version. Location: `TOGProfessionMaster_TBC.toc`, `TOGProfessionMaster_Wrath.toc`, `TOGProfessionMaster_Cata.toc`, `TOGProfessionMaster_Mists.toc`.
+
+### Notes
+
+- **Whitemane runs a modern Classic-engine client, not the original 4.3.4 client.** Diagnostics surfaced that its addon-message API is `C_ChatInfo.SendAddonMessage` (the bare global `SendAddonMessage` is `nil`), and `C_ChatInfo.SendAddonMessage` returns a `SendAddonMessageResult` code. The `commtest` probe already handles this via its `C_ChatInfo` shim; this corrects the v0.10.7 note that assumed the original 4.3.4 client.
+
+---
+
 ## [v0.10.7] (2026-06-27) - Private-server addon-comm diagnostics
 
 Groundwork for running TOGPM on privately-hosted **Cataclysm 4.3.4 (build 15595)** servers such as **Whitemane "Maelstrom"**, where some emulation cores leave the Cataclysm per-channel addon opcodes (`CMSG_MESSAGECHAT_ADDON_GUILD`, …) unhandled and silently drop guild addon traffic — which makes the sync stack look dead even though the addon loads fine. This release adds a diagnostic to pinpoint exactly which addon-message channels a given server relays. **No change to existing behavior** — it's a new, opt-in command; nothing in the live sync path was touched.

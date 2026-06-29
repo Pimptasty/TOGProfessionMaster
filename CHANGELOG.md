@@ -1,5 +1,19 @@
 # TOG Profession Master Changelog
 
+## [v0.10.9] (2026-06-29) - Guild-only sync mode for private servers
+
+Resolves the "nothing syncs on Whitemane" investigation. Diagnostics confirmed that Whitemane (and similar emulated **Cataclysm** servers) **deliver addon messages over GUILD fine but silently drop them over WHISPER** — and TOGPM's sync is hash-then-fetch, where the fetch request rides WHISPER. Hash offers went out on guild chat and arrived, but the follow-up data request never landed, so members kept broadcasting while nothing ever came back. This release adds an opt-in toggle that reroutes the whisper-based sync traffic onto the guild channel.
+
+### New Features
+
+- **Guild-only sync mode** — *Settings → General → Sync.* For private/emulated servers that don't deliver addon whispers (e.g. Whitemane "Maelstrom"). When enabled, DeltaSync's directed channels (QUERY / RESPONSE / DELTA / OFFER / HANDSHAKE) are rerouted from WHISPER to GUILD, with each message stamped for its intended recipient so other members ignore it — directed delivery over a broadcast transport. **Opt-in and OFF by default**, so nothing changes on retail/Classic Era or any server where whispers work. The setting is **realm-scoped** (enable it once, all your alts on that realm inherit it) and **feature-detected** — the toggle is hidden unless the installed DeltaSync supports guild-mode (**requires DeltaSync v3.2.0+**). Cross-guild sharing auto-disables while it's on (it can't work on a whisper-dead server anyway). Coordinate per guild: on an affected realm, **everyone should enable it** — directed traffic only reaches members who also have it on. Localized in all shipped languages. Location: `Scanner.lua`, `GUI/Settings.lua`, `TOGProfessionMaster.lua`.
+
+### Notes
+
+- **Diagnosing this used `/togpm commtest`** (from v0.10.7/0.10.8) plus raw two-player tests, which is how we isolated WHISPER-drop-but-GUILD-works. If guild sync ever looks dead on a server, that command remains the fastest way to see which addon-message channels the server actually relays.
+
+---
+
 ## [v0.10.8] (2026-06-28) - Fix: commtest missing from per-flavor TOCs
 
 Follow-up to v0.10.7. The new diagnostic shipped in only one of the addon's five TOC files, so it never loaded on the very clients it was built for. This release wires it into all of them.

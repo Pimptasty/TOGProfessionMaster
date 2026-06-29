@@ -279,6 +279,46 @@ local OPTIONS = {
             end,
         },
 
+        -- ---- Sync ----------------------------------------------------------
+        syncHeader = {
+            name  = L["SettingsSyncHeader"],
+            type  = "header",
+            order = 5,
+        },
+
+        -- Guild-only sync mode. For private/emulated servers (e.g. Whitemane)
+        -- that don't deliver addon messages over WHISPER, which breaks normal
+        -- peer sync. Reroutes DeltaSync's directed channels onto the guild
+        -- channel. Realm-scoped (Ace.db.realm) — set once per server, applies
+        -- to all your alts there. Feature-detected: the toggle is hidden unless
+        -- the loaded DeltaSync exposes guild-mode (MINOR >= 13). `get` reads the
+        -- live library state when available so the box always matches reality;
+        -- `set` flips DeltaSync (which persists via the onChanged wired in
+        -- Scanner) and also writes the realm DB directly as a belt-and-suspenders
+        -- guard for the rare case the flip is rejected before init.
+        guildMode = {
+            name  = L["SettingsGuildMode"],
+            desc  = L["SettingsGuildModeDesc"],
+            type  = "toggle",
+            width = "full",
+            order = 5.1,
+            hidden = function()
+                local DS = addon.Scanner and addon.Scanner.DS
+                return not (DS and DS.InitGuildMode)
+            end,
+            get = function()
+                local DS = addon.Scanner and addon.Scanner.DS
+                if DS and DS.IsGuildMode then return DS:IsGuildMode() end
+                return Ace.db and Ace.db.realm and Ace.db.realm.guildMode or false
+            end,
+            set = function(_, val)
+                val = val and true or false
+                local DS = addon.Scanner and addon.Scanner.DS
+                if DS and DS.SetGuildMode then DS:SetGuildMode(val) end
+                if Ace.db and Ace.db.realm then Ace.db.realm.guildMode = val end
+            end,
+        },
+
         -- ---- Cooldowns -----------------------------------------------------
         cooldownsHeader = {
             name  = L["SettingsCooldownsHeader"],

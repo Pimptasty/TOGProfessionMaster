@@ -339,6 +339,18 @@ local SETTINGS_DEFAULTS = {
         -- derived from the current player when forming "Faction-GuildName" keys.
         sisterGuilds = {},
     },
+    -- Realm-scoped: shared across every character on the same realm. Guild-only
+    -- sync mode is a per-SERVER capability (some private/emulated servers — e.g.
+    -- Whitemane — never deliver addon messages over WHISPER), so it belongs to
+    -- the realm, not one character: enable it once and all your alts on that
+    -- realm inherit it.
+    realm = {
+        -- When ON, DeltaSync's directed channels (QUERY/RESPONSE/DELTA/OFFER/
+        -- HANDSHAKE) are rerouted from WHISPER onto GUILD. OFF by default;
+        -- toggled in Settings → General → Sync, applied via DS:InitGuildMode in
+        -- Scanner:InitDeltaSync (feature-detected; needs DeltaSync MINOR >= 13).
+        guildMode = false,
+    },
     char = {
         -- Shopping list: [spellId] = { quantity = N }
         shoppingList    = {},

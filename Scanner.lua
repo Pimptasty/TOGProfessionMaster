@@ -356,6 +356,31 @@ function Scanner:InitDeltaSync()
     self.DS         = DS
     self.GuildRoster = GuildRoster
 
+    -- Guild-only sync mode (DeltaSync MINOR >= 13). Some private/emulated servers
+    -- (e.g. Whitemane) never deliver addon messages over WHISPER, which silently
+    -- breaks DeltaSync's directed channels (QUERY/RESPONSE/DELTA/OFFER/HANDSHAKE):
+    -- hash offers go out on GUILD fine, but the follow-up fetch over WHISPER never
+    -- lands, so sync gets stuck at "broadcasts out, nothing back". Guild-mode
+    -- reroutes those directed channels onto GUILD (each message stamped with its
+    -- intended recipient so other members drop it). Opt-in, OFF by default,
+    -- persisted in our realm-scoped DB and re-applied on every login. Must be
+    -- called AFTER DS:Initialize (channel config has to exist first). Feature-
+    -- detected — an older embedded DeltaSync simply has no guild-mode and single-
+    -- guild behaviour is unchanged. User toggle: Settings → General → Sync.
+    if DS.InitGuildMode then
+        local realm = Ace.db and Ace.db.realm
+        DS:InitGuildMode({
+            enabled   = (realm and realm.guildMode) and true or false,
+            onChanged = function(on)
+                if Ace.db and Ace.db.realm then
+                    Ace.db.realm.guildMode = on and true or false
+                end
+            end,
+        })
+        addon:DebugPrint("Scanner: guild-mode available; enabled =",
+            (realm and realm.guildMode) and true or false)
+    end
+
     -- Cross-guild ("sister roster") sync. Opt-in / feature-detected: a DeltaSync
     -- build without RosterSync, or a LibGuildRoster without the sister API,
     -- simply skips this and single-guild sync is unaffected. RosterSync owns the

@@ -415,6 +415,28 @@ function ProfitTab:RedrawCurrentTable()
     end
 end
 
+-- Jump from a profit row to the Crafting tab and open that recipe there. The row
+-- click is a hardware event, so the tab switch → CraftingTab:Draw →
+-- Engine:OpenProfession (CastSpellByName) chain runs in the allowed protected
+-- context, exactly like clicking the Crafting tab header itself.
+function ProfitTab:GoToCrafting(row)
+    if not (row and row.recipeId) then return end
+    local mw = addon.MainWindow
+    local CT = addon.CraftingTab
+    if not (mw and mw.tabs and CT and CT.RequestSelect) then return end
+
+    -- The Crafting tab can be hidden (profile.hideCraftingTab); without it there's
+    -- nowhere to navigate, so tell the user how to re-enable it.
+    local profile = addon.lib and addon.lib.db and addon.lib.db.profile
+    if profile and profile.hideCraftingTab then
+        addon:Print(L["ProfitCraftTabHidden"])
+        return
+    end
+
+    CT:RequestSelect(row.profId, row.recipeId)
+    mw:SelectTab("crafting")
+end
+
 -- The row count lives in the main window's bottom-left status bar rather than
 -- an in-tab label — it keeps the toolbar area clean and avoids fighting AceGUI
 -- Label's fontstring re-anchoring. Only write it while the Profit Planner tab
@@ -1014,16 +1036,26 @@ function ProfitTab:BuildPool(parent)
             if row.source and row.age and row.age > 14 * 24 * 60 * 60 then
                 GameTooltip:AddLine("Price is stale (>14 days old)", 1, 0.82, 0)
             end
-            
+
+            -- Click hints (the whole tooltip in this tab is intentionally plain
+            -- English, matching the lines above).
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine("Click to open in the Crafting tab", 0.4, 0.8, 1)
+            GameTooltip:AddLine("Shift-click to link in chat", 0.6, 0.6, 0.6)
+
             GameTooltip:Show()
         end)
         f:SetScript("OnLeave", function() GameTooltip:Hide() end)
         f:SetScript("OnClick", function(rf)
             local row = rf._row
             if not row then return end
+            -- Shift-click keeps the standard "link item in chat" behaviour.
             if IsShiftKeyDown() and row.itemLink and HandleModifiedItemClick then
                 HandleModifiedItemClick(row.itemLink)
+                return
             end
+            -- Plain click jumps to the Crafting tab and opens this recipe there.
+            ProfitTab:GoToCrafting(row)
         end)
 
         self._pool[#self._pool + 1] = f

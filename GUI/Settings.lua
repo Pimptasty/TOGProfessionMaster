@@ -28,6 +28,38 @@ end
 
 local function og(s) return "|c" .. (addon.BrandColor or "ffFF8000") .. s .. "|r" end
 
+-- ---------------------------------------------------------------------------
+-- Crafter-alert sound / visual options — the two dropdowns in the Alerts section.
+-- ---------------------------------------------------------------------------
+-- Sounds: raw numeric SoundKit IDs, the same style the alert already used
+-- (PlaySound(878)). All are core kits present on every supported Classic flavor
+-- (verified IDs). Selecting one in the dropdown previews it. Option labels are
+-- kept in English deliberately — they're short game terms most addons don't
+-- translate; the dropdown's own name/desc ARE localized.
+local ALERT_SOUNDS = {
+    [878]  = "Chime (default)",
+    [8960] = "Ready Check",
+    [8959] = "Raid Warning",
+    [5274] = "Auction Bell",
+    [3081] = "Whisper",
+    [3175] = "Map Ping",
+}
+local ALERT_SOUND_SORTING = { 878, 8960, 8959, 5274, 3081, 3175 }
+
+-- Visuals: a style key the alert renderer (addon:FireCrafterAlertVisual) maps to
+-- a canned WoW effect — a full-screen flash in one of three tints, or a taskbar/
+-- window flash (FlashClientIcon, which flashes the game in the OS taskbar — handy
+-- when you're alt-tabbed).
+local ALERT_VISUALS = {
+    flashGold   = "Screen flash \226\128\148 gold",
+    flashRed    = "Screen flash \226\128\148 red",
+    flashBlue   = "Screen flash \226\128\148 blue",
+    raidWarning = "Raid-warning banner",
+    errorText   = "Error text (top center)",
+    taskbar     = "Taskbar flash (alt-tabbed)",
+}
+local ALERT_VISUAL_SORTING = { "flashGold", "flashRed", "flashBlue", "raidWarning", "errorText", "taskbar" }
+
 local function countPairs(t)
     local n = 0
     if type(t) == "table" then for _ in pairs(t) do n = n + 1 end end
@@ -432,13 +464,55 @@ local OPTIONS = {
             set   = function(_, val) Ace.db.profile.crafterAlert = val end,
         },
 
-        crafterAlertSuppressAV = {
-            name  = L["SettingsCrafterAlertSuppressAV"],
-            desc  = L["SettingsCrafterAlertSuppressAVDesc"],
+        crafterAlertSuppressAudio = {
+            name  = L["SettingsCrafterAlertSuppressAudio"],
+            desc  = L["SettingsCrafterAlertSuppressAudioDesc"],
             type  = "toggle",
             order = 17,
-            get   = function() return Ace.db.profile.crafterAlertSuppressAV end,
-            set   = function(_, val) Ace.db.profile.crafterAlertSuppressAV = val end,
+            get   = function() return Ace.db.profile.crafterAlertSuppressAudio end,
+            set   = function(_, val) Ace.db.profile.crafterAlertSuppressAudio = val end,
+        },
+
+        crafterAlertSuppressVisual = {
+            name  = L["SettingsCrafterAlertSuppressVisual"],
+            desc  = L["SettingsCrafterAlertSuppressVisualDesc"],
+            type  = "toggle",
+            order = 17.5,
+            get   = function() return Ace.db.profile.crafterAlertSuppressVisual end,
+            set   = function(_, val) Ace.db.profile.crafterAlertSuppressVisual = val end,
+        },
+
+        crafterAlertSound = {
+            name     = L["SettingsCrafterAlertSound"],
+            desc     = L["SettingsCrafterAlertSoundDesc"],
+            type     = "select",
+            order    = 17.25,
+            values   = ALERT_SOUNDS,
+            sorting  = ALERT_SOUND_SORTING,
+            -- Greyed out while alert audio is muted above — the pick has no effect then.
+            disabled = function() return Ace.db.profile.crafterAlertSuppressAudio end,
+            get      = function() return Ace.db.profile.crafterAlertSound or 878 end,
+            set      = function(_, val)
+                Ace.db.profile.crafterAlertSound = val
+                PlaySound(val)   -- preview the chosen sound
+            end,
+        },
+
+        crafterAlertVisual = {
+            name     = L["SettingsCrafterAlertVisual"],
+            desc     = L["SettingsCrafterAlertVisualDesc"],
+            type     = "select",
+            order    = 17.75,
+            values   = ALERT_VISUALS,
+            sorting  = ALERT_VISUAL_SORTING,
+            disabled = function() return Ace.db.profile.crafterAlertSuppressVisual end,
+            get      = function() return Ace.db.profile.crafterAlertVisual or "flashGold" end,
+            set      = function(_, val)
+                Ace.db.profile.crafterAlertVisual = val
+                if addon.FireCrafterAlertVisual then
+                    addon:FireCrafterAlertVisual(val, L["AlertCrafterOnlineBanner"])  -- preview
+                end
+            end,
         },
 
         crafterAlertSuppressLogin = {
@@ -597,7 +671,7 @@ local OPTIONS = {
         },
 
         useTSM = {
-            name  = "Use TradeSkillMaster pricing",
+            name  = "Use TSM pricing",
             desc  = "When TradeSkillMaster is installed, allow TOGPM to use TSM live price sources for profit views. Off by default.",
             type  = "toggle",
             width = "full",
@@ -788,7 +862,22 @@ local OPTIONS = {
                     Ace.db.char.cooldownAlerts = {}
                 end
                 addon:Print(L["MsgGuildDataPurged"])
-                if addon.MainWindow then addon.MainWindow:Refresh() end
+                -- Drop the Browser's pre-built recipe cache or the redraw below
+                -- re-renders the just-purged data (the cache isn't keyed on the
+                -- DB, so clearing gdb alone doesn't invalidate it). Cooldowns /
+                -- Missing Recipes have no cache and reflect the empty DB directly.
+                if addon.BrowserTab and addon.BrowserTab.InvalidateCache then
+                    addon.BrowserTab:InvalidateCache()
+                end
+                addon:DebugPrint("Purge(guild): cleared gdb + invalidated browser cache; activeTab=",
+                    addon.MainWindow and addon.MainWindow.activeTab or "?")
+                -- QueueRefresh, NOT Refresh: this func runs inside the AceConfig
+                -- execute-button handler. A synchronous Refresh() lays out the
+                -- main window's AceGUI tab mid-callback, which silently fails to
+                -- apply — the purged rows stay on screen until a clean redraw
+                -- (e.g. a tab switch). QueueRefresh defers the redraw one tick out
+                -- of this handler — exactly what it exists for.
+                if addon.MainWindow then addon.MainWindow:QueueRefresh() end
             end,
         },
 
@@ -819,7 +908,13 @@ local OPTIONS = {
                     gdb.factions[charKey]         = nil
                 end
                 addon:Print(L["MsgOwnDataPurged"])
-                if addon.MainWindow then addon.MainWindow:Refresh() end
+                -- See purgeGuildData: clear the Browser's recipe cache, and use
+                -- QueueRefresh (not Refresh) to defer the redraw out of this
+                -- button-click handler so AceGUI lays the tab out correctly.
+                if addon.BrowserTab and addon.BrowserTab.InvalidateCache then
+                    addon.BrowserTab:InvalidateCache()
+                end
+                if addon.MainWindow then addon.MainWindow:QueueRefresh() end
             end,
         },
 
@@ -990,6 +1085,8 @@ end
 -- ---------------------------------------------------------------------------
 
 local syncLogWin
+local syncLogRefreshTimer
+local syncLogLiveHooked
 
 function addon:OpenSyncLog()
     if syncLogWin then
@@ -998,60 +1095,139 @@ function addon:OpenSyncLog()
         return
     end
 
+    -- Persist position + size across /reload, like the main window / settings.
+    Ace.db.char.frames = Ace.db.char.frames or {}
+    local st = Ace.db.char.frames.syncLog or {}
+    Ace.db.char.frames.syncLog = st
+    if not st.width  then st.width  = 560 end
+    if not st.height then st.height = 420 end
+
     local win = AceGUI:Create("Frame")
     win:SetTitle(L["SyncLogTitle"])
-    win:SetWidth(520)
-    win:SetHeight(380)
     win:SetLayout("Fill")
+    win:SetStatusTable(st)                 -- AceGUI reads/writes pos+size here
     win:SetCallback("OnClose", function(w) w:Hide() end)
     syncLogWin = win
 
-    local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetLayout("List")
-    win:AddChild(scroll)
-    win._scroll = scroll
+    -- Read-only, COPYABLE multiline box. Plain text (no |c colour codes) so it
+    -- pastes cleanly. Created ONCE and reused — RefreshSyncLog just calls SetText,
+    -- so it's never released/recreated (cheap, keeps scroll position).
+    local eb = AceGUI:Create("MultiLineEditBox")
+    if eb then
+        eb:SetLabel(" ")   -- reserve the header-row height above the edit area
+        eb:DisableButton(true)
+        eb:SetFullWidth(true)
+        eb:SetFullHeight(true)
+        win:AddChild(eb)
+        win._editbox = eb
+
+        -- Column headers, positioned to line up with the DATA columns. A single
+        -- space-padded header string can't align in WoW's proportional font — the
+        -- short header words ("Time"/"Event"…) are far narrower than the digit-heavy
+        -- rows, so everything downstream drifts left (what the user saw). Instead we
+        -- MEASURE where each column starts — in the box's own font, on a
+        -- representative "send …" row — and anchor a separate header label at that x
+        -- just above the text. Left-anchored so it holds on resize. Exact for "send"
+        -- rows, within a couple px for "recv". Raw-frame use is safe: this box is
+        -- created once for the persistent window and never recycled.
+        if eb.editBox and eb.frame then
+            local fp, fsz, ff = eb.editBox:GetFont()
+            local li = 0
+            if eb.editBox.GetTextInsets then li = (eb.editBox:GetTextInsets()) or 0 end
+            local meas = eb.frame:CreateFontString(nil, "OVERLAY")
+            meas:SetFont(fp, fsz, ff); meas:Hide()
+            local function wof(s) meas:SetText(s); return meas:GetStringWidth() end
+            local TS = "2026-07-01 10:27:50"   -- 19-char stand-in for the timestamp
+            -- Column start offsets = width of the row prefix up to each column, in
+            -- the box font; must mirror RefreshSyncLog's "%s  %-7s  %9s  %-18s  %s".
+            -- Peer/Detail get a +10px nudge: the measured offsets assume a tiny "0 B"
+            -- size, but real sizes are wider (more digits), which pushes those two
+            -- data columns right — so the headers need to shift right to match.
+            local cols = {
+                { "Time",   0 },
+                { "Event",  wof(("%s  "):format(TS)) },
+                { "Size",   wof(("%s  %-7s  "):format(TS, "send")) },
+                { "Peer",   wof(("%s  %-7s  %9s  "):format(TS, "send", "0 B")) + 10 },
+                { "Detail", wof(("%s  %-7s  %9s  %-18s  "):format(TS, "send", "0 B", "guild")) + 10 },
+            }
+            win._hdrFS = win._hdrFS or {}
+            for i, c in ipairs(cols) do
+                local h = win._hdrFS[i] or eb.frame:CreateFontString(nil, "OVERLAY")
+                h:SetFont(fp, fsz, ff)
+                h:SetText(c[1])
+                h:ClearAllPoints()
+                h:SetPoint("BOTTOMLEFT", eb.editBox, "TOPLEFT", li + c[2], 3)
+                win._hdrFS[i] = h
+            end
+        end
+
+        -- Read-only without losing copyability: select + Ctrl+C don't fire
+        -- OnTextChanged(userInput); typing / paste / delete do — revert those.
+        local edit = eb.editBox
+        if edit then
+            edit:HookScript("OnTextChanged", function(box, userInput)
+                if userInput then
+                    box:SetText(syncLogWin and syncLogWin._syncLogText or "")
+                    box:ClearFocus()
+                end
+            end)
+        end
+    end
+
+    -- Live refresh while open. SyncLog:Record / :Clear fire SYNC_LOG_UPDATED;
+    -- debounce it (sync bursts fire many times a second) and skip when closed.
+    -- Registered once for the addon's lifetime.
+    if not syncLogLiveHooked then
+        syncLogLiveHooked = true
+        addon:RegisterCallback("SYNC_LOG_UPDATED", function()
+            if not (syncLogWin and syncLogWin.frame and syncLogWin.frame:IsShown()) then return end
+            if syncLogRefreshTimer then return end
+            syncLogRefreshTimer = C_Timer.NewTimer(0.3, function()
+                syncLogRefreshTimer = nil
+                addon:RefreshSyncLog()
+            end)
+        end)
+    end
 
     addon:RefreshSyncLog()
 end
 
 function addon:RefreshSyncLog()
-    if not syncLogWin or not syncLogWin._scroll then return end
-    local scroll = syncLogWin._scroll
-    scroll:ReleaseChildren()
+    if not (syncLogWin and syncLogWin._editbox) then return end
 
     local SL = addon.SyncLog
+    local text
     if not SL then
-        local lbl = AceGUI:Create("Label")
-        lbl:SetText(L["SyncLogModuleMissing"])
-        lbl:SetFullWidth(true)
-        scroll:AddChild(lbl)
-        return
+        text = L["SyncLogModuleMissing"]
+    else
+        local entries = SL:GetEntries()   -- newest first
+        if #entries == 0 then
+            text = L["SyncLogNoEntries"]
+        else
+            local lines = {}
+            for _, e in ipairs(entries) do
+                -- tonumber guard: pre-enrichment persisted entries stored the itemKey
+                -- string in the bytes slot, so coerce before formatting to avoid a
+                -- string-vs-number error on old logs.
+                local nbytes  = tonumber(e.bytes) or 0
+                local sizeStr = nbytes > 0 and (nbytes .. " B") or "-"
+                -- Detail prefers the explicit field; falls back to a legacy string
+                -- bytes slot (old entries stored the itemKey there) so they still read.
+                local detail  = e.detail or (type(e.bytes) == "string" and e.bytes) or ""
+                -- Columns: time | event | SIZE | peer | detail — fixed widths so the
+                -- copyable text stays aligned; size right-justified for every row.
+                lines[#lines + 1] = string.format("%s  %-7s  %9s  %-18s  %s",
+                    date("%Y-%m-%d %H:%M:%S", e.ts), e.event, sizeStr, e.peer, detail)
+            end
+            text = table.concat(lines, "\n")
+        end
     end
 
-    local entries = SL:GetEntries()
-    if #entries == 0 then
-        local lbl = AceGUI:Create("Label")
-        lbl:SetText(L["SyncLogNoEntries"])
-        lbl:SetFullWidth(true)
-        scroll:AddChild(lbl)
-        return
-    end
-
-    local EVENT_COLOUR = {
-        send    = "|cff00ccff",
-        recv    = "|cff00ff00",
-        request = "|cffffff00",
-        version = "|cffaaaaaa",
-    }
-
-    for _, e in ipairs(entries) do
-        local col  = EVENT_COLOUR[e.event] or "|cffffffff"
-        local ts   = date("%Y-%m-%d %H:%M:%S", e.ts)
-        local line = string.format("%s  %s%-8s|r  %s  %d B",
-            ts, col, e.event, e.peer, e.bytes)
-        local lbl = AceGUI:Create("Label")
-        lbl:SetText(line)
-        lbl:SetFullWidth(true)
-        scroll:AddChild(lbl)
+    -- Skip the SetText when unchanged so we never disturb an active selection
+    -- (e.g. the user mid-copy while a live update fires). Store the canonical
+    -- text so the read-only hook reverts edits to it.
+    if syncLogWin._syncLogText ~= text then
+        syncLogWin._syncLogText = text
+        syncLogWin._editbox:SetText(text)
     end
 end

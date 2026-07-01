@@ -93,6 +93,13 @@ local function findProf(professions, name)
     end
 end
 
+local function findProfById(professions, profId)
+    if not profId then return nil end
+    for _, p in ipairs(professions) do
+        if p.profId == profId then return p end
+    end
+end
+
 local function activeProfession(professions, info)
     if info then return info.name end
     local saved = savedProf()
@@ -127,6 +134,42 @@ function CraftingTab:Draw(container)
     end
 
     local active = activeProfession(professions, info)
+
+    -- A pending Profit-Planner jump (CraftingTab:RequestSelect) targets one
+    -- recipe's profession. Resolve it up front so the dropdown, the no-window
+    -- auto-open, and (if a different profession is open) the SWITCH all use the
+    -- target rather than the last-used profession.
+    local pend      = self._pendingSelect
+    local pendEntry = pend and findProfById(professions, pend.profId) or nil
+    if pend and pend.profId and not pendEntry then
+        -- The target profession isn't one this character has (the Profit row
+        -- belonged to an alt) — drop the request and say so once.
+        self._pendingSelect = nil
+        pend = nil
+        if not self._pendingNotified then
+            self._pendingNotified = true
+            addon:Print(L["ProfitCraftNotKnownHere"])
+        end
+    elseif pendEntry then
+        active = pendEntry.name
+        setSavedProf(pendEntry.name)
+    end
+
+    -- _autoOpenOnUserNav marks a hardware-event navigation (a Crafting-tab click
+    -- or a Profit-Planner jump) — the only context where OpenProfession's
+    -- CastSpellByName is allowed. Read+consume it once here so both the no-window
+    -- auto-open below and the wrong-profession switch share the one-shot gate.
+    local allowAuto = self._autoOpenOnUserNav
+    self._autoOpenOnUserNav = nil
+    local inCombat  = UnitAffectingCombat and UnitAffectingCombat("player")
+
+    -- Wrong profession already open for a pending jump → switch to the target.
+    -- This Draw runs synchronously inside the jump's hardware event, so the cast
+    -- is permitted; the async re-show redraws with the target open and FillList →
+    -- TrySelectPending resolves the selection then.
+    if allowAuto and pendEntry and info and info.profId ~= pendEntry.profId and not inCombat then
+        if Engine then Engine:OpenProfession(pendEntry.castName or pendEntry.name) end
+    end
 
     local list, order = {}, {}
     for _, p in ipairs(professions) do
@@ -164,11 +207,10 @@ function CraftingTab:Draw(container)
         -- FireUpdate → Draw → not info). The prompt + button below are the
         -- always-safe fallback — the button's OnClick is a hardware event — and
         -- cover combat (can't cast) and the suppressed-auto-open case.
-        local allowAuto = self._autoOpenOnUserNav
-        self._autoOpenOnUserNav = nil    -- consume: one auto-open per navigation
+        -- allowAuto / inCombat are read+consumed once near the top of Draw so the
+        -- pending-jump profession switch and this auto-open share the one-shot gate.
         local activeEntry = active and findProf(professions, active) or nil
-        if allowAuto and Engine and activeEntry
-           and not (UnitAffectingCombat and UnitAffectingCombat("player")) then
+        if allowAuto and Engine and activeEntry and not inCombat then
             Engine:OpenProfession(activeEntry.castName or active)
         end
 
@@ -605,6 +647,118 @@ function CraftingTab:FillList()
     scroll.content:SetHeight(math.max(1, #rows * ROW_HEIGHT))
     if scroll.FixScroll then scroll:FixScroll() end
     self:UpdateVirtualRows()
+
+    -- Resolve a pending Profit-Planner jump once the (correct) profession's list
+    -- is built. No-op when nothing is pending.
+    self:TrySelectPending()
+end
+
+-- ===========================================================================
+-- Cross-tab "open this recipe" (Profit Planner → Crafting)
+-- ===========================================================================
+-- Arm a request to select a specific recipe once its profession is open. Called
+-- from a hardware-event click in the Profit Planner, which then switches to this
+-- tab; the selection resolves in FillList — immediately if the right profession
+-- is already open, otherwise after OpenProfession's async TRADE_SKILL_SHOW lands
+-- and the list rebuilds. profId/recipeId are the Profit Planner's keys (gdb /
+-- recipeDB spell id); TrySelectPending bridges them to the live list ids.
+function CraftingTab:RequestSelect(profId, recipeId)
+    if not recipeId then return end
+    self._pendingSelect   = { profId = profId, recipeId = recipeId }
+    self._pendingNotified  = nil
+    -- Clear list filters that could hide the target row so the jump always lands
+    -- on a visible, selected recipe (the toolbar widgets rebuild from these on
+    -- the imminent redraw).
+    self._search   = ""
+    self._haveOnly = false
+    -- Safety net: if the profession never opens (cast ignored / window blocked),
+    -- don't leave the request armed to fire on an unrelated later open.
+    if C_Timer and C_Timer.After then
+        local token = self._pendingSelect
+        C_Timer.After(3, function()
+            if self._pendingSelect == token then self._pendingSelect = nil end
+        end)
+    end
+end
+
+-- Map an engine recipe id (the crafted ITEM id on Vanilla, a spell id elsewhere)
+-- to the gdb/spell id the Profit Planner keys on, mirroring CraftingEngine's
+-- recipeMeta remap so the two id spaces compare correctly.
+local function canonicalRecipeId(profId, rid)
+    if not rid then return rid end
+    if addon.recipeDB and addon.recipeDB[profId] and addon.recipeDB[profId][rid] then
+        return rid
+    end
+    local sid = addon.GetSpellIdForCraftedItem and addon:GetSpellIdForCraftedItem(profId, rid)
+    return sid or rid
+end
+
+function CraftingTab:TrySelectPending()
+    local pend = self._pendingSelect
+    if not (pend and self._rows and self._scroll) then return end
+
+    local Engine = addon.CraftingEngine
+    local info = Engine and Engine:GetOpenInfo() or nil
+    if not info then return end          -- profession not open yet → wait
+    -- A target profession was requested but a different one is open: the switch
+    -- is still in flight (OpenProfession → async SHOW). Wait for that redraw.
+    if pend.profId and info.profId and pend.profId ~= info.profId then return end
+
+    for idx, e in ipairs(self._rows) do
+        if e.kind == "recipe"
+           and (e.recipeId == pend.recipeId
+                or canonicalRecipeId(info.profId, e.recipeId) == pend.recipeId) then
+            self._selIndex      = e.index
+            self._selId         = e.recipeId
+            self._qty           = 1
+            self._pendingSelect = nil
+            self:ScrollToRow(idx)
+            self:UpdateVirtualRows()
+            self:RefreshDetail()
+            return
+        end
+    end
+
+    -- Right profession open with a populated list, but the recipe isn't in it —
+    -- this character doesn't know it (an alt does). Stop retrying and say so
+    -- once. An EMPTY list means the window is still populating, so keep waiting.
+    if #self._rows > 0 then
+        self._pendingSelect = nil
+        if not self._pendingNotified then
+            self._pendingNotified = true
+            addon:Print(L["ProfitCraftNotKnownHere"])
+        end
+    end
+end
+
+-- Bring row `idx` (1-based position in self._rows) into view, near the top with
+-- a little context above. No-op when the list already fits or the row is fully
+-- visible. Scroll math matches AceGUI ScrollFrame:SetScroll (value 0..1000).
+function CraftingTab:ScrollToRow(idx)
+    local scroll = self._scroll
+    if not (scroll and idx and scroll.scrollframe and scroll.content) then return end
+    local view  = scroll.scrollframe:GetHeight() or 0
+    local total = scroll.content:GetHeight() or 0
+    if view <= 0 or total <= view then return end
+
+    local status    = scroll.status or scroll.localstatus
+    local curOffset = (status and status.offset) or 0
+    local rowTop    = (idx - 1) * ROW_HEIGHT
+    local rowBot    = rowTop + ROW_HEIGHT
+
+    local target
+    if rowTop < curOffset then
+        target = rowTop - ROW_HEIGHT * 2            -- a couple rows of context above
+    elseif rowBot > curOffset + view then
+        target = rowBot - view + ROW_HEIGHT * 2
+    else
+        return                                       -- already fully visible
+    end
+
+    target = math.max(0, math.min(target, total - view))
+    local value = target / (total - view) * 1000
+    if scroll.SetScroll then scroll:SetScroll(value) end
+    if scroll.scrollbar and scroll.scrollbar.SetValue then scroll.scrollbar:SetValue(value) end
 end
 
 -- ===========================================================================

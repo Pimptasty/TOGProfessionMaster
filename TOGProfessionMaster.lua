@@ -257,10 +257,22 @@ local SETTINGS_DEFAULTS = {
         --     removed from the main window entirely.
         craftingHandsOff  = true,
         hideCraftingTab   = false,
-        -- Crafter alerts
-        crafterAlert              = true,
-        crafterAlertSuppressAV    = false,
-        crafterAlertSuppressLogin = true,
+        -- Crafter alerts. Audio (sound) and visual (screen flash) are
+        -- independently suppressible. crafterAlertSuppressAV is the legacy
+        -- combined key, kept only so MigrateCrafterAlertAV can carry an old
+        -- "suppress both" preference onto the two split keys on first load.
+        crafterAlert                  = true,
+        crafterAlertSuppressAudio     = false,
+        crafterAlertSuppressVisual    = false,
+        crafterAlertSuppressAV        = false,
+        crafterAlertSuppressLogin     = true,
+        -- Which canned WoW sound / on-screen visual the crafter-online alert
+        -- uses. Sound is a numeric SoundKit ID (878 = the original chime);
+        -- visual is a style key handled by addon:FireCrafterAlertVisual
+        -- ("flashGold" = the original full-screen gold flash). Chosen from the
+        -- two dropdowns in Settings → Alerts.
+        crafterAlertSound             = 878,
+        crafterAlertVisual            = "flashGold",
         -- Cooldown-ready alerts: when ON, ping + chat-print as soon as a
         -- "!"-armed cooldown expires on any of your characters. The
         -- "suppress in instances" sibling defaults ON so raids / dungeons /
@@ -512,6 +524,17 @@ function Ace:OnInitialize()
     -- re-broadcasting forward. Idempotent — no-op once clean.
     addon:RemoveBogusCooldowns()
 
+    -- v0.11.0: split the combined "Suppress sound & flash" crafter-alert
+    -- toggle into independent audio + visual keys. If the user previously
+    -- enabled the old combined suppress, carry that onto both new keys, then
+    -- neutralize the legacy key so it can't re-apply after they toggle one
+    -- channel back on. Idempotent — only the `true` state is worth migrating.
+    if self.db.profile.crafterAlertSuppressAV then
+        self.db.profile.crafterAlertSuppressAudio  = true
+        self.db.profile.crafterAlertSuppressVisual = true
+        self.db.profile.crafterAlertSuppressAV     = false
+    end
+
     -- Apply UI Language Override (if any) before any GUI module reads L.
     -- This mutates the AceLocale table in place; all subsequent reads pick
     -- up the chosen locale automatically. No-op when override is "auto".
@@ -749,24 +772,72 @@ function addon:OnCrafterCameOnline(charKey)
     end
 
     if alerted then
-        local suppress = Ace.db.profile.crafterAlertSuppressAV
-                      or (Ace.db.profile.crafterAlertSuppressLogin and not addon.loginInitialized)
-        if not suppress then
-            PlaySound(878)
-            if not addon._crafterAlertFlash then
-                local flash = CreateFrame("Frame", "TOGPMCrafterAlertFlash", UIParent)
-                flash:SetAllPoints(UIParent)
-                flash:SetFrameStrata("FULLSCREEN_DIALOG")
-                local tex = flash:CreateTexture(nil, "BACKGROUND")
-                tex:SetAllPoints(flash)
-                tex:SetTexture("Interface\\FullScreenTextures\\LowHealth")
-                tex:SetVertexColor(1, 0.82, 0)
-                flash:Hide()
-                addon._crafterAlertFlash = flash
-            end
-            UIFrameFlash(addon._crafterAlertFlash, 0.5, 0.5, 3, false, 0, 0)
+        -- Login-burst suppression still mutes both channels together; the
+        -- audio and visual channels are otherwise independently controlled.
+        local suppressLogin = Ace.db.profile.crafterAlertSuppressLogin
+                          and not addon.loginInitialized
+
+        local playAudio  = not suppressLogin and not Ace.db.profile.crafterAlertSuppressAudio
+        local playVisual = not suppressLogin and not Ace.db.profile.crafterAlertSuppressVisual
+
+        if playAudio then
+            PlaySound(Ace.db.profile.crafterAlertSound or 878)
+        end
+
+        if playVisual then
+            addon:FireCrafterAlertVisual(Ace.db.profile.crafterAlertVisual or "flashGold",
+                L["AlertCrafterOnlineBanner"])
         end
     end
+end
+
+-- Render one crafter-online visual alert. Style keys map to canned WoW effects:
+-- flashGold / flashRed / flashBlue = a brief full-screen edge flash in that tint
+-- (flashGold is the original), taskbar = FlashClientIcon, which flashes the game
+-- window in the OS taskbar (only visible when you're alt-tabbed out). Also called
+-- as the live preview when the visual is picked in Settings. The flash frame +
+-- texture are created once and recolored per fire.
+local VISUAL_FLASH_COLORS = {
+    flashGold = { 1, 0.82, 0 },
+    flashRed  = { 1, 0.15, 0.15 },
+    flashBlue = { 0.25, 0.55, 1 },
+}
+function addon:FireCrafterAlertVisual(style, message)
+    if style == "taskbar" then
+        -- Only flashes the game in the OS taskbar when WoW is NOT the focused
+        -- window (i.e. you're alt-tabbed) — a no-op while you're looking at the game.
+        if FlashClientIcon then FlashClientIcon() end
+        return
+    end
+    if style == "raidWarning" then
+        -- Big center-top banner text, the raid-warning slot. Always visible.
+        if RaidNotice_AddMessage and RaidWarningFrame then
+            local ci = (ChatTypeInfo and ChatTypeInfo["RAID_WARNING"]) or { r = 1, g = 0.5, b = 0 }
+            RaidNotice_AddMessage(RaidWarningFrame, message or "Guild crafter online", ci)
+        end
+        return
+    end
+    if style == "errorText" then
+        -- Top-center UI error text (the "Not enough mana" slot). Always visible.
+        if UIErrorsFrame and UIErrorsFrame.AddMessage then
+            UIErrorsFrame:AddMessage(message or "Guild crafter online", 1, 0.82, 0)
+        end
+        return
+    end
+    local color = VISUAL_FLASH_COLORS[style] or VISUAL_FLASH_COLORS.flashGold
+    if not addon._crafterAlertFlash then
+        local flash = CreateFrame("Frame", "TOGPMCrafterAlertFlash", UIParent)
+        flash:SetAllPoints(UIParent)
+        flash:SetFrameStrata("FULLSCREEN_DIALOG")
+        local tex = flash:CreateTexture(nil, "BACKGROUND")
+        tex:SetAllPoints(flash)
+        tex:SetTexture("Interface\\FullScreenTextures\\LowHealth")
+        flash:Hide()
+        addon._crafterAlertFlash    = flash
+        addon._crafterAlertFlashTex = tex
+    end
+    addon._crafterAlertFlashTex:SetVertexColor(color[1], color[2], color[3])
+    UIFrameFlash(addon._crafterAlertFlash, 0.5, 0.5, 3, false, 0, 0)
 end
 
 function Ace:OnPlayerLogout()

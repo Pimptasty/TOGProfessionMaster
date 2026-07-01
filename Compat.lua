@@ -60,6 +60,14 @@ else
               lootable, link, filtered, noValue, itemId =
               GetContainerItemInfo(bag, slot)
         if not texture then return nil end
+        -- Older Classic/TBC builds return only the first 7 values here (no itemID),
+        -- so `itemId` comes back nil. Callers that key on .itemID — e.g. the cooldown
+        -- supply-mail bag scan (CdMail_CountItemInBags) — then match nothing and report
+        -- "you have no <item> in your bags" even when you do. Derive the id from the
+        -- item link so .itemID is always populated on every supported client.
+        if not itemId and link then
+            itemId = tonumber(link:match("item:(%d+)"))
+        end
         return {
             iconFileID  = texture,
             stackCount  = count,

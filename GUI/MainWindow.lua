@@ -673,7 +673,11 @@ end
 -- ---------------------------------------------------------------------------
 
 function MainWindow:Refresh()
-    if not self.frame or not self.tabs then return end
+    if not self.frame or not self.tabs then
+        addon:DebugPrint("MainWindow:Refresh ABORT — frame=",
+            self.frame and "set" or "nil", "tabs=", self.tabs and "set" or "nil")
+        return
+    end
 
     -- Defer the refresh while any toolbar dropdown's pullout is open.
     -- Releasing the tab's children tears down the Dropdown widget,
@@ -683,8 +687,21 @@ function MainWindow:Refresh()
     -- (either by picking a value or clicking elsewhere) is the natural
     -- gating event. addon.GUI.IsAnyDropdownPulloutOpen lives in
     -- GUI/SharedWidgets.lua and walks AceGUI's global pullout pool.
-    if addon.GUI and addon.GUI.IsAnyDropdownPulloutOpen
-       and addon.GUI.IsAnyDropdownPulloutOpen() then
+    -- Defer ONLY while one of OUR OWN dropdown pullouts is open (releasing the
+    -- tab's children would shut it mid-pick). Two guards against the bug that
+    -- froze refreshes indefinitely — purge/sync never redrawing until a manual
+    -- tab switch:
+    --   1. Scope to our window frame. The AceGUI30PulloutN frames are GLOBAL,
+    --      shared across every AceGUI-3.0 addon, so a foreign or leaked-shown
+    --      pullout used to make the old global check return true forever.
+    --   2. Cap the retries, so even our own open pullout can't hang us.
+    local rootFrame = self.frame and self.frame.frame
+    if rootFrame and addon.GUI and addon.GUI.IsAnyDropdownPulloutOpen
+       and addon.GUI.IsAnyDropdownPulloutOpen(rootFrame)
+       and (self._refreshDeferrals or 0) < 8 then
+        self._refreshDeferrals = (self._refreshDeferrals or 0) + 1
+        addon:DebugPrint("MainWindow:Refresh DEFERRED — our dropdown pullout open (",
+            self._refreshDeferrals, "/8); re-try in 0.25s")
         if self._refreshTimer then self._refreshTimer:Cancel() end
         self._refreshTimer = C_Timer.NewTimer(0.25, function()
             self._refreshTimer = nil
@@ -692,7 +709,9 @@ function MainWindow:Refresh()
         end)
         return
     end
+    self._refreshDeferrals = 0
 
+    addon:DebugPrint("MainWindow:Refresh — ReleaseChildren + DrawTab(", self.activeTab, ")")
     self.tabs:ReleaseChildren()
     self:DrawTab(self.activeTab, self.tabs)
 end
@@ -701,11 +720,13 @@ end
 -- so AceGUI layout isn't called mid-callback.  Rapid back-to-back data
 -- updates (multiple guild members syncing at once) collapse into one redraw.
 function MainWindow:QueueRefresh()
+    addon:DebugPrint("MainWindow:QueueRefresh — scheduling Refresh in 0.05s")
     if self._refreshTimer then
         self._refreshTimer:Cancel()
     end
     self._refreshTimer = C_Timer.NewTimer(0.05, function()
         self._refreshTimer = nil
+        addon:DebugPrint("MainWindow:QueueRefresh — timer fired -> Refresh()")
         self:Refresh()
     end)
 end

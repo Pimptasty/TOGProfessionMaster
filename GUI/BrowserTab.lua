@@ -532,6 +532,8 @@ end
 -- ---------------------------------------------------------------------------
 
 function BrowserTab:Draw(container)
+    addon:DebugPrint("BrowserTab:Draw — prof=", self._selectedProfId,
+        "view=", self._viewMode, "cacheKeys=", self._listCache and "(table)" or "nil")
     self._container = container
     container:SetLayout("List")
 
@@ -1311,6 +1313,17 @@ function BrowserTab:GetFullList(profId, viewMode, showAll)
     return full
 end
 
+-- Wipe the entire list cache. Call when guild data is removed wholesale — e.g.
+-- the Settings "Purge all guild data" / "Purge my character data" buttons — so a
+-- subsequent Draw rebuilds from the now-empty DB on a cache miss instead of
+-- re-rendering stale pre-purge entries. (Ongoing sync UPDATES go through Warm(),
+-- which overwrites keys in place so the open tab never blanks mid-rewarm; a purge
+-- is destructive, so clearing — and thus blanking to the real empty state — is
+-- the correct behavior here.)
+function BrowserTab:InvalidateCache()
+    self._listCache = {}
+end
+
 -- Pre-warm the cache in the background (invisible, chunked via addon.Warmer) so
 -- opening the tab — and switching professions within it — is instant. Warms the
 -- default guild view for All Professions plus each profession the guild has data
@@ -1320,7 +1333,24 @@ end
 function BrowserTab:Warm()
     local gdb = GetGuildDb()
     if not gdb then return end
-    addon.Warmer:Clear()   -- supersede any in-flight warm so we don't pile up
+
+    -- A full build is sliced across frames (BuildFullList yields), so on a busy
+    -- guild it can take longer than the rewarm interval. DON'T Clear + restart an
+    -- in-flight build — that's why the cache never caught up during continuous
+    -- sync: every rewarm killed the running build before it finished, so it only
+    -- completed in a quiet moment like /reload. Instead, if a build is already
+    -- running, mark it dirty and let it finish; the completion sentinel re-warms
+    -- exactly once so the cache ends up current without piling up or restarting.
+    if self._warmInFlight then
+        self._warmDirty = true
+        addon:DebugPrint("BrowserTab:Warm — build in flight; marked dirty")
+        return
+    end
+    self._warmInFlight = true
+    self._warmDirty    = false
+    addon:DebugPrint("BrowserTab:Warm — starting build")
+
+    addon.Warmer:Clear()   -- belt-and-suspenders; nothing of ours should be queued
     self._listCache = self._listCache or {}
     local cache = self._listCache
     local viewMode, showAll = "guild", false
@@ -1329,6 +1359,12 @@ function BrowserTab:Warm()
         addon.Warmer:Queue(function()
             cache[listCacheKey(profId, viewMode, showAll)] =
                 BuildFullList(profId, viewMode, { showAll = showAll })
+            -- Re-render the open tab as each profession's cache lands (coalesced
+            -- via QueueRefresh) so freshly-synced data appears without a manual
+            -- tab/view switch or /reload. No-ops when the window is closed.
+            if addon.MainWindow and addon.MainWindow.QueueRefresh then
+                addon.MainWindow:QueueRefresh()
+            end
         end)
     end
 
@@ -1342,6 +1378,20 @@ function BrowserTab:Warm()
     for profId in pairs(gdb.recipes or {}) do
         if not queued[profId] then queue(profId); queued[profId] = true end
     end
+
+    -- Completion sentinel: runs after every profession above finishes. Releases
+    -- the in-flight flag and, if more guild data arrived mid-build, kicks off
+    -- exactly one more build so the cache converges on the latest gdb.
+    addon.Warmer:Queue(function()
+        self._warmInFlight = false
+        if self._warmDirty then
+            addon:DebugPrint("BrowserTab:Warm — build complete (dirty -> re-warm)")
+            self._warmDirty = false
+            self:Warm()
+        else
+            addon:DebugPrint("BrowserTab:Warm — build complete")
+        end
+    end)
 end
 
 function BrowserTab:FillList()
@@ -1363,6 +1413,10 @@ function BrowserTab:FillList()
     -- filter. Searching never rebuilds; it just re-filters this cached list.
     local full    = self:GetFullList(self._selectedProfId, self._viewMode, self._showAllRecipes)
     local recipes = FilterList(full, self._searchText)
+    local _crafters = 0
+    for _, e in ipairs(full) do _crafters = _crafters + (e.crafters and #e.crafters or 0) end
+    addon:DebugPrint("BrowserTab:FillList — prof=", self._selectedProfId,
+        "fullList=", #full, "afterSearch=", #recipes, "totalCrafters=", _crafters)
     if #recipes == 0 then
         local lbl = AceGUI:Create("Label")
         lbl:SetText(self._searchText ~= "" and L["NoMatchingRecipes"] or L["NoDataYet"])
@@ -2150,6 +2204,59 @@ function BrowserTab:ClearDetail()
 end
 
 -- ---------------------------------------------------------------------------
+-- Crafter-column text fitting
+-- ---------------------------------------------------------------------------
+-- Show as many crafter names as the column's CURRENT width allows, then a greyed
+-- "+N" for the rest — instead of a fixed 2 names. The crafter fontstring is
+-- anchored LEFT 186 / RIGHT -56, so it widens as the user drags the window;
+-- measuring against its live width (and recomputing on WINDOW_RESIZED) makes the
+-- summary fill the available space. Always shows at least one name (clipped by
+-- the word-wrap-off fontstring if even that overflows a very narrow column).
+local function fitCrafterText(label, crafters, colOnline, colOffline, colYou)
+    local total = #crafters
+    if total == 0 then
+        label:SetText("")
+        return
+    end
+
+    -- Pre-colour each name once.
+    local names = {}
+    for ci = 1, total do
+        local c   = crafters[ci]
+        local col = c.isYou and colYou or (c.online and colOnline or colOffline)
+        names[ci] = col .. c.name .. "|r"
+    end
+
+    -- Available width = the fontstring's laid-out width (tracks the window via its
+    -- LEFT/RIGHT anchors). Before the first layout it can read 0 — fall back to the
+    -- old fixed 2-name summary until a later paint has a real width.
+    local availW = label:GetWidth() or 0
+    if availW <= 1 then
+        local shown  = math.min(2, total)
+        local suffix = (total > shown) and (" |cffaaaaaa+" .. (total - shown) .. "|r") or ""
+        label:SetText(table.concat(names, ", ", 1, shown) .. suffix)
+        return
+    end
+
+    -- Greedily include names while the rendered string still fits, reserving room
+    -- for the "+N" suffix at each step. Adding a name grows the visible width
+    -- monotonically, so the first overflow is the stopping point.
+    local best
+    for n = 1, total do
+        local suffix    = (n < total) and (" |cffaaaaaa+" .. (total - n) .. "|r") or ""
+        local candidate = table.concat(names, ", ", 1, n) .. suffix
+        label:SetText(candidate)
+        if label:GetStringWidth() <= availW then
+            best = candidate
+        else
+            label:SetText(best or candidate)   -- at least one name (clipped if needed)
+            return
+        end
+    end
+    -- Everything fit; label already holds the full string from the final loop pass.
+end
+
+-- ---------------------------------------------------------------------------
 -- Virtual row update
 -- ---------------------------------------------------------------------------
 
@@ -2178,19 +2285,9 @@ function BrowserTab:UpdateVirtualRows()
             local colorHex = type(entry.itemLink) == "string" and entry.itemLink:match("|c(ff%x%x%x%x%x%x)|H")
             f.nameLbl:SetText(colorHex and ("|c" .. colorHex .. entry.name .. "|r") or entry.name)
 
-            -- Truncated crafter summary: show up to 2 names + "+N more"
-            local crafters = entry.crafters
-            local total    = #crafters
-            local MAX_SHOW = 2
-            local parts    = {}
-            for ci = 1, math.min(MAX_SHOW, total) do
-                local c   = crafters[ci]
-                local col = c.isYou and colorYou or (c.online and colorOnline or colorOffline)
-                table.insert(parts, col .. c.name .. "|r")
-            end
-            local suffix = (total > MAX_SHOW)
-                and (" |cffaaaaaa+" .. (total - MAX_SHOW) .. "|r") or ""
-            f.crafterLbl:SetText(table.concat(parts, ", ") .. suffix)
+            -- Crafter summary: fit as many names as the (drag-resizable) column
+            -- width allows, then a greyed "+N" for the rest.
+            fitCrafterText(f.crafterLbl, entry.crafters, colorOnline, colorOffline, colorYou)
 
             -- Bank button: show if the crafted item itself has bank stock
             local craftedId = not entry.isSpell and entry.id or nil
@@ -2250,15 +2347,85 @@ end
 -- behavior we want.)
 do
     local rewarmTimer
+    local burstStart          -- GetTime() of the first update since the last warm
+    local DEBOUNCE = 5        -- coalesce a burst of updates into one rebuild
+    local MAX_WAIT = 10       -- ...but never let continuous sync starve the rebuild
+    local function fireWarm()
+        rewarmTimer = nil
+        burstStart  = nil
+        BrowserTab:Warm()
+    end
     local function scheduleRewarm()
+        burstStart = burstStart or GetTime()
         if rewarmTimer then rewarmTimer:Cancel() end
-        rewarmTimer = C_Timer.NewTimer(10, function()
-            rewarmTimer = nil
-            BrowserTab:Warm()
-        end)
+        -- Trailing debounce, CAPPED by MAX_WAIT. The bug this fixes: the old code
+        -- cancelled + rescheduled a fixed 10s timer on EVERY GUILD_DATA_UPDATED,
+        -- so on an actively-syncing realm (updates arriving faster than the
+        -- debounce) Warm() never fired at all — the recipe cache was never
+        -- rebuilt, the Professions tab kept rendering the stale cache, and ONLY a
+        -- /reload (which clears the cache) showed new data. Switching tabs didn't
+        -- help because it just re-reads the same never-rebuilt cache. Capping the
+        -- wait guarantees a rebuild lands even under continuous guild traffic.
+        if GetTime() - burstStart >= MAX_WAIT then
+            fireWarm()
+        else
+            rewarmTimer = C_Timer.NewTimer(DEBOUNCE, fireWarm)
+        end
     end
     -- First warm a short while after load, once gdb + the roster have settled.
     C_Timer.After(8, function() BrowserTab:Warm() end)
-    -- Re-warm on guild/cross-guild data changes (debounced).
+    -- Re-warm on guild/cross-guild data changes (debounced, starvation-capped).
     addon:RegisterCallback("GUILD_DATA_UPDATED", scheduleRewarm)
+
+    -- Re-fit the crafter column when the window is dragged wider/narrower so the
+    -- visible-name count tracks the new width. The crafter fontstrings stretch
+    -- live via their LEFT/RIGHT anchors, but the name COUNT only recomputes when
+    -- the rows repaint — so nudge a repaint on the debounced resize callback.
+    addon:RegisterCallback("WINDOW_RESIZED", function()
+        local mw = addon.MainWindow
+        if mw and mw.frame and mw.activeTab == "browser" and BrowserTab._pool then
+            BrowserTab:UpdateVirtualRows()
+        end
+    end)
+
+    -- Roster online/offline transitions flip crafter-online status, which
+    -- BuildFullList bakes into the recipe-list cache (including the "an alt is
+    -- online" logic) — so a redraw alone won't reflect it; the cached list must be
+    -- rebuilt. Debounce roster events (login/logout bursts fire many at once) and,
+    -- ONLY while the Professions tab is actually on screen, invalidate + refresh so
+    -- someone going offline/online shows within ~2s instead of waiting for the next
+    -- data change or a /reload. Gating on visible keeps roster churn from wiping the
+    -- background pre-warm while the tab is closed.
+    local rosterRefreshTimer
+    local function browserVisible()
+        local mw = addon.MainWindow
+        return mw and mw.activeTab == "browser"
+            and mw.frame and mw.frame.frame and mw.frame.frame:IsShown()
+    end
+    local function scheduleRosterRefresh()
+        if rosterRefreshTimer or not browserVisible() then return end
+        rosterRefreshTimer = C_Timer.NewTimer(2, function()
+            rosterRefreshTimer = nil
+            if not browserVisible() then return end
+            BrowserTab:InvalidateCache()
+            if addon.MainWindow.QueueRefresh then addon.MainWindow:QueueRefresh() end
+        end)
+    end
+    -- The roster lib is resolved during Scanner init, which may be after this file
+    -- loads — register once it's available (retry alongside the first warm at +8s).
+    -- Registrant is BrowserTab (not the lib) so we don't collide with the
+    -- crafter-online alert, which registers OnMemberOnline on the lib itself.
+    local rosterHooked = false
+    local function hookRoster()
+        if rosterHooked then return true end
+        local GR = addon.Scanner and addon.Scanner.GuildRoster
+        if not (GR and GR.RegisterCallback) then return false end
+        rosterHooked = true
+        GR.RegisterCallback(BrowserTab, "OnMemberOnline",  scheduleRosterRefresh)
+        GR.RegisterCallback(BrowserTab, "OnMemberOffline", scheduleRosterRefresh)
+        return true
+    end
+    if not hookRoster() then
+        C_Timer.After(8, hookRoster)
+    end
 end

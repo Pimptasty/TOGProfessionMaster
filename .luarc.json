@@ -143,6 +143,11 @@
         "UISpecialFrames",
         "UIFrameFlash",
         "PlaySound",
+        "FlashClientIcon",
+        "RaidNotice_AddMessage",
+        "RaidWarningFrame",
+        "UIErrorsFrame",
+        "ChatTypeInfo",
 
         "ElvUI",
 

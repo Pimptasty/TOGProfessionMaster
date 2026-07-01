@@ -100,6 +100,40 @@ function HashManager:ComputeCraftersHash(DS, gdb, profId)
     return DS:ComputeHash(map)
 end
 
+--- Per-(profession, player) sub-hash map for the optional player-level drill-down
+--- under crafters:<profId>. ADDITIVE: the crafters:<profId> profession hash above is
+--- unchanged (the compat linchpin — old and new clients must compute it identically),
+--- this is a SEPARATE parallel derivation from the same gdb.recipes, bucketed by
+--- crafter instead of summed. No new stored state:
+---   * h  — content hash of that player's recipeId set in this profession, normalized
+---           to {recipeId → true} exactly like ComputeCraftersHash so attribution /
+---           relay tag changes never move it.
+---   * ts — that player's last scan time for this profession, already stored at
+---           gdb.lastScan[charKey][profId] and already propagated on the crafters leaf.
+--- Used by BOTH sides: the responder ships it; the requester recomputes its own and
+--- diffs h to find which players to pull (newest ts first).
+function HashManager:GetProfessionPlayerSubhashes(DS, gdb, profId)
+    local buckets = {}   -- charKey → { [recipeIdStr] = true }
+    if gdb.recipes and gdb.recipes[profId] then
+        for recipeId, rd in pairs(gdb.recipes[profId]) do
+            if rd.crafters then
+                for ck, v in pairs(rd.crafters) do
+                    if v then
+                        local b = buckets[ck]
+                        if not b then b = {}; buckets[ck] = b end
+                        b[tostring(recipeId)] = true
+                    end
+                end
+            end
+        end
+    end
+    local out = {}
+    for ck, set in pairs(buckets) do
+        out[ck] = { h = DS:ComputeHash(set), ts = lastScan(gdb, ck, profId) }
+    end
+    return out
+end
+
 -- v0.7.0: ComputeRecipeMetaHash removed — recipe metadata isn't synced anymore.
 -- The shipped addon.recipeDB carries name/icon/reagents/links, identical on
 -- every client that ships the same addon version, so there's no per-leaf hash

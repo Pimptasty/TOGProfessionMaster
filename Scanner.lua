@@ -298,6 +298,27 @@ function Scanner:InitDeltaSync()
                 for _, itemKey in ipairs(baseline.keys) do
                     Scanner:BroadcastLeafToGuild(itemKey)
                 end
+            elseif baseline.type == "player-subhashes" and baseline.profId then
+                -- Per-player drill-down under crafters:<profId>: send the per-player
+                -- hash list so the requester pulls only the players it differs on.
+                Scanner:BroadcastPlayerSubhashes(baseline.profId)
+            elseif baseline.type == "player-leaf" and baseline.profId
+                   and type(baseline.players) == "table" then
+                -- Scoped fetch: emit ONE partial crafters:<profId> leaf PER requested
+                -- player, in the order asked (the requester sorts newest-scan first).
+                -- Separate messages — rather than one combined leaf — so AceCommQueue
+                -- can interleave them with other traffic instead of one big payload
+                -- blocking the pipe head-of-line, and the requester's tab paints
+                -- incrementally as each player's leaf lands. Same total wire bytes;
+                -- better congestion behavior and UX. Each leaf rides the existing
+                -- format + merge (own-scan replace when the player IS the sender,
+                -- union otherwise — now decided cleanly per single-player leaf).
+                local profKey = "crafters:" .. tostring(baseline.profId)
+                for _, ck in ipairs(baseline.players) do
+                    if type(ck) == "string" then
+                        Scanner:BroadcastLeafToGuild(profKey, { [ck] = true })
+                    end
+                end
             elseif baseline.type == "sister-pull" then
                 -- A sister-guild peer is requesting our full guild dataset for
                 -- cross-guild sharing. BILATERAL CONSENT GATE: serve only when
@@ -488,8 +509,20 @@ function Scanner:InitDeltaSync()
                 -- Roll-up mismatch — ask for per-character sub-hashes.
                 addon:DebugPrint("Scanner:   → sending subhashes RequestData to", sender)
                 DS:RequestData(sender, { type = "subhashes", parent = itemKey })
+            elseif itemKey:sub(1, 9) == "crafters:" then
+                -- Profession mismatch. If the peer is drill-down capable (we've seen a
+                -- subsync-marked payload from them), fetch the per-player sub-hashes so
+                -- we pull only the players whose recipes differ — newest first. Else
+                -- fall back to the whole-profession leaf (legacy / old peer).
+                local profId = tonumber(itemKey:sub(10))
+                if profId and Scanner:PeerSupportsSubSync(sender) then
+                    addon:DebugPrint("Scanner:   → sending player-subhashes RequestData to", sender, "for prof", profId)
+                    DS:RequestData(sender, { type = "player-subhashes", profId = profId })
+                else
+                    addon:DebugPrint("Scanner:   → sending leaf-data RequestData to", sender, "for", itemKey)
+                    DS:RequestData(sender, { type = "leaf-data", keys = { itemKey } })
+                end
             elseif itemKey:sub(1, 11) == "recipemeta:"
-                or itemKey:sub(1, 9)  == "crafters:"
                 or itemKey:sub(1, 9)  == "cooldown:"
                 or itemKey:sub(1, 13) == "accountchars:" then
                 addon:DebugPrint("Scanner:   → sending leaf-data RequestData to", sender, "for", itemKey)
@@ -1130,7 +1163,7 @@ function Scanner:ScanTradeSkillInto(charKey, _isLinked)
 
     local gdb = addon:GetGuildDb()
     if not gdb then return end
-    self:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, recipeIds)
+    local changed = self:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, recipeIds)
 
     -- Stamp the content-derived scan time used by HashManager.
     if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
@@ -1144,6 +1177,11 @@ function Scanner:ScanTradeSkillInto(charKey, _isLinked)
 
     local count = 0; for _ in pairs(recipeIds) do count = count + 1 end
     addon:DebugPrint("Scanner: scanned", skillName, "for", charKey, "—", count, "recipes")
+
+    -- Refresh the UI for our own freshly-scanned recipes, but only when the set
+    -- actually changed, so crafting's repeated TRADE_SKILL_UPDATE events don't
+    -- churn the active tab.
+    if changed then self:RefreshAfterLocalScan(charKey) end
 end
 
 --- Merge a freshly-scanned recipe-id set into the flat recipe DB.
@@ -1166,11 +1204,17 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
     local tag = addon:GetCurrentGuildTag()
 
     -- Remove charKey from any existing recipe's crafter set for this prof
-    -- (covers recipes the character has unlearned since the last scan).
+    -- (covers recipes the character has unlearned since the last scan). Snapshot
+    -- which recipes this char crafted BEFORE the scan so we can report whether
+    -- anything actually changed — callers refresh the UI only on a real change,
+    -- which avoids redraw churn from identical re-scans (the repeated
+    -- TRADE_SKILL_UPDATE events WoW fires while crafting all re-run this merge).
+    local oldSet = {}
     if not gdb.recipes[profId] then
         gdb.recipes[profId] = {}
     else
-        for _, rd in pairs(gdb.recipes[profId]) do
+        for rid, rd in pairs(gdb.recipes[profId]) do
+            if rd.crafters and rd.crafters[charKey] then oldSet[rid] = true end
             if rd.crafters then rd.crafters[charKey] = nil end
         end
     end
@@ -1183,6 +1227,7 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
     -- from. addon.recipeDB on other clients (TBC+) keys directly by spell
     -- and the lookup is a no-op (profMeta[recipeId] hits, no remap).
     local profMeta = addon.recipeDB and addon.recipeDB[profId]
+    local newSet = {}
     for recipeId in pairs(recipeIds) do
         local effectiveId = recipeId
         if profMeta and not profMeta[recipeId] then
@@ -1196,6 +1241,30 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
         end
         if not rd.crafters then rd.crafters = {} end
         rd.crafters[charKey] = tag
+        newSet[effectiveId] = true
+    end
+
+    -- Report whether this char's crafted-recipe set actually changed (symmetric
+    -- diff of old vs new). Lets callers skip a UI refresh on a no-op re-scan.
+    for rid in pairs(newSet) do if not oldSet[rid] then return true end end
+    for rid in pairs(oldSet) do if not newSet[rid] then return true end end
+    return false
+end
+
+-- Refresh the UI after a LOCAL scan that actually changed our recipe set. A
+-- local scan commits to gdb but (unlike a received sync) raised no UI signal, so
+-- the Browser's recipe-list cache never rewarmed and the Professions tab —
+-- especially the cached "All Professions" view — kept serving a stale list until
+-- a /reload or an incoming peer update. Wiping the list cache makes the next draw
+-- rebuild from current gdb; firing GUILD_DATA_UPDATED runs the same redraw +
+-- background rewarm path a peer update uses. Caller gates this on a real change
+-- so repeated identical re-scans (TRADE_SKILL_UPDATE while crafting) don't churn.
+function Scanner:RefreshAfterLocalScan(charKey)
+    if addon.BrowserTab and addon.BrowserTab.InvalidateCache then
+        addon.BrowserTab:InvalidateCache()
+    end
+    if addon.callbacks then
+        addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey)
     end
 end
 
@@ -1258,7 +1327,7 @@ function Scanner:ScanCraftSkillInto(charKey)
 
     local gdb = addon:GetGuildDb()
     if not gdb then return end
-    self:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank or 0, skillMax or 300, recipeIds)
+    local changed = self:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank or 0, skillMax or 300, recipeIds)
 
     -- Stamp content-derived scan time for hash leaves.
     if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
@@ -1272,6 +1341,9 @@ function Scanner:ScanCraftSkillInto(charKey)
 
     local count = 0; for _ in pairs(recipeIds) do count = count + 1 end
     addon:DebugPrint("Scanner: scanned craft", skillName, "for", charKey, "—", count, "recipes")
+
+    -- See ScanTradeSkillInto: refresh the UI only when the recipe set changed.
+    if changed then self:RefreshAfterLocalScan(charKey) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -1719,37 +1791,55 @@ function Scanner:BroadcastHashes()
         return
     end
 
-    DS:BroadcastItemHashes(delta, "BULK")
+    local _ok, offerBytes = DS:BroadcastItemHashes(delta, "BULK")
     -- Snapshot the FULL current map (not just delta) so future broadcasts
     -- diff against everything we've ever broadcast, not just the last delta.
     self._lastBroadcastHashes = current
     self._lastBroadcastAt = now
     addon:DebugPrint("Scanner: broadcast", count, "leaf hashes")
     if addon.callbacks then
-        addon.callbacks:Fire("SYNC_SENT", "guild", count)
+        addon.callbacks:Fire("SYNC_SENT", "guild", tonumber(offerBytes) or 0, "offer: " .. count .. " hashes")
     end
+end
+
+--- " (Leatherworking)" suffix for a profId, so a sync-log line reads
+--- "crafters:165 (Leatherworking)" instead of the bare, unreadable "crafters:165".
+--- Empty string when the id is nil or unknown, so it's safe to concatenate blindly.
+function Scanner:_ProfSuffix(profId)
+    local name = profId and addon.PROF_NAMES and addon.PROF_NAMES[profId]
+    return name and (" (" .. name .. ")") or ""
 end
 
 --- v0.2.0 — Broadcast a single leaf's data to the guild on the DATA channel.
 -- Called in response to a leaf-data request from a peer.  All peers on the
 -- guild channel see the broadcast; any with stale data for the same leaf
 -- merges via OnGuildDataReceived.
-function Scanner:BroadcastLeafToGuild(itemKey)
+-- @param players  optional set { [charKey]=true } passed through to BuildLeafPayload
+--   to ship a SCOPED crafters:<profId> leaf (just those crafters) in response to a
+--   player-leaf drill-down request. nil = full leaf (legacy whole-profession reply).
+function Scanner:BroadcastLeafToGuild(itemKey, players)
     local DS = self.DS
     if not DS then return end
     if not addon:GetGuildKey() then return end  -- never broadcast no-guild data
-    local payload = self:BuildLeafPayload(itemKey)
+    local payload = self:BuildLeafPayload(itemKey, players)
     if not payload then
         addon:DebugPrint("Scanner: BroadcastLeafToGuild — no content for", itemKey)
         return
     end
-    DS:BroadcastData(payload, "GUILD", "BULK")
+    local _ok, sentBytes = DS:BroadcastData(payload, "GUILD", "BULK")
     if DS.p2p then
         DS.p2p:OnItemCompleted(itemKey, addon:GetCharacterKey())
     end
-    addon:DebugPrint("Scanner: broadcast leaf", itemKey)
+    addon:DebugPrint("Scanner: broadcast leaf", itemKey, players and "(scoped)" or "")
     if addon.callbacks then
-        addon.callbacks:Fire("SYNC_SENT", "guild", itemKey)
+        local detail = itemKey .. self:_ProfSuffix(tonumber(itemKey:match("^crafters:(%d+)")))
+        if players then
+            local names = {}
+            for ck in pairs(players) do names[#names + 1] = ck end
+            table.sort(names)
+            detail = detail .. " {" .. table.concat(names, ", ") .. "}"
+        end
+        addon.callbacks:Fire("SYNC_SENT", "guild", tonumber(sentBytes) or 0, detail)
     end
 end
 
@@ -1781,14 +1871,73 @@ function Scanner:BroadcastSubhashesToGuild(parentItemKey)
         type      = "subhashes",
         parent    = parentItemKey,
         subhashes = subhashes,
+        subsync   = 1,   -- presence beacon (see BuildLeafPayload)
     }
-    DS:BroadcastData(payload, "GUILD", "BULK")
+    local _ok, sentBytes = DS:BroadcastData(payload, "GUILD", "BULK")
     addon:DebugPrint("Scanner: broadcast subhashes for", parentItemKey)
+    if addon.callbacks then
+        addon.callbacks:Fire("SYNC_SENT", "guild", tonumber(sentBytes) or 0, "subhashes: " .. parentItemKey)
+    end
+end
+
+--- Respond to a player-subhashes request: broadcast the per-(player) hash list for
+--- one profession so the requester diffs locally and pulls only the players whose
+--- recipe set differs (newest ts first). Sibling to BroadcastSubhashesToGuild, but
+--- for the optional crafters:<profId> drill-down level. GUILD broadcast so any peer
+--- with a stale view of these players merges for free. Old clients never send the
+--- "player-subhashes" request, so this only ever fires toward a new requester.
+function Scanner:BroadcastPlayerSubhashes(profId)
+    local DS = self.DS
+    if not DS then return end
+    if not addon:GetGuildKey() then return end
+    local gdb = addon:GetGuildDb()
+    if not gdb then return end
+    local players = addon.HashManager:GetProfessionPlayerSubhashes(DS, gdb, profId)
+    local nPlayers = 0
+    for _ in pairs(players) do nPlayers = nPlayers + 1 end
+    if nPlayers == 0 then
+        addon:DebugPrint("Scanner: BroadcastPlayerSubhashes — no crafters for prof", profId)
+        return
+    end
+    local payload = {
+        charKey   = addon:GetCharacterKey(),
+        guildKey  = addon:GetGuildKey(),
+        timestamp = GetServerTime(),
+        type      = "player-subhashes",
+        profId    = profId,
+        players   = players,
+        subsync   = 1,
+    }
+    local _ok, sentBytes = DS:BroadcastData(payload, "GUILD", "BULK")
+    addon:DebugPrint("Scanner: broadcast player-subhashes for prof", profId, "(", nPlayers, "players )")
+    if addon.callbacks then
+        addon.callbacks:Fire("SYNC_SENT", "guild", tonumber(sentBytes) or 0,
+            "player-subhashes: " .. profId .. self:_ProfSuffix(profId) .. " (" .. nPlayers .. " players)")
+    end
+end
+
+--- Has this peer advertised per-player drill-down capability? True once we've seen
+--- any payload carrying the subsync presence beacon from them (recorded in
+--- OnGuildDataReceived). Until then we use the whole-profession path — so the first
+--- profession from a peer syncs the legacy way and subsequent ones drill down.
+--- Keyed by normalized charKey to match OnGuildDataReceived's senderKey.
+function Scanner:PeerSupportsSubSync(peerName)
+    if not peerName or not self._subsyncPeers then return false end
+    local key = peerName
+    if self.GuildRoster and self.GuildRoster.NormalizeName then
+        key = self.GuildRoster:NormalizeName(peerName) or peerName
+    end
+    return self._subsyncPeers[key] and true or false
 end
 
 --- v0.2.0 — Build a wire payload containing one leaf's data.
 -- Returns nil when the local player has no content for itemKey.
-function Scanner:BuildLeafPayload(itemKey)
+-- @param players  optional set { [charKey]=true } — for a crafters:<profId> leaf,
+--   restrict the payload to just these crafters (the per-player drill-down's scoped
+--   leaf). nil = the full profession leaf (every crafter), the legacy behavior.
+--   The result is still a normal crafters:<profId> leaf, so old receivers merge it
+--   unchanged (union-add, or own-scan replace when the sender is among `players`).
+function Scanner:BuildLeafPayload(itemKey, players)
     local gdb = addon:GetGuildDb()
     if not gdb then return nil end
     local now = GetServerTime()
@@ -1798,6 +1947,12 @@ function Scanner:BuildLeafPayload(itemKey)
         guildKey  = addon:GetGuildKey(),
         timestamp = now,
         leaves    = {},
+        -- Presence beacon for the optional per-player drill-down. Old clients
+        -- ignore this field; new clients record the sender as drill-down capable
+        -- (Scanner._subsyncPeers) so future crafters mismatches fetch per player
+        -- instead of the whole profession. Version-independent on purpose — works
+        -- on raw/unpackaged clients where the .toc version is @project-version@.
+        subsync   = 1,
     }
     local lastScanOut = {}
     local entry = gdb.hashes and gdb.hashes[itemKey] or nil
@@ -1864,7 +2019,7 @@ function Scanner:BuildLeafPayload(itemKey)
             if rd.crafters and next(rd.crafters) then
                 local set = {}
                 for ck, v in pairs(rd.crafters) do
-                    if v then set[ck] = v end
+                    if v and (not players or players[ck]) then set[ck] = v end
                 end
                 if next(set) then
                     crafters[recipeId] = set
@@ -1883,7 +2038,7 @@ function Scanner:BuildLeafPayload(itemKey)
             local skillsOut = {}
             for ck, charSkills in pairs(gdb.skills) do
                 local s = charSkills[profId]
-                if s then
+                if s and (not players or players[ck]) then
                     skillsOut[ck] = { skillRank = s.skillRank, skillMax = s.skillMax }
                 end
             end
@@ -1898,7 +2053,7 @@ function Scanner:BuildLeafPayload(itemKey)
             local specsOut = {}
             for ck, charSpecs in pairs(gdb.specializations) do
                 local sid = charSpecs[profId]
-                if sid then specsOut[ck] = sid end
+                if sid and (not players or players[ck]) then specsOut[ck] = sid end
             end
             if next(specsOut) then payload.specializations = { [profId] = specsOut } end
         end
@@ -1906,7 +2061,7 @@ function Scanner:BuildLeafPayload(itemKey)
             for _, rd in pairs(gdb.recipes[profId]) do
                 for ck in pairs(rd.crafters or {}) do
                     local ls = gdb.lastScan[ck]
-                    if ls and ls[profId] then
+                    if ls and ls[profId] and (not players or players[ck]) then
                         if not lastScanOut[ck] then lastScanOut[ck] = {} end
                         lastScanOut[ck][profId] = ls[profId]
                     end
@@ -2265,6 +2420,15 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     -- nil for legacy payloads without a guildKey (merge falls back to ours).
     local senderTag = data.guildKey and addon:GuildTagFromKey(data.guildKey) or nil
 
+    -- Record per-player drill-down capability. Any payload carrying the subsync
+    -- presence beacon means this peer speaks the optional crafters:<profId> player
+    -- protocol, so future profession mismatches with them fetch per player instead
+    -- of the whole leaf. Runtime-only (rebuilt as payloads arrive after a /reload).
+    if data.subsync and senderKey then
+        Scanner._subsyncPeers = Scanner._subsyncPeers or {}
+        Scanner._subsyncPeers[senderKey] = true
+    end
+
     -- ── Subhashes response ─────────────────────────────────────────────────
     -- Peer broadcast their per-character sub-hashes for a roll-up parent.
     -- Compare locally, request individual leaves we differ on.
@@ -2300,10 +2464,54 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
             DS.p2p:OnItemCompleted(data.parent, sender)
         end
         if addon.callbacks then
-            addon.callbacks:Fire("SYNC_RECV", sender, bytes or 0)
+            addon.callbacks:Fire("SYNC_RECV", sender, bytes or 0,
+                "subhashes: " .. tostring(data.parent) .. " (" .. #toRequest .. " differ)")
         end
         addon:DebugPrint("Scanner: received", #toRequest, "differing subhashes for",
             data.parent, "from", sender)
+        return
+    end
+
+    -- ── Player-subhashes response ──────────────────────────────────────────
+    -- Peer sent the per-player hash list for one profession (the optional
+    -- crafters:<profId> drill-down). Recompute our own per-player hashes, diff,
+    -- and pull only the players we differ on — newest scan first so recent
+    -- activity lands quickest. The pulled data comes back as a scoped (partial)
+    -- crafters:<profId> leaf and merges through the existing leaf path.
+    if data.type == "player-subhashes" and data.profId and type(data.players) == "table" then
+        local profId = data.profId
+        local mine   = addon.HashManager:GetProfessionPlayerSubhashes(DS, gdb, profId)
+        local diffs  = {}
+        for ck, peerEntry in pairs(data.players) do
+            if type(ck) == "string" and type(peerEntry) == "table" and peerEntry.h then
+                local localEntry = mine[ck]
+                if not localEntry or localEntry.h ~= peerEntry.h then
+                    diffs[#diffs + 1] = { ck = ck, ts = tonumber(peerEntry.ts) or 0 }
+                end
+            end
+        end
+        -- Newest scan first.
+        table.sort(diffs, function(a, b) return a.ts > b.ts end)
+        local players = {}
+        for _, d in ipairs(diffs) do players[#players + 1] = d.ck end
+        if #players > 0 and DS and DS.RequestData then
+            if Scanner.GuildRoster and not Scanner.GuildRoster:IsOnline(sender) then
+                addon:DebugPrint("Scanner:   → skip player-leaf RequestData — peer offline:", sender)
+            else
+                DS:RequestData(sender, { type = "player-leaf", profId = profId, players = players })
+            end
+        end
+        -- Complete the parent crafters:<profId> session (mirrors the subhashes
+        -- branch completing its roll-up parent) so the P2P slot frees up.
+        if DS and DS.p2p then
+            DS.p2p:OnItemCompleted("crafters:" .. tostring(profId), sender)
+        end
+        if addon.callbacks then
+            addon.callbacks:Fire("SYNC_RECV", sender, bytes or 0,
+                "player-subhashes: " .. profId .. self:_ProfSuffix(profId) .. " (" .. #players .. " differ)")
+        end
+        addon:DebugPrint("Scanner: received player-subhashes for prof", profId, "—",
+            #players, "differing players from", sender)
         return
     end
 
@@ -2457,7 +2665,13 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     addon:DebugPrint("Scanner: merged leaves from", sender, "(", bytes or 0, "bytes)")
 
     if addon.callbacks then
-        addon.callbacks:Fire("SYNC_RECV", sender, bytes or 0)
+        local leafKeys = {}
+        for k in pairs(data.leaves) do
+            leafKeys[#leafKeys + 1] = k .. self:_ProfSuffix(tonumber(k:match("^crafters:(%d+)")))
+        end
+        table.sort(leafKeys)
+        addon.callbacks:Fire("SYNC_RECV", sender, bytes or 0,
+            "leaves: " .. table.concat(leafKeys, ", "))
         addon.callbacks:Fire("GUILD_DATA_UPDATED", senderKey)
     end
 end

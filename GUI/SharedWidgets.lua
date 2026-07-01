@@ -417,12 +417,42 @@ end
 -- widget owns the open pullout, which closes it mid-interaction (the
 -- user's complaint that prompted this helper). When this returns true,
 -- the refresh re-defers until the user picks a value or clicks away.
-function addon.GUI.IsAnyDropdownPulloutOpen()
+-- Walk a frame's parent chain; true if `root` is an ancestor (or is the frame).
+local function _frameIsWithin(frame, root)
+    local guard = 0
+    while frame and guard < 60 do
+        if frame == root then return true end
+        frame = frame:GetParent()
+        guard = guard + 1
+    end
+    return false
+end
+
+-- `root` (optional, a real UI frame): only count pullouts owned by a dropdown
+-- INSIDE `root`. The AceGUI30PulloutN frames are GLOBAL — shared by every
+-- AceGUI-3.0 addon on the client — so without scoping, ONE other addon's open
+-- (or leaked-shown) pullout makes this return true forever. That froze
+-- MainWindow:Refresh in an endless 0.25s defer loop: the active tab never redrew
+-- on purge / sync until a manual tab switch (which bypasses Refresh entirely).
+-- An open pullout is anchored to its dropdown's button, so we accept it only
+-- when that anchor frame lives under our window. With no `root`, behaves as the
+-- old global check (kept for any caller that genuinely wants any-pullout).
+function addon.GUI.IsAnyDropdownPulloutOpen(root)
     local i = 1
     while true do
         local f = _G["AceGUI30Pullout" .. i]
         if not f then return false end
-        if f:IsShown() then return true end
+        if f:IsShown() then
+            if not root then
+                return true
+            end
+            local _, relativeTo = f:GetPoint(1)
+            -- relativeTo is normally a frame; guard the rare string-name form
+            -- so the parent-chain walk never errors on a non-frame.
+            if type(relativeTo) == "table" and _frameIsWithin(relativeTo, root) then
+                return true
+            end
+        end
         i = i + 1
     end
 end

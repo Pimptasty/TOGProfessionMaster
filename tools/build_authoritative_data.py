@@ -79,6 +79,43 @@ PROF_FILES = {
     # them to PROF_NAMES on the Lua side.
 }
 
+# Profession-specialization spells. A spec-locked recipe scroll carries the
+# required spec as ItemSparse.RequiredAbility (e.g. Pattern: Molten Helm ->
+# 10658 Elemental Leatherworking). That id is the SAME spell IsSpellKnown
+# returns for the spec, so the addon can compare `requiredSpec` directly
+# against gdb.specializations. We whitelist the real spec spells here so that
+# any OTHER (non-spec) RequiredAbility never becomes a requiredSpec and wrongly
+# hides a recipe. Keep in sync with SPEC_SPELLS in Scanner.lua.
+SPEC_ABILITIES = {
+    10656, 10658, 10660,               # Leatherworking: Dragonscale / Elemental / Tribal
+    9788, 9787, 17039, 17040, 17041,   # Blacksmithing: Armorsmith / Weaponsmith / Sword / Hammer / Axe
+    20219, 20222,                      # Engineering: Gnomish / Goblin
+    26797, 26801, 26802,               # Tailoring: Mooncloth / Shadoweave / Spellfire
+}
+
+# Build labels whose recipes are still gated by a profession specialization.
+# The LW/BS/Engineering/Tailoring specs existed Vanilla..Wrath and were removed
+# by patch 4.0.1 (Cata), so Cata/MoP recipes have NO spec requirement.
+SPEC_ACTIVE_BUILDS = {"Vanilla", "TBC", "Wrath"}
+
+
+def build_spec_map(build: str, refresh: bool = False) -> dict:
+    """{ itemId -> spec spell } from a build's ItemSparse.RequiredAbility, limited
+    to real profession-spec spells (SPEC_ABILITIES). Only the Vanilla DBC extract
+    reliably populates RequiredAbility on these Vanilla-era patterns — the TBC and
+    Wrath extracts zero it out even though the spec still gated the recipe then —
+    so we compute the map from Vanilla once and reuse it for every pre-Cata build."""
+    out = {}
+    for row in fetch_csv("ItemSparse", build, refresh=refresh):
+        try:
+            iid = int(row.get("ID") or 0)
+            req = int(row.get("RequiredAbility") or 0)
+        except (TypeError, ValueError):
+            continue
+        if iid and req in SPEC_ABILITIES:
+            out[iid] = req
+    return out
+
 
 # ---------------------------------------------------------------------------
 # Effect text (enrichment for description search)
@@ -282,7 +319,7 @@ def localize_entries(out: dict, ctx: dict, build: str, locale: str,
     return res
 
 
-def extract_recipes_for_build(build: str, refresh: bool = False) -> tuple:
+def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool = False) -> tuple:
     """Pull every recipe for every profession in PROF_FILES from one build.
 
     Returns (out, ctx):
@@ -322,6 +359,10 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> tuple:
     #                        for scroll-taught recipes; falls back to the
     #                        SLA TrivialSkillLineRankLow heuristic for
     #                        trainer-taught recipes that have no scroll.
+    # spec_by_item ({itemId -> spec spell}) is passed in, not built here: it must
+    # come from the Vanilla DBC (see build_spec_map) because TBC/Wrath zero out
+    # RequiredAbility, and it's empty for Cata/MoP (specs removed in 4.0.1).
+    spec_by_item = spec_map or {}
     name_by_item = {}
     skill_rank_by_item = {}
     for row in item_sparse:
@@ -337,7 +378,7 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> tuple:
             if iid and rank > 0:
                 skill_rank_by_item[iid] = rank
         except (TypeError, ValueError):
-            continue
+            pass
 
     # Index by spellId so per-recipe joins are O(1).
     name_by_spell = {}
@@ -494,6 +535,12 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> tuple:
     # independent spell_points map as an argument.
     enchant_name_by_id = build_enchant_names(item_ench, spell_points)
 
+    # Spells this build must not emit (forward-ported DBC leftovers not
+    # obtainable in this flavour). See BUILD_EXCLUDED_SPELLS. `build` is the
+    # build-id string here, so resolve it back to its EXPANSION_BUILDS label.
+    _build_label = next((lbl for lbl, bid in EXPANSION_BUILDS if bid == build), build)
+    build_excluded = BUILD_EXCLUDED_SPELLS.get(_build_label, frozenset())
+
     # Build the per-profession recipe dicts.
     out: dict = {}
     for prof_id, (_filename, sub_skills) in PROF_FILES.items():
@@ -505,6 +552,8 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> tuple:
                 if sl not in skill_lines_for_prof:
                     continue
                 spell_id = int(row["Spell"])
+                if spell_id in build_excluded:
+                    continue
                 min_rank  = int(row.get("MinSkillLineRank") or 0)
                 # Three more thresholds (yellow / green / grey). Schemas vary:
                 # SkillLineAbility historically has TrivialSkillLineRankHigh
@@ -583,11 +632,19 @@ def extract_recipes_for_build(build: str, refresh: bool = False) -> tuple:
             ench_id = enchant_id_by_spell.get(spell_id)
             effect = enchant_name_by_id.get(ench_id) if ench_id else None
 
+            # Specialization gate: if any recipe-scroll item for this spell
+            # requires a profession spec (ItemSparse.RequiredAbility), ship it so
+            # the addon can hide recipes a character's spec can't learn.
+            spec_req = next((spec_by_item[i]
+                             for i in items_by_spell.get(spell_id, set())
+                             if i in spec_by_item), None)
+
             recipes[spell_id] = {
                 "name":           name_by_spell.get(spell_id, ""),
                 "difficulty":     difficulty,
                 "teaches":        spell_id,  # self-teaching; scanner returns spell id
                 "requiredSkill":  required_skill,
+                "requiredSpec":   spec_req,
                 "effect":         effect,
                 "reagents":       reagents_by_spell.get(spell_id, {}),
                 "items":          sorted(items_by_spell.get(spell_id, set())),
@@ -723,6 +780,30 @@ MANUAL_EXCLUDED_SPELLS = {
     12904,   # "Gnomish Ham Radio"
     30561,   # "Goblin Tonk Controller"
     30573,   # "Gnomish Tonk Controller"
+    818,     # Cooking "Basic Campfire" — not a craftable recipe at all: it's
+             # the learned ability that summons a cooking fire (no produced
+             # item). SkillLineAbility lists it under Cooking so it slipped in.
+             # Never obtainable as a "recipe" in any expansion. User-reported
+             # (Classic Era).
+}
+
+
+# Per-build exclusions: spells the client's DBC carries as forward-ported
+# content that ISN'T obtainable in THAT flavour. Unlike MANUAL_EXCLUDED_SPELLS
+# (dropped from every build), these are dropped only from the listed build's
+# extraction, so merge_expansions pins their `minExpansion` to the first
+# flavour where the recipe IS real — keeping them visible on later clients
+# while the runtime expansion gate hides them on the earlier one. Keyed by
+# EXPANSION_BUILDS label.
+BUILD_EXCLUDED_SPELLS = {
+    "Vanilla": {
+        30021,   # First Aid "Crystal Infused Bandage" — a TBC recipe (skill
+                 # 300→360, Netherweave-based). The 1.15.x Anniversary client
+                 # ships its SkillLineAbility row, but it isn't learnable in
+                 # Classic Era. Dropping it from the Vanilla build only pins
+                 # minExpansion=2, so it still ships to TBC clients.
+                 # User-reported (Classic Era).
+    },
 }
 
 
@@ -837,6 +918,10 @@ def clean_recipes(prof_id: int, recipes: dict) -> dict:
         # and renders "-" in the UI so the gap is visible.
         if entry.get("requiredSkill"):
             out["requiredSkill"] = entry["requiredSkill"]
+        # requiredSpec: profession-specialization spell required to learn the
+        # recipe (ItemSparse.RequiredAbility). Absent for spec-agnostic recipes.
+        if entry.get("requiredSpec"):
+            out["requiredSpec"] = entry["requiredSpec"]
         # effect: searchable effect text — enchant effect name (e.g. "Weapon
         # Damage +5") or formatted gear stats ("+10 Agility, +15 Stamina").
         # Omitted when there's nothing to show.
@@ -930,6 +1015,7 @@ def emit_core_file(prof_id: int, filename: str, recipes: dict, game: str):
             "reagents":   e["reagents"],
         }
         if e.get("requiredSkill"): c["requiredSkill"] = e["requiredSkill"]
+        if e.get("requiredSpec"):  c["requiredSpec"]  = e["requiredSpec"]
         if e.get("itemId"):        c["itemId"]        = e["itemId"]
         if e.get("craftedItemId"): c["craftedItemId"] = e["craftedItemId"]
         if e.get("phase"):         c["phase"]         = e["phase"]
@@ -1108,6 +1194,11 @@ def main():
     ap.add_argument("--builds", nargs="+", default=None,
                     help="Subset of expansion labels to merge "
                          "(default: all). Example: --builds Cata MoP")
+    ap.add_argument("--core-only", action="store_true",
+                    help="Only (re)emit the locale-independent _core files; "
+                         "skip the per-locale name files. Offline (no locale "
+                         "CSV fetch). Use when a change touches only _core "
+                         "fields such as requiredSpec.")
     args = ap.parse_args()
 
     builds = EXPANSION_BUILDS
@@ -1122,11 +1213,23 @@ def main():
     print(f"== Authoritative Data Builder ==", file=sys.stderr)
     print(f"   builds: {[b[0] for b in builds]}", file=sys.stderr)
 
+    # Spec-lock map = UNION of RequiredAbility across every pre-Cata build's
+    # ItemSparse. Needed because no single build has all of it: Vanilla carries
+    # the Vanilla-era LW/BS/Engineering patterns (TBC/Wrath zero those out), while
+    # the TBC-introduced Tailoring cloth specs only appear from the TBC build on.
+    # Reused for every pre-Cata build; Cata/MoP get none (specs removed in 4.0.1).
+    global_spec_map = {}
+    for _label, _bid in EXPANSION_BUILDS:
+        if _label in SPEC_ACTIVE_BUILDS:
+            global_spec_map.update(build_spec_map(_bid, refresh=args.refresh))
+    print(f"   spec-locked recipe scrolls: {len(global_spec_map)}", file=sys.stderr)
+
     per_build = []   # list of canonical enUS {profId: {spell: entry}} dicts
     per_ctx   = []   # parallel list of locale-resolution context per build
     for label, build_id in builds:
         print(f"\n[{label}] build {build_id}", file=sys.stderr)
-        out, ctx = extract_recipes_for_build(build_id, refresh=args.refresh)
+        spec_map = global_spec_map if label in SPEC_ACTIVE_BUILDS else {}
+        out, ctx = extract_recipes_for_build(build_id, spec_map=spec_map, refresh=args.refresh)
         per_build.append(out)
         per_ctx.append(ctx)
 
@@ -1168,7 +1271,11 @@ def main():
         core_total += g_core
         print(f"{game:<10} {'_core':<8} {g_core:>9}")
 
-        # Names, per locale.
+        # Names, per locale. Skipped in --core-only mode (requiredSpec and the
+        # other _core fields are locale-independent, so the name files are
+        # unchanged and don't need the per-locale CSV fetch).
+        if args.core_only:
+            continue
         by_locale = {"enUS": out}
         for loc in EXTRA_LOCALES:
             print(f"  [{label}] localizing {loc}", file=sys.stderr)

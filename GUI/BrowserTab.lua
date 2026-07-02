@@ -169,6 +169,9 @@ end
 -- State persisted across tab switches (reset on UI reload).
 BrowserTab._selectedProfId    = 0        -- 0 = All Professions (default)
 BrowserTab._selectedProfs     = nil      -- multi-select profession set
+BrowserTab._selectedTiers     = nil      -- skill-tier filter: set of enabled
+                                         -- SKILL_TIER_BANDS keys, or nil = all
+                                         -- tiers shown (see FilterTiers).
 BrowserTab._searchText        = ""
 BrowserTab._viewMode          = "guild"  -- "guild" | "mine" | "missing"
 BrowserTab._showAllRecipes    = false    -- v0.7.0 toolbar checkbox: when true,
@@ -258,6 +261,58 @@ local function FilterList(full, searchText)
             if not hay:find(term, 1, true) then keep = false; break end
         end
         if keep then out[#out + 1] = row end
+    end
+    return out
+end
+
+-- Skill-tier bands for the "Skill tier" toolbar filter. Each band is the
+-- 75-point training block named after its WoW trainer rank; `cap` is the
+-- inclusive top of the band (also the trainer skill cap for that rank), `min`
+-- the inclusive bottom. A recipe's band is the first one whose cap is >= its
+-- learn skill, so bands are disjoint and cover the whole 1..600 range. Only
+-- bands reachable on the running client (cap <= clientMaxSkill) are offered in
+-- the dropdown. `labelKey` is the AceLocale key for the rank name; the numeric
+-- range is appended in code (locale-independent) so translators only touch the
+-- name — see TierBandLabel below.
+local TIER_SELECT_ALL = "__tier_select_all__"
+local TIER_CLEAR_ALL  = "__tier_clear_all__"
+local SKILL_TIER_BANDS = {
+    { key = "apprentice",  labelKey = "TierApprentice",  min = 1,   cap = 75  },
+    { key = "journeyman",  labelKey = "TierJourneyman",  min = 76,  cap = 150 },
+    { key = "expert",      labelKey = "TierExpert",      min = 151, cap = 225 },
+    { key = "artisan",     labelKey = "TierArtisan",     min = 226, cap = 300 },
+    { key = "master",      labelKey = "TierMaster",      min = 301, cap = 375 },
+    { key = "grandmaster", labelKey = "TierGrandMaster", min = 376, cap = 450 },
+    { key = "illustrious", labelKey = "TierIllustrious", min = 451, cap = 525 },
+    { key = "zenmaster",   labelKey = "TierZenMaster",   min = 526, cap = 600 },
+}
+
+-- Localized display label for a band: "<rank name> (min-cap)". The rank name is
+-- localized; the numeric range is universal.
+local function TierBandLabel(band)
+    return ("%s (%d-%d)"):format(L[band.labelKey] or band.labelKey, band.min, band.cap)
+end
+
+-- Map a learn skill (requiredSkill, or difficulty[1] fallback) to a band key.
+local function TierBandKey(reqSkill)
+    if not reqSkill or reqSkill < 1 then return nil end
+    for _, band in ipairs(SKILL_TIER_BANDS) do
+        if reqSkill <= band.cap then return band.key end
+    end
+    return SKILL_TIER_BANDS[#SKILL_TIER_BANDS].key
+end
+
+-- Filter a full list by the enabled-tier set. `tiers` is a set of enabled band
+-- keys, or nil meaning "all tiers shown" (the default) — in which case the list
+-- is returned untouched. Recipes with no known learn skill (reqSkill nil) are
+-- always kept: we never hide something we can't classify.
+local function FilterTiers(full, tiers)
+    if not tiers then return full end
+    local out = {}
+    for _, row in ipairs(full) do
+        if not row.reqSkill or tiers[TierBandKey(row.reqSkill)] then
+            out[#out + 1] = row
+        end
     end
     return out
 end
@@ -483,9 +538,17 @@ local function BuildFullList(profId, viewMode, opts)
                     local tt = craftedItemId and addon:GetItemTooltipSearchText(craftedItemId)
                     if tt then hay = hay .. " " .. tt end
                     local itemLink = craftedItemId and select(2, GetItemInfo(craftedItemId))
+                    -- Learn skill for the tier filter: authoritative requiredSkill
+                    -- when shipped, else the orange (difficulty[1]) breakpoint —
+                    -- same fallback MissingRecipesTab uses. nil when neither is
+                    -- known; FilterTiers keeps those rows unconditionally.
+                    local meta      = profMetaDB[recipeId]
+                    local reqSkill  = meta.requiredSkill
+                                      or (meta.difficulty and meta.difficulty[1])
                     table.insert(list, {
                         id            = recipeId,
                         name          = name,
+                        reqSkill      = reqSkill,
                         effect        = effect,
                         profName      = profName,
                         profIconId    = profIconId,
@@ -557,13 +620,13 @@ function BrowserTab:Draw(container)
     container:AddChild(toolbar)
 
     local profEntries = GetProfDropdownEntries()
-    -- Initialize to "All Professions" (0) if no selection exists
+    -- Initialize to "All Professions" (0) if no selection exists. The saved
+    -- filter is account-wide (profile scope) and only honoured when the user has
+    -- opted in via the persistProfFilter setting. Storage goes through the shared
+    -- addon.GUI.PersistentChoice helper.
     if not self._selectedProfId then
-        if Ace.db.profile.persistProfFilter then
-            self._selectedProfId = Ace.db.profile.savedProfFilter or 0
-        else
-            self._selectedProfId = 0
-        end
+        local getProfFilter = addon.GUI.PersistentChoice("profile", "savedProfFilter", 0)
+        self._selectedProfId = (Ace.db.profile.persistProfFilter and getProfFilter()) or 0
     end
 
     local profOrder = {}
@@ -586,12 +649,111 @@ function BrowserTab:Draw(container)
     profDropdown:SetCallback("OnValueChanged", function(_w, _e, value)
         self._selectedProfId = value
         if Ace.db.profile.persistProfFilter then
-            Ace.db.profile.savedProfFilter = value
+            local _, setProfFilter = addon.GUI.PersistentChoice("profile", "savedProfFilter")
+            setProfFilter(value)
         end
         self:RefreshList()
     end)
     addon.GUI.AttachTooltip(profDropdown, "Profession Filter", "Pick a profession to filter the recipe list.")
     toolbar:AddChild(profDropdown)
+
+    local spTier = AceGUI:Create("Label"); spTier:SetWidth(8); toolbar:AddChild(spTier)
+
+    -- Skill-tier multi-select filter. Same native AceGUI multiselect Dropdown as
+    -- the AH Profit tab's Professions picker: the pullout stays open while
+    -- ticking tiers, and Select All / Clear All ride at the top as button-like
+    -- toggle rows. Only tiers reachable on this client version are offered.
+    -- The filter runs post-cache (in FillList → FilterTiers) so changing it is a
+    -- cheap re-filter, never a rebuild.
+    local clientMaxSkill
+    if     addon.isVanilla then clientMaxSkill = 300
+    elseif addon.isTBC     then clientMaxSkill = 375
+    elseif addon.isWrath   then clientMaxSkill = 450
+    elseif addon.isCata    then clientMaxSkill = 525
+    else                        clientMaxSkill = 600 end
+
+    -- Hydrate the saved tier selection once per session (state resets on reload).
+    -- { __none = true } is the Clear All marker → an empty enabled set; any other
+    -- non-empty table restores its keys; absent/nil leaves the default (all on).
+    if not self._tiersHydrated then
+        self._tiersHydrated = true
+        local getTiers = addon.GUI.PersistentChoice("profile", "browserTierFilter")
+        local saved = getTiers()
+        if saved and saved.__none then
+            self._selectedTiers = {}
+        elseif saved and next(saved) then
+            local restored = {}
+            for k, v in pairs(saved) do if v then restored[k] = true end end
+            self._selectedTiers = next(restored) and restored or nil
+        end
+    end
+
+    local availBands = {}
+    for _, band in ipairs(SKILL_TIER_BANDS) do
+        if band.cap <= clientMaxSkill then availBands[#availBands + 1] = band end
+    end
+
+    -- Band rows first, then Select All / Clear All as button-like toggle rows at
+    -- the BOTTOM of the pullout.
+    local tierList  = {}
+    local tierOrder = {}
+    for _, band in ipairs(availBands) do
+        tierList[band.key] = TierBandLabel(band)
+        tierOrder[#tierOrder + 1] = band.key
+    end
+    tierList[TIER_SELECT_ALL] = L["FilterSelectAll"]
+    tierList[TIER_CLEAR_ALL]  = L["FilterClearAll"]
+    tierOrder[#tierOrder + 1] = TIER_SELECT_ALL
+    tierOrder[#tierOrder + 1] = TIER_CLEAR_ALL
+
+    local tierDD = AceGUI:Create("Dropdown")
+    tierDD:SetLabel("|c" .. (addon.BrandColor or "ffFF8000") .. L["BrowserSkillTier"] .. "|r")
+    tierDD:SetWidth(180)
+    addon.GUI.OffsetInputLabel(tierDD)
+    tierDD:SetMultiselect(true)
+    tierDD:SetList(tierList, tierOrder)
+
+    -- Reapply every checkbox from the canonical _selectedTiers (nil = all on).
+    -- Called after every change so the visible ticks always match state and the
+    -- Select All / Clear All rows never keep a stray tick. This is the single
+    -- source of truth for the pullout's visuals — no fragile mid-callback order.
+    local function applyTierChecks()
+        for _, band in ipairs(availBands) do
+            local on = (self._selectedTiers == nil) or (self._selectedTiers[band.key] == true)
+            tierDD:SetItemValue(band.key, on)
+        end
+        tierDD:SetItemValue(TIER_SELECT_ALL, false)
+        tierDD:SetItemValue(TIER_CLEAR_ALL, false)
+    end
+    applyTierChecks()
+
+    tierDD:SetCallback("OnValueChanged", function(_w, _e, key, checked)
+        if key == TIER_SELECT_ALL then
+            self._selectedTiers = nil            -- all tiers shown (canonical)
+        elseif key == TIER_CLEAR_ALL then
+            self._selectedTiers = {}             -- nothing ticked → only unclassified show
+        else
+            -- Materialize the current effective set (nil = every available band on),
+            -- flip the clicked band, then collapse "all ticked" back to nil.
+            local sel = {}
+            if self._selectedTiers == nil then
+                for _, band in ipairs(availBands) do sel[band.key] = true end
+            else
+                for k in pairs(self._selectedTiers) do sel[k] = true end
+            end
+            if checked then sel[key] = true else sel[key] = nil end
+            local all = true
+            for _, band in ipairs(availBands) do
+                if not sel[band.key] then all = false; break end
+            end
+            self._selectedTiers = all and nil or sel
+        end
+        applyTierChecks()
+        self:PersistTierFilter()
+        self:RefreshList()
+    end)
+    addon.GUI.AttachTooltip(tierDD, L["BrowserSkillTierTip"], L["BrowserSkillTierDesc"])
+    toolbar:AddChild(tierDD)
 
     local sp = AceGUI:Create("Label")
     sp:SetWidth(8)
@@ -1279,6 +1441,24 @@ end
 -- Recipe list helpers
 -- ---------------------------------------------------------------------------
 
+-- Persist the current skill-tier selection to the profile.
+--   nil (all tiers)   → clear the saved value (the default).
+--   {} (Clear All)    → store a { __none = true } marker so "nothing ticked"
+--                       survives a reload and isn't confused with "all".
+--   explicit set      → store the key→true table verbatim.
+function BrowserTab:PersistTierFilter()
+    local _, setTiers = addon.GUI.PersistentChoice("profile", "browserTierFilter")
+    if self._selectedTiers == nil then
+        setTiers(nil)
+    elseif next(self._selectedTiers) == nil then
+        setTiers({ __none = true })
+    else
+        local saved = {}
+        for k in pairs(self._selectedTiers) do saved[k] = true end
+        setTiers(saved)
+    end
+end
+
 function BrowserTab:RefreshList()
     local scroll = self._scroll
     if not scroll then return end
@@ -1372,7 +1552,8 @@ function BrowserTab:Warm()
     -- All Professions (the default), then the saved profession filter if set.
     local queued = {}
     queue(0); queued[0] = true
-    local saved = Ace.db.profile.persistProfFilter and Ace.db.profile.savedProfFilter
+    local getProfFilter = addon.GUI.PersistentChoice("profile", "savedProfFilter", 0)
+    local saved = Ace.db.profile.persistProfFilter and getProfFilter()
     if saved and saved ~= 0 and not queued[saved] then queue(saved); queued[saved] = true end
     -- Then each profession the guild has data for, so switching is instant too.
     for profId in pairs(gdb.recipes or {}) do
@@ -1412,7 +1593,7 @@ function BrowserTab:FillList()
     -- background, or built on demand on a miss — then apply the cheap search
     -- filter. Searching never rebuilds; it just re-filters this cached list.
     local full    = self:GetFullList(self._selectedProfId, self._viewMode, self._showAllRecipes)
-    local recipes = FilterList(full, self._searchText)
+    local recipes = FilterTiers(FilterList(full, self._searchText), self._selectedTiers)
     local _crafters = 0
     for _, e in ipairs(full) do _crafters = _crafters + (e.crafters and #e.crafters or 0) end
     addon:DebugPrint("BrowserTab:FillList — prof=", self._selectedProfId,
@@ -2375,7 +2556,16 @@ do
     -- First warm a short while after load, once gdb + the roster have settled.
     C_Timer.After(8, function() BrowserTab:Warm() end)
     -- Re-warm on guild/cross-guild data changes (debounced, starvation-capped).
-    addon:RegisterCallback("GUILD_DATA_UPDATED", scheduleRewarm)
+    -- The recipe-list cache is built only from crafter/alt data, so a cooldown-
+    -- only sync can't change it — skip the rewarm when the change scope carries
+    -- neither recipes nor altgroups. nil/unknown scope still rewarms (safe).
+    addon:RegisterCallback("GUILD_DATA_UPDATED", function(_event, _charKey, scopes)
+        if type(scopes) == "table" and next(scopes)
+           and not (scopes.recipes or scopes.altgroups) then
+            return
+        end
+        scheduleRewarm()
+    end)
 
     -- Re-fit the crafter column when the window is dragged wider/narrower so the
     -- visible-name count tracks the new width. The crafter fontstrings stretch

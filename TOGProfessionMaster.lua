@@ -422,6 +422,7 @@ local SLASH_COMMANDS = {
     ["purge"]        = "OpenPurge",
     ["sync"]         = "ForceSync",
     ["status"]       = "PrintStatus",
+    ["dsstatus"]     = "PrintDeltaSyncStatus",
     ["versioncheck"] = "PrintVersionCheck",
     ["debug"]        = "ToggleDebug",
     ["craft"]        = "ToggleCraftingTakeover",
@@ -679,6 +680,7 @@ local PROF_LOCALE_KEYS = {
     [165] = "ProfLeatherworking", [186] = "ProfMining",         [197] = "ProfTailoring",
     [182] = "ProfHerbalism",      [393] = "ProfSkinning",       [755] = "ProfJewelcrafting",
     [773] = "ProfInscription",    [356] = "ProfFishing",        [374] = "ProfSmelting",
+    [794] = "ProfArchaeology",  -- Cata+ gathering profession (no trade-skill window)
 }
 
 addon.PROF_NAMES = {}
@@ -700,6 +702,7 @@ addon:RebuildLocalizedTables()  -- initial population from current L state
 addon.PROF_AVAILABILITY = {
     [755] = function() return addon.isTBC   or addon.isWrath or addon.isCata or addon.isMoP end,  -- Jewelcrafting (TBC+)
     [773] = function() return addon.isWrath or addon.isCata  or addon.isMoP end,                  -- Inscription (Wrath+)
+    [794] = function() return addon.isCata  or addon.isMoP end,                                   -- Archaeology (Cata+)
 }
 
 --- True if this profession exists on the current WoW client version.
@@ -1408,6 +1411,7 @@ function Ace:PrintHelp()
     self:Print("  /togpm purge        \226\128\148 " .. L["SlashHelpPurge"])
     self:Print("  /togpm sync         \226\128\148 " .. L["SlashHelpSync"])
     self:Print("  /togpm status       \226\128\148 " .. L["SlashHelpStatus"])
+    self:Print("  /togpm dsstatus     \226\128\148 DeltaSync multi-host health check (namespace / MINOR / prefixes / P2P)")
     self:Print("  /togpm versioncheck \226\128\148 " .. L["SlashHelpVersionCheck"])
     self:Print("  /togpm dumpprice <itemId|itemLink> \226\128\148 Dump full price diagnostics for an item")
     self:Print("  /togpm commtest [name] \226\128\148 Probe which addon-message channels the server relays")
@@ -1768,7 +1772,10 @@ function addon:OnSisterRosterReceived(prefix, message, _distribution, sender)
     -- Persist (so it survives /reload) + refresh UI, WITHOUT re-broadcasting —
     -- the suppression above keeps the relay from echoing around the guild.
     if self.Scanner.PersistSisterRoster then self.Scanner:PersistSisterRoster(key) end
-    if self.callbacks then self.callbacks:Fire("GUILD_DATA_UPDATED", "sisterroster:relay") end
+    if self.callbacks then
+        self.callbacks:Fire("GUILD_DATA_UPDATED", "sisterroster:relay",
+            { altgroups = true, roster = true })
+    end
     self:DebugPrint("Cross-guild: applied relayed sister roster", key, "from", sender, "(", #members, "members)")
 end
 

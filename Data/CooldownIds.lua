@@ -138,10 +138,11 @@ local REAGENTS = {
     -- Vanilla
     [18560] = { id = 14256, qty = 2  },  -- Mooncloth → 2x Felcloth
     [15846] = { id = 8150,  qty = 1  },  -- Salt Shaker → Deeprock Salt
-    -- TBC
-    [26751] = { id = 21842, qty = 1  },  -- Primal Mooncloth → Bolt of Imbued Netherweave
-    [31373] = { id = 21842, qty = 1  },  -- Spellcloth → Bolt of Imbued Netherweave
-    [36686] = { id = 21842, qty = 1  },  -- Shadowcloth → Bolt of Imbued Netherweave
+    -- TBC — Primal Mooncloth / Spellcloth / Shadowcloth take THREE reagents
+    -- each and live in MULTI_REAGENTS below (they render as expand rows so all
+    -- three reagents show). Prismatic Sphere and Void Sphere are single-reagent.
+    [28027] = { id = 22449, qty = 4  },  -- Prismatic Sphere → 4x Large Prismatic Shard
+    [28028] = { id = 22450, qty = 2  },  -- Void Sphere → 2x Void Crystal
     -- Wrath
     [62242] = { id = 43102, qty = 1  },  -- Icy Prism → Frozen Orb
     [56001] = { id = 41511, qty = 1  },  -- Moonshroud → Bolt of Imbued Frostweave
@@ -158,6 +159,42 @@ local REAGENTS = {
     -- MoP
     [125557] = { id = 82441,  qty = 8  }, -- Imperial Silk → Bolt of Windwool Cloth
     [138646] = { id = 72096,  qty = 10 }, -- Lightning Steel Ingot → Ghost Iron Bar
+}
+
+-- Multi-reagent NON-transmute cooldowns.
+-- { [spellId] = { {id, qty}, {id, qty}, ... } }
+-- Unlike REAGENTS (a single primary reagent), these cooldowns consume several
+-- distinct reagents. They render as a click-to-expand group row (the same popup
+-- transmutes use), so every reagent gets its own [AH] / [Bank] / mail controls.
+-- Order the list the way it should read top-to-bottom in the popup.
+local MULTI_REAGENTS = {
+    -- Brilliant Glass (Jewelcrafting daily, TBC) → 3x each of the six TBC
+    -- uncommon gems. Reagents verified against ProfessionDB TBC data (47280).
+    [47280] = {
+        { id = 23117, qty = 3 },  -- Azure Moonstone
+        { id = 23077, qty = 3 },  -- Blood Garnet
+        { id = 23079, qty = 3 },  -- Deep Peridot
+        { id = 21929, qty = 3 },  -- Flame Spessarite
+        { id = 23112, qty = 3 },  -- Golden Draenite
+        { id = 23107, qty = 3 },  -- Shadow Draenite
+    },
+    -- TBC tailoring specialty cloths — a Bolt of Imbued Netherweave plus two
+    -- primals each. Reagents/order verified against ProfessionDB TBC data.
+    [26751] = {  -- Primal Mooncloth
+        { id = 21842, qty = 1 },  -- Bolt of Imbued Netherweave
+        { id = 21886, qty = 1 },  -- Primal Life
+        { id = 21885, qty = 1 },  -- Primal Water
+    },
+    [31373] = {  -- Spellcloth
+        { id = 21842, qty = 1 },  -- Bolt of Imbued Netherweave
+        { id = 21884, qty = 1 },  -- Primal Fire
+        { id = 22457, qty = 1 },  -- Primal Mana
+    },
+    [36686] = {  -- Shadowcloth
+        { id = 21842, qty = 1 },  -- Bolt of Imbued Netherweave
+        { id = 21884, qty = 1 },  -- Primal Fire
+        { id = 22456, qty = 1 },  -- Primal Shadow
+    },
 }
 
 -- Primary reagent for transmute spells
@@ -365,6 +402,7 @@ local function Build()
         cooldowns      = cooldowns,
         transmutes     = transmutes,
         reagents       = REAGENTS,
+        multiReagents  = MULTI_REAGENTS,
         transReagents  = TRANSMUTE_REAGENTS,
         iconOverrides  = ICON_OVERRIDES,
         outputOverrides = OUTPUT_OVERRIDES,

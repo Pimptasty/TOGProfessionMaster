@@ -343,11 +343,17 @@ function addon.GUI.PersistentScroll.Acquire(tab, opts)
         tab._scrollStatus = tab._scrollStatus or { scrollvalue = 0 }
     end
     local saved = tab._scrollStatus.scrollvalue or 0
+    -- Also capture the exact PIXEL offset the user was scrolled to. Restore
+    -- prefers this over the fraction because re-applying a pixel offset needs
+    -- NO frame height — so the position survives even when the caller calls
+    -- Restore before the scroll frame has been sized/anchored. That call-order
+    -- dependency (fraction -> pixels needs the height) is what made the Missing
+    -- tab jump ~10 rows on every rebuild; capturing the raw offset here, and
+    -- restoring it verbatim below, makes the ordering impossible to get wrong.
+    local savedOffset = tab._scrollStatus.offset
 
     -- Reset BOTH fields so any synchronous FixScroll during FillRows
-    -- writes back zeroes (harmless) instead of corrupting the saved
-    -- value. offset is always recomputed from scrollvalue + the new
-    -- content height anyway, so clearing it is mandatory.
+    -- writes back zeroes (harmless) instead of corrupting the saved value.
     tab._scrollStatus.scrollvalue = 0
     tab._scrollStatus.offset      = nil
 
@@ -372,24 +378,66 @@ function addon.GUI.PersistentScroll.Acquire(tab, opts)
     if opts.onRelease then
         scroll:SetCallback("OnRelease", opts.onRelease)
     end
+    -- Stash for Restore (exact-pixel-offset restore; see Restore).
+    scroll._persistOffset = savedOffset
     return scroll, saved
 end
 
--- Restore the saved scroll position. Must be called AFTER FillRows has
--- written the content height (so SetScroll can derive a correct offset).
--- For AceGUI-native tabs, calling DoLayout before this is sufficient.
--- For virtual-pool tabs, pass `afterFn` so UpdateVirtualRows re-anchors
--- the pool rows to the restored offset.
+-- Restore the saved scroll position after a rebuild. Robust to call order: it
+-- restores the exact PIXEL offset captured in Acquire, which needs no frame
+-- height, so it lands on the same row even if the scroll frame hasn't been
+-- sized/anchored yet. (Callers therefore do NOT have to size-before-restore —
+-- getting that order wrong is what made the Missing tab jump ~10 rows while
+-- Browser, which happened to size first, did not.) `afterFn` re-renders a
+-- virtual-pool tab's rows from the restored offset.
 function addon.GUI.PersistentScroll.Restore(scroll, saved, afterFn)
-    if not (saved and saved > 0 and scroll and scroll.SetScroll) then return end
-    scroll:SetScroll(saved)
-    -- Some AceGUI versions don't auto-sync the scrollbar visual when
-    -- SetScroll writes the status table — explicitly nudge it so
-    -- virtual-pool tabs' scrollbars track their content position.
-    if scroll.scrollbar and scroll.scrollbar.SetValue then
-        scroll.scrollbar:SetValue(saved)
+    if not scroll then return end
+    local status = scroll.status or scroll.localstatus
+    local off    = scroll._persistOffset
+
+    if off and off > 0 and status and scroll.content then
+        local vh = (scroll.scrollframe and scroll.scrollframe:GetHeight()) or 0
+        local ch = scroll.content:GetHeight() or 0
+        -- Clamp to the scrollable range ONLY when the frame is actually sized
+        -- (content may have shrunk since the offset was saved). When it isn't
+        -- sized yet (vh ~ 0) restore verbatim; AceGUI's FixScroll re-clamps from
+        -- status.offset once the real size arrives, without moving the content.
+        if vh > 1 then
+            local maxOff = math.max(0, ch - vh)
+            if off > maxOff then off = maxOff end
+        end
+        -- Pin the content at the exact pixel offset — this is what makes it
+        -- height-independent and therefore order-independent.
+        status.offset = off
+        scroll.content:ClearAllPoints()
+        scroll.content:SetPoint("TOPLEFT",  0, off)
+        scroll.content:SetPoint("TOPRIGHT", 0, off)
+        -- Sync the scrollbar thumb from the current size (cosmetic; self-corrects
+        -- via FixScroll on the next layout if the frame wasn't sized yet). The
+        -- SetValue may round-trip through the caller's OnValueChanged -> SetScroll,
+        -- which recomputes the SAME offset (identical height within this call), so
+        -- the exact position is preserved.
+        local range = ch - vh
+        local val   = (range > 0) and math.min(1000, off / range * 1000) or 0
+        status.scrollvalue = val
+        if scroll.scrollbar and scroll.scrollbar.SetValue then
+            scroll.scrollbar:SetValue(val)
+        end
+        if afterFn then afterFn() end
+        return
     end
-    if afterFn then afterFn() end
+
+    -- Fallback: no captured pixel offset (first-ever draw, or after Reset). Use
+    -- the fraction; there's nothing to restore precisely to anyway. afterFn runs
+    -- only when we actually restore something (matches the pre-refactor behavior,
+    -- which returned early and skipped it when saved was 0).
+    if saved and saved > 0 and scroll.SetScroll then
+        scroll:SetScroll(saved)
+        if scroll.scrollbar and scroll.scrollbar.SetValue then
+            scroll.scrollbar:SetValue(saved)
+        end
+        if afterFn then afterFn() end
+    end
 end
 
 -- Explicit "jump to top" reset for filter-change call sites. A filter
@@ -401,6 +449,49 @@ function addon.GUI.PersistentScroll.Reset(tab, scroll)
         tab._scrollStatus.offset      = 0
     end
     if scroll and scroll.SetScroll then scroll:SetScroll(0) end
+end
+
+-- ---------------------------------------------------------------------------
+-- Persistent UI choices (dropdown selections, active tab, saved filters, ...)
+-- ---------------------------------------------------------------------------
+-- One place for the "remember this control's value across /reload and relog"
+-- pattern every tab used to hand-roll against AceDB. Returns get/set closures
+-- bound to a single value in a chosen SavedVariables scope:
+--
+--   local getProf, setProf = addon.GUI.PersistentChoice("char", "missingProfId", 0)
+--   dropdown:SetValue(validate(getProf()))             -- restore (see note)
+--   dropdown:SetCallback("OnValueChanged", function(_, _, v)
+--       setProf(v)                                     -- persist
+--       self:RefreshList()
+--   end)
+--
+-- scope  : AceDB namespace — "char" (per-character, default), "profile"
+--          (account-wide, follows the account to every character), or "global".
+-- key    : the SavedVariables field name.
+-- default: returned by get() when nothing has been saved yet (nil is fine).
+--
+-- NOTE — validation stays with the caller. Whether a saved value is still a
+-- valid choice depends on the CURRENT list (a profession the character no longer
+-- has, a character no longer in the roster, ...), which only the tab knows, so
+-- callers coerce the restored value against their live list before SetValue —
+-- exactly as they did with the old hand-rolled db reads.
+function addon.GUI.PersistentChoice(scope, key, default)
+    scope = scope or "char"
+    local function bucket()
+        local root = addon.lib and addon.lib.db
+        return root and root[scope]
+    end
+    local function get()
+        local d = bucket()
+        local v = d and d[key]
+        if v == nil then return default end
+        return v
+    end
+    local function set(v)
+        local d = bucket()
+        if d then d[key] = v end
+    end
+    return get, set
 end
 
 -- ---------------------------------------------------------------------------
@@ -699,6 +790,24 @@ function addon.GUI.OffsetInputLabel(widget, dx)
     end)
 end
 
+-- Registry of live search-box inner EditBox frames (populated by StyleSearchBox).
+-- MainWindow:Refresh consults IsAnySearchFocused() to know when the user is
+-- typing in one, and DEFERS the data-refresh — a refresh rebuilds the active
+-- tab's toolbar, destroying the focused search box and dropping keyboard focus
+-- so keystrokes fall through to keybinds ("unbound"). HasFocus() is the reliable
+-- focus test on every client; GetCurrentKeyBoardFocus() isn't available on all
+-- Classic flavors, which is why the earlier attempt no-op'd.
+addon.GUI._searchBoxes = addon.GUI._searchBoxes or {}
+
+function addon.GUI.IsAnySearchFocused()
+    for eb in pairs(addon.GUI._searchBoxes) do
+        if eb.IsVisible and eb:IsVisible() and eb.HasFocus and eb:HasFocus() then
+            return true
+        end
+    end
+    return false
+end
+
 -- Style an AceGUI EditBox as a TSM-style search field: drop the visible text
 -- label and place WoW's universal magnifying-glass icon (the texture
 -- SearchBoxTemplate itself uses) inside on the left, with the typed text inset
@@ -719,6 +828,20 @@ function addon.GUI.StyleSearchBox(widget, keepLabelSpace)
     if not (widget and widget.type == "EditBox" and widget.editbox) then return widget end
     widget:SetLabel(keepLabelSpace and " " or "")
     local eb = widget.editbox
+
+    -- Register for the focus-aware refresh deferral (see IsAnySearchFocused).
+    addon.GUI._searchBoxes[eb] = true
+    -- Reset MainWindow's refresh-deferral counter on every keystroke so
+    -- CONTINUOUS typing keeps deferring the data-refresh (which would rebuild
+    -- and unfocus this box); an idle-but-focused box still hits the cap and
+    -- refreshes eventually. Wrap the tab's existing OnTextChanged, which is set
+    -- BEFORE this call (StyleSearchBox runs "AFTER AttachTooltip", and tabs wire
+    -- OnTextChanged with it) — AceGUI clears widget.events on release, no leak.
+    local prevOnText = widget.events and widget.events.OnTextChanged
+    widget:SetCallback("OnTextChanged", function(self, event, ...)
+        if addon.MainWindow then addon.MainWindow._refreshDeferrals = 0 end
+        if prevOnText then prevOnText(self, event, ...) end
+    end)
 
     local icon = widget._searchIcon
     if not icon then
@@ -742,6 +865,7 @@ function addon.GUI.StyleSearchBox(widget, keepLabelSpace)
 
     local prevOnRelease = widget.events and widget.events.OnRelease
     widget:SetCallback("OnRelease", function(self)
+        addon.GUI._searchBoxes[eb] = nil
         local i = self._searchIcon
         if i then
             i:Hide()

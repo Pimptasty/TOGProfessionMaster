@@ -39,6 +39,31 @@ L["BrowserScanAHProgress"]  = "Scan %d/%d"
 L["BrowserScanAHDesc"]      = "Scanne l’hôtel des ventes pour chaque composant de votre liste de courses. Les lignes dont le composant est actuellement à l’HV reçoivent un bouton [HV] ; cliquez dessus pour sauter directement à la recherche correspondante."
 L["CooldownsScanAHDesc"]    = "Scanne l’hôtel des ventes pour chaque composant unique des lignes de récupération visibles. Les lignes dont le composant est actuellement à l’HV reçoivent un bouton [HV] (à gauche de [Banque]) ; cliquez dessus pour sauter à la recherche."
 
+-- Skill-tier filter (Browser toolbar)
+L["BrowserSkillTier"]      = "Niveau de compétence"
+L["BrowserSkillTierTip"]   = "Filtre par niveau de compétence"
+L["BrowserSkillTierDesc"]  = "N’affiche que les recettes des niveaux de compétence cochés. Décochez les niveaux inférieurs pour masquer leurs recettes de la liste. Cochez plusieurs niveaux ; le menu reste ouvert. Utilisez Tout sélectionner / Tout effacer en bas. Les recettes sans niveau de compétence connu restent toujours visibles."
+L["FilterSelectAll"]       = "Tout sélectionner"
+L["FilterClearAll"]        = "Tout effacer"
+L["TierApprentice"]        = "Apprenti"
+L["TierJourneyman"]        = "Compagnon"
+L["TierExpert"]            = "Expert"
+L["TierArtisan"]           = "Artisan"
+L["TierMaster"]            = "Maître"
+L["TierGrandMaster"]       = "Grand maître"
+L["TierIllustrious"]       = "Illustre"
+L["TierZenMaster"]         = "Maître zen"
+
+-- Guild tab
+L["TabGuild"]               = "Guilde"
+L["GuildTabChars"]          = "%d personnages suivis"
+L["GuildColProfession"]     = "Métier"
+L["GuildColProfessionDesc"] = "Chaque métier et le nombre de personnages de la guilde qui le possèdent. Les sous-lignes le détaillent par spécialisation lorsqu’une spécialisation est connue."
+L["GuildColCount"]          = "Personnages"
+L["GuildColCountDesc"]      = "Nombre de personnages de la guilde possédant le métier (ou la spécialisation). Compté à partir des compétences synchronisées et de tous ceux connus pour fabriquer ses recettes."
+L["GuildUnspecialized"]     = "Sans spécialisation"
+L["GuildTabEmpty"]          = "Aucune donnée de métier pour l’instant. Elle se remplit à mesure que les membres de la guilde utilisant l’addon synchronisent leurs compétences."
+
 -- Recipe detail popup
 L["PopupCrafters"]       = "Connue par"
 L["PopupOnList"]         = "Sur la liste de courses"

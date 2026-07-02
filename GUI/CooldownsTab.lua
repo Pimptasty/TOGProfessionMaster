@@ -457,22 +457,56 @@ local function BuildRows(readyOnly, viewMode)
                         else
                             cdName = data.cooldowns[spellId] or GetSpellInfo(spellId) or GetItemInfo(spellId) or tostring(spellId)
                         end
-                        local reagentItemId = data.reagents[spellId] and data.reagents[spellId].id
-                        local reagentQty    = data.reagents[spellId] and data.reagents[spellId].qty or 1
                         local iconItemId    = data.iconOverrides and data.iconOverrides[spellId]
                         local outputName    = (data.outputOverrides and data.outputOverrides[spellId]) or cdName
-                        table.insert(rows, {
-                            charKey       = charKey,
-                            shortName     = shortName,
-                            spellId       = spellId,
-                            cdName        = cdName,
-                            outputName    = outputName,
-                            reagentItemId = reagentItemId,
-                            reagentQty    = reagentQty,
-                            iconItemId    = iconItemId,
-                            expiresAt     = expiresAt,
-                            isGroup       = false,
-                        })
+                        local multi         = data.multiReagents and data.multiReagents[spellId]
+                        if multi then
+                            -- Multi-reagent cooldown (e.g. Brilliant Glass = six
+                            -- gems). Single-reagent rows can't show more than one
+                            -- reagent, so emit a click-to-expand group row whose
+                            -- popup lists every reagent with its own [AH]/[Bank]/
+                            -- mail — the same shape transmute rows use. All
+                            -- entries carry the SAME spellId (one spell, one
+                            -- shared cooldown), so the popup resolves each row's
+                            -- timer from that spell's cooldown record.
+                            local entries = {}
+                            for ri, r in ipairs(multi) do
+                                entries[#entries + 1] = {
+                                    spellId    = spellId,
+                                    name       = cdName,
+                                    reagentId  = r.id,
+                                    reagentQty = r.qty,
+                                    showName   = ri == 1,
+                                    showTime   = ri == 1,
+                                }
+                            end
+                            table.insert(rows, {
+                                charKey          = charKey,
+                                shortName        = shortName,
+                                spellId          = spellId,
+                                cdName           = cdName,
+                                outputName       = outputName,
+                                iconItemId       = iconItemId,
+                                expiresAt        = expiresAt,
+                                isGroup          = true,
+                                transmuteEntries = entries,
+                            })
+                        else
+                            local reagentItemId = data.reagents[spellId] and data.reagents[spellId].id
+                            local reagentQty    = data.reagents[spellId] and data.reagents[spellId].qty or 1
+                            table.insert(rows, {
+                                charKey       = charKey,
+                                shortName     = shortName,
+                                spellId       = spellId,
+                                cdName        = cdName,
+                                outputName    = outputName,
+                                reagentItemId = reagentItemId,
+                                reagentQty    = reagentQty,
+                                iconItemId    = iconItemId,
+                                expiresAt     = expiresAt,
+                                isGroup       = false,
+                            })
+                        end
                     end
                 end
             end
@@ -1057,15 +1091,14 @@ function CooldownsTab:Draw(container)
                 end
             end
             for _, row in ipairs(rows) do
-                if row.isTransmuteGroup and row.transmuteEntries then
-                    -- Transmute group rows have row.reagentItemId == nil
-                    -- because each transmute spell inside the group has
-                    -- its own reagent (sometimes multiple — e.g.
-                    -- Arcanite needs Thorium Bar + Arcane Crystal).
-                    -- Iterate the per-spell entries to pick up every
-                    -- reagent so the scan covers the actual transmutes
-                    -- the user can craft, not just the standalone non-
-                    -- transmute cooldowns (Salt Shaker, Mooncloth, etc.).
+                if row.transmuteEntries then
+                    -- Group rows carry per-entry reagents and row.reagentItemId
+                    -- == nil: transmute groups (each transmute has its own
+                    -- reagent, sometimes multiple — Arcanite needs Thorium Bar +
+                    -- Arcane Crystal) AND multi-reagent cooldowns (Brilliant
+                    -- Glass = six gems). Iterate the entries so the scan covers
+                    -- every reagent, not just the single-reagent standalone
+                    -- cooldowns (Salt Shaker, Mooncloth, etc.).
                     for _, e in ipairs(row.transmuteEntries) do
                         addItem(e.reagentId)
                     end
@@ -1507,9 +1540,11 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
     local iconTexture
     if row.isTransmuteGroup then
         iconTexture = "Interface\\Icons\\Trade_Alchemy"
-    elseif row.isGroup then
-        iconTexture = row.spellId and GetSpellTexture(row.spellId)
     elseif row.iconItemId then
+        -- Item-icon override — used by cloth crafts whose spell icon is a
+        -- generic net/cloth texture. Checked BEFORE isGroup so multi-reagent
+        -- cloth cooldowns (Primal Mooncloth/Spellcloth/Shadowcloth) that render
+        -- as expand rows still show the produced bolt's icon, not the bad one.
         iconTexture = select(10, GetItemInfo(row.iconItemId))
         if not iconTexture then
             local iconItem = Item:CreateFromItemID(row.iconItemId)
@@ -1523,6 +1558,8 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
             iconTexture = row.spellId and GetSpellTexture(row.spellId)
         end
     else
+        -- Both single non-override rows and group rows (transmute-style expand
+        -- rows without an icon override) fall back to the spell texture.
         iconTexture = row.spellId and GetSpellTexture(row.spellId)
     end
     if iconTexture then
@@ -1554,7 +1591,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         end)
         cdHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
         cdHit:SetScript("OnClick", function(_, button)
-            if button == "LeftButton" then self:ShowGroupPopup(row, now, cdHit) end
+            if button == "LeftButton" then self:ShowGroupPopup(row, cdHit) end
         end)
     else
         cdHit:SetScript("OnEnter", function()
@@ -1723,7 +1760,7 @@ end
 -- For transmute groups: shows each spell with its per-spell reagent and a mail button.
 -- For other groups: shows spell name and time remaining.
 -- Clicking the same row again or clicking outside closes the popup.
-function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
+function CooldownsTab:ShowGroupPopup(row, sourceWidget)
     -- Toggle off if the same row was clicked again.
     if self._groupPopup then
         local wasRow = self._groupPopup._sourceRow == row
@@ -1757,21 +1794,15 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
     for _, e in ipairs(entries) do
         if e.reagentId then hasReagents = true; break end
     end
-    -- In "mine" view a row's charKey can live in any guild bucket (including
-    -- the synthetic NoGuildBucketKey for guildless alts), not just the current
-    -- gdb. addon:FindBucketForChar walks every bucket and returns the one
-    -- holding cooldowns for this charKey.
     local charKey = row.charKey
-    local bucket  = addon:FindBucketForChar(charKey, "cooldowns")
-    local charCds = bucket and bucket.cooldowns[charKey] or {}
 
     local rowH   = 14
     local pad    = 6
-    -- popupW = 500 to make room for the [AH] button slot added between
-    -- the reagent label and [Bank] (the slot is 40px). Without the bump,
-    -- the spell-name column would compress from ~190px to ~150px and
-    -- longer transmute names like "Transmute: Earth to Water" would
-    -- truncate.
+    -- popupW = 500: name + reagent + [AH]/[Bank]/mail + time all tile inside this
+    -- width. The name/reagent split is chosen per popup type below — transmute
+    -- popups have long names + short reagents; multi-reagent cooldown popups
+    -- (cloths, Brilliant Glass) are the reverse — so we don't need extra width,
+    -- just a different division of the same space.
     local popupW = 500
     local totalH = pad + #entries * rowH + pad
 
@@ -1846,13 +1877,14 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
     local bankW    = hasReagents and 48 or 0
     -- AH button column. 40px matches the per-row [AH] width used in the
     -- main cooldown row (C2_AH_BTN). Sits to the LEFT of [Bank], to the
-    -- RIGHT of the reagent label — same ordering as the main row so users
-    -- get consistent button positioning whether they're looking at the
-    -- table or the transmute popup.
+    -- RIGHT of the reagent label — same ordering as the main row.
     local ahW      = hasReagents and 40 or 0
-    local reagentW = hasReagents and 110 or 0
-    local timeW    = 70
-    local nameW    = popupW - pad * 2 - reagentW - ahW - bankW - mailW - timeW - 8
+    -- Reagent column: 180px so long names ("Bolt of Imbued Netherweave") fit on
+    -- ONE line. There's no time/status column in the popup (removed as redundant
+    -- — the main cooldown row already shows readiness), so both a wide reagent
+    -- column AND a wide name column fit inside the unchanged 500px width.
+    local reagentW = hasReagents and 180 or 0
+    local nameW    = popupW - pad * 2 - reagentW - ahW - bankW - mailW - 8
 
     for i, e in ipairs(entries) do
         local spellId    = e.spellId
@@ -1861,29 +1893,8 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
         local reagentId  = e.reagentId
         local reagentQty = e.reagentQty or 1
         local showName   = e.showName ~= false
-        local showTime   = e.showTime ~= false
-        -- v0.7.2: transmutes share a single 20h cooldown — once the
-        -- alchemist casts any one of them, every other transmute is on
-        -- CD too, but the game only records the cooldown under the cast
-        -- spell's ID. A per-row charCds[spellId] lookup therefore shows
-        -- the cast spell as "5h 17m" and every other transmute as
-        -- "Ready" inside the same popup, which is wrong. For transmute
-        -- groups, use the group's shared expiresAt (already computed as
-        -- the max future expiry across every transmute spell the char
-        -- knows). Non-transmute group popups (Mooncloth tier, etc.)
-        -- still resolve per-spell — those are genuinely independent.
-        local expiresAt
-        if row.isTransmuteGroup then
-            expiresAt = row.expiresAt and row.expiresAt > now and row.expiresAt or nil
-        else
-            expiresAt = spellId and charCds[spellId]
-        end
-        local remaining  = expiresAt and (expiresAt - now) or nil
-        -- No spellId → cooldown can't be tracked, treat as Ready.
-        -- No cooldown record OR expired (remaining <= 0) → spell is castable.
-        local isReady   = (not expiresAt) or remaining <= 0
-        local timeStr   = isReady and "Ready" or SecondsToString(remaining)
-        local timeColor = isReady and "|cff00ff00" or "|cffaaaaaa"
+        -- No time/status column in the popup — it was redundant with the main
+        -- cooldown row's own readiness, so the per-entry cooldown lookup is gone.
 
         local yOff = -(pad + (i - 1) * rowH)
 
@@ -1925,14 +1936,6 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
             GameTooltip:Hide()
         end)
 
-        -- Time remaining (only on the leading row of a multi-reagent transmute
-        -- so the cooldown isn't repeated for every reagent of the same spell).
-        local timeLbl = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        timeLbl:SetPoint("LEFT", nameW + 4, 0)
-        timeLbl:SetWidth(timeW)
-        timeLbl:SetJustifyH("LEFT")
-        timeLbl:SetText(showTime and (timeColor .. timeStr .. "|r") or "")
-
         -- Reagent and mail button (transmute groups only)
         if reagentId then
             local reagentLbl = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -1945,7 +1948,27 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
             reagentLbl:SetPoint("RIGHT", rowFrame, "RIGHT", -(ahW + bankW + mailW + 6), 0)
             reagentLbl:SetWidth(reagentW)
             reagentLbl:SetJustifyH("RIGHT")
-            reagentLbl:SetTextColor(0.65, 0.65, 0.65, 1)
+            -- One line only: the row is a fixed rowH tall, so a wrapped name
+            -- would overlap the row below. The 170px column fits every reagent
+            -- name; this just guarantees no wrap if a longer one ever appears.
+            reagentLbl:SetWordWrap(false)
+            -- Resting colour reflects bag stock: WHITE when the viewer holds
+            -- enough of this reagent to fulfill the mail (>= reagentQty), GREY
+            -- otherwise — a glance shows which reagents you can actually send.
+            -- Yellow on hover, then restored to the correct rest colour on leave.
+            -- A refresher recomputes it (cheap bag scan) on popup show + the
+            -- deferred tick, so acquiring/sending items updates it live.
+            local reagentHovered = false
+            local function reagentRestColor()
+                local inBags = CdMail_CountItemInBags(reagentId)
+                if inBags >= reagentQty then return 1, 1, 1, 1 end
+                return 0.65, 0.65, 0.65, 1
+            end
+            local function applyReagentRestColor()
+                if not reagentHovered then reagentLbl:SetTextColor(reagentRestColor()) end
+            end
+            applyReagentRestColor()
+            rowRefreshers[#rowRefreshers + 1] = applyReagentRestColor
             local rName = GetItemInfo(reagentId)
             if rName then
                 reagentLbl:SetText(rName)
@@ -1962,13 +1985,15 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
             reagentZone:SetPoint("BOTTOMRIGHT", rowFrame, "BOTTOMRIGHT", -(ahW + bankW + mailW + 6), 0)
             reagentZone:EnableMouse(true)
             reagentZone:SetScript("OnEnter", function()
+                reagentHovered = true
                 reagentLbl:SetTextColor(1, 1, 0, 1)
                 addon.Tooltip.Owner(reagentZone)
                 GameTooltip:SetHyperlink("item:" .. reagentId)
                 showAbovePopup()
             end)
             reagentZone:SetScript("OnLeave", function()
-                reagentLbl:SetTextColor(0.65, 0.65, 0.65, 1)
+                reagentHovered = false
+                reagentLbl:SetTextColor(reagentRestColor())
                 GameTooltip:Hide()
             end)
             reagentZone:SetScript("OnMouseUp", function(_, button)
@@ -2052,7 +2077,27 @@ function CooldownsTab:ShowGroupPopup(row, now, sourceWidget)
             mailBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
             mailBtn:SetScript("OnClick", function()
                 local spellName = (spellId and GetSpellInfo(spellId)) or entryName
-                CdMail_PrepareSupplyMail(charKey, spellName, reagentId, reagentQty)
+                -- Resolve the crafted-output name for the mail body. This popup
+                -- has no single "output name" field like the main rows do, so
+                -- pick the best available on ANY client version: the row's
+                -- display name first, then the spell name, then the output item
+                -- (recipeId IS the output itemId for non-spell recipes), else a
+                -- blank. Without this the body would show a blank or raw id.
+                local outputName
+                if entryName and entryName ~= "" then
+                    outputName = entryName
+                elseif spellName and spellName ~= "" then
+                    outputName = spellName
+                elseif recipeId then
+                    outputName = GetItemInfo(recipeId) or spellName or ""
+                else
+                    outputName = spellName or ""
+                end
+                -- 5-arg call: (playerName, cooldownName, outputName, reagentId,
+                -- reagentQty). The earlier 4-arg call dropped outputName, which
+                -- shifted reagentQty(=1) into reagentId and produced the
+                -- "no item:1 in your bags" error.
+                CdMail_PrepareSupplyMail(charKey, spellName, outputName, reagentId, reagentQty)
             end)
             mailBtn:SetScript("OnEnter", function()
                 addon.Tooltip.Owner(mailBtn)

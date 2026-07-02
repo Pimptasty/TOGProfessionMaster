@@ -77,6 +77,35 @@ function HashManager:ComputeAccountCharsHash(DS, gdb, charKey)
     return DS:ComputeHash(gdb.altClaims and gdb.altClaims[charKey] or {})
 end
 
+--- GATHERING (recipe-less) skills for a character — the subset of gdb.skills whose
+--- profession is NOT a crafting profession. Crafting skills sync on the crafters:
+--- leaf already; this is what the skills:<charKey> leaf carries (Herbalism /
+--- Skinning / Fishing / Archaeology). String keys + normalized {r,m} shape so the
+--- hash is deterministic across clients (same discipline as ComputeCraftersHash).
+local function gatheringSkills(gdb, charKey)
+    local out = {}
+    local s = gdb.skills and gdb.skills[charKey]
+    if s then
+        for profId, rec in pairs(s) do
+            if type(rec) == "table"
+               and not (addon.CRAFTING_PROFS and addon.CRAFTING_PROFS[profId]) then
+                out[tostring(profId)] = { r = rec.skillRank or 0, m = rec.skillMax or 0 }
+            end
+        end
+    end
+    return out
+end
+
+--- Hash for skills:<charKey> — that character's gathering-profession skill levels.
+function HashManager:ComputeCharSkillsHash(DS, gdb, charKey)
+    return DS:ComputeHash(gatheringSkills(gdb, charKey))
+end
+
+--- Payload map for skills:<charKey> (what the leaf ships). Mirrors the hashed shape.
+function HashManager:GetGatheringSkills(gdb, charKey)
+    return gatheringSkills(gdb, charKey)
+end
+
 --- Hash for crafters:<profId> — crafter membership map for one profession.
 -- Independent of recipe metadata so the metadata leaf can stay stable while
 -- crafter membership changes (the common case).
@@ -174,6 +203,10 @@ function HashManager:ComputeGuildAccountCharsHash(DS, gdb)
     return rollupOver(ensureHashes(gdb), "accountchars:", DS)
 end
 
+function HashManager:ComputeGuildSkillsHash(DS, gdb)
+    return rollupOver(ensureHashes(gdb), "skills:", DS)
+end
+
 -- ---------------------------------------------------------------------------
 -- Targeted invalidation
 -- Each helper computes the new (hash, updatedAt) tuple from current content
@@ -194,6 +227,29 @@ function HashManager:InvalidateCharCooldowns(DS, gdb, charKey)
     end
 end
 
+--- Adopt a cooldown leaf hash delivered by a peer VERBATIM (v0.10.11 owner-
+--- authoritative token model). Unlike InvalidateCharCooldowns, this does NOT
+--- recompute the hash from local data: the cooldown OWNER minted the token, and
+--- it must survive relay unchanged. Per-client recomputation is exactly what
+--- reintroduced drift — a receiver that reconstructs the expiry against its own
+--- clock computes a different hash, so guild:cooldowns never converged and the
+--- P2P negotiation (and its redraws) churned forever. Here the caller has already
+--- stored the owner's absolute-expiry bucket verbatim; we record the owner's token
+--- + updatedAt as the leaf hash and refresh the guild:cooldowns roll-up from the
+--- stored leaf hashes (rollupOver reads entry.hash, so no recompute leaks in).
+--- Only the owner (via InvalidateCharCooldowns on its own scan) ever computes a
+--- cooldown hash from data; everyone else adopts through here.
+function HashManager:StoreDeliveredCooldownLeaf(DS, gdb, ownerKey, token, updatedAt)
+    local hashes = ensureHashes(gdb)
+    local wrote  = setEntry(hashes, "cooldown:" .. ownerKey, token, updatedAt or 0)
+    if wrote then
+        setEntry(hashes, "guild:cooldowns",
+            self:ComputeGuildCooldownsHash(DS, gdb),
+            rollupTime(hashes, "cooldown:"))
+    end
+    return wrote
+end
+
 --- After an accountchars scan or merge for one broadcaster.
 function HashManager:InvalidateAccountChars(DS, gdb, charKey)
     local hashes = ensureHashes(gdb)
@@ -204,6 +260,19 @@ function HashManager:InvalidateAccountChars(DS, gdb, charKey)
         setEntry(hashes, "guild:accountchars",
             self:ComputeGuildAccountCharsHash(DS, gdb),
             rollupTime(hashes, "accountchars:"))
+    end
+end
+
+--- After a gathering-skills scan or merge for one character.
+function HashManager:InvalidateCharSkills(DS, gdb, charKey)
+    local hashes = ensureHashes(gdb)
+    local hash   = self:ComputeCharSkillsHash(DS, gdb, charKey)
+    local ts     = lastScan(gdb, charKey, "skills")
+    local wrote  = setEntry(hashes, "skills:" .. charKey, hash, ts)
+    if wrote then
+        setEntry(hashes, "guild:skills",
+            self:ComputeGuildSkillsHash(DS, gdb),
+            rollupTime(hashes, "skills:"))
     end
 end
 
@@ -286,6 +355,15 @@ function HashManager:RebuildOnFirstLoad(DS, gdb)
         end
     end
 
+    -- Gathering-skill leaves: a character with any recipe-less profession skill.
+    if gdb.skills then
+        for charKey in pairs(gdb.skills) do
+            if not hashes["skills:" .. charKey] and next(gatheringSkills(gdb, charKey)) then
+                self:InvalidateCharSkills(DS, gdb, charKey)
+            end
+        end
+    end
+
     -- Roll-ups: recompute if missing or stale.  InvalidateChar* / Invalidate*
     -- helpers only refresh the roll-up when their leaf changed, so a fresh
     -- recompute here covers the case where leaves existed but the roll-up
@@ -296,6 +374,9 @@ function HashManager:RebuildOnFirstLoad(DS, gdb)
     setEntry(hashes, "guild:accountchars",
         self:ComputeGuildAccountCharsHash(DS, gdb),
         rollupTime(hashes, "accountchars:"))
+    setEntry(hashes, "guild:skills",
+        self:ComputeGuildSkillsHash(DS, gdb),
+        rollupTime(hashes, "skills:"))
 end
 
 -- ---------------------------------------------------------------------------
@@ -321,6 +402,10 @@ function HashManager:GetAccountCharsLevelMap(gdb)
     return copyEntries(ensureHashes(gdb), "accountchars:")
 end
 
+function HashManager:GetSkillsLevelMap(gdb)
+    return copyEntries(ensureHashes(gdb), "skills:")
+end
+
 function HashManager:GetCraftersLevelMap(gdb)
     return copyEntries(ensureHashes(gdb), "crafters:")
 end
@@ -338,7 +423,7 @@ function HashManager:GetL0BroadcastMap(gdb)
         end
     end
     -- Roll-ups
-    for _, key in ipairs({ "guild:cooldowns", "guild:accountchars" }) do
+    for _, key in ipairs({ "guild:cooldowns", "guild:accountchars", "guild:skills" }) do
         local e = hashes[key]
         if e then map[key] = { hash = e.hash, updatedAt = e.updatedAt } end
     end
@@ -395,6 +480,15 @@ function HashManager:HasContent(gdb, itemKey)
     if itemKey == "guild:accountchars" then
         return gdb.altClaims and next(gdb.altClaims) ~= nil
     end
+    if itemKey == "guild:skills" then
+        -- Servable when any character has a gathering skill recorded.
+        if gdb.skills then
+            for ck in pairs(gdb.skills) do
+                if next(gatheringSkills(gdb, ck)) then return true end
+            end
+        end
+        return false
+    end
     if itemKey:sub(1, 6) == "guild:" then return false end
 
     if itemKey:sub(1, 9) == "cooldown:" then
@@ -409,6 +503,11 @@ function HashManager:HasContent(gdb, itemKey)
         return gdb.altClaims
            and type(gdb.altClaims[owner]) == "table"
            and #gdb.altClaims[owner] > 0
+    end
+
+    if itemKey:sub(1, 7) == "skills:" then
+        local owner = itemKey:sub(8)
+        return next(gatheringSkills(gdb, owner)) ~= nil
     end
 
     -- v0.7.0: recipemeta: leaf removed. Any inbound query for it returns

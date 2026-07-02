@@ -17,6 +17,16 @@ L["TabCooldowns"]       = "Abklingzeiten"
 L["TabReagents"]        = "Reagenzien"
 L["TabMissingRecipes"]  = "Fehlende Rezepte"
 
+-- Guild tab
+L["TabGuild"]               = "Gilde"
+L["GuildTabChars"]          = "%d Charaktere erfasst"
+L["GuildColProfession"]     = "Beruf"
+L["GuildColProfessionDesc"] = "Jeder Beruf und wie viele Gildencharaktere ihn beherrschen. Unterzeilen schl\195\188sseln nach Spezialisierung auf, sofern eine bekannt ist."
+L["GuildColCount"]          = "Charaktere"
+L["GuildColCountDesc"]      = "Anzahl der Gildencharaktere mit dem Beruf (oder der Spezialisierung). Gez\195\164hlt aus synchronisierten Fertigkeiten plus allen, die bekannterma\195\159en dessen Rezepte herstellen."
+L["GuildUnspecialized"]     = "Unspezialisiert"
+L["GuildTabEmpty"]          = "Noch keine Berufsdaten. Sie f\195\188llen sich, sobald Gildenmitglieder mit dem Addon ihre Fertigkeiten synchronisieren."
+
 -- ---------------------------------------------------------------------------
 -- Browser tab
 -- ---------------------------------------------------------------------------
@@ -38,6 +48,21 @@ L["BrowserScanAH"]          = "AH durchsuchen"
 L["BrowserScanAHProgress"]  = "Durchsuche %d/%d"
 L["BrowserScanAHDesc"]      = "Durchsucht das Auktionshaus nach jedem Reagenz auf eurer Einkaufsliste. Zeilen mit aktuell verf\195\188gbaren Reagenzien erhalten einen [AH]-Knopf; klickt diesen, um direkt zur AH-Suche zu springen."
 L["CooldownsScanAHDesc"]    = "Durchsucht das Auktionshaus nach jedem Reagenz in den sichtbaren Abklingzeiten-Zeilen. Zeilen mit verf\195\188gbaren Reagenzien erhalten einen [AH]-Knopf (links von [Bank]); klickt diesen, um direkt zur AH-Suche zu springen."
+
+-- Skill-tier filter (Browser toolbar)
+L["BrowserSkillTier"]      = "Fertigkeitsstufe"
+L["BrowserSkillTierTip"]   = "Fertigkeitsstufen-Filter"
+L["BrowserSkillTierDesc"]  = "Zeigt nur Rezepte der angehakten Fertigkeitsstufen. Entfernt den Haken bei niedrigeren Stufen, um deren Rezepte aus der Liste auszublenden. Hakt mehrere Stufen an; das Men\195\188 bleibt ge\195\182ffnet. Nutzt unten Alle ausw\195\164hlen / Alle abw\195\164hlen. Rezepte ohne bekannte Fertigkeitsstufe bleiben stets sichtbar."
+L["FilterSelectAll"]       = "Alle ausw\195\164hlen"
+L["FilterClearAll"]        = "Alle abw\195\164hlen"
+L["TierApprentice"]        = "Lehrling"
+L["TierJourneyman"]        = "Geselle"
+L["TierExpert"]            = "Experte"
+L["TierArtisan"]           = "Handwerker"
+L["TierMaster"]            = "Meister"
+L["TierGrandMaster"]       = "Gro\195\159meister"
+L["TierIllustrious"]       = "Ausgezeichnet"
+L["TierZenMaster"]         = "Zen-Meister"
 
 -- Recipe detail popup
 L["PopupCrafters"]       = "Beherrscht von"

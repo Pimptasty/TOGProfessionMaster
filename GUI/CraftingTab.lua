@@ -84,8 +84,11 @@ local function PriceSourceTag(src)
 end
 
 local Ace = addon.lib
-local function savedProf() return Ace.db and Ace.db.char and Ace.db.char.craftSelProf or nil end
-local function setSavedProf(name) if Ace.db and Ace.db.char then Ace.db.char.craftSelProf = name end end
+-- Persisted selected-profession NAME (per-character), via the shared
+-- addon.GUI.PersistentChoice helper. (SharedWidgets loads before this file.)
+local _craftGetProf, _craftSetProf = addon.GUI.PersistentChoice("char", "craftSelProf", nil)
+local function savedProf() return _craftGetProf() end
+local function setSavedProf(name) _craftSetProf(name) end
 
 local function findProf(professions, name)
     for _, p in ipairs(professions) do

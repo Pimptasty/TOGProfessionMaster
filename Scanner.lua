@@ -220,7 +220,9 @@ function Scanner:OnSisterRosterUpdated(guildKey)
         C_Timer.After(10, function() addon:BroadcastSisterRosters() end)
     end
     if addon.callbacks then
-        addon.callbacks:Fire("GUILD_DATA_UPDATED", "sister:" .. tostring(guildKey))
+        -- A sister roster landing changes cross-guild membership/attribution.
+        addon.callbacks:Fire("GUILD_DATA_UPDATED", "sister:" .. tostring(guildKey),
+            { altgroups = true, roster = true })
     end
 end
 
@@ -254,11 +256,19 @@ end
 
 function Scanner:InitDeltaSync()
     -- DeltaSync-1.0 and LibGuildRoster-1.0 are declared as ## Dependencies in the
-    -- .toc — version compatibility is the responsibility of the dependency
-    -- declaration, not a runtime hardcoded version check here.
-    local DS = LibStub("DeltaSync-1.0", true)
-    if not DS then
-        addon:DebugPrint("Scanner: DeltaSync-1.0 not found — guild sync disabled")
+    -- .toc. As of DeltaSync v4.0.0 (LibStub MINOR 15) the library is multi-host:
+    -- each consumer creates its OWN isolated host via NewHost instead of the old
+    -- singleton DS:Initialize (which kept per-addon state on the one shared LibStub
+    -- table, so two DeltaSync consumers in a client clobbered each other,
+    -- last-Initialize-wins). We hold our host in Scanner.DS and call everything on
+    -- it — every downstream site already reads Scanner.DS / self.DS, so pointing
+    -- that field at the host migrates them all.
+    local DSlib = LibStub("DeltaSync-1.0", true)
+    if not (DSlib and DSlib.NewHost and (DSlib.MINOR or 0) >= 15) then
+        -- Missing, or an older / stale DeltaSync won the shared LibStub slot. Do
+        -- NOT fall back to DS:Initialize (the singleton path that clobbers) —
+        -- disable guild sync. Requires the standalone DeltaSync addon at v4.0.0+.
+        addon:DebugPrint("Scanner: DeltaSync-1.0 v4 multi-host (MINOR>=15) not found — guild sync disabled")
         return
     end
 
@@ -268,7 +278,13 @@ function Scanner:InitDeltaSync()
         return
     end
 
-    DS:Initialize({
+    -- Create our isolated per-host object. Forward-declared so the config
+    -- closures below (and InitP2P / guild-mode / roster-sync further down) can
+    -- call back into `DS` — Lua captures it by reference as an upvalue, and those
+    -- callbacks only fire long after this assignment lands. Everything hereafter
+    -- runs on this host; never on the bare DSlib handle.
+    local DS
+    DS = DSlib:NewHost({
         -- Hand DeltaSync our AceAddon instance so its sends route through
         -- AceComm-3.0 + AceCommQueue-1.0 (embedded onto Ace at the addon
         -- bootstrap in TOGProfessionMaster.lua) instead of falling back to
@@ -295,8 +311,30 @@ function Scanner:InitDeltaSync()
             if baseline.type == "subhashes" and baseline.parent then
                 Scanner:BroadcastSubhashesToGuild(baseline.parent)
             elseif baseline.type == "leaf-data" and type(baseline.keys) == "table" then
+                local reqGdb   = addon:GetGuildDb()
+                local myHashes = (reqGdb and reqGdb.hashes) or {}
                 for _, itemKey in ipairs(baseline.keys) do
-                    Scanner:BroadcastLeafToGuild(itemKey)
+                    if itemKey:sub(1, 9) == "cooldown:" then
+                        -- v0.10.11: serve a cooldown leaf ONLY to a new-format peer
+                        -- (one that attached a stamp for this key) AND only when our
+                        -- copy is strictly NEWER than theirs. The requester sends
+                        -- stamp = its own updatedAt for the key, or -1 when it holds
+                        -- nothing (so any real copy wins → first acquisition works).
+                        -- A stampless request is an OLD client: its drifted hashes
+                        -- will never converge and it can't parse our absolute payload
+                        -- anyway, so serving it just feeds the 90-leaf send storm —
+                        -- we stay silent. Non-cooldown leaves are unchanged.
+                        local reqStamp = baseline.stamps and baseline.stamps[itemKey]
+                        if reqStamp ~= nil then
+                            local mine = myHashes[itemKey]
+                            local myTs = (mine and mine.updatedAt) or 0
+                            if myTs > (tonumber(reqStamp) or 0) then
+                                Scanner:BroadcastLeafToGuild(itemKey)
+                            end
+                        end
+                    else
+                        Scanner:BroadcastLeafToGuild(itemKey)
+                    end
                 end
             elseif baseline.type == "player-subhashes" and baseline.profId then
                 -- Per-player drill-down under crafters:<profId>: send the per-player
@@ -385,8 +423,8 @@ function Scanner:InitDeltaSync()
     -- reroutes those directed channels onto GUILD (each message stamped with its
     -- intended recipient so other members drop it). Opt-in, OFF by default,
     -- persisted in our realm-scoped DB and re-applied on every login. Must be
-    -- called AFTER DS:Initialize (channel config has to exist first). Feature-
-    -- detected — an older embedded DeltaSync simply has no guild-mode and single-
+    -- called AFTER NewHost (channel config has to exist on the host first).
+    -- Feature-detected — an older embedded DeltaSync simply has no guild-mode and single-
     -- guild behaviour is unchanged. User toggle: Settings → General → Sync.
     if DS.InitGuildMode then
         local realm = Ace.db and Ace.db.realm
@@ -505,7 +543,8 @@ function Scanner:InitDeltaSync()
                 addon:DebugPrint("Scanner:   → skip RequestData — peer offline:", sender)
                 return
             end
-            if itemKey == "guild:cooldowns" or itemKey == "guild:accountchars" then
+            if itemKey == "guild:cooldowns" or itemKey == "guild:accountchars"
+               or itemKey == "guild:skills" then
                 -- Roll-up mismatch — ask for per-character sub-hashes.
                 addon:DebugPrint("Scanner:   → sending subhashes RequestData to", sender)
                 DS:RequestData(sender, { type = "subhashes", parent = itemKey })
@@ -628,6 +667,11 @@ function Scanner:Init()
     -- Item-based cooldowns (Salt Shaker in Vanilla leatherworking)
     Ace:RegisterEvent("BAG_UPDATE_COOLDOWN", function() Scanner:OnBagCooldownEvent() end)
 
+    -- Gathering-profession skill changes (Herbalism / Skinning / Fishing /
+    -- Archaeology have no trade-skill window, so the recipe scan never sees them).
+    -- SKILL_LINES_CHANGED fires whenever a skill is learned or ranks up.
+    Ace:RegisterEvent("SKILL_LINES_CHANGED", function() Scanner:ScanGatheringProfessions() end)
+
     -- Trainer window. When a player opens a profession trainer, capture
     -- the EXACT ReqSkillRank Blizzard's server enforces for every offered
     -- spell (via GetTrainerServiceSkillReq). This is the authoritative
@@ -652,6 +696,7 @@ function Scanner:Init()
     Ace:ScheduleTimer(function()
         Scanner:ScanCooldowns()
         Scanner:DetectSpecializations()
+        Scanner:ScanGatheringProfessions()
         Scanner:ScheduleBroadcast()
         -- Kick off P2P catch-up: always broadcast on login so peers can compare
         -- hashes and offer fresher data. hasMissingItems() only checks for absent
@@ -851,6 +896,65 @@ function addon:PrintStatus()
     end
     addon:Print("Sync log: " .. #log .. " entries  sends=" .. sends .. "  recvs=" .. recvs)
     addon:Print(sep)
+end
+
+--- /togpm dsstatus — focused DeltaSync multi-host health check (our /fgids).
+--- Confirms the library is the v4.0.0+ multi-host build, that TOGPM created its
+--- OWN isolated host via NewHost, and that the host carries our namespace, comm
+--- prefixes and P2P — the migration-verification readout from the DeltaSync
+--- handoff. Run it alongside another DeltaSync addon's own status command to
+--- prove isolation: each should report its own namespace and prefixes.
+function addon:PrintDeltaSyncStatus()
+    local sep = "|cffaaaaaa----------------------------------------|r"
+    addon:Print("|cffda8cffTOG Profession Master — DeltaSync|r")
+    addon:Print(sep)
+
+    local DSlib = LibStub and LibStub("DeltaSync-1.0", true)
+    if not DSlib then
+        addon:Print("|cffff4444Library: not found|r — the standalone DeltaSync addon isn't loaded.")
+        return
+    end
+
+    local minor     = DSlib.MINOR or 0
+    local multiHost  = (DSlib.NewHost ~= nil) and minor >= 15
+    addon:Print("Library: |cff00ff00loaded|r  MINOR=" .. tostring(minor)
+        .. "  multi-host=" ..
+        (multiHost and "|cff00ff00yes (NewHost, MINOR>=15)|r"
+                    or "|cffff4444NO — update the DeltaSync addon to v4.0.0+|r"))
+
+    local DS = Scanner.DS
+    if not DS then
+        addon:Print("|cffff4444Host: not created|r (Scanner.DS is nil).")
+        addon:Print("  \226\148\148 " .. (multiHost
+            and "Was PLAYER_ENTERING_WORLD missed? Try /reload."
+            or  "Guild sync is disabled until DeltaSync is updated to v4.0.0+."))
+        return
+    end
+
+    addon:Print("Host: |cff00ff00created via NewHost|r  namespace=" .. tostring(DS.namespace))
+
+    -- Comm prefixes — should be our own togpmv-v / -d / -q / -r / -x / -o / -h,
+    -- distinct from any other DeltaSync consumer's (that's the whole point of
+    -- multi-host isolation).
+    if DS.prefixes then
+        local pList = {}
+        for k, v in pairs(DS.prefixes) do pList[#pList + 1] = k .. "=" .. v end
+        table.sort(pList)
+        addon:Print("  Prefixes: " .. table.concat(pList, "  "))
+    end
+
+    addon:Print("  P2P: " .. (DS.p2p and "|cff00ff00loaded|r" or "|cffff4444not loaded|r")
+        .. "  GuildRoster: " .. (Scanner.GuildRoster and "|cff00ff00loaded|r" or "|cffff4444missing|r"))
+
+    -- Defer to DeltaSync's own detailed dump when the build exposes one.
+    if DS.DebugStatus then
+        addon:Print(sep)
+        addon:Print("|cffaaaaaaDeltaSync DebugStatus():|r")
+        DS:DebugStatus()
+    end
+
+    addon:Print(sep)
+    addon:Print("|cffaaaaaaIsolation check: run another DeltaSync addon's status (e.g. /fgids) \226\128\148 each host should show its OWN namespace and prefixes, and neither's sync should disturb the other.|r")
 end
 
 -- ---------------------------------------------------------------------------
@@ -1076,6 +1180,36 @@ function Scanner:OnBagCooldownEvent()
     if newExpiry ~= prevExpiry then
         self:ScheduleBroadcast()
     end
+
+    -- Timing insurance: BAG_UPDATE_COOLDOWN can fire a hair BEFORE the item's
+    -- cooldown is queryable, so the scan above may still read "Ready" — you used
+    -- it, but the tab stays Ready until the next scan / reload. If the shaker
+    -- isn't showing an active cooldown yet, re-check JUST the shaker ~1s later and,
+    -- if it's now on cooldown, commit and fire the COOLDOWNS-scoped UI refresh so
+    -- the open tab updates. Guarded so a burst of unrelated bag-cooldown events
+    -- (potions, food, …) can't stack timers.
+    local active = newExpiry and (newExpiry - GetServerTime()) > 0
+    if not active and not self._saltRescanPending then
+        self._saltRescanPending = true
+        Ace:ScheduleTimer(function()
+            self._saltRescanPending = false
+            local g  = addon:GetGuildDb()
+            local ck = addon:GetCharacterKey()
+            if not g or not ck then return end
+            if not g.cooldowns[ck] then g.cooldowns[ck] = {} end
+            local before = g.cooldowns[ck][itemId]
+            self:ScanSaltShaker(g.cooldowns[ck], GetServerTime(), itemId)
+            if g.cooldowns[ck][itemId] ~= before then
+                if self.DS then
+                    addon.HashManager:InvalidateCharCooldowns(self.DS, g, ck)
+                end
+                self:ScheduleBroadcast()
+                if addon.callbacks then
+                    addon.callbacks:Fire("GUILD_DATA_UPDATED", ck, { cooldowns = true })
+                end
+            end
+        end, 1)
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -1264,7 +1398,8 @@ function Scanner:RefreshAfterLocalScan(charKey)
         addon.BrowserTab:InvalidateCache()
     end
     if addon.callbacks then
-        addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey)
+        -- A local scan only ever changes our recipe (crafter) set.
+        addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey, { recipes = true })
     end
 end
 
@@ -1407,6 +1542,16 @@ local SPEC_SPELLS = {
     [171] = { 28677, 28682, 28683 },   -- Alchemy: Potion Master / Elixir Master / Transmutation Master
     [202] = { 20219, 20222 },          -- Engineering: Gnomish / Goblin
     [197] = { 26797, 26801, 26802 },   -- Tailoring: Mooncloth / Shadoweave / Spellfire
+    -- Vanilla Leatherworking / Blacksmithing specializations (still present on
+    -- TBC/Wrath; removed in Cata 4.0.1). No bonus-output mapping — recorded so
+    -- the Guild tab can break professions down by sub-class. IsSpellKnown just
+    -- returns false on clients where the spec doesn't exist, so no version gate
+    -- is needed.
+    [165] = { 10656, 10658, 10660 },   -- Leatherworking: Dragonscale / Elemental / Tribal
+    -- Blacksmithing: list the finer Weaponsmith sub-specs BEFORE Weaponsmith
+    -- itself so a swordsmith/hammersmith/axesmith (who knows BOTH the parent and
+    -- the sub-spell) records the more specific one; the loop breaks on first hit.
+    [164] = { 17039, 17040, 17041, 9788, 9787 }, -- Swordsmith / Hammersmith / Axesmith / Armorsmith / Weaponsmith
 }
 
 function Scanner:DetectSpecializations()
@@ -1425,6 +1570,74 @@ function Scanner:DetectSpecializations()
         end
     end
     gdb.specializations[charKey] = specs
+end
+
+-- ---------------------------------------------------------------------------
+-- Gathering-profession scanning
+--
+-- Records the local player's GATHERING professions — anything GetProfessions
+-- reports that ISN'T a recipe/crafting profession (CRAFTING_PROFS, whose skill
+-- already rides that profession's crafters: leaf). Herbalism / Skinning /
+-- Fishing / Archaeology have no trade-skill window, so the recipe scan never
+-- sees them; this is how "who gathers what" gets tracked. Version-agnostic:
+-- GetProfessions only returns slots that exist on the client (e.g. no
+-- Archaeology slot on Vanilla), so no flag branching is needed.
+--
+-- On a real change it invalidates the skills:<charKey> leaf and broadcasts, so
+-- gathering skills sync guild-wide the same owner-authoritative, relay-by-anyone
+-- way as every other leaf.
+-- ---------------------------------------------------------------------------
+
+function Scanner:ScanGatheringProfessions()
+    -- Classic Era's GetProfessions() returns nothing — professions are read from
+    -- the character-panel SKILL LINES instead (the same data the Skills tab shows).
+    -- GetSkillLineInfo works on every supported client; on Retail it wouldn't list
+    -- gathering the same way, but the addon's targets are Classic-family.
+    if not GetNumSkillLines or not GetSkillLineInfo then return end
+    local charKey = addon:GetCharacterKey()
+    local gdb     = addon:GetGuildDb()
+    if not gdb or not charKey then return end
+    if not gdb.skills[charKey] then gdb.skills[charKey] = {} end
+    local stored = gdb.skills[charKey]
+
+    local changed = false
+    for i = 1, (GetNumSkillLines() or 0) do
+        -- GetSkillLineInfo: name(1), isHeader(2), isExpanded(3), rank(4),
+        -- numTempPoints(5), skillModifier(6), maxRank(7), ...
+        local name, isHeader, _, rank, _, _, maxRank = GetSkillLineInfo(i)
+        if not isHeader and name then
+            -- Map the skill NAME to a profession ID (same English name map the
+            -- trade-skill path uses). Only recipe-less GATHERING professions are
+            -- recorded here — crafting professions (incl. Mining via Smelting)
+            -- already sync their skill on the crafters: leaf, and every non-
+            -- profession skill (weapon skills, riding, languages) simply isn't in
+            -- the map, so it's ignored.
+            local profId = PROF_NAME_TO_ID[name]
+            if profId and not addon.CRAFTING_PROFS[profId] then
+                rank, maxRank = rank or 0, maxRank or 0
+                local prev = stored[profId]
+                if not prev or prev.skillRank ~= rank or prev.skillMax ~= maxRank then
+                    stored[profId] = { skillRank = rank, skillMax = maxRank }
+                    changed = true
+                    addon:DebugPrint("Scanner: recorded gathering skill", name,
+                        "(", profId, ")", rank .. "/" .. maxRank)
+                end
+            end
+        end
+    end
+
+    if changed then
+        -- Content-derived scan time for the skills:<charKey> leaf.
+        if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
+        gdb.lastScan[charKey].skills = GetServerTime()
+        local DS = self.DS
+        if DS then addon.HashManager:InvalidateCharSkills(DS, gdb, charKey) end
+        self:ScheduleBroadcast()
+        if addon.callbacks then
+            addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey, { skills = true })
+        end
+        addon:DebugPrint("Scanner: gathering professions updated for", charKey)
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -1447,6 +1660,16 @@ function Scanner:ScanCooldowns()
 
     if not gdb.cooldowns[charKey] then gdb.cooldowns[charKey] = {} end
     local stored = gdb.cooldowns[charKey]
+
+    -- Snapshot our own cooldown values BEFORE the scan mutates them, so we can
+    -- tell whether this scan actually changed anything the Cooldowns tab shows
+    -- (using a transmute, salt shaker, etc.) and fire a scoped refresh only then.
+    -- A local scan raises no sync-receive signal, and now that the drift churn is
+    -- gone there's no incidental redraw to piggyback on — so without this, your
+    -- own cooldown starting/finishing wouldn't refresh the tab until the next
+    -- guild update. Cheap: a character has only a handful of cooldown entries.
+    local beforeScan = {}
+    for spellId, expiresAt in pairs(stored) do beforeScan[spellId] = expiresAt end
 
     -- ---- Transmutes --------------------------------------------------------
     -- All transmutes share one cooldown bucket. Iterate every known transmute
@@ -1538,7 +1761,24 @@ function Scanner:ScanCooldowns()
         addon.HashManager:InvalidateCharCooldowns(DS, gdb, charKey)
     end
 
-    addon:DebugPrint("Scanner: cooldown scan complete for", charKey)
+    -- Did this scan change any of our own cooldown values? If so, refresh the UI
+    -- with a COOLDOWNS-scoped signal — the Cooldowns tab re-renders, the recipe
+    -- Browser (which renders none of this) does not.
+    local cooldownsChanged = false
+    for spellId, expiresAt in pairs(stored) do
+        if beforeScan[spellId] ~= expiresAt then cooldownsChanged = true; break end
+    end
+    if not cooldownsChanged then
+        for spellId in pairs(beforeScan) do
+            if stored[spellId] == nil then cooldownsChanged = true; break end
+        end
+    end
+    if cooldownsChanged and addon.callbacks then
+        addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey, { cooldowns = true })
+    end
+
+    addon:DebugPrint("Scanner: cooldown scan complete for", charKey,
+        cooldownsChanged and "(changed → UI refresh)" or "(no change)")
 end
 
 -- Walk every recipe's reagent table and resolve missing itemId via
@@ -1714,18 +1954,35 @@ function Scanner:BackfillBogusRecipeNames()
 end
 
 function Scanner:ScanSaltShaker(stored, now, itemId)
+    if not itemId then return end
+    -- The item-cooldown API differs across Classic builds: newer clients expose
+    -- C_Container.GetItemCooldown, older ones the global GetItemCooldown, and some
+    -- recent Classic Era builds ship one but not the other (mirroring the
+    -- GetContainerItemInfo → C_Container move that forced the Compat shims). The
+    -- old code called ONLY the namespaced form, so a client where it's absent — or
+    -- present but returning nothing — never detected the cooldown and rendered
+    -- "Ready" forever. Try the namespaced call first, then FALL BACK ON THE RESULT
+    -- (not just existence) to the global, so either failure mode is covered.
     local start, duration
     if C_Container and C_Container.GetItemCooldown then
         start, duration = C_Container.GetItemCooldown(itemId)
+    end
+    if (not start or start == 0) and GetItemCooldown then
+        start, duration = GetItemCooldown(itemId)
     end
 
     if start and start > 0 and duration and duration > 1.5 then
         local remaining = GetCooldownLeft(start, duration)
         if remaining > 0 and remaining < 345600 then
             stored[itemId] = math.floor(now + remaining)
+            addon:DebugPrint("Scanner: salt shaker on cooldown,", remaining, "s remaining")
             return
         end
     end
+    addon:DebugPrint("Scanner: salt shaker NOT on cooldown — start=",
+        tostring(start), "duration=", tostring(duration),
+        "hasC_Container=", tostring(C_Container and C_Container.GetItemCooldown ~= nil),
+        "hasGlobal=", tostring(GetItemCooldown ~= nil))
 
     -- Not on cooldown (or bogus value). Seed to Ready if player owns item (incl. bank).
     if not stored[itemId] or (stored[itemId] - now) > 691200 then
@@ -1859,6 +2116,8 @@ function Scanner:BroadcastSubhashesToGuild(parentItemKey)
         subhashes = HM:GetCooldownLevelMap(gdb)
     elseif parentItemKey == "guild:accountchars" then
         subhashes = HM:GetAccountCharsLevelMap(gdb)
+    elseif parentItemKey == "guild:skills" then
+        subhashes = HM:GetSkillsLevelMap(gdb)
     else
         addon:DebugPrint("Scanner: BroadcastSubhashesToGuild — unknown parent", parentItemKey)
         return
@@ -1961,16 +2220,25 @@ function Scanner:BuildLeafPayload(itemKey, players)
         local owner  = itemKey:sub(10)
         local bucket = gdb.cooldowns and gdb.cooldowns[owner]
         if not bucket or not next(bucket) then return nil end
-        -- Convert absolute expiresAt → relative remaining for the wire.
-        local cdRel = {}
+        -- v0.10.11: ship ABSOLUTE expiry timestamps (server-time), NOT relative
+        -- remaining. GetServerTime() is one shared clock for the whole guild, so
+        -- an absolute expiry is directly comparable on every client and survives
+        -- relay byte-for-byte — every receiver stores exactly what the owner
+        -- minted, so the leaf hash converges instead of drifting upward by the
+        -- transmission latency on each hop (the old now+remaining reconstruction
+        -- inflated the value, changed the hash, and re-triggered sync forever).
+        -- `abs = 1` marks the new format: v0.10.11+ receivers REQUIRE it and drop
+        -- legacy relative payloads; pre-v0.10.11 receivers see ~1.7e9 values fail
+        -- their `< 2592000` guard and simply ignore them (graceful, no crash).
+        local cdAbs = {}
         for spellId, expiresAt in pairs(bucket) do
-            local remaining = expiresAt - now
-            cdRel[spellId] = remaining > 0 and remaining or 0
+            if type(expiresAt) == "number" then cdAbs[spellId] = expiresAt end
         end
         payload.leaves[itemKey] = {
-            data      = cdRel,
+            data      = cdAbs,
             hash      = entry and entry.hash      or 0,
             updatedAt = entry and entry.updatedAt or 0,
+            abs       = 1,
         }
         local ls = gdb.lastScan and gdb.lastScan[owner]
         if ls and ls.cooldowns then
@@ -1991,6 +2259,23 @@ function Scanner:BuildLeafPayload(itemKey, players)
         local ls = gdb.lastScan and gdb.lastScan[owner]
         if ls and ls.accountchars then
             lastScanOut[owner] = { accountchars = ls.accountchars }
+        end
+
+    elseif itemKey:sub(1, 7) == "skills:" then
+        -- v1.0.0: a character's GATHERING-profession skills (Herbalism / Skinning /
+        -- Fishing / Archaeology) — the recipe-less professions that have no crafters
+        -- leaf to ride. Owner-authoritative + relayed like every other leaf.
+        local owner = itemKey:sub(8)
+        local skills = addon.HashManager:GetGatheringSkills(gdb, owner)
+        if not next(skills) then return nil end
+        payload.leaves[itemKey] = {
+            data      = skills,
+            hash      = entry and entry.hash      or 0,
+            updatedAt = entry and entry.updatedAt or 0,
+        }
+        local ls = gdb.lastScan and gdb.lastScan[owner]
+        if ls and ls.skills then
+            lastScanOut[owner] = { skills = ls.skills }
         end
 
     -- v0.7.0: recipemeta: leaf removed entirely. All recipe metadata (name,
@@ -2272,9 +2557,13 @@ end
 ---                             charKey so unlearned recipes get removed.
 ---                             Relayed data (false) is union-add only.
 function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderClaimsOwnScan, originTag)
-    if type(crafters) ~= "table" then return end
+    if type(crafters) ~= "table" then return false end
     if not gdb.recipes[profId] then gdb.recipes[profId] = {} end
     local profRecipes = gdb.recipes[profId]
+
+    -- Tracks whether this merge actually wrote NEW/different crafter data, so the
+    -- caller can skip the UI redraw when a peer just re-sent data we already had.
+    local changed = false
 
     -- Hide recipes the local addon DB doesn't know about (sender's addon is
     -- newer / has SoD content we don't ship yet). We could store them as
@@ -2297,7 +2586,10 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
 
     if senderClaimsOwnScan and senderKey then
         for _, rd in pairs(profRecipes) do
-            if rd.crafters then rd.crafters[senderKey] = nil end
+            if rd.crafters and rd.crafters[senderKey] ~= nil then
+                rd.crafters[senderKey] = nil
+                changed = true
+            end
         end
     end
 
@@ -2348,14 +2640,16 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
                         -- Federation gate: store only home / own / configured-
                         -- sister tags. Unlisted-guild data is dropped (and an
                         -- existing allowed tag, if any, is preserved untouched).
-                        if allowedTags[effTag] then
+                        if allowedTags[effTag] and existing.crafters[ck] ~= effTag then
                             existing.crafters[ck] = effTag
+                            changed = true
                         end
                     end
                 end
             end
         end
     end
+    return changed
 end
 
 --- v0.2.0 — Called by DeltaSync when a peer's broadcast or whisper arrives.
@@ -2435,10 +2729,28 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     if data.type == "subhashes" and type(data.subhashes) == "table" then
         local localHashes = gdb.hashes or {}
         local toRequest = {}
+        local stamps    = nil   -- per-cooldown-key DTS so the responder can gate (v0.10.11)
         for itemKey, peerEntry in pairs(data.subhashes) do
             if type(peerEntry) == "table" and peerEntry.hash then
-                local mine = localHashes[itemKey]
-                if not mine or mine.hash ~= peerEntry.hash then
+                local mine    = localHashes[itemKey]
+                local differs = not mine or mine.hash ~= peerEntry.hash
+                if differs and itemKey:sub(1, 9) == "cooldown:" then
+                    -- Owner-authoritative cooldowns: a bare hash difference is
+                    -- usually just an OLD client's drifted copy (same owner-lastScan,
+                    -- different hash) that we'd only drop on receipt. Pull ONLY when
+                    -- the peer holds a strictly NEWER version, or when we hold nothing
+                    -- at all (first acquisition). Attach our DTS as a stamp (-1 = "I
+                    -- hold nothing") so the responder applies the mirror gate.
+                    local peerTs = tonumber(peerEntry.updatedAt) or 0
+                    if mine and peerTs <= (mine.updatedAt or 0) then
+                        differs = false
+                    end
+                    if differs then
+                        stamps = stamps or {}
+                        stamps[itemKey] = (mine and mine.updatedAt) or -1
+                    end
+                end
+                if differs then
                     toRequest[#toRequest + 1] = itemKey
                 end
             end
@@ -2450,7 +2762,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
             if Scanner.GuildRoster and not Scanner.GuildRoster:IsOnline(sender) then
                 addon:DebugPrint("Scanner:   → skip leaf-data RequestData — peer offline:", sender)
             else
-                DS:RequestData(sender, { type = "leaf-data", keys = toRequest })
+                DS:RequestData(sender, { type = "leaf-data", keys = toRequest, stamps = stamps })
             end
         end
         -- Complete the parent session.  Without this, P2P keeps the parent
@@ -2539,6 +2851,23 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
 
     local touchedAltGroups = false
     local touchedProfessions = {}
+    -- Set the moment any leaf merge writes NEW/different data to gdb. Only then do
+    -- we fire GUILD_DATA_UPDATED (the UI redraw). A peer re-sending data we already
+    -- have (redundant full payloads, matched hashes) merges to nothing and must
+    -- NOT trigger a redraw. Bookkeeping-only writes (syncTimes, lastScan) do NOT
+    -- set these — the UI doesn't read them.
+    --
+    -- Tracked per leaf-TYPE (scope) so GUILD_DATA_UPDATED can carry which kind of
+    -- data changed: a cooldown-only sync must not tear down and rebuild the recipe
+    -- Browser, which renders none of it. MainWindow gates the redraw on the active
+    -- tab's interest set.
+    local changedCooldowns = false
+    local changedCrafters  = false
+    local changedAlts      = false
+    local changedSkills    = false
+    -- Our own charKey — we are the sole authority for our own cooldowns, so a peer
+    -- (even a relay holding a stale/drifted copy) must never overwrite them.
+    local ownKey = addon:GetCharacterKey()
 
     for itemKey, leafEntry in pairs(data.leaves) do
         if type(leafEntry) == "table" then
@@ -2546,19 +2875,74 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
 
             if itemKey:sub(1, 9) == "cooldown:" then
                 local owner = itemKey:sub(10)
-                if not gdb.cooldowns[owner] then gdb.cooldowns[owner] = {} end
-                if type(leafData) == "table" then
-                    for spellId, remaining in pairs(leafData) do
-                        if type(remaining) == "number" and remaining >= 0 and remaining < 2592000 then
-                            local newExpiry = now + remaining
-                            local existing = gdb.cooldowns[owner][spellId]
-                            if not existing or newExpiry > existing then
-                                gdb.cooldowns[owner][spellId] = newExpiry
+                -- v0.10.11: cooldowns are owner-authoritative, immutable-token
+                -- leaves. The owner ships ABSOLUTE expiry timestamps (leafEntry.abs
+                -- marks the new format) plus its own minted leaf hash (leafEntry.
+                -- hash). Receivers ADOPT the owner's bucket and hash VERBATIM — never
+                -- reconstruct a value against the local clock, never recompute the
+                -- hash. That's what stops the latency-drift feedback loop that kept
+                -- guild:cooldowns hashes from ever converging (endless re-sync +
+                -- redraw churn). See StoreDeliveredCooldownLeaf in HashManager.
+                if leafEntry.abs and type(leafData) == "table" then
+                    -- Never let a peer overwrite our OWN cooldowns — we mint those
+                    -- locally in ScanCooldowns; a relay can only hold a stale copy.
+                    if owner ~= ownKey then
+                        local token       = leafEntry.hash
+                        local deliveredTs = tonumber(leafEntry.updatedAt) or 0
+                        local storedHash  = gdb.hashes and gdb.hashes["cooldown:" .. owner]
+                        -- Adopt-or-ignore by (token, updatedAt). Same token → same
+                        -- version, no-op. Different token → take it ONLY if it's
+                        -- STRICTLY newer than what we hold. Strict (not >=) matters
+                        -- during the mixed-version rollout: two upgraded clients can
+                        -- hold different DRIFTED legacy tokens for the same owner with
+                        -- an identical owner-lastScan; `>=` would let them ping-pong
+                        -- adopt each other's copy forever (churning the Cooldowns tab),
+                        -- while `>` freezes both until the owner's next scan mints a
+                        -- genuinely newer timestamp that cleanly wins for everyone.
+                        -- Atomic per-leaf: the owner's whole bucket is versioned by the
+                        -- one token, so we replace the bucket wholesale.
+                        local adopt = false
+                        if not storedHash then
+                            adopt = true
+                        elseif storedHash.hash ~= token
+                               and deliveredTs > (storedHash.updatedAt or 0) then
+                            adopt = true
+                        end
+                        if adopt then
+                            local newBucket = {}
+                            for spellId, expiresAt in pairs(leafData) do
+                                -- Store the absolute expiry VERBATIM. Sanity-clamp to
+                                -- a plausible window (past = Ready is fine; reject a
+                                -- value more than 30 days out as corruption).
+                                if type(expiresAt) == "number"
+                                   and expiresAt > 0 and expiresAt < now + 2592000 then
+                                    newBucket[spellId] = expiresAt
+                                end
+                            end
+                            -- Only replace if the incoming leaf actually carried data.
+                            -- An empty/all-rejected bucket must never wipe a good copy
+                            -- we already hold (a healthy owner never ships an empty
+                            -- cooldown leaf — BuildLeafPayload returns nil for that).
+                            if next(newBucket) then
+                                gdb.cooldowns[owner] = newBucket
+                                -- Store the owner's token + updatedAt WITHOUT recomputing.
+                                if DS then
+                                    addon.HashManager:StoreDeliveredCooldownLeaf(
+                                        DS, gdb, owner, token, deliveredTs)
+                                end
+                                changedCooldowns = true
                             end
                         end
                     end
+                else
+                    -- Legacy relative-remaining format (pre-v0.10.11 peer): DROP it.
+                    -- Merging would reconstruct a drifted expiry and reignite the
+                    -- churn. Any cooldown we already hold for this owner stays (it's
+                    -- display-only); we just don't UPDATE from the old format. Self-
+                    -- heals as owners upgrade and re-broadcast the absolute form.
+                    addon:DebugPrint("Scanner: dropped legacy-format cooldown leaf",
+                        itemKey, "from", sender)
                 end
-                if DS then addon.HashManager:InvalidateCharCooldowns(DS, gdb, owner) end
                 if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
 
             elseif itemKey:sub(1, 13) == "accountchars:" then
@@ -2572,6 +2956,16 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                             if type(ck) == "string" then arr[#arr + 1] = ck end
                         end
                         table.sort(arr)
+                        -- Only a redraw-worthy change if the group actually differs
+                        -- (a redundant re-broadcast of the same group is a no-op).
+                        local prev = gdb.altClaims[owner]
+                        local same = prev and #prev == #arr
+                        if same then
+                            for i = 1, #arr do
+                                if prev[i] ~= arr[i] then same = false; break end
+                            end
+                        end
+                        if not same then changedAlts = true end
                         gdb.altClaims[owner] = arr
                     else
                         -- Relay: union add to existing.
@@ -2582,6 +2976,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                             if type(ck) == "string" and not seen[ck] then
                                 gdb.altClaims[owner][#gdb.altClaims[owner] + 1] = ck
                                 seen[ck] = true
+                                changedAlts = true   -- a genuinely new alt claim
                             end
                         end
                         table.sort(gdb.altClaims[owner])
@@ -2589,6 +2984,33 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                     touchedAltGroups = true
                 end
                 if DS then addon.HashManager:InvalidateAccountChars(DS, gdb, owner) end
+                if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
+
+            elseif itemKey:sub(1, 7) == "skills:" then
+                -- v1.0.0: a character's gathering-profession skills (Herbalism /
+                -- Skinning / Fishing / Archaeology). Max-rank-wins per profession —
+                -- skill only ever climbs, so this is drift-free and correct for both
+                -- the owner's own scan and a relay carrying an older copy.
+                local owner = itemKey:sub(8)
+                if type(leafData) == "table" then
+                    if not gdb.skills[owner] then gdb.skills[owner] = {} end
+                    for profIdStr, rec in pairs(leafData) do
+                        local profId = tonumber(profIdStr)
+                        if profId and type(rec) == "table" then
+                            local incomingRank = tonumber(rec.r) or 0
+                            local incomingMax  = tonumber(rec.m) or 0
+                            local existing = gdb.skills[owner][profId]
+                            if not existing or incomingRank > (existing.skillRank or 0) then
+                                gdb.skills[owner][profId] = {
+                                    skillRank = incomingRank,
+                                    skillMax  = incomingMax,
+                                }
+                                changedSkills = true
+                            end
+                        end
+                    end
+                end
+                if DS then addon.HashManager:InvalidateCharSkills(DS, gdb, owner) end
                 if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
 
             -- v0.7.0: recipemeta: leaf removed (metadata lives in shipped
@@ -2606,8 +3028,10 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                         type(data.skills) == "table"
                         and type(data.skills[profId]) == "table"
                         and data.skills[profId][senderKey] ~= nil
-                    self:MergeCraftersIntoGdb(gdb, profId, leafData,
-                        senderKey, senderClaimsOwnScan, senderTag)
+                    if self:MergeCraftersIntoGdb(gdb, profId, leafData,
+                        senderKey, senderClaimsOwnScan, senderTag) then
+                        changedCrafters = true
+                    end
                     -- Skills (per-charKey rank/max) ride along on crafters payloads.
                     if type(data.skills) == "table"
                        and type(data.skills[profId]) == "table" then
@@ -2622,6 +3046,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                                         skillRank = incomingRank,
                                         skillMax  = sk.skillMax or 300,
                                     }
+                                    changedCrafters = true
                                 end
                             end
                         end
@@ -2635,7 +3060,10 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                         for ck, sid in pairs(data.specializations[profId]) do
                             if type(ck) == "string" and type(sid) == "number" then
                                 if not gdb.specializations[ck] then gdb.specializations[ck] = {} end
-                                gdb.specializations[ck][profId] = sid
+                                if gdb.specializations[ck][profId] ~= sid then
+                                    gdb.specializations[ck][profId] = sid
+                                    changedCrafters = true
+                                end
                             end
                         end
                     end
@@ -2670,8 +3098,24 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
             leafKeys[#leafKeys + 1] = k .. self:_ProfSuffix(tonumber(k:match("^crafters:(%d+)")))
         end
         table.sort(leafKeys)
+        local changed = changedCooldowns or changedCrafters or changedAlts or changedSkills
+        -- SYNC_RECV always fires (the Sync Log records every receive). But
+        -- GUILD_DATA_UPDATED — which drives the UI redraw — fires ONLY when the
+        -- merge actually wrote new data, so a redundant re-send from a peer no
+        -- longer tears down and rebuilds the active tab for nothing.
         addon.callbacks:Fire("SYNC_RECV", sender, bytes or 0,
+            (changed and "" or "[no-op] ") ..
             "leaves: " .. table.concat(leafKeys, ", "))
-        addon.callbacks:Fire("GUILD_DATA_UPDATED", senderKey)
+        if changed then
+            -- Carry WHICH kind of data changed so the UI can skip redraws it
+            -- doesn't need — a cooldown-only sync must not rebuild the recipe
+            -- Browser. MainWindow gates the redraw on the active tab's interests.
+            local scopes = {}
+            if changedCooldowns then scopes.cooldowns = true end
+            if changedCrafters  then scopes.recipes   = true end
+            if changedAlts      then scopes.altgroups = true end
+            if changedSkills    then scopes.skills    = true end
+            addon.callbacks:Fire("GUILD_DATA_UPDATED", senderKey, scopes)
+        end
     end
 end

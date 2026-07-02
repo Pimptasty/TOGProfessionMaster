@@ -73,6 +73,7 @@ local function getTabDefs()
         { value = "browser",   text = L["TabProfessions"]    },
         { value = "cooldowns", text = L["TabCooldowns"]      },
         { value = "missing",   text = L["TabMissingRecipes"] },
+        { value = "guild",     text = L["TabGuild"]          },
     }
     -- The Crafting tab is omitted entirely when the user opts out of TOGPM's
     -- crafting UI (profile.hideCraftingTab). Built per-open so toggling it +
@@ -333,6 +334,20 @@ function MainWindow:Open(tabKey)
                 sourceLegend,
             },
         },
+        guild = {
+            title = L["GuildHelpTitle"],
+            lines = {
+                nameColorLegend,
+                " ",
+                L["GuildHelpIntro"],
+                " ",
+                L["GuildHelpExpand"],
+                " ",
+                L["GuildHelpSpecs"],
+                " ",
+                L["GuildHelpCoverage"],
+            },
+        },
 
     }
 
@@ -427,11 +442,11 @@ function MainWindow:Open(tabKey)
             addon.CraftingTab._autoOpenOnUserNav = true
         end
         -- Persist main tab selection so reopening the window returns to the last
-        -- used tab. The settings DB is addon.lib.db (AceDB on the Ace object);
-        -- there is no addon.db, so the previous code here silently no-oped.
-        if addon.lib and addon.lib.db and addon.lib.db.char then
-            addon.lib.db.char.lastMainTab = group
-        end
+        -- used tab (per-character), via the shared addon.GUI.PersistentChoice
+        -- helper. Called at runtime (not file scope) because MainWindow loads
+        -- before SharedWidgets in the TOC.
+        local _, setLastTab = addon.GUI.PersistentChoice("char", "lastMainTab")
+        setLastTab(group)
         self:ApplyTabSize(group)
         _widget:ReleaseChildren()
         self:DrawTab(group, _widget)
@@ -447,8 +462,8 @@ function MainWindow:Open(tabKey)
     -- Apply size BEFORE selecting the tab so the first Draw sees the
     -- correct frame dimensions (some tabs read frame width during Draw).
     -- Load saved tab from db.char, falling back to "browser" if none saved
-    local savedTab = addon.lib and addon.lib.db and addon.lib.db.char and addon.lib.db.char.lastMainTab
-    local initialTab = tabKey or savedTab or self.activeTab or "browser"
+    local getLastTab = addon.GUI.PersistentChoice("char", "lastMainTab")
+    local initialTab = tabKey or getLastTab() or self.activeTab or "browser"
     -- Never select a tab that isn't in the current set (e.g. a saved/forced
     -- "crafting" when the Crafting tab is hidden) — that would render hidden-tab
     -- content with no tab to leave it. Fall back to Browser.
@@ -490,6 +505,7 @@ local _TAB_SIZE_LOOKUP = {
     browser   = function() return addon.BrowserTab        and addon.BrowserTab.WINDOW_SIZE        end,
     cooldowns = function() return addon.CooldownsTab      and addon.CooldownsTab.WINDOW_SIZE      end,
     missing   = function() return addon.MissingRecipesTab and addon.MissingRecipesTab.WINDOW_SIZE end,
+    guild     = function() return addon.GuildTab          and addon.GuildTab.WINDOW_SIZE          end,
     crafting  = function() return addon.CraftingTab       and addon.CraftingTab.WINDOW_SIZE       end,
     ahprofit  = function() return addon.AHProfitTab       and addon.AHProfitTab.WINDOW_SIZE       end,
 }
@@ -601,11 +617,24 @@ function MainWindow:SetStatusText(text)
     end
 end
 
+-- The canonical left-of-status-bar string: the version, plus a redraw counter to
+-- its right that only appears when debug mode is on (`/togpm debug`). `_redrawCount`
+-- bumps on every full tab redraw (MainWindow:Refresh — the guild-sync churn path),
+-- so with debug on you can watch the rate live and confirm the "only redraw on real
+-- data change" fix keeps it low. Hidden in normal play.
+function MainWindow:StatusBase()
+    local base = (addon.Version or "")
+    if addon.debug then
+        base = base .. "    |cff888888[redraws: " .. (self._redrawCount or 0) .. "]|r"
+    end
+    return base
+end
+
 -- The version string is canonical and always leads the status bar. Tabs append
 -- their own info (e.g. Profit Planner's row count) as a suffix after it; pass
 -- nil/empty to show just the version.
 function MainWindow:SetStatusSuffix(suffix)
-    local base = addon.Version or ""
+    local base = self:StatusBase()
     if suffix and suffix ~= "" then
         self:SetStatusText(base .. "    " .. suffix)
     else
@@ -643,7 +672,8 @@ function MainWindow:DrawTab(group, container)
     -- Reset the status bar to the addon version on every tab switch. Tabs that
     -- want a custom status line (Profit Planner writes its row count here) over-
     -- write it during their own Draw; this guarantees it reverts when you leave.
-    self:SetStatusText(addon.Version)
+    -- (StatusBase = version + the TEMP redraw counter.)
+    self:SetStatusText(self:StatusBase())
 
     if group == "browser" then
         if addon.BrowserTab then
@@ -656,6 +686,10 @@ function MainWindow:DrawTab(group, container)
     elseif group == "missing" then
         if addon.MissingRecipesTab then
             addon.MissingRecipesTab:Draw(container)
+        end
+    elseif group == "guild" then
+        if addon.GuildTab then
+            addon.GuildTab:Draw(container)
         end
     elseif group == "crafting" then
         if addon.CraftingTab then
@@ -696,12 +730,15 @@ function MainWindow:Refresh()
     --      pullout used to make the old global check return true forever.
     --   2. Cap the retries, so even our own open pullout can't hang us.
     local rootFrame = self.frame and self.frame.frame
-    if rootFrame and addon.GUI and addon.GUI.IsAnyDropdownPulloutOpen
-       and addon.GUI.IsAnyDropdownPulloutOpen(rootFrame)
-       and (self._refreshDeferrals or 0) < 8 then
+    local pulloutOpen = rootFrame and addon.GUI and addon.GUI.IsAnyDropdownPulloutOpen
+                        and addon.GUI.IsAnyDropdownPulloutOpen(rootFrame)
+    local typing      = addon.GUI and addon.GUI.IsAnySearchFocused
+                        and addon.GUI.IsAnySearchFocused()
+    if (pulloutOpen or typing) and (self._refreshDeferrals or 0) < 8 then
         self._refreshDeferrals = (self._refreshDeferrals or 0) + 1
-        addon:DebugPrint("MainWindow:Refresh DEFERRED — our dropdown pullout open (",
-            self._refreshDeferrals, "/8); re-try in 0.25s")
+        addon:DebugPrint("MainWindow:Refresh DEFERRED —",
+            typing and "search field focused" or "our dropdown pullout open",
+            "(", self._refreshDeferrals, "/8); re-try in 0.25s")
         if self._refreshTimer then self._refreshTimer:Cancel() end
         self._refreshTimer = C_Timer.NewTimer(0.25, function()
             self._refreshTimer = nil
@@ -711,6 +748,7 @@ function MainWindow:Refresh()
     end
     self._refreshDeferrals = 0
 
+    self._redrawCount = (self._redrawCount or 0) + 1   -- perf-churn counter (shown in status bar when debug is on)
     addon:DebugPrint("MainWindow:Refresh — ReleaseChildren + DrawTab(", self.activeTab, ")")
     self.tabs:ReleaseChildren()
     self:DrawTab(self.activeTab, self.tabs)
@@ -749,8 +787,40 @@ end
 -- React to guild data updates from Scanner
 -- ---------------------------------------------------------------------------
 
+-- Which change-scopes each tab actually renders. GUILD_DATA_UPDATED carries a
+-- scope set describing WHICH kind of data changed (see Scanner's fire sites); a
+-- refresh whose scope is disjoint from the active tab's interests is skipped —
+-- e.g. a cooldown sync must not tear down and rebuild the 19k-crafter recipe
+-- Browser, which renders no cooldown data. A nil/empty scope (legacy or unknown
+-- caller) always refreshes, so this can only ever REDUCE redraws, never miss one
+-- a tab genuinely needs.
+local TAB_SCOPES = {
+    browser   = { recipes = true, altgroups = true },
+    cooldowns = { cooldowns = true },
+    missing   = { recipes = true, altgroups = true },
+    guild     = { skills = true, recipes = true, altgroups = true, roster = true },
+    crafting  = { recipes = true },
+    ahprofit  = { recipes = true },
+}
+
+local function activeTabCaresAbout(activeTab, scopes)
+    if type(scopes) ~= "table" then return true end   -- unknown → refresh
+    if not next(scopes) then return true end          -- empty → refresh
+    local interests = TAB_SCOPES[activeTab]
+    if not interests then return true end             -- unknown tab → refresh
+    for scope in pairs(scopes) do
+        if interests[scope] then return true end
+    end
+    return false
+end
+
 hooksecurefunc(Ace, "OnEnable", function(_self)
-    addon:RegisterCallback("GUILD_DATA_UPDATED", function(_event, _charKey)
+    addon:RegisterCallback("GUILD_DATA_UPDATED", function(_event, _charKey, scopes)
+        if not activeTabCaresAbout(MainWindow.activeTab, scopes) then
+            addon:DebugPrint("MainWindow: GUILD_DATA_UPDATED skipped — tab",
+                MainWindow.activeTab, "renders none of the changed scope")
+            return
+        end
         MainWindow:QueueRefresh()
     end)
 end)

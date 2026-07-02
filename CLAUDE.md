@@ -114,6 +114,8 @@ Modules do **not** call each other directly across layers. Communication uses:
 
 Loaded from the standalone `DeltaSync` addon (declared in `## Dependencies` and `.pkgmeta required-dependencies`). Resolved at runtime via `LibStub("DeltaSync-1.0", true)` in [Scanner.lua](Scanner.lua) — guild sync silently disables if the dependency is missing.
 
+**Multi-host API (DeltaSync v4.0.0 / LibStub MINOR 15+).** DeltaSync is no longer a singleton. `Scanner:InitDeltaSync` creates an **isolated per-host object** via `DSlib:NewHost({…})` and stores it in `Scanner.DS`; it does **not** call the old `DS:Initialize` (that path kept per-addon state on the one shared LibStub table, so two DeltaSync consumers in a client clobbered each other). The init **hard-gates on `DSlib.NewHost and DSlib.MINOR >= 15`** — an older/stale DeltaSync disables guild sync rather than falling back to the singleton. Everything is called on the host, never the bare `DSlib` handle: every consumer already reads `Scanner.DS` (Settings guild-mode toggle, `TOGProfessionMaster.lua` roster sync) or receives it as a parameter (`HashManager:RebuildOnFirstLoad(DS, …)` / `:PadMissingProfessionPlaceholders(DS, …)` / `:ComputeHash`), so the host propagates automatically. The host inherits the full `DS:` method surface via a metatable, and the wire format is unchanged — a v15 host interoperates with any peer as before.
+
 Custom P2P sync protocol built on AceComm. Key concepts:
 
 - 7 logical channels: VERSION, DATA, QUERY, RESPONSE, DELTA, OFFER, HANDSHAKE

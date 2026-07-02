@@ -53,6 +53,31 @@ L["PopupCrafters"]       = "Gekend door"
 L["PopupOnList"]         = "Op boodschappenlijst"
 L["PopupNotOnList"]      = "Niet op boodschappenlijst"
 
+-- Skill-tier filter (Browser toolbar)
+L["BrowserSkillTier"]      = "Vaardigheidsniveau"
+L["BrowserSkillTierTip"]   = "Filter op vaardigheidsniveau"
+L["BrowserSkillTierDesc"]  = "Toon alleen recepten in de aangevinkte vaardigheidsniveaus. Vink lagere niveaus uit om hun recepten uit de lijst te verbergen. Vink meerdere niveaus aan; het menu blijft open. Gebruik Alles selecteren / Alles wissen onderaan. Recepten zonder bekend vaardigheidsniveau blijven altijd zichtbaar."
+L["FilterSelectAll"]       = "Alles selecteren"
+L["FilterClearAll"]        = "Alles wissen"
+L["TierApprentice"]        = "Leerling"
+L["TierJourneyman"]        = "Gezel"
+L["TierExpert"]            = "Expert"
+L["TierArtisan"]           = "Ambachtsman"
+L["TierMaster"]            = "Meester"
+L["TierGrandMaster"]       = "Grootmeester"
+L["TierIllustrious"]       = "Illuster"
+L["TierZenMaster"]         = "Zenmeester"
+
+-- Guild tab
+L["TabGuild"]               = "Gilde"
+L["GuildTabChars"]          = "%d personages bijgehouden"
+L["GuildColProfession"]     = "Beroep"
+L["GuildColProfessionDesc"] = "Elk beroep en hoeveel gildepersonages het hebben. Subrijen splitsen dit uit per specialisatie waar er één bekend is."
+L["GuildColCount"]          = "Personages"
+L["GuildColCountDesc"]      = "Aantal gildepersonages met het beroep (of de specialisatie). Geteld op basis van gesynchroniseerde vaardigheden plus iedereen die bekendstaat om de recepten te maken."
+L["GuildUnspecialized"]     = "Niet-gespecialiseerd"
+L["GuildTabEmpty"]          = "Nog geen beroepsgegevens. Deze worden ingevuld naarmate gildeleden die de addon gebruiken hun vaardigheden synchroniseren."
+
 -- ---------------------------------------------------------------------------
 -- Cooldowns tab
 -- ---------------------------------------------------------------------------

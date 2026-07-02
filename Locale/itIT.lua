@@ -44,6 +44,31 @@ L["PopupCrafters"]       = "Conosciuta da"
 L["PopupOnList"]         = "Nella lista della spesa"
 L["PopupNotOnList"]      = "Non nella lista"
 
+-- Skill-tier filter (Browser toolbar)
+L["BrowserSkillTier"]      = "Livello di abilit\195\160"
+L["BrowserSkillTierTip"]   = "Filtro livello di abilit\195\160"
+L["BrowserSkillTierDesc"]  = "Mostra solo le ricette dei livelli di abilit\195\160 selezionati. Deseleziona i livelli inferiori per nascondere le loro ricette dalla lista. Seleziona pi\195\185 livelli; il menu resta aperto. Usa Seleziona tutto / Deseleziona tutto in fondo. Le ricette senza livello di abilit\195\160 noto restano sempre visibili."
+L["FilterSelectAll"]       = "Seleziona tutto"
+L["FilterClearAll"]        = "Deseleziona tutto"
+L["TierApprentice"]        = "Apprendista"
+L["TierJourneyman"]        = "Lavorante"
+L["TierExpert"]            = "Esperto"
+L["TierArtisan"]           = "Artigiano"
+L["TierMaster"]            = "Maestro"
+L["TierGrandMaster"]       = "Gran Maestro"
+L["TierIllustrious"]       = "Illustre"
+L["TierZenMaster"]         = "Maestro Zen"
+
+-- Guild tab
+L["TabGuild"]               = "Gilda"
+L["GuildTabChars"]          = "%d personaggi tracciati"
+L["GuildColProfession"]     = "Professione"
+L["GuildColProfessionDesc"] = "Ogni professione e quanti personaggi della gilda la possiedono. Le sotto-righe la suddividono per specializzazione dove ne \195\168 nota una."
+L["GuildColCount"]          = "Personaggi"
+L["GuildColCountDesc"]      = "Numero di personaggi della gilda con la professione (o specializzazione). Conteggiati dalle abilit\195\160 sincronizzate pi\195\185 chiunque sia noto per creare le sue ricette."
+L["GuildUnspecialized"]     = "Non specializzato"
+L["GuildTabEmpty"]          = "Ancora nessun dato sulle professioni. Si popola man mano che i compagni di gilda che usano l'addon sincronizzano le loro abilit\195\160."
+
 -- ---------------------------------------------------------------------------
 -- Cooldowns tab
 -- ---------------------------------------------------------------------------

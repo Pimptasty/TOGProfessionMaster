@@ -46,6 +46,7 @@ local SRC_LABELS = {
 local SRC_ORDER = { "vendor", "drop", "quest", "crafted", "container", "fishing", "trainer" }
 
 -- Tab state — survives tab switches but resets on UI reload.
+MissingRecipesTab._scope           = nil      -- "personal" | "guild" sub-tab
 MissingRecipesTab._charKey         = nil
 MissingRecipesTab._profId          = 0
 MissingRecipesTab._searchText      = ""
@@ -187,6 +188,40 @@ local function GetProfessionsForCharacter(charKey)
     return out
 end
 
+-- Guild scope: profIds any guild character has skill in OR has crafters/recipes
+-- for — i.e. professions the guild actually practices — restricted (as above) to
+-- professions we ship a recipe DB for and that exist on this client. These are
+-- the professions worth showing a guild-wide "what are we missing?" list for;
+-- a profession nobody in the guild has would just be its entire recipe universe.
+local function GetGuildProfessions()
+    local gdb = addon:GetGuildDb()
+    if not gdb then return {} end
+    local seen = {}
+    -- Any character's tracked skills.
+    if gdb.skills then
+        for _, profMap in pairs(gdb.skills) do
+            for profId in pairs(profMap) do seen[profId] = true end
+        end
+    end
+    -- Any profession with at least one known recipe in the guild.
+    if gdb.recipes then
+        for profId, recps in pairs(gdb.recipes) do
+            if next(recps) ~= nil then seen[profId] = true end
+        end
+    end
+    local out = {}
+    for profId in pairs(seen) do
+        if addon.recipeDB and addon.recipeDB[profId]
+           and addon.IsProfessionAvailable(profId) then
+            table.insert(out, profId)
+        end
+    end
+    table.sort(out, function(a, b)
+        return (addon.PROF_NAMES[a] or tostring(a)) < (addon.PROF_NAMES[b] or tostring(b))
+    end)
+    return out
+end
+
 -- Virtual-scroll constants. Mirrors BrowserTab's approach: a raw frame pool
 -- of POOL_SIZE rows is reused as the user scrolls, so total widget count
 -- stays bounded regardless of list size. AceGUI's layout pass scales badly
@@ -205,6 +240,16 @@ local POOL_SIZE  = 35
 -- in our static recipe DB (other professions advance via trainer); the
 -- map is exhaustive across all expansion ranks anyway in case future
 -- data files add more.
+-- Blacksmithing weapon sub-spec → parent spec. Master Swordsmith / Hammersmith
+-- / Axesmith each build on Weaponsmith, so a sub-spec smith can ALSO learn the
+-- general Weaponsmith (9787) recipes. Every other profession spec (LW, Tailoring,
+-- Engineering, Armorsmith) is a mutually-exclusive leaf with no parent.
+local SPEC_PARENT = {
+    [17039] = 9787,  -- Master Swordsmith  → Weaponsmith
+    [17040] = 9787,  -- Master Hammersmith → Weaponsmith
+    [17041] = 9787,  -- Master Axesmith    → Weaponsmith
+}
+
 local RANK_CAPS = {
     ["Journeyman"]               = 150,
     ["Expert"]                   = 225,
@@ -220,8 +265,15 @@ local RANK_CAPS = {
 -- render time via GetItemInfoInstant (which does NOT trigger an async load),
 -- and the row count is capped during render. Item-name resolution itself
 -- happens per-row inside FillList so we only ever pay for the visible slice.
-local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, showAll)
-    if not charKey or not profId or profId == 0 then return {} end
+-- scope: "personal" (default) counts a recipe as known when THIS charKey crafts
+-- it; "guild" counts it known when ANY guild character crafts it — so the guild
+-- list surfaces recipes NObody in the guild has. Guild scope has no single
+-- character, so the "Can learn now" skill gate is forced off.
+local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, showAll, scope)
+    local guildScope = (scope == "guild")
+    if not profId or profId == 0 then return {} end
+    if not guildScope and not charKey then return {} end
+    if guildScope then canLearnOnly = false end
     local recipes = addon.recipeDB and addon.recipeDB[profId]
     if not recipes then return {} end
 
@@ -265,7 +317,16 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
             end
         end
         for recipeKey, rd in pairs(profRecipes) do
-            if rd and rd.crafters and rd.crafters[charKey] then
+            -- "Known" = this character crafts it (personal) OR anyone in the
+            -- guild crafts it (guild scope → any non-empty crafter set). Guild
+            -- scope therefore leaves only recipes NObody in the guild has.
+            local isKnown
+            if guildScope then
+                isKnown = rd and rd.crafters and next(rd.crafters) ~= nil
+            else
+                isKnown = rd and rd.crafters and rd.crafters[charKey]
+            end
+            if isKnown then
                 -- Normalize all known key shapes into one set. Historical
                 -- data can contain spell IDs or crafted-item IDs depending on
                 -- client/version at scan time.
@@ -409,13 +470,6 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
             skip = true
         elseif data.season then
             skip = true
-        elseif (not showAll) and (knownByChar(spellId)
-                                  or (data.teaches and knownByChar(data.teaches))
-                                  or (data.craftedItemId and knownByChar(data.craftedItemId))) then
-            -- Filter out recipes for spells the character already knows when
-            -- Show All is off. Consolidated check matches the entry.known
-            -- calculation below so filtering and display state stay in sync.
-            skip = true
         elseif type(data.teaches) == "string" and RANK_CAPS[data.teaches] then
             -- Rank-up book (e.g. "Expert First Aid" raises max from 150
             -- to 225, "Artisan First Aid" from 225 to 300). The character's
@@ -425,6 +479,42 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
             -- have used the book to get there.
             if skillMax >= RANK_CAPS[data.teaches] then
                 skip = true
+            end
+        end
+
+        -- Known-recipe filter — additive guard, NOT an elseif in the chain
+        -- above. Same fix as the "Can learn now" guard below: an earlier
+        -- version-gate branch that evaluates true but doesn't skip (the untagged
+        -- `spellId > 25000` Classic-Era existence gate is the culprit) would
+        -- short-circuit the elseif chain and bypass this filter — so recipes the
+        -- character/guild already knows wrongly showed as missing (Smoked
+        -- Sagefish, spell 25704 > 25000, was the reported case). As an additive
+        -- guard it always runs for recipes that survive the version gates.
+        if not skip and (not showAll)
+           and (knownByChar(spellId)
+                or (data.teaches and knownByChar(data.teaches))
+                or (data.craftedItemId and knownByChar(data.craftedItemId))) then
+            skip = true
+        end
+
+        -- Specialization gate — hide recipes this character's profession spec
+        -- can never learn (a Tribal leatherworker can't learn Elemental /
+        -- Dragonscale patterns). data.requiredSpec is the spec spell shipped in
+        -- the recipe DB (ItemSparse.RequiredAbility), which equals the spell
+        -- IsSpellKnown returns, so it compares directly against the recorded
+        -- spec. Personal scope only (guild scope is guild-wide); only when we
+        -- actually KNOW this character's spec (else stay permissive); off under
+        -- Show All. Additive guard, same rationale as the filters around it.
+        if not skip and not guildScope and (not showAll) and data.requiredSpec then
+            local charSpecs = gdb and gdb.specializations and gdb.specializations[charKey]
+            local mySpec    = charSpecs and charSpecs[profId]
+            if mySpec then
+                local req = data.requiredSpec
+                -- Learnable when it matches my spec, or my spec is a sub-spec of
+                -- it (a Swordsmith can make general Weaponsmith recipes).
+                if req ~= mySpec and req ~= SPEC_PARENT[mySpec] then
+                    skip = true
+                end
             end
         end
 
@@ -530,31 +620,112 @@ end
 -- Draw
 -- ---------------------------------------------------------------------------
 
+-- Sub-tabs use an AceGUI TabGroup (My Character / Guild), matching the log
+-- sub-tabs in TOG Tools. Draw builds the strip; DrawScope renders the active
+-- scope's toolbar + result list INTO the TabGroup's content.
+--
+-- DrawScope's result-list anchoring installs a LayoutFinished override on the
+-- TabGroup (its content container). AceGUI pools widgets globally and does NOT
+-- clear such overrides on release, so on teardown we restore the TabGroup's
+-- CLASS LayoutFinished (captured once from a fresh instance) — otherwise the
+-- override would bleed into whatever addon next acquires that pooled TabGroup and
+-- break its auto-size. (The MAIN tab container is protected differently:
+-- MainWindow nils its LayoutFinished on every tab switch.)
+local _TG_CLASS_LAYOUTFINISHED  -- captured once from a fresh TabGroup
+
 function MissingRecipesTab:Draw(container)
-    container:SetLayout("List")
+    container:SetLayout("Fill")
     self._container = container
 
-    if not self._charKey then
-        self._charKey = addon:GetCharacterKey()
+    -- Persisted sub-tab scope (Personal / Guild) + dropdown selections, via the
+    -- shared addon.GUI.PersistentChoice helper. Restored once per session (first
+    -- Draw after a login / reload, when these fields are still at their fresh-Lua
+    -- defaults). The character (nil) and profession (0) sentinels are re-validated
+    -- against the live lists in DrawScope, so a stale saved value falls back
+    -- gracefully to the first available entry.
+    if not self._scope then
+        local getScope = addon.GUI.PersistentChoice("char", "missingScope",   "personal")
+        local getChar  = addon.GUI.PersistentChoice("char", "missingCharKey", nil)
+        local getProf  = addon.GUI.PersistentChoice("char", "missingProfId",  0)
+        self._scope   = getScope()
+        self._charKey = getChar()
+        self._profId  = getProf()
     end
 
-    local chars = GetCharactersWithProfessions()
+    -- Built here (not at file scope) so the labels honour a UI-language override.
+    local subDefs = {
+        { value = "personal", text = L["MissingSubtabPersonal"] },
+        { value = "guild",    text = L["MissingSubtabGuild"]    },
+    }
 
-    -- Validate the persisted selection still exists in our roster.
-    local stillValid = false
-    for _, ck in ipairs(chars) do
-        if ck == self._charKey then stillValid = true; break end
-    end
-    if not stillValid and #chars > 0 then
-        self._charKey = chars[1]
-    end
+    local tg = AceGUI:Create("TabGroup")
+    tg:SetTabs(subDefs)
+    tg:SetLayout("Fill")
+    tg:SetFullWidth(true)
+    tg:SetFullHeight(true)
 
-    if #chars == 0 then
-        local lbl = AceGUI:Create("Label")
-        lbl:SetText(L["MissingNoCharacters"])
-        lbl:SetFullWidth(true)
-        container:AddChild(lbl)
-        return
+    -- Capture the class LayoutFinished once; restore it on release (pool safety).
+    if not _TG_CLASS_LAYOUTFINISHED and type(tg.LayoutFinished) == "function" then
+        _TG_CLASS_LAYOUTFINISHED = tg.LayoutFinished
+    end
+    tg:SetCallback("OnRelease", function(widget)
+        if _TG_CLASS_LAYOUTFINISHED then widget.LayoutFinished = _TG_CLASS_LAYOUTFINISHED end
+        -- Detach the virtual-scroll pool via the shared addon.GUI.DetachPool
+        -- helper (through DetachPool), so the pooled raw rows can't bleed into
+        -- another addon if this TabGroup is torn down without the inner scroll's
+        -- own onRelease having fired first.
+        self:DetachPool()
+    end)
+
+    tg:SetCallback("OnGroupSelected", function(widget, _e, value)
+        self._scope = value
+        -- Keep the profession selection across sub-tabs when it's valid in the
+        -- new scope; DrawScope re-picks the first profession if it isn't.
+        local _, setScope = addon.GUI.PersistentChoice("char", "missingScope")
+        setScope(value)
+        widget:ReleaseChildren()
+        self:DrawScope(widget)
+    end)
+
+    container:AddChild(tg)
+    tg:SelectTab(self._scope)
+end
+
+-- Render the active scope's toolbar + result list into `container` (the TabGroup
+-- content). Split out of Draw so OnGroupSelected can redraw just the content.
+function MissingRecipesTab:DrawScope(container)
+    container:SetLayout("List")
+    local guildScope = (self._scope == "guild")
+
+    -- Persist the character / profession dropdown selections across /reload
+    -- (shared helper; restored in Draw). Saved on every user change below.
+    local _, setChar = addon.GUI.PersistentChoice("char", "missingCharKey")
+    local _, setProf = addon.GUI.PersistentChoice("char", "missingProfId")
+
+    -- Personal scope needs a character; guild scope is guild-wide (no character).
+    local chars = {}
+    if guildScope then
+        self._charKey = nil
+    else
+        if not self._charKey then
+            self._charKey = addon:GetCharacterKey()
+        end
+        chars = GetCharactersWithProfessions()
+        -- Validate the persisted selection still exists in our roster.
+        local stillValid = false
+        for _, ck in ipairs(chars) do
+            if ck == self._charKey then stillValid = true; break end
+        end
+        if not stillValid and #chars > 0 then
+            self._charKey = chars[1]
+        end
+        if #chars == 0 then
+            local lbl = AceGUI:Create("Label")
+            lbl:SetText(L["MissingNoCharacters"])
+            lbl:SetFullWidth(true)
+            container:AddChild(lbl)
+            return
+        end
     end
 
     -- ---- Toolbar -----------------------------------------------------------
@@ -563,49 +734,60 @@ function MissingRecipesTab:Draw(container)
     toolbar:SetFullWidth(true)
     container:AddChild(toolbar)
 
-    -- Character dropdown
-    local charList, charOrder = {}, {}
-    local myKey = addon:GetCharacterKey()
-    for _, ck in ipairs(chars) do
-        local short = CharShortName(ck)
-        local label = (ck == myKey)
-            and (short .. " |cffaaaaaa(" .. L["You"] .. ")|r")
-            or  short
-        charList[ck] = label
-        table.insert(charOrder, ck)
+    -- Character dropdown (personal scope only).
+    if not guildScope then
+        local charList, charOrder = {}, {}
+        local myKey = addon:GetCharacterKey()
+        for _, ck in ipairs(chars) do
+            local short = CharShortName(ck)
+            local label = (ck == myKey)
+                and (short .. " |cffaaaaaa(" .. L["You"] .. ")|r")
+                or  short
+            charList[ck] = label
+            table.insert(charOrder, ck)
+        end
+        local charDD = AceGUI:Create("Dropdown")
+        charDD:SetLabel(L["MissingCharacterLabel"])
+        charDD:SetWidth(180)
+        addon.GUI.OffsetInputLabel(charDD)
+        charDD:SetList(charList, charOrder)
+        charDD:SetValue(self._charKey)
+        charDD:SetCallback("OnValueChanged", function(_w, _e, value)
+            self._charKey = value
+            setChar(value)
+            self._profId  = 0  -- reset profession when switching character
+            setProf(0)
+            self:Refresh()
+        end)
+        AttachWidgetTooltip(charDD, L["MissingCharTooltipTitle"], L["MissingCharTooltipDesc"])
+        toolbar:AddChild(charDD)
+
+        local sp1 = AceGUI:Create("Label"); sp1:SetWidth(8); toolbar:AddChild(sp1)
     end
-    local charDD = AceGUI:Create("Dropdown")
-    charDD:SetLabel(L["MissingCharacterLabel"])
-    charDD:SetWidth(180)
-    addon.GUI.OffsetInputLabel(charDD)
-    charDD:SetList(charList, charOrder)
-    charDD:SetValue(self._charKey)
-    charDD:SetCallback("OnValueChanged", function(_w, _e, value)
-        self._charKey = value
-        self._profId  = 0  -- reset profession when switching character
-        self:Refresh()
-    end)
-    AttachWidgetTooltip(charDD, L["MissingCharTooltipTitle"], L["MissingCharTooltipDesc"])
-    toolbar:AddChild(charDD)
 
-    local sp1 = AceGUI:Create("Label"); sp1:SetWidth(8); toolbar:AddChild(sp1)
-
-    -- Profession dropdown — populated from the selected char's tracked skills.
-    local profIds = GetProfessionsForCharacter(self._charKey)
+    -- Profession dropdown — personal: the selected char's tracked skills;
+    -- guild: every profession the guild practices.
+    local profIds = guildScope and GetGuildProfessions()
+                                or GetProfessionsForCharacter(self._charKey)
     if #profIds == 0 then
-        -- No professions yet — show toolbar without prof dropdown, render a hint below.
+        -- Nothing to show — render a scope-appropriate hint below the toolbar.
         local lblProf = AceGUI:Create("Label")
-        lblProf:SetText(L["MissingNoProfessions"])
+        lblProf:SetText(guildScope and L["MissingGuildNoData"] or L["MissingNoProfessions"])
         lblProf:SetFullWidth(true)
         container:AddChild(lblProf)
         return
     end
 
     local profList, profOrder = {}, {}
+    -- "All Professions" aggregate first, then each profession.
+    profList["all"] = L["MissingAllProfessions"]
+    table.insert(profOrder, "all")
     for _, pid in ipairs(profIds) do
         profList[pid] = addon.PROF_NAMES[pid] or ("Profession " .. pid)
         table.insert(profOrder, pid)
     end
+    -- Preserve a valid selection ("all" or a still-present profession); default
+    -- to the first profession when unset/invalid.
     if (self._profId == 0 or not profList[self._profId]) and #profIds > 0 then
         self._profId = profIds[1]
     end
@@ -618,6 +800,7 @@ function MissingRecipesTab:Draw(container)
     profDD:SetValue(self._profId)
     profDD:SetCallback("OnValueChanged", function(_w, _e, value)
         self._profId = value
+        setProf(value)
         self:RefreshList()
     end)
     AttachWidgetTooltip(profDD, L["MissingProfTooltipTitle"], L["MissingProfTooltipDesc"])
@@ -663,16 +846,19 @@ function MissingRecipesTab:Draw(container)
     toolbar:AddChild(trainCb)
 
     -- "Can learn now" checkbox — strict skillRank >= requiredSkill filter.
-    local learnCb = AceGUI:Create("CheckBox")
-    learnCb:SetLabel(L["MissingCanLearnOnly"])
-    learnCb:SetValue(self._canLearnOnly)
-    learnCb:SetWidth(140)
-    learnCb:SetCallback("OnValueChanged", function(_w, _e, value)
-        self._canLearnOnly = value and true or false
-        self:RefreshList()
-    end)
-    AttachWidgetTooltip(learnCb, L["MissingCanLearnOnly"], L["MissingCanLearnOnlyDesc"])
-    toolbar:AddChild(learnCb)
+    -- Personal scope only: guild scope has no single character's skill to gate on.
+    if not guildScope then
+        local learnCb = AceGUI:Create("CheckBox")
+        learnCb:SetLabel(L["MissingCanLearnOnly"])
+        learnCb:SetValue(self._canLearnOnly)
+        learnCb:SetWidth(140)
+        learnCb:SetCallback("OnValueChanged", function(_w, _e, value)
+            self._canLearnOnly = value and true or false
+            self:RefreshList()
+        end)
+        AttachWidgetTooltip(learnCb, L["MissingCanLearnOnly"], L["MissingCanLearnOnlyDesc"])
+        toolbar:AddChild(learnCb)
+    end
 
     -- "Show All" checkbox — include recipes the character already knows, so the
     -- list becomes every recipe for the selected profession (known marked ✓).
@@ -786,6 +972,14 @@ function MissingRecipesTab:Draw(container)
             f:SetPoint("BOTTOM", sf,                "BOTTOM", 0,  4)
         end
     end
+    -- Anchor on the TabGroup container's LayoutFinished. We intentionally do NOT
+    -- chain the TabGroup's class LayoutFinished here: that class method does
+    -- `self:SetHeight(contentHeight + 46)`, auto-growing the TabGroup to fit the
+    -- (virtually huge) list content and fighting the SetFullHeight(true) we asked
+    -- for — which would make the container resize every pass. Suppressing it (by
+    -- replacing with just AnchorAll) keeps the TabGroup at its parent-assigned
+    -- fill height. The class method is restored on release for pool safety
+    -- (_TG_CLASS_LAYOUTFINISHED in the OnRelease handler).
     container.LayoutFinished = function() AnchorAll() end
     self._anchorAll = AnchorAll
     AnchorAll()
@@ -1033,6 +1227,15 @@ function MissingRecipesTab:UpdateVirtualRows()
     local offset   = (status and status.offset) or 0
     local firstIdx = math.floor(offset / ROW_HEIGHT)
 
+    -- Item name / quality / icon ALL come from synchronous sources — LibItemDB
+    -- (offline item DB) and ProfessionDB (recipe names) — so every row renders
+    -- fully on the FIRST paint with NO client-cache round-trip. That's what lets
+    -- this stay quiet: nothing is ever "pending" a GetItemInfo cache-fill, so the
+    -- tab only re-renders on genuine data changes (GUILD_DATA_UPDATED, e.g. a
+    -- skill learned) — never on the item-load storm that used to refresh it
+    -- several times a second and creep the scroll.
+    local idb = addon.GetItemDB and addon:GetItemDB()
+
     for i = 1, POOL_SIZE do
         local f       = self._pool[i]
         local listIdx = firstIdx + i
@@ -1052,36 +1255,39 @@ function MissingRecipesTab:UpdateVirtualRows()
             f._itemId = itemId
             f._spellId = entry.spellId
 
-            local displayName, itemName, itemLink, itemQuality
+            local displayName, itemName, itemLink
             if itemId then
-                -- Lazy item-name resolution. GetItemInfo returns nil for
-                -- items not yet in the WoW cache and triggers an async
-                -- load; the GET_ITEM_INFO_RECEIVED handler debounces a
-                -- RefreshList so placeholders fill in once items finish
-                -- loading. Bounded to POOL_SIZE rows so the cache-miss
-                -- volume stays small. When the item never resolves (some
-                -- recipe items legitimately don't exist on the current
-                -- client even after expansion-cap filtering — e.g. Vanilla
-                -- recipes whose scroll items were removed from the game),
-                -- fall back to the spell name + icon so the row still
-                -- shows SOMETHING meaningful instead of a permanent
+                -- Synchronous item-name resolution (LibItemDB), then the recipe's
+                -- own ProfessionDB name, then the spell name — see below. No
+                -- GetItemInfo, so nothing is ever left as a cache-miss placeholder
+                -- and the row is complete on the first paint. (Historically this
+                -- used GetItemInfo + a GET_ITEM_INFO_RECEIVED refresh, which is
+                -- what created the refresh storm / scroll creep.)
+                --
+                -- Legacy note retained: some recipe items legitimately don't
+                -- exist on the current client (e.g. Vanilla recipes whose scroll
+                -- items were removed) — those simply fall through to the recipe /
+                -- spell name so the row still shows SOMETHING meaningful instead
+                -- of a permanent
                 -- "#22430 (loading…)" placeholder.
-                itemName, itemLink, itemQuality = GetItemInfo(itemId)
-                if itemName then
-                    displayName = itemName
-                    f.icon:SetTexture((GetItemIcon and GetItemIcon(itemId)) or 134400)
-                else
-                    -- Item not in cache yet OR item id genuinely doesn't
-                    -- exist on this client. Show the spell name as the
-                    -- visible label; if the item later loads, the cache
-                    -- event triggers a refresh and we render properly.
-                    local spellName = (GetSpellInfo and GetSpellInfo(entry.spellId))
-                                      or (entry.name)
-                    displayName = spellName
-                                  or ("|cffaaaaaa#" .. itemId .. " (loading\226\128\166)|r")
-                    local spellIcon = GetSpellTexture and GetSpellTexture(entry.spellId)
-                    f.icon:SetTexture(spellIcon or 134400)
-                end
+                -- Name from LibItemDB (synchronous) — the full scroll name, e.g.
+                -- "Recipe: Thistle Tea". CRITICAL: never fall back to GetItemInfo
+                -- here. A cold scroll item's async cache-fill fires
+                -- GET_ITEM_INFO_RECEIVED, and the resulting refresh storm is what
+                -- crept the scroll to the bottom. When LibItemDB doesn't carry the
+                -- scroll item, use the recipe's OWN name from ProfessionDB
+                -- (entry.name), then the spell name — all synchronous.
+                itemName = idb and idb:GetName(itemId)
+                itemLink = idb and idb:GetLink(itemId)
+                displayName = itemName
+                              or entry.name
+                              or (GetSpellInfo and GetSpellInfo(entry.spellId))
+                              or ("|cffaaaaaaspell:" .. tostring(entry.spellId) .. "|r")
+                -- GetItemIcon reads static item file data (synchronous, fires no
+                -- cache event); fall back to the spell texture.
+                f.icon:SetTexture((GetItemIcon and GetItemIcon(itemId))
+                                  or (GetSpellTexture and GetSpellTexture(entry.spellId))
+                                  or 134400)
             else
                 -- Trainer-only recipe with no scroll item. Fall back to the
                 -- spell's name + icon. No item link / quality colour
@@ -1116,17 +1322,42 @@ function MissingRecipesTab:UpdateVirtualRows()
                 f.icon:SetTexture(spellIcon or 134400)
             end
 
-            local color = itemLink and itemLink:match("|c(%x%x%x%x%x%x%x%x)|H")
-            if not color and itemQuality then
-                local r, g, b = GetItemQualityColor(itemQuality)
+            -- Colour the name by the CRAFTED item's quality (what the recipe
+            -- produces) — matching the crafting window, where a recipe for an
+            -- epic shows purple even when its pattern scroll is common/white
+            -- (e.g. "Pattern: Molten Helm"). Fall back to the recipe-scroll item's
+            -- own quality (enchants have no crafted item), then to no colour.
+            -- GetItemInfo returns nil while an item is still loading; the
+            -- GET_ITEM_INFO_RECEIVED handler re-renders the row once it lands.
+            -- Crafted-item quality colour, from LibItemDB ONLY (synchronous).
+            -- CRITICAL: never call GetItemInfo on the crafted item here. A cold
+            -- crafted item (gear/food the player has never seen) would trigger an
+            -- async cache load, and the resulting GET_ITEM_INFO_RECEIVED storm
+            -- re-rendered the list several times a second and crept the scroll to
+            -- the bottom — that is exactly what "colour by crafted quality"
+            -- regressed. Uncommon+ crafted gear gets its quality colour; common /
+            -- poor produce (most food) stays uncoloured (white); enchants and
+            -- other no-produced-item recipes fall back to the scroll item's own
+            -- link colour, which was already resolved above with no extra call.
+            local color
+            local q = idb and entry.craftedItemId and idb:GetQuality(entry.craftedItemId)
+            if q and q > 1 then
+                local r, g, b = GetItemQualityColor(q)
                 if r and g and b then
                     color = string.format("ff%02x%02x%02x", r * 255, g * 255, b * 255)
                 end
+            elseif not entry.craftedItemId and itemLink then
+                color = itemLink:match("|c(%x%x%x%x%x%x%x%x)|H")
             end
             local nmText = color and ("|c" .. color .. displayName .. "|r") or displayName
             if self._showAll and entry.known then
                 -- Show All mode marks recipes the character already knows with a check.
                 nmText = "|TInterface\\Buttons\\UI-CheckBox-Check:0|t " .. nmText
+            end
+            -- "All Professions" view: tag each row with its profession so the
+            -- flat, cross-profession list stays readable.
+            if self._profId == "all" and entry.profName then
+                nmText = "|cff888888[" .. entry.profName .. "]|r " .. nmText
             end
             f.nameLbl:SetText(nmText)
 
@@ -1199,9 +1430,11 @@ function MissingRecipesTab:SortList(list)
     local key
     if col == "recipe" or col == "source" then
         key = {}
+        local idb = addon.GetItemDB and addon:GetItemDB()
         for _, e in ipairs(list) do
             if col == "recipe" then
-                local n = (e.itemId and GetItemInfo and GetItemInfo(e.itemId))
+                local n = (e.itemId and idb and idb:GetName(e.itemId))
+                          or (e.itemId and GetItemInfo and GetItemInfo(e.itemId))
                           or (GetSpellInfo and GetSpellInfo(e.spellId))
                           or e.name or ""
                 key[e] = tostring(n):lower()
@@ -1222,7 +1455,14 @@ function MissingRecipesTab:SortList(list)
     local function skillOf(e)
         return e.requiredSkill or (e.tiers and e.tiers[1])
     end
+    local groupByProf = (self._profId == "all")
     table.sort(list, function(a, b)
+        -- All-Professions view: keep recipes grouped by profession first (always
+        -- A→Z, independent of the column sort direction), then sort within each
+        -- profession by the chosen column.
+        if groupByProf and a.profName ~= b.profName then
+            return (a.profName or "") < (b.profName or "")
+        end
         if col == "skill" then
             local ar, br = skillOf(a), skillOf(b)
             if ar ~= br then
@@ -1251,15 +1491,37 @@ function MissingRecipesTab:FillList()
         return
     end
 
-    if not (addon.recipeDB and addon.recipeDB[self._profId]) then
-        local lbl = AceGUI:Create("Label")
-        lbl:SetText(L["MissingNoData"])
-        lbl:SetFullWidth(true)
-        section:AddChild(lbl)
-        return
+    local fullList
+    if self._profId == "all" then
+        -- Aggregate every profession in the current scope into one list, tagging
+        -- each entry with its profId/name so the row can show a [Profession]
+        -- prefix and SortList can group by profession. Ordering is handled by
+        -- SortList below (profession-first in this view).
+        local guildScope = (self._scope == "guild")
+        local profIds = guildScope and GetGuildProfessions()
+                                    or GetProfessionsForCharacter(self._charKey)
+        fullList = {}
+        for _, pid in ipairs(profIds) do
+            if addon.recipeDB and addon.recipeDB[pid] then
+                local sub   = BuildMissingList(self._charKey, pid, self._includeTrainer, self._canLearnOnly, self._showAll, self._scope)
+                local pname = addon.PROF_NAMES[pid] or tostring(pid)
+                for _, e in ipairs(sub) do
+                    e.profId   = pid
+                    e.profName = pname
+                    fullList[#fullList + 1] = e
+                end
+            end
+        end
+    else
+        if not (addon.recipeDB and addon.recipeDB[self._profId]) then
+            local lbl = AceGUI:Create("Label")
+            lbl:SetText(L["MissingNoData"])
+            lbl:SetFullWidth(true)
+            section:AddChild(lbl)
+            return
+        end
+        fullList = BuildMissingList(self._charKey, self._profId, self._includeTrainer, self._canLearnOnly, self._showAll, self._scope)
     end
-
-    local fullList = BuildMissingList(self._charKey, self._profId, self._includeTrainer, self._canLearnOnly, self._showAll)
 
     -- Apply search filter using GetItemInfo — its first return IS the item
     -- name (string). NOT GetItemInfoInstant (whose first return is the
@@ -1298,10 +1560,11 @@ function MissingRecipesTab:FillList()
 
     local brand = addon.BrandColor or "ffFF8000"
 
-    -- Empty-state: no column headers, just the "you have everything" line.
+    -- Empty-state: no column headers, just the "everything's covered" line.
     if #list == 0 then
         local empty = AceGUI:Create("InteractiveLabel")
-        empty:SetText("|c" .. brand .. L["MissingNoneFound"] .. "|r")
+        local msg = (self._scope == "guild") and L["MissingGuildNoneFound"] or L["MissingNoneFound"]
+        empty:SetText("|c" .. brand .. msg .. "|r")
         empty:SetFullWidth(true)
         section:AddChild(empty)
         return
@@ -1439,10 +1702,11 @@ function MissingRecipesTab:FillList()
         end)
     end
 
-    -- Restore saved scroll position now that content height + scrollbar
-    -- are wired up. afterFn re-positions the raw-frame pool to the
-    -- restored offset (without it, the scrollbar shows the right value
-    -- but the rows underneath stay anchored to row 0).
+    -- Restore saved scroll position. PersistentScroll.Restore is order-robust
+    -- (it re-applies the exact pixel offset, which needs no frame height), so it
+    -- does NOT matter that we anchor the frame just below this. afterFn
+    -- re-positions the raw-frame pool to the restored offset (without it, the
+    -- scrollbar shows the right value but the rows stay anchored to row 0).
     addon.GUI.PersistentScroll.Restore(scroll, savedScroll, function()
         self:UpdateVirtualRows()
     end)
@@ -1454,32 +1718,13 @@ function MissingRecipesTab:FillList()
     if self._anchorAll then self._anchorAll() end
 end
 
--- ---------------------------------------------------------------------------
--- Lazy item-name fill-in
--- ---------------------------------------------------------------------------
--- The render path uses placeholder text for any row whose item isn't in the
--- WoW item cache yet. As GET_ITEM_INFO_RECEIVED events fire (one per item
--- that finishes loading), we coalesce them into a single delayed pool refill
--- so visible rows update once after the burst settles — debounced so a flood
--- of cache fills doesn't trigger N redraws. We call UpdateVirtualRows (just
--- repopulates the existing 35 frames) instead of RefreshList (which would
--- tear down and rebuild the AceGUI ScrollFrame) so the cost is bounded to
--- the visible slice. Handler early-outs unless the missing-recipes tab is
--- the active tab and has a live pool, so it costs nothing while closed.
-Ace:RegisterEvent("GET_ITEM_INFO_RECEIVED", function()
-    if not MissingRecipesTab._pool or not MissingRecipesTab._scroll then return end
-    local mw = addon.MainWindow
-    if not (mw and mw.activeTab == "missing") then return end
-    if MissingRecipesTab._refreshTimer then
-        MissingRecipesTab._refreshTimer:Cancel()
-    end
-    MissingRecipesTab._refreshTimer = C_Timer.NewTimer(0.5, function()
-        MissingRecipesTab._refreshTimer = nil
-        if MissingRecipesTab._pool and MissingRecipesTab._scroll then
-            MissingRecipesTab:UpdateVirtualRows()
-        end
-    end)
-end)
+-- (No GET_ITEM_INFO_RECEIVED handler by design.) Item names, quality colours
+-- and icons are resolved synchronously from LibItemDB + ProfessionDB in
+-- UpdateVirtualRows, so there is nothing to "fill in" when the WoW item cache
+-- warms up. The tab therefore re-renders ONLY on real data changes
+-- (GUILD_DATA_UPDATED via MainWindow:Refresh — e.g. a crafter learns a recipe),
+-- not on the background item-load storm that used to fire several times a
+-- second and creep the scroll.
 
 -- Refresh the scan button label whenever the AH opens or closes (it
 -- enables/disables based on AH availability). Also refresh pool rows so

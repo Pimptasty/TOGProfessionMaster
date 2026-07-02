@@ -238,7 +238,9 @@ local OPTIONS = {
             set   = function(_, val)
                 Ace.db.profile.persistProfFilter = val
                 if not val then
-                    Ace.db.profile.savedProfFilter = 0
+                    -- Clear the saved filter (shared helper — same key BrowserTab persists).
+                    local _, setProfFilter = addon.GUI.PersistentChoice("profile", "savedProfFilter")
+                    setProfFilter(0)
                 end
             end,
         },
@@ -1087,6 +1089,37 @@ end
 local syncLogWin
 local syncLogRefreshTimer
 local syncLogLiveHooked
+-- Pause state: when true the live view is frozen so a text selection survives
+-- long enough to copy. Entries keep landing in the ring buffer (SyncLog:Record is
+-- untouched); syncLogPausedCount tracks how many arrived while frozen for the
+-- title note, and unpausing calls RefreshSyncLog to catch the view up.
+local syncLogPaused = false
+local syncLogPausedCount = 0
+
+-- Title bar: base title, plus a "(paused — N buffered)" note while frozen.
+function addon:UpdateSyncLogTitle()
+    if not syncLogWin then return end
+    local title = L["SyncLogTitle"]
+    if syncLogPaused then
+        title = title .. string.format(L["SyncLogPausedNote"], syncLogPausedCount)
+    end
+    syncLogWin:SetTitle(title)
+end
+
+-- Toggle the freeze. Unpausing resets the buffered counter and immediately
+-- catches the view up to the current ring buffer.
+function addon:SetSyncLogPaused(paused)
+    syncLogPaused = paused and true or false
+    if not syncLogPaused then
+        syncLogPausedCount = 0
+        addon:RefreshSyncLog()
+    end
+    if syncLogWin and syncLogWin._pauseBtn then
+        syncLogWin._pauseBtn:SetText(
+            syncLogPaused and L["SyncLogResume"] or L["SyncLogPause"])
+    end
+    addon:UpdateSyncLogTitle()
+end
 
 function addon:OpenSyncLog()
     if syncLogWin then
@@ -1174,6 +1207,29 @@ function addon:OpenSyncLog()
         end
     end
 
+    -- Pause button: freezes the live view so a text selection survives long
+    -- enough to copy. Entries keep accumulating in the ring buffer while paused;
+    -- unpausing catches the view up (see SetSyncLogPaused). Raw button on the
+    -- persistent, never-recycled window frame — same rationale as the column-
+    -- header fontstrings above: AceGUI's Fill layout hosts only the editbox, and
+    -- this frame is created once and never returned to the widget pool.
+    if not win._pauseBtn and win.frame then
+        local btn = CreateFrame("Button", nil, win.frame, "UIPanelButtonTemplate")
+        btn:SetSize(72, 20)
+        btn:SetText(L["SyncLogPause"])
+        btn:SetScript("OnClick", function()
+            addon:SetSyncLogPaused(not syncLogPaused)
+        end)
+        -- Sit in the reserved label-row gap at the top-right, above the text and
+        -- clear of the left-aligned column headers. Bump the frame level so the
+        -- click lands on the button, not the editbox behind it.
+        local anchor = (win._editbox and win._editbox.frame) or win.frame
+        btn:ClearAllPoints()
+        btn:SetPoint("TOPRIGHT", anchor, "TOPRIGHT", -2, 4)
+        btn:SetFrameLevel(win.frame:GetFrameLevel() + 10)
+        win._pauseBtn = btn
+    end
+
     -- Live refresh while open. SyncLog:Record / :Clear fire SYNC_LOG_UPDATED;
     -- debounce it (sync bursts fire many times a second) and skip when closed.
     -- Registered once for the addon's lifetime.
@@ -1181,6 +1237,13 @@ function addon:OpenSyncLog()
         syncLogLiveHooked = true
         addon:RegisterCallback("SYNC_LOG_UPDATED", function()
             if not (syncLogWin and syncLogWin.frame and syncLogWin.frame:IsShown()) then return end
+            if syncLogPaused then
+                -- Frozen: leave the view (and the user's selection) alone. The
+                -- entry is already in the ring buffer; just tally it for the note.
+                syncLogPausedCount = syncLogPausedCount + 1
+                addon:UpdateSyncLogTitle()
+                return
+            end
             if syncLogRefreshTimer then return end
             syncLogRefreshTimer = C_Timer.NewTimer(0.3, function()
                 syncLogRefreshTimer = nil
@@ -1189,6 +1252,7 @@ function addon:OpenSyncLog()
         end)
     end
 
+    addon:SetSyncLogPaused(syncLogPaused)   -- sync button label + title to state
     addon:RefreshSyncLog()
 end
 

@@ -43,6 +43,31 @@ L["BrowserScanAHProgress"]  = "Escaneando %d/%d"
 L["BrowserScanAHDesc"]      = "Escanea la subasta en busca de cada componente de tu lista de compras. Las filas cuyos componentes estén actualmente en la SU reciben un botón [SU]; pulsa ese botón para saltar directamente a la búsqueda en la subasta."
 L["CooldownsScanAHDesc"]    = "Escanea la subasta en busca de cada componente único en las filas de reutilizaciones visibles. Las filas cuyo componente esté actualmente en la SU reciben un botón [SU] (a la izquierda de [Banco]); pulsa ese botón para saltar a la búsqueda."
 
+-- Skill-tier filter (Browser toolbar)
+L["BrowserSkillTier"]       = "Nivel de aptitud"
+L["BrowserSkillTierTip"]    = "Filtro de nivel de aptitud"
+L["BrowserSkillTierDesc"]   = "Muestra solo las recetas de los niveles de aptitud marcados. Desmarca los niveles inferiores para ocultar sus recetas de la lista. Marca varios niveles; el menú permanece abierto. Usa Seleccionar todo / Borrar todo en la parte inferior. Las recetas sin nivel de aptitud conocido siempre permanecen visibles."
+L["FilterSelectAll"]        = "Seleccionar todo"
+L["FilterClearAll"]         = "Borrar todo"
+L["TierApprentice"]         = "Aprendiz"
+L["TierJourneyman"]         = "Oficial"
+L["TierExpert"]             = "Experto"
+L["TierArtisan"]            = "Artesano"
+L["TierMaster"]             = "Maestro"
+L["TierGrandMaster"]        = "Gran maestro"
+L["TierIllustrious"]        = "Ilustre"
+L["TierZenMaster"]          = "Maestro zen"
+
+-- Guild tab
+L["TabGuild"]               = "Hermandad"
+L["GuildTabChars"]          = "%d personajes registrados"
+L["GuildColProfession"]     = "Profesión"
+L["GuildColProfessionDesc"] = "Cada profesión y cuántos personajes de la hermandad la tienen. Las subfilas la desglosan por especialización cuando se conoce alguna."
+L["GuildColCount"]          = "Personajes"
+L["GuildColCountDesc"]      = "Número de personajes de la hermandad con la profesión (o especialización). Se cuenta a partir de las aptitudes sincronizadas más todos los que se sabe que fabrican sus recetas."
+L["GuildUnspecialized"]     = "Sin especialización"
+L["GuildTabEmpty"]          = "Aún no hay datos de profesiones. Se completan a medida que los miembros de la hermandad que usan el addon sincronizan sus aptitudes."
+
 -- Recipe detail popup
 L["PopupCrafters"]       = "Conocida por"
 L["PopupOnList"]         = "En la lista de compras"

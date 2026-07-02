@@ -48,6 +48,31 @@ L["BrowserScanAHProgress"]  = "Sina-scan %d/%d"
 L["BrowserScanAHDesc"]      = "Ini-scan ang auction house para sa bawat sangkap sa iyong listahan ng pamimili. Ang mga hanay na ang sangkap ay nasa AH ngayon ay nakakakuha ng pindutang [AH]; pindutin upang tumalon nang direkta sa paghahanap ng AH."
 L["CooldownsScanAHDesc"]    = "Ini-scan ang auction house para sa bawat natatanging sangkap sa nakikitang mga hanay ng cooldown. Ang mga hanay na ang sangkap ay nasa AH ngayon ay nakakakuha ng pindutang [AH] (sa kaliwa ng [Bangko]); pindutin upang tumalon sa paghahanap."
 
+-- Skill-tier filter (Browser toolbar)
+L["BrowserSkillTier"]       = "Antas ng kakayahan"
+L["BrowserSkillTierTip"]    = "Filter ng Antas ng Kakayahan"
+L["BrowserSkillTierDesc"]   = "Ipakita lamang ang mga resipi sa mga natsekang antas ng kakayahan. Alisin ang tsek sa mas mababang antas upang itago ang kanilang mga resipi mula sa listahan. Magtsek ng maraming antas; nananatiling bukas ang menu. Gamitin ang Piliin Lahat / Alisin Lahat sa ibaba. Ang mga resiping walang alam na antas ng kakayahan ay laging nananatiling nakikita."
+L["FilterSelectAll"]        = "Piliin Lahat"
+L["FilterClearAll"]         = "Alisin Lahat"
+L["TierApprentice"]         = "Apprentice"
+L["TierJourneyman"]         = "Journeyman"
+L["TierExpert"]             = "Expert"
+L["TierArtisan"]            = "Artisan"
+L["TierMaster"]             = "Master"
+L["TierGrandMaster"]        = "Grand Master"
+L["TierIllustrious"]        = "Illustrious"
+L["TierZenMaster"]          = "Zen Master"
+
+-- Guild tab
+L["TabGuild"]               = "Guild"
+L["GuildTabChars"]          = "%d karakter na sinusubaybayan"
+L["GuildColProfession"]     = "Propesyon"
+L["GuildColProfessionDesc"] = "Bawat propesyon at kung ilang karakter sa guild ang mayroon nito. Hinahati ng mga sub-row ayon sa espesyalisasyon kung saan may alam nito."
+L["GuildColCount"]          = "Mga Karakter"
+L["GuildColCountDesc"]      = "Bilang ng mga karakter sa guild na may propesyon (o espesyalisasyon). Binibilang mula sa mga naka-sync na kakayahan kasama ang lahat ng kilalang gumagawa ng mga resipi nito."
+L["GuildUnspecialized"]     = "Walang espesyalisasyon"
+L["GuildTabEmpty"]          = "Wala pang data ng propesyon. Napupunan ito habang sinu-sync ng mga kasama sa guild na tumatakbo ang addon ang kanilang mga kakayahan."
+
 -- Recipe detail popup
 L["PopupCrafters"]       = "Kilala ng"
 L["PopupOnList"]         = "Nasa listahan ng pamimili"

@@ -39,6 +39,31 @@ L["BrowserScanAHProgress"]  = "Escaneando %d/%d"
 L["BrowserScanAHDesc"]      = "Escaneia a casa de leilões em busca de cada reagente da sua lista de compras. Linhas cujos reagentes estão atualmente na LE recebem um botão [LE]; clique para saltar direto à busca no leilão."
 L["CooldownsScanAHDesc"]    = "Escaneia a casa de leilões em busca de cada reagente único nas linhas de recarga visíveis. Linhas cujos reagentes estão na LE recebem um botão [LE] (à esquerda de [Banco]); clique para saltar à busca."
 
+-- Skill-tier filter (Browser toolbar)
+L["BrowserSkillTier"]      = "N\195\173vel de per\195\173cia"
+L["BrowserSkillTierTip"]   = "Filtro de n\195\173vel de per\195\173cia"
+L["BrowserSkillTierDesc"]  = "Mostra apenas as receitas dos n\195\173veis de per\195\173cia marcados. Desmarque n\195\173veis inferiores para ocultar suas receitas da lista. Marque v\195\161rios n\195\173veis; o menu permanece aberto. Use Selecionar tudo / Limpar tudo na parte inferior. Receitas sem n\195\173vel de habilidade conhecido permanecem sempre vis\195\173veis."
+L["FilterSelectAll"]       = "Selecionar tudo"
+L["FilterClearAll"]        = "Limpar tudo"
+L["TierApprentice"]        = "Aprendiz"
+L["TierJourneyman"]        = "Oficial"
+L["TierExpert"]            = "Perito"
+L["TierArtisan"]           = "Artes\195\163o"
+L["TierMaster"]            = "Mestre"
+L["TierGrandMaster"]       = "Gr\195\163o-Mestre"
+L["TierIllustrious"]       = "Ilustre"
+L["TierZenMaster"]         = "Mestre Zen"
+
+-- Guild tab
+L["TabGuild"]               = "Guilda"
+L["GuildTabChars"]          = "%d personagens rastreados"
+L["GuildColProfession"]     = "Profiss\195\163o"
+L["GuildColProfessionDesc"] = "Cada profiss\195\163o e quantos personagens da guilda a possuem. As sublinhas a detalham por especializa\195\167\195\163o quando alguma \195\169 conhecida."
+L["GuildColCount"]          = "Personagens"
+L["GuildColCountDesc"]      = "N\195\186mero de personagens da guilda com a profiss\195\163o (ou especializa\195\167\195\163o). Contado a partir das habilidades sincronizadas mais todos que se sabe que fabricam suas receitas."
+L["GuildUnspecialized"]     = "Sem especializa\195\167\195\163o"
+L["GuildTabEmpty"]          = "Ainda sem dados de profiss\195\163o. Preenche-se \195\160 medida que os companheiros de guilda que usam o addon sincronizam suas habilidades."
+
 -- Recipe detail popup
 L["PopupCrafters"]       = "Conhecida por"
 L["PopupOnList"]         = "Na lista de compras"

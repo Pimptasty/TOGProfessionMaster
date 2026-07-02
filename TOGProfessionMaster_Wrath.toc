@@ -68,6 +68,7 @@ GUI\ShoppingListTab.lua
 GUI\MissingRecipesTab.lua
 GUI\CraftingTab.lua
 GUI\AHProfitTab.lua
+GUI\GuildTab.lua
 GUI\ReagentTracker.lua
 GUI\Settings.lua
 Tooltip.lua

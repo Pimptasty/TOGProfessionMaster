@@ -39,6 +39,31 @@ L["BrowserScanAHProgress"]  = "검색 중 %d/%d"
 L["BrowserScanAHDesc"]      = "쇼핑 목록의 각 재료에 대해 경매장을 검색합니다. 현재 경매장에 등록된 재료 행에는 [경] 버튼이 표시되며, 클릭하면 해당 경매장 검색으로 바로 이동합니다."
 L["CooldownsScanAHDesc"]    = "표시된 재사용 대기시간 행의 각 고유 재료에 대해 경매장을 검색합니다. 현재 등록된 재료 행에는 [경] 버튼이 표시되며, 클릭하면 해당 검색으로 이동합니다."
 
+-- Skill-tier filter (Browser toolbar)
+L["BrowserSkillTier"]      = "숙련 등급"
+L["BrowserSkillTierTip"]   = "숙련 등급 필터"
+L["BrowserSkillTierDesc"]  = "선택한 숙련 등급의 제조법만 표시합니다. 낮은 등급의 체크를 해제하면 목록에서 해당 제조법이 숨겨집니다. 여러 등급을 선택할 수 있으며 메뉴는 열린 상태로 유지됩니다. 하단의 전체 선택 / 전체 해제를 사용하세요. 숙련도 수치를 알 수 없는 제조법은 항상 표시됩니다."
+L["FilterSelectAll"]       = "전체 선택"
+L["FilterClearAll"]        = "전체 해제"
+L["TierApprentice"]        = "견습"
+L["TierJourneyman"]        = "숙련"
+L["TierExpert"]            = "전문가"
+L["TierArtisan"]           = "장인"
+L["TierMaster"]            = "대가"
+L["TierGrandMaster"]       = "명인"
+L["TierIllustrious"]       = "위대한 명인"
+L["TierZenMaster"]         = "선(禪)의 대가"
+
+-- Guild tab
+L["TabGuild"]               = "길드"
+L["GuildTabChars"]          = "%d명의 캐릭터 추적 중"
+L["GuildColProfession"]     = "전문 기술"
+L["GuildColProfessionDesc"] = "각 전문 기술과 이를 보유한 길드 캐릭터 수입니다. 특화가 알려진 경우 하위 행에서 특화별로 세분화됩니다."
+L["GuildColCount"]          = "캐릭터"
+L["GuildColCountDesc"]      = "해당 전문 기술(또는 특화)을 보유한 길드 캐릭터 수입니다. 동기화된 숙련도와 해당 제조법을 제작할 수 있는 것으로 알려진 모든 캐릭터를 합산하여 계산합니다."
+L["GuildUnspecialized"]     = "특화 없음"
+L["GuildTabEmpty"]          = "아직 전문 기술 데이터가 없습니다. 애드온을 사용하는 길드원이 숙련도를 동기화하면 채워집니다."
+
 -- Recipe detail popup
 L["PopupCrafters"]       = "보유 캐릭터"
 L["PopupOnList"]         = "쇼핑 목록에 있음"

@@ -39,6 +39,31 @@ L["BrowserScanAHProgress"]  = "掃描中 %d/%d"
 L["BrowserScanAHDesc"]      = "掃描拍賣場中購物清單上的每種材料。目前在拍賣場有貨的材料列會顯示 [拍] 按鈕;點擊直接跳到拍賣場搜尋。"
 L["CooldownsScanAHDesc"]    = "掃描拍賣場中可見冷卻時間列的每種獨特材料。目前在拍賣場有貨的材料列會顯示 [拍] 按鈕(位於 [銀行] 左側);點擊跳到搜尋。"
 
+-- Skill-tier filter (Browser toolbar)
+L["BrowserSkillTier"]       = "技能等級"
+L["BrowserSkillTierTip"]    = "技能等級篩選"
+L["BrowserSkillTierDesc"]   = "只顯示勾選的技能等級中的配方。取消勾選較低等級即可從清單中隱藏其配方。可勾選多個等級;選單會保持開啟。使用底部的全選 / 全部清除。沒有已知技能等級的配方永遠保持可見。"
+L["FilterSelectAll"]        = "全選"
+L["FilterClearAll"]         = "全部清除"
+L["TierApprentice"]         = "學徒"
+L["TierJourneyman"]         = "熟練"
+L["TierExpert"]             = "專家"
+L["TierArtisan"]            = "大師"
+L["TierMaster"]             = "宗師"
+L["TierGrandMaster"]        = "大宗師"
+L["TierIllustrious"]        = "卓越"
+L["TierZenMaster"]          = "禪師"
+
+-- Guild tab
+L["TabGuild"]               = "公會"
+L["GuildTabChars"]          = "已追蹤 %d 個角色"
+L["GuildColProfession"]     = "專業"
+L["GuildColProfessionDesc"] = "每項專業以及有多少公會角色擁有它。當已知專精時,子列會依專精進一步細分。"
+L["GuildColCount"]          = "角色數"
+L["GuildColCountDesc"]      = "擁有該專業(或專精)的公會角色數量。依同步的技能加上所有已知會製作其配方的角色計算。"
+L["GuildUnspecialized"]     = "無專精"
+L["GuildTabEmpty"]          = "尚無專業資料。當使用此插件的公會成員同步其技能後,資料就會填入。"
+
 -- Recipe detail popup
 L["PopupCrafters"]       = "擁有者"
 L["PopupOnList"]         = "在購物清單中"

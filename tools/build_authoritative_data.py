@@ -90,7 +90,7 @@ SPEC_ABILITIES = {
     10656, 10658, 10660,               # Leatherworking: Dragonscale / Elemental / Tribal
     9788, 9787, 17039, 17040, 17041,   # Blacksmithing: Armorsmith / Weaponsmith / Sword / Hammer / Axe
     20219, 20222,                      # Engineering: Gnomish / Goblin
-    26797, 26801, 26802,               # Tailoring: Mooncloth / Shadoweave / Spellfire
+    26797, 26798, 26801,               # Tailoring: Spellfire / Mooncloth / Shadoweave (26802 was "Detect Amore" — a holiday spell, never Mooncloth)
 }
 
 # Build labels whose recipes are still gated by a profession specialization.
@@ -638,6 +638,17 @@ def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool =
             spec_req = next((spec_by_item[i]
                              for i in items_by_spell.get(spell_id, set())
                              if i in spec_by_item), None)
+            # Vanilla encodes the spec on the recipe SCROLL (Plans: Arcanite
+            # Reaper -> Axesmith), which the scroll lookup above catches. But
+            # TBC/Wrath moved the gate onto the CRAFTED item itself (Lionheart
+            # Blade, item 28428 -> 17039 Master Swordsmith) and leave the scroll
+            # ungated — so every post-Vanilla spec recipe (BS/LW/Engineering, ~65
+            # TBC / ~72 Wrath) shipped untagged and its crafters fell to
+            # "Unspecialized". Fall back to the produced item's RequiredAbility.
+            if not spec_req:
+                _crafted = created_item_by_spell.get(spell_id)
+                if _crafted and _crafted in spec_by_item:
+                    spec_req = spec_by_item[_crafted]
 
             recipes[spell_id] = {
                 "name":           name_by_spell.get(spell_id, ""),

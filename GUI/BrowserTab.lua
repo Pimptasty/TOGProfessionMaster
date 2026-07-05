@@ -537,6 +537,14 @@ local function BuildFullList(profId, viewMode, opts)
                     if effect and effect ~= "" then hay = hay .. " " .. effect:lower() end
                     local tt = craftedItemId and addon:GetItemTooltipSearchText(craftedItemId)
                     if tt then hay = hay .. " " .. tt end
+                    -- Fold the crafter names into the haystack so typing a player's
+                    -- name in the search box filters the list to the recipes that
+                    -- player crafts. Reuses `crafters` (already built above), so it
+                    -- honours the same viewMode/visibility rules as the shown crafter
+                    -- list — a name only matches recipes where that crafter is visible.
+                    for _, c in ipairs(crafters) do
+                        if c.name then hay = hay .. " " .. c.name:lower() end
+                    end
                     local itemLink = craftedItemId and select(2, GetItemInfo(craftedItemId))
                     -- Learn skill for the tier filter: authoritative requiredSkill
                     -- when shipped, else the orange (difficulty[1]) breakpoint —

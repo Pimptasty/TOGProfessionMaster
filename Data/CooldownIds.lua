@@ -267,13 +267,14 @@ local OUTPUT_OVERRIDES = {
 -- ---------------------------------------------------------------------------
 
 local SPEC_BONUSES = {
-    -- Alchemy: Transmutation Master (28683) — procs extra output on EVERY
+    -- Alchemy: Transmutation Master (28672) — procs extra output on EVERY
     -- transmute. All TBC + Wrath transmute spell IDs are listed individually
     -- (matches the spells in VANILLA_TRANSMUTES / TBC_TRANSMUTES / WRATH_TRANSMUTES
     -- above). Vanilla transmutes aren't listed because the spec didn't exist
     -- yet in Vanilla — a Wrath alchemist who never re-specced doesn't proc on
     -- Vanilla transmutes either (the spec is TBC-introduced content).
-    [28683] = {
+    -- (28683 = "Leap", 28682 = "Combustion" — both were wrong; 28672 is the spec.)
+    [28672] = {
         bonusType = "proc",
         spells = {
             -- TBC transmutes
@@ -295,9 +296,9 @@ local SPEC_BONUSES = {
 
     -- Tailoring cloth specs — each spec GUARANTEES 2x output on its specific
     -- cloth cooldown. (Patch 2.1+: the proc was changed from random to flat 2x.)
-    [26797] = { bonusType = "guaranteed", spells = { [26751] = true } }, -- Mooncloth Tailoring → Primal Mooncloth
+    [26798] = { bonusType = "guaranteed", spells = { [26751] = true } }, -- Mooncloth Tailoring → Primal Mooncloth
     [26801] = { bonusType = "guaranteed", spells = { [36686] = true } }, -- Shadoweave Tailoring → Shadowcloth
-    [26802] = { bonusType = "guaranteed", spells = { [31373] = true } }, -- Spellfire Tailoring  → Spellcloth
+    [26797] = { bonusType = "guaranteed", spells = { [31373] = true } }, -- Spellfire Tailoring  → Spellcloth
 }
 
 -- Spell IDs where GetSpellTexture returns a bad/missing icon.

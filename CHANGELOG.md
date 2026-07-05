@@ -1,5 +1,27 @@
 # TOG Profession Master Changelog
 
+## [v1.0.1] (2026-07-05) - Specialization detection fixes, full guild coverage & crafter search
+
+### New Features
+
+- **Search the Professions tab by crafter name.** Typing a guild member's name into the recipe search box now lists every recipe that player can make — crafter names are folded into the same cached, per-keystroke filter, so there's no added cost, and it honours the current view/visibility. Set the Profession dropdown to **All** and type a name to audit "what can this character craft?" across every profession at once. Location: `GUI/BrowserTab.lua`, `Locale/enUS.lua`.
+
+### Bug Fixes
+
+- **Alchemy specializations were detected with the wrong spell IDs.** The spec scan checked `28682` / `28683` — which are actually **"Combustion"** and **"Leap"**, not alchemy specs — so Transmutation and Potion Masters were never detected and fell to Unspecialized (only Elixir Master, `28677`, happened to be correct). Corrected to the DBC-verified `28672` / `28675` / `28677` (Transmutation / Potion / Elixir Master) in the spec scan, the Guild tab's canonical spec list, **and** the transmute-proc cooldown table (which was keying the every-transmute proc on "Leap"). Location: `Scanner.lua`, `GUI/GuildTab.lua`, `Data/CooldownIds.lua`.
+- **Mooncloth Tailoring could never be detected.** The Tailoring spec list used `26802` — **"Detect Amore"**, a Love-is-in-the-Air holiday spell — where Mooncloth's real id `26798` belongs, so Mooncloth tailors were never categorised, and anyone who owned the holiday spell risked a bogus tag. Fixed to `26797` / `26798` / `26801` (Spellfire / Mooncloth / Shadoweave) in the spec scan, the Guild tab list, the recipe-tagging pipeline, and the cloth-cooldown table. Location: `Scanner.lua`, `GUI/GuildTab.lua`, `Data/CooldownIds.lua`, `tools/build_authoritative_data.py`.
+- **Cloth-cooldown "guaranteed 2×" bonus was mapped to the wrong specs.** Primal Mooncloth's bonus was keyed to Spellfire's spec id and Spellcloth's to the holiday spell, so Mooncloth tailors got no bonus indicator and Spellfire's never lit up. Each cloth cooldown now maps to its own spec — Mooncloth → Primal Mooncloth, Spellfire → Spellcloth, Shadoweave → Shadowcloth. Location: `Data/CooldownIds.lua`.
+- **Archaeology didn't appear on the Guild tab.** The skill-name → profession map was missing Archaeology (`794`), so the gathering scan never recorded it on Cata/MoP clients. Added. Location: `Scanner.lua`.
+- **Skill levels rendered an impossible cap like "375/300".** A missing or stale `skillMax` defaulted to the hard-coded Vanilla cap of 300, which then synced guild-wide and displayed *below* the actual rank on TBC/Wrath. The stored fallback is now the rank (a cap can't be below the current skill), and the Guild tab shows every skill against **this expansion's real cap** (`addon.SKILL_CAP`: 300/375/450/525/600 for Vanilla…MoP) instead of the per-character value. Location: `Scanner.lua`, `Compat.lua`, `GUI/GuildTab.lua`.
+- **Gathering skills were missed when a skill header was collapsed.** `GetSkillLineInfo` hides a collapsed header's children, so a character with "Professions" or "Secondary Skills" collapsed dropped Skinning / Herbalism / Fishing / Archaeology from the scan. It now expands all headers first (`ExpandSkillHeader`), guarded against the re-entrant `SKILL_LINES_CHANGED` that expansion fires. Location: `Scanner.lua`.
+
+### Improvements
+
+- **The Guild tab now lists EVERY profession, even at 0.** Previously only the gathering professions were force-shown; now every profession available on this client appears with a headcount (0 when nobody has it), so the guild-wide "who has what" view surfaces crafting-profession coverage gaps too. Location: `GUI/GuildTab.lua`.
+- **TBC/Wrath specialization recipes now attribute their crafters (requires ProfessionDB v1.2.2).** The recipe data only tagged Vanilla-era spec plans; TBC and Wrath moved the spec gate onto the *crafted item*, so ~65 TBC and ~72 Wrath spec recipes — Lionheart weapons, Dragonscale/Elemental/Tribal leatherworking, Gnomish/Goblin engineering, Mooncloth tailoring — shipped untagged and their crafters showed as Unspecialized. The ProfessionDB generator now reads the crafted item's requirement as well. **Update to ProfessionDB v1.2.2** to pick this up. Location: `tools/build_authoritative_data.py` (ProfessionDB).
+
+---
+
 ## [v1.0.0] (2026-07-01) - First full release: Guild professions tab, skill-tier filter & Cooldowns reagent overhaul
 
 **TOG Profession Master reaches 1.0 — its first full release.** A milestone worth marking, and still growing. A new **Guild** tab drills from a profession headcount down to each specialization and the individual crafters — with their skill levels — and now tracks the gathering professions (Herbalism, Skinning, Fishing) that have no window to open; a **skill-tier filter** declutters the Professions browser; the **Cooldowns tab** gets a batch of reagent improvements — every reagent shown for multi-reagent crafts (Brilliant Glass, the specialty cloths), an at-a-glance "you already have this" highlight, a tidier reagent popup, and a fix for the supply-mail button that looked up the wrong item; and under the hood, profession-cooldown sync was overhauled to kill a convergence bug that churned CPU and redraws on busy guilds.

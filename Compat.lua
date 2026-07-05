@@ -19,6 +19,19 @@ addon.isWrath   = (build >= 30000 and build < 40000)
 addon.isCata    = (build >= 40000 and build < 50000)
 addon.isMoP     = (build >= 50000 and build < 60000)
 
+-- Max profession skill for this expansion (Vanilla 300 / TBC 375 / Wrath 450 /
+-- Cata 525 / MoP 600). Used as the authoritative "out of N" cap on skill readouts
+-- so a stale or missing skillMax never renders a wrong cap like "375/300". A
+-- per-expansion constant, not a PDB lookup: PDB ships recipes (not caps) and has
+-- nothing for gathering professions, whereas the cap is uniform across every
+-- profession in an expansion.
+addon.SKILL_CAP =
+    addon.isMoP     and 600 or
+    addon.isCata    and 525 or
+    addon.isWrath   and 450 or
+    addon.isTBC     and 375 or
+    300  -- Vanilla / Classic Era
+
 -- Classic Era / Vanilla has no timeline-based expansion at all.
 -- `addon.isClassic` is true for vanilla-protocol builds (Classic Era, Anniversary).
 addon.isClassic = addon.isVanilla

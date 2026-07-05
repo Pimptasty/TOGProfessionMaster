@@ -150,6 +150,7 @@ Scanner.GuildRoster = nil
 
 local PROF_NAME_TO_ID = {
     ["Alchemy"]        = 171,
+    ["Archaeology"]    = 794,   -- Cata+ gathering profession (skill-line scan)
     ["Blacksmithing"]  = 164,
     ["Cooking"]        = 185,
     ["Enchanting"]     = 333,
@@ -1328,9 +1329,13 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
     if not gdb.recipes then gdb.recipes = {} end
     if not gdb.skills  then gdb.skills  = {} end
 
-    -- Skill rank/max.
+    -- Skill rank/max. Fall back the max to the RANK (never the old Vanilla-cap
+    -- constant 300) when the API didn't hand us a maxRank — a skill's cap can't be
+    -- below its current rank, and hard-coding 300 produced the impossible "375/300"
+    -- on TBC/Wrath and then synced that bad value guild-wide.
+    skillRank = skillRank or 0
     if not gdb.skills[charKey] then gdb.skills[charKey] = {} end
-    gdb.skills[charKey][profId] = { skillRank = skillRank or 0, skillMax = skillMax or 300 }
+    gdb.skills[charKey][profId] = { skillRank = skillRank, skillMax = skillMax or skillRank }
 
     -- Compute the current guild tag once. Tag is "personal" when guildless,
     -- so own scans on a no-guild alt still get stored (and visible to that
@@ -1462,7 +1467,7 @@ function Scanner:ScanCraftSkillInto(charKey)
 
     local gdb = addon:GetGuildDb()
     if not gdb then return end
-    local changed = self:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank or 0, skillMax or 300, recipeIds)
+    local changed = self:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, recipeIds)
 
     -- Stamp content-derived scan time for hash leaves.
     if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
@@ -1539,9 +1544,9 @@ end
 -- ---------------------------------------------------------------------------
 
 local SPEC_SPELLS = {
-    [171] = { 28677, 28682, 28683 },   -- Alchemy: Potion Master / Elixir Master / Transmutation Master
+    [171] = { 28672, 28675, 28677 },   -- Alchemy: Transmutation / Potion / Elixir Master (DBC-verified; 28682/28683 were wrong — Combustion/Leap)
     [202] = { 20219, 20222 },          -- Engineering: Gnomish / Goblin
-    [197] = { 26797, 26801, 26802 },   -- Tailoring: Mooncloth / Shadoweave / Spellfire
+    [197] = { 26797, 26798, 26801 },   -- Tailoring: Spellfire / Mooncloth / Shadoweave (DBC-verified; 26802 was wrong — "Detect Amore", a holiday spell. Mooncloth is 26798)
     -- Vanilla Leatherworking / Blacksmithing specializations (still present on
     -- TBC/Wrath; removed in Cata 4.0.1). No bonus-output mapping — recorded so
     -- the Guild tab can break professions down by sub-class. IsSpellKnown just
@@ -1594,50 +1599,64 @@ function Scanner:ScanGatheringProfessions()
     -- GetSkillLineInfo works on every supported client; on Retail it wouldn't list
     -- gathering the same way, but the addon's targets are Classic-family.
     if not GetNumSkillLines or not GetSkillLineInfo then return end
+    -- Re-entrancy guard: ExpandSkillHeader below can fire SKILL_LINES_CHANGED, which
+    -- would re-enter this scan. The flag resets at the single exit point at the end,
+    -- so genuine skill-ups still re-scan normally.
+    if self._scanningGather then return end
+    self._scanningGather = true
+
+    -- A COLLAPSED skill header hides its child skills from GetSkillLineInfo — so a
+    -- character with the "Professions" header collapsed drops its primary gathering
+    -- skills (Skinning / Herbalism), and a collapsed "Secondary Skills" drops
+    -- Fishing / Archaeology. Expand every header first so the scan sees them all.
+    if _G.ExpandSkillHeader then _G.ExpandSkillHeader(0) end
+
     local charKey = addon:GetCharacterKey()
     local gdb     = addon:GetGuildDb()
-    if not gdb or not charKey then return end
-    if not gdb.skills[charKey] then gdb.skills[charKey] = {} end
-    local stored = gdb.skills[charKey]
-
-    local changed = false
-    for i = 1, (GetNumSkillLines() or 0) do
-        -- GetSkillLineInfo: name(1), isHeader(2), isExpanded(3), rank(4),
-        -- numTempPoints(5), skillModifier(6), maxRank(7), ...
-        local name, isHeader, _, rank, _, _, maxRank = GetSkillLineInfo(i)
-        if not isHeader and name then
-            -- Map the skill NAME to a profession ID (same English name map the
-            -- trade-skill path uses). Only recipe-less GATHERING professions are
-            -- recorded here — crafting professions (incl. Mining via Smelting)
-            -- already sync their skill on the crafters: leaf, and every non-
-            -- profession skill (weapon skills, riding, languages) simply isn't in
-            -- the map, so it's ignored.
-            local profId = PROF_NAME_TO_ID[name]
-            if profId and not addon.CRAFTING_PROFS[profId] then
-                rank, maxRank = rank or 0, maxRank or 0
-                local prev = stored[profId]
-                if not prev or prev.skillRank ~= rank or prev.skillMax ~= maxRank then
-                    stored[profId] = { skillRank = rank, skillMax = maxRank }
-                    changed = true
-                    addon:DebugPrint("Scanner: recorded gathering skill", name,
-                        "(", profId, ")", rank .. "/" .. maxRank)
+    if gdb and charKey then
+        if not gdb.skills[charKey] then gdb.skills[charKey] = {} end
+        local stored  = gdb.skills[charKey]
+        local changed = false
+        for i = 1, (GetNumSkillLines() or 0) do
+            -- GetSkillLineInfo: name(1), isHeader(2), isExpanded(3), rank(4),
+            -- numTempPoints(5), skillModifier(6), maxRank(7), ...
+            local name, isHeader, _, rank, _, _, maxRank = GetSkillLineInfo(i)
+            if not isHeader and name then
+                -- Map the skill NAME to a profession ID (same English name map the
+                -- trade-skill path uses). Only recipe-less GATHERING professions are
+                -- recorded here — crafting professions (incl. Mining via Smelting)
+                -- already sync their skill on the crafters: leaf, and every non-
+                -- profession skill (weapon skills, riding, languages) simply isn't in
+                -- the map, so it's ignored.
+                local profId = PROF_NAME_TO_ID[name]
+                if profId and not addon.CRAFTING_PROFS[profId] then
+                    rank, maxRank = rank or 0, maxRank or 0
+                    local prev = stored[profId]
+                    if not prev or prev.skillRank ~= rank or prev.skillMax ~= maxRank then
+                        stored[profId] = { skillRank = rank, skillMax = maxRank }
+                        changed = true
+                        addon:DebugPrint("Scanner: recorded gathering skill", name,
+                            "(", profId, ")", rank .. "/" .. maxRank)
+                    end
                 end
             end
         end
+
+        if changed then
+            -- Content-derived scan time for the skills:<charKey> leaf.
+            if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
+            gdb.lastScan[charKey].skills = GetServerTime()
+            local DS = self.DS
+            if DS then addon.HashManager:InvalidateCharSkills(DS, gdb, charKey) end
+            self:ScheduleBroadcast()
+            if addon.callbacks then
+                addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey, { skills = true })
+            end
+            addon:DebugPrint("Scanner: gathering professions updated for", charKey)
+        end
     end
 
-    if changed then
-        -- Content-derived scan time for the skills:<charKey> leaf.
-        if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
-        gdb.lastScan[charKey].skills = GetServerTime()
-        local DS = self.DS
-        if DS then addon.HashManager:InvalidateCharSkills(DS, gdb, charKey) end
-        self:ScheduleBroadcast()
-        if addon.callbacks then
-            addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey, { skills = true })
-        end
-        addon:DebugPrint("Scanner: gathering professions updated for", charKey)
-    end
+    self._scanningGather = false
 end
 
 -- ---------------------------------------------------------------------------
@@ -3044,7 +3063,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                                    or incomingRank > (existing.skillRank or 0) then
                                     gdb.skills[ck][profId] = {
                                         skillRank = incomingRank,
-                                        skillMax  = sk.skillMax or 300,
+                                        skillMax  = sk.skillMax or incomingRank,
                                     }
                                     changedCrafters = true
                                 end

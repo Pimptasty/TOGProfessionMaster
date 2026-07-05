@@ -48,14 +48,23 @@ local function countSet(t)
     return n
 end
 
--- Recipe-less GATHERING professions that should ALWAYS appear on the Guild tab,
--- even at 0, so the guild can see coverage ("who herbs" — and that nobody does X).
--- Unlike crafting professions (which only appear once someone has one), these
--- have no recipes to surface them, so we force a row. Version-gated: Herbalism /
--- Skinning / Fishing exist on every client; Archaeology is Cata+.
-local ALWAYS_SHOW_PROFS = { 182, 393, 356 }  -- Herbalism, Skinning, Fishing
-if addon.isCata or addon.isMoP then
-    ALWAYS_SHOW_PROFS[#ALWAYS_SHOW_PROFS + 1] = 794  -- Archaeology
+-- EVERY profession available on this client is shown even at 0 — the Guild tab is
+-- a COMPLETE, guild-wide "who has what", not a "what do I have" list, so a
+-- profession nobody has must still appear (with a 0) so the gap is visible. Covers
+-- all crafting professions plus the recipe-less gathering ones (Herbalism /
+-- Skinning / Fishing / Archaeology). Smelting (374) is excluded — it's Mining's
+-- window, not a standalone profession. Version-gated via IsProfessionAvailable and
+-- the is* flags (Compat + TOGProfessionMaster.lua both load before this file).
+local ALWAYS_SHOW_PROFS = {}
+do
+    local function add(p)
+        if (not addon.IsProfessionAvailable) or addon.IsProfessionAvailable(p) then
+            ALWAYS_SHOW_PROFS[#ALWAYS_SHOW_PROFS + 1] = p
+        end
+    end
+    for p in pairs(addon.CRAFTING_PROFS or {}) do add(p) end
+    add(182); add(393); add(356)                       -- Herbalism / Skinning / Fishing
+    if addon.isCata or addon.isMoP then add(794) end   -- Archaeology (Cata+)
 end
 
 -- Canonical specialization list per profession, so the Guild tab can list EVERY
@@ -73,8 +82,8 @@ do
         ALL_SPECS[164] = { 9788, 9787, 17039, 17040, 17041 }  -- Blacksmithing: Armorsmith / Weaponsmith / Swordsmith / Hammersmith / Axesmith
     end
     if addon.isTBC or addon.isWrath then
-        ALL_SPECS[171] = { 28677, 28682, 28683 }              -- Alchemy: Potion / Elixir / Transmutation Master (TBC+)
-        ALL_SPECS[197] = { 26797, 26801, 26802 }              -- Tailoring: Mooncloth / Shadoweave / Spellfire (TBC+)
+        ALL_SPECS[171] = { 28672, 28675, 28677 }              -- Alchemy: Transmutation / Potion / Elixir Master (TBC+; DBC-verified)
+        ALL_SPECS[197] = { 26797, 26798, 26801 }              -- Tailoring: Spellfire / Mooncloth / Shadoweave (TBC+; 26802 was "Detect Amore", 26798 is Mooncloth)
     end
 end
 
@@ -279,8 +288,12 @@ function GuildTab:BuildMemberList(memberSet, profId)
         local skillText = ""
         local sk = profId and gdb and gdb.skills and gdb.skills[ck] and gdb.skills[ck][profId]
         if sk and sk.skillRank and sk.skillRank > 0 then
-            skillText = " |cff888888(" .. sk.skillRank
-                        .. "/" .. (sk.skillMax or sk.skillRank) .. ")|r"
+            -- Show against this expansion's real cap (addon.SKILL_CAP: TBC 375,
+            -- Wrath 450, …) rather than the per-character skillMax, which is often a
+            -- stale Vanilla-era 300 and renders the impossible "375/300". Clamped to
+            -- at least the rank as a final guard against odd data.
+            local cap = math.max(sk.skillRank, addon.SKILL_CAP or sk.skillMax or sk.skillRank)
+            skillText = " |cff888888(" .. sk.skillRank .. "/" .. cap .. ")|r"
         end
         objs[#objs + 1] = { name = displayName, online = online, isYou = isYou, skillText = skillText }
     end

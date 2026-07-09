@@ -1,5 +1,13 @@
 # TOG Profession Master Changelog
 
+## [v1.0.2] (2026-07-09) - Fix: Auctionator error when opening Enchanting with crafting takeover on
+
+### Bug Fixes
+
+- **Opening Enchanting with crafting takeover enabled threw an Auctionator error (`attempt to index global 'CraftReagent1'`).** On Vanilla/TBC the Enchanting "Craft" window's frames (`CraftReagent1..N`) are created by the load-on-demand `Blizzard_CraftUI` addon, and the *only* thing that lazy-loads it is UIParent's built-in `CRAFT_SHOW` handler. When crafting takeover is on, TOGPM unregisters that handler so Blizzard's window doesn't pop over its own tab — which also removed the loader, so any other addon that hooks `CRAFT_SHOW` (Auctionator's `CraftShown`) ran while those globals were still `nil` and errored. TOGPM now assumes UIParent's load responsibility: it loads `Blizzard_CraftUI` itself so the frames exist for co-installed listeners, then unregisters `CraftFrame`'s own `CRAFT_SHOW` so it still won't auto-pop a second window. Gated on Vanilla/TBC (`HAS_CRAFT_WINDOW`) and the takeover path only, so default hands-off users and Wrath+ clients are unaffected; the escape-to-Blizzard button still works (it summons the window via `UIParent_OnEvent`, which doesn't depend on that registration). Location: `Modules/Crafting/CraftingEngine.lua`.
+
+---
+
 ## [v1.0.1] (2026-07-05) - Specialization detection fixes, full guild coverage & crafter search
 
 ### New Features

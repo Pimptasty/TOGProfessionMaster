@@ -1,5 +1,5 @@
-## Interface: 20505
-## X-Min-Interface: 20505
+## Interface: 20506
+## X-Min-Interface: 20506
 ## Title: |cffDA8CFFTOG Profession Master |c999999FFTBC
 ## Version: @project-version@
 ## Author: Pimptasty

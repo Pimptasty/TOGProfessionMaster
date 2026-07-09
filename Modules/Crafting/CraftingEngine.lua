@@ -481,6 +481,30 @@ end
 -- ---------------------------------------------------------------------------
 local eventFrame = CreateFrame("Frame")
 
+-- Load Blizzard_CraftUI ourselves and stop its frame from auto-popping. Only
+-- meaningful on Vanilla/TBC (HAS_CRAFT_WINDOW) and only when we've taken over
+-- CRAFT_SHOW from UIParent. Blizzard_CraftUI is a load-on-demand addon; the
+-- default UIParent CRAFT_SHOW handler is what normally loads it, and once loaded
+-- CraftFrame registers its own CRAFT_SHOW to ShowUIPanel(CraftFrame). We want the
+-- frames to EXIST (so co-installed CRAFT_SHOW listeners like Auctionator can read
+-- CraftReagent1..N) without the window showing — so load it, then unregister
+-- CraftFrame's CRAFT_SHOW. ShowDefaultUI summons it via UIParent_OnEvent(), which
+-- calls into the loader/ShowUIPanel path directly and does not depend on
+-- CraftFrame's own registration, so the escape-to-Blizzard button still works.
+function Engine:AssumeCraftUILoadResponsibility()
+    if not HAS_CRAFT_WINDOW or self._craftUILoadAssumed then return end
+    self._craftUILoadAssumed = true
+
+    local loadIt = (C_AddOns and C_AddOns.LoadAddOn) or _G.LoadAddOn
+    if loadIt and not addon:IsAddOnLoaded("Blizzard_CraftUI") then
+        pcall(loadIt, "Blizzard_CraftUI")
+    end
+
+    if _G.CraftFrame and _G.CraftFrame.UnregisterEvent then
+        _G.CraftFrame:UnregisterEvent("CRAFT_SHOW")
+    end
+end
+
 function Engine:Init()
     -- Suppress Blizzard's auto-show ONLY when we're going to manage the window
     -- ourselves. In hands-off mode (default) we leave UIParent's handler intact
@@ -491,6 +515,15 @@ function Engine:Init()
         UIParent:UnregisterEvent("TRADE_SKILL_SHOW")
         if HAS_CRAFT_WINDOW then
             UIParent:UnregisterEvent("CRAFT_SHOW")
+            -- UIParent's CRAFT_SHOW handler is the ONLY thing that lazy-loads
+            -- Blizzard_CraftUI (which creates the CraftReagent1..N frames). Having
+            -- unregistered it, we now own that responsibility: other addons that
+            -- also hook CRAFT_SHOW (e.g. Auctionator's CraftShown) index those
+            -- globals and would nil-error if the addon never loaded. Load it here
+            -- so the frames exist, then unregister CraftFrame's own CRAFT_SHOW so
+            -- it doesn't auto-pop a second window over our tab — we still summon it
+            -- on demand via UIParent_OnEvent() in ShowDefaultUI, which is unaffected.
+            self:AssumeCraftUILoadResponsibility()
         end
     end
 

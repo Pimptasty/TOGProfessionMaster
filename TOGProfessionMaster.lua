@@ -649,6 +649,11 @@ function Ace:OnPlayerEnteringWorld(_event, isInitialLogin, isReloadingUi)
             gdb.altClaims[myKey] = groupArr
             if not gdb.lastScan[myKey] then gdb.lastScan[myKey] = {} end
             gdb.lastScan[myKey].accountchars = GetServerTime()
+            -- Mint our own accountchars leaf now (owner-authoritative). RebuildOnFirstLoad
+            -- only fills a MISSING hash, so without this an alt-group change mid-session
+            -- (a new alt that just logged in) wouldn't re-broadcast until the next reload.
+            local DS = addon.Scanner and addon.Scanner.DS
+            if DS then addon.HashManager:InvalidateAccountChars(DS, gdb, myKey) end
         end
     end
 
@@ -1841,6 +1846,71 @@ end
 -- v0.7.0 display-time visibility gate
 -- ---------------------------------------------------------------------------
 
+-- Roster-truth guild-scope test for DISPLAY. Returns true when charKey is a
+-- member of the CURRENT guild (or a configured sister guild) right now.
+--
+-- Unlike the guild TAG stored on recipe crafters, this is tag-free, so it also
+-- scopes data that carries no tag (cooldowns, skills) — and it treats your OWN
+-- alts exactly like anyone else: an alt only counts if it is actually in the
+-- current (or sister) guild's roster, which is precisely what keeps your
+-- cross-guild alts out of THIS guild's views. When you have multiple toons on
+-- one account split across two guilds, the old "own alts always visible"
+-- short-circuit leaked the other guild's alts (and their recipes/cooldowns)
+-- into whichever guild you were logged into — this is the gate that fixes it.
+--
+-- It is READ-ONLY: unlike IsVisibleCrafter it never flags anyone for purge, so
+-- a cross-guild alt is merely hidden here, never deleted (its data must survive
+-- for when you log into that guild, or view the "Mine" filter).
+--
+-- Cold-start safe: before the roster lib has finished its first build we can't
+-- judge membership, so we return true rather than blank a legitimate list; the
+-- display re-scopes itself once the roster is ready (the Professions/Cooldowns
+-- tabs re-warm on the roster-ready / online-offline callbacks).
+function addon:IsInCurrentGuildScope(charKey)
+    if not charKey then return false end
+    -- The logged-in character is always in its own guild by definition.
+    if charKey == self:GetCharacterKey() then return true end
+    -- Guildless: no guild to scope to — fall back to "own account" so a
+    -- guildless player still sees their own alts in the degenerate view.
+    if not self:GetGuildKey() then return self:IsMyCharacter(charKey) end
+    local GR = self.Scanner and self.Scanner.GuildRoster
+    if not GR then return true end                            -- lib absent: don't hide
+    if GR.IsReady and not GR:IsReady() then return true end   -- cold start: don't hide
+    if GR:IsInGuild(charKey) then return true end             -- current guild member
+    if GR.IsInAnyRoster and GR:IsInAnyRoster(charKey) then return true end  -- sister guild
+    return false
+end
+
+-- True when `spellId` is a profession cooldown whose profession `charKey` no
+-- longer has — used to drop/hide a cooldown after a character unlearns the
+-- profession (e.g. an Alchemy transmute after they drop Alchemy). Authority is
+-- the same profession snapshot the crafter-reconcile uses: acts ONLY when we
+-- positively hold `charKey`'s complete snapshot (lastScan[charKey].professions
+-- set) and the cooldown's profession is absent from it. Returns false when we
+-- have no snapshot (never guess) or the cooldown isn't profession-gated (e.g.
+-- Salt Shaker, which has no professionOf entry).
+function addon:IsCooldownProfessionDropped(charKey, spellId)
+    if not charKey or not spellId then return false end
+    -- Only ever hide a cooldown for one of OUR OWN characters, where we hold
+    -- authoritative, current profession data (our own GetKnownProfessions scan).
+    -- A guild member's profession snapshot is best-effort sync and MUST NOT gate
+    -- the display: hiding a cooldown that genuinely synced, just because a peer's
+    -- professions leaf lagged, is exactly the "your view depends on your own
+    -- tradeskill" behavior we refuse. The owner filters what they broadcast; a
+    -- viewer shows everything it received. Own-alt drops still hide correctly.
+    if not self:IsMyCharacter(charKey) then return false end
+    local gdb = self:GetGuildDb()
+    if not (gdb and gdb.lastScan and gdb.lastScan[charKey]
+            and gdb.lastScan[charKey].professions) then
+        return false
+    end
+    local data   = self.GetCooldownData and self:GetCooldownData()
+    local profId = data and data.professionOf and data.professionOf[spellId]
+    if not profId then return false end
+    local skills = gdb.skills and gdb.skills[charKey]
+    return not (skills and skills[profId])
+end
+
 -- Return true if a crafter entry should be displayed RIGHT NOW.
 --   charKey:  "Name-Realm"
 --   crafterTag: the guild tag stored on the crafter entry
@@ -1852,8 +1922,12 @@ end
 -- glitch doesn't permanently strip them.
 function addon:IsVisibleCrafter(charKey, crafterTag)
     if not charKey then return false end
-    -- Own alts (accountChars-tracked) always visible, regardless of guild.
-    if self:IsMyCharacter(charKey) then return true end
+    -- Own alts are visible ONLY while they belong to the current guild scope
+    -- (this guild or a configured sister). A cross-guild alt is hidden here —
+    -- but IsInCurrentGuildScope never flags it for purge, so its data survives
+    -- for when we log into that guild. (Was: "always visible regardless of
+    -- guild", which leaked other-guild alts into every guild-scoped view.)
+    if self:IsMyCharacter(charKey) then return self:IsInCurrentGuildScope(charKey) end
 
     local myTag = self:GetCurrentGuildTag()
 
@@ -2015,6 +2089,33 @@ function addon:RunPendingPurge()
                         end
                     end
                 end
+            end
+            -- altClaims is the OWNER-AUTHORITATIVE alt-group DATA (altGroups above is
+            -- only the derived view). Delete it too — otherwise the accountchars leaf
+            -- hash we drop below just gets re-minted from this surviving data on the
+            -- next RebuildOnFirstLoad, resurrecting the purged character. Also clear its
+            -- lastScan so nothing re-stamps a hash for a character we've removed.
+            if gdb.altClaims then gdb.altClaims[charKey] = nil end
+            if gdb.lastScan  then gdb.lastScan[charKey]  = nil end
+            -- Drop this character's LEAF HASHES too — not just the data. A hash left
+            -- behind with no backing data is an ORPHAN: it keeps getting advertised in
+            -- our subhashes AND (for cooldowns) inflates our request stamp so the real
+            -- owner's copy is never "strictly newer" and they stay silent — their
+            -- cooldowns can then never reach us. DropOrphanLeaf nils the hash and
+            -- refreshes the affected roll-up; it no-ops safely when the hash is absent.
+            local DS = self.Scanner and self.Scanner.DS
+            if DS and addon.HashManager and gdb.hashes then
+                addon.HashManager:DropOrphanLeaf(DS, gdb, "cooldown:"     .. charKey)
+                addon.HashManager:DropOrphanLeaf(DS, gdb, "skills:"       .. charKey)
+                addon.HashManager:DropOrphanLeaf(DS, gdb, "professions:"  .. charKey)
+                addon.HashManager:DropOrphanLeaf(DS, gdb, "accountchars:" .. charKey)
+            elseif gdb.hashes then
+                -- DeltaSync unavailable: still remove the orphan hashes (roll-ups
+                -- rebuild on the next scan / first load) so we stop advertising them.
+                gdb.hashes["cooldown:"     .. charKey] = nil
+                gdb.hashes["skills:"       .. charKey] = nil
+                gdb.hashes["professions:"  .. charKey] = nil
+                gdb.hashes["accountchars:" .. charKey] = nil
             end
             count = count + 1
         end

@@ -159,6 +159,7 @@ L["PopupNotOnList"]      = "Not on shopping list"
 -- ---------------------------------------------------------------------------
 L["ReadyOnly"]              = "Ready Only"
 L["ShowAll"]                = "All"
+L["ReadyOnlyTooltip"]       = "Toggle: show only cooldowns that are Ready, or show every cooldown."
 L["FilterColProfession"]    = "Profession"
 L["FilterColCooldown"]      = "Cooldown"
 L["FilterColView"]          = "View"

@@ -82,6 +82,9 @@ end
 --- leaf already; this is what the skills:<charKey> leaf carries (Herbalism /
 --- Skinning / Fishing / Archaeology). String keys + normalized {r,m} shape so the
 --- hash is deterministic across clients (same discipline as ComputeCraftersHash).
+--- UNCHANGED since v1.0.0 — the skills: leaf stays gathering-only so un-updated
+--- peers keep interoperating with zero rollout churn; the v1.0.3 dropped-profession
+--- work lives on the separate, additive-nothing professions:<charKey> leaf below.
 local function gatheringSkills(gdb, charKey)
     local out = {}
     local s = gdb.skills and gdb.skills[charKey]
@@ -89,6 +92,27 @@ local function gatheringSkills(gdb, charKey)
         for profId, rec in pairs(s) do
             if type(rec) == "table"
                and not (addon.CRAFTING_PROFS and addon.CRAFTING_PROFS[profId]) then
+                out[tostring(profId)] = { r = rec.skillRank or 0, m = rec.skillMax or 0 }
+            end
+        end
+    end
+    return out
+end
+
+--- FULL profession snapshot for a character — EVERY profession in gdb.skills[charKey]
+--- (crafting AND gathering), normalized to {r,m}. This is what the v1.0.3
+--- OWNER-AUTHORITATIVE professions:<charKey> leaf carries: the complete set the
+--- owner currently holds, so a DROPPED profession (absent from the owner's fresh
+--- snapshot) removes the stale row on every peer — additive merges could never
+--- delete. This membership is the single source of truth the crafter-reconcile
+--- prunes against (Scanner:ReconcileCraftersAgainstSkills). Separate leaf key so
+--- the legacy skills: leaf and its hash are untouched — old clients never see this.
+local function allProfessionSkills(gdb, charKey)
+    local out = {}
+    local s = gdb.skills and gdb.skills[charKey]
+    if s then
+        for profId, rec in pairs(s) do
+            if type(rec) == "table" then
                 out[tostring(profId)] = { r = rec.skillRank or 0, m = rec.skillMax or 0 }
             end
         end
@@ -104,6 +128,18 @@ end
 --- Payload map for skills:<charKey> (what the leaf ships). Mirrors the hashed shape.
 function HashManager:GetGatheringSkills(gdb, charKey)
     return gatheringSkills(gdb, charKey)
+end
+
+--- Hash for professions:<charKey> — the character's full profession snapshot.
+--- Owner-MINTED only; peers adopt it verbatim via StoreDeliveredProfessionsLeaf and
+--- NEVER recompute it on receive (same owner-authoritative rule as cooldowns).
+function HashManager:ComputeCharProfessionsHash(DS, gdb, charKey)
+    return DS:ComputeHash(allProfessionSkills(gdb, charKey))
+end
+
+--- Payload map for professions:<charKey> (what the leaf ships). Mirrors the hashed shape.
+function HashManager:GetProfessionSnapshot(gdb, charKey)
+    return allProfessionSkills(gdb, charKey)
 end
 
 --- Hash for crafters:<profId> — crafter membership map for one profession.
@@ -207,6 +243,10 @@ function HashManager:ComputeGuildSkillsHash(DS, gdb)
     return rollupOver(ensureHashes(gdb), "skills:", DS)
 end
 
+function HashManager:ComputeGuildProfessionsHash(DS, gdb)
+    return rollupOver(ensureHashes(gdb), "professions:", DS)
+end
+
 -- ---------------------------------------------------------------------------
 -- Targeted invalidation
 -- Each helper computes the new (hash, updatedAt) tuple from current content
@@ -239,9 +279,15 @@ end
 --- stored leaf hashes (rollupOver reads entry.hash, so no recompute leaks in).
 --- Only the owner (via InvalidateCharCooldowns on its own scan) ever computes a
 --- cooldown hash from data; everyone else adopts through here.
-function HashManager:StoreDeliveredCooldownLeaf(DS, gdb, ownerKey, token, updatedAt)
+--- `isAbs` records whether this token came from the new ABSOLUTE format or the
+--- legacy relative one, so a drift-prone legacy copy can never override an
+--- authoritative absolute one for the same owner (the receiver checks entry.abs).
+function HashManager:StoreDeliveredCooldownLeaf(DS, gdb, ownerKey, token, updatedAt, isAbs)
     local hashes = ensureHashes(gdb)
     local wrote  = setEntry(hashes, "cooldown:" .. ownerKey, token, updatedAt or 0)
+    -- Refresh the format flag even on a no-op (hash, updatedAt) write.
+    local entry = hashes["cooldown:" .. ownerKey]
+    if entry then entry.abs = isAbs and true or nil end
     if wrote then
         setEntry(hashes, "guild:cooldowns",
             self:ComputeGuildCooldownsHash(DS, gdb),
@@ -250,7 +296,10 @@ function HashManager:StoreDeliveredCooldownLeaf(DS, gdb, ownerKey, token, update
     return wrote
 end
 
---- After an accountchars scan or merge for one broadcaster.
+--- After an accountchars scan for one broadcaster. Call ONLY on the owner's own
+--- client, from its own alt-group scan — never on receive (recompute-on-receive is
+--- exactly what made accountchars churn). Everyone else adopts via
+--- StoreDeliveredAccountCharsLeaf.
 function HashManager:InvalidateAccountChars(DS, gdb, charKey)
     local hashes = ensureHashes(gdb)
     local hash   = self:ComputeAccountCharsHash(DS, gdb, charKey)
@@ -263,7 +312,29 @@ function HashManager:InvalidateAccountChars(DS, gdb, charKey)
     end
 end
 
---- After a gathering-skills scan or merge for one character.
+--- Adopt an accountchars leaf hash delivered by a peer VERBATIM (owner-authoritative,
+--- exactly like StoreDeliveredCooldownLeaf / StoreDeliveredProfessionsLeaf). The alt
+--- group is minted only by its own account and adopted token-for-token by everyone
+--- else — NEVER recomputed on receipt and NEVER union-merged, which is what made the
+--- v0.7.0 accountchars model churn forever (each client hashed its own accumulated
+--- view, so peers never converged and re-requested the leaf every cycle). The caller
+--- has already replaced gdb.altClaims[owner] with the delivered array; here we just
+--- record the owner's token + updatedAt and recompose the guild:accountchars roll-up
+--- from stored leaf hashes (no data re-hash).
+function HashManager:StoreDeliveredAccountCharsLeaf(DS, gdb, ownerKey, token, updatedAt)
+    local hashes = ensureHashes(gdb)
+    local wrote  = setEntry(hashes, "accountchars:" .. ownerKey, token, updatedAt or 0)
+    if wrote then
+        setEntry(hashes, "guild:accountchars",
+            self:ComputeGuildAccountCharsHash(DS, gdb),
+            rollupTime(hashes, "accountchars:"))
+    end
+    return wrote
+end
+
+--- After a gathering-skills scan or merge for one character (skills:<charKey>).
+--- Unchanged from v1.0.0 — the skills leaf stays gathering-only and drift-free
+--- (max-rank-wins), so recompute here is safe and old clients interoperate.
 function HashManager:InvalidateCharSkills(DS, gdb, charKey)
     local hashes = ensureHashes(gdb)
     local hash   = self:ComputeCharSkillsHash(DS, gdb, charKey)
@@ -274,6 +345,72 @@ function HashManager:InvalidateCharSkills(DS, gdb, charKey)
             self:ComputeGuildSkillsHash(DS, gdb),
             rollupTime(hashes, "skills:"))
     end
+end
+
+--- Owner MINT of the professions:<charKey> leaf — call ONLY on the character's own
+--- client after its own profession scan (never on receive). Computes the full
+--- profession-snapshot hash from local data and stamps it with the owner's scan
+--- time. Everyone else adopts the result verbatim via StoreDeliveredProfessionsLeaf.
+function HashManager:InvalidateCharProfessions(DS, gdb, charKey)
+    local hashes = ensureHashes(gdb)
+    local hash   = self:ComputeCharProfessionsHash(DS, gdb, charKey)
+    local ts     = lastScan(gdb, charKey, "professions")
+    local wrote  = setEntry(hashes, "professions:" .. charKey, hash, ts)
+    if wrote then
+        setEntry(hashes, "guild:professions",
+            self:ComputeGuildProfessionsHash(DS, gdb),
+            rollupTime(hashes, "professions:"))
+    end
+end
+
+--- Adopt a professions leaf hash delivered by a peer VERBATIM (v1.0.3 owner-
+--- authoritative profession registry — the exact model as StoreDeliveredCooldownLeaf).
+--- The character's OWN client mints the professions:<charKey> hash from its full
+--- profession set; every relay stores that token verbatim and NEVER recomputes it,
+--- so the hash stays owner-identical hop to hop and guild:professions converges
+--- instead of churning. The caller has already replaced gdb.skills[owner] with the
+--- delivered snapshot; here we just record the owner's token + updatedAt and
+--- recompose the guild:professions roll-up from stored leaf hashes (no data re-hash).
+function HashManager:StoreDeliveredProfessionsLeaf(DS, gdb, ownerKey, token, updatedAt)
+    local hashes = ensureHashes(gdb)
+    local wrote  = setEntry(hashes, "professions:" .. ownerKey, token, updatedAt or 0)
+    if wrote then
+        setEntry(hashes, "guild:professions",
+            self:ComputeGuildProfessionsHash(DS, gdb),
+            rollupTime(hashes, "professions:"))
+    end
+    return wrote
+end
+
+-- Drop a leaf hash we hold NO data for (an "orphan") and refresh its roll-up.
+-- Called when a serve attempt finds no content: the hash was gossiping to us via
+-- subhashes but the actual data never landed, so we kept advertising a leaf we
+-- can't serve. That churns peers (they request it forever) AND — for cooldowns —
+-- inflates our request stamp so the real owner's copy isn't "strictly newer" and
+-- they stay silent, so the data can never reach us. Removing the orphan hash stops
+-- the advertisement and lets a fresh (stamp = -1) request pull the owner's data.
+-- Safe: BuildLeafPayload only returns nil when the backing data is genuinely
+-- absent, so a leaf we truly hold is never dropped.
+function HashManager:DropOrphanLeaf(DS, gdb, itemKey)
+    local hashes = gdb.hashes
+    if not hashes or not hashes[itemKey] then return false end
+    hashes[itemKey] = nil
+    if itemKey:sub(1, 9) == "cooldown:" then
+        setEntry(hashes, "guild:cooldowns",
+            self:ComputeGuildCooldownsHash(DS, gdb), rollupTime(hashes, "cooldown:"))
+    elseif itemKey:sub(1, 12) == "professions:" then
+        setEntry(hashes, "guild:professions",
+            self:ComputeGuildProfessionsHash(DS, gdb), rollupTime(hashes, "professions:"))
+    elseif itemKey:sub(1, 7) == "skills:" then
+        setEntry(hashes, "guild:skills",
+            self:ComputeGuildSkillsHash(DS, gdb), rollupTime(hashes, "skills:"))
+    elseif itemKey:sub(1, 13) == "accountchars:" then
+        setEntry(hashes, "guild:accountchars",
+            self:ComputeGuildAccountCharsHash(DS, gdb), rollupTime(hashes, "accountchars:"))
+    end
+    -- crafters:<profId> has no roll-up (it rides the L0 map directly) — the bare
+    -- removal above is enough.
+    return true
 end
 
 --- After a profession scan or merge. v0.7.0: only the crafters:<profId> leaf
@@ -364,6 +501,61 @@ function HashManager:RebuildOnFirstLoad(DS, gdb)
         end
     end
 
+    -- One-time self-heal (v1.0.3): an earlier build fabricated updatedAt-0
+    -- professions leaves and set bogus lastScan.professions == 0 (0 is truthy in
+    -- Lua). Purge both so we stop advertising orphan hashes we can't serve and stop
+    -- ignoring characters' real skills leaves / mis-filtering their cooldowns.
+    for key, entry in pairs(hashes) do
+        if key:sub(1, 12) == "professions:" and type(entry) == "table"
+           and (not entry.updatedAt or entry.updatedAt <= 0) then
+            hashes[key] = nil
+        end
+    end
+    if gdb.lastScan then
+        for _ck, scopes in pairs(gdb.lastScan) do
+            if type(scopes) == "table" and scopes.professions ~= nil
+               and scopes.professions <= 0 then
+                scopes.professions = nil
+            end
+        end
+    end
+
+    -- Profession-snapshot leaves (v1.0.3): restore a MISSING hash ONLY for a
+    -- character we hold a real AUTHORITATIVE snapshot timestamp for
+    -- (lastScan[char].professions > 0 — our own scan, or an owner's delivered
+    -- leaf). We must NOT fabricate a professions leaf for a character we merely
+    -- relayed skills for: that would mint a bogus updatedAt-0 leaf which, once
+    -- relayed and adopted elsewhere, sets a truthy lastScan.professions and makes
+    -- peers ignore that character's real skills leaf (orphan hashes) and mis-filter
+    -- their cooldowns. The owner's own scan is the sole authority for their snapshot.
+    if gdb.skills then
+        for charKey in pairs(gdb.skills) do
+            local snapT = gdb.lastScan and gdb.lastScan[charKey]
+                          and gdb.lastScan[charKey].professions
+            if not hashes["professions:" .. charKey]
+               and snapT and snapT > 0
+               and next(allProfessionSkills(gdb, charKey)) then
+                self:InvalidateCharProfessions(DS, gdb, charKey)
+            end
+        end
+    end
+
+    -- Orphan-hash sweep (v1.0.3): drop any per-character/profession leaf hash we
+    -- hold NO backing data for. These gossip in via subhashes and, left advertised,
+    -- churn peers who request them AND — for cooldowns — inflate our request stamps
+    -- so the real owner's copy isn't "strictly newer" and never serves us. Bare
+    -- removal here (the roll-ups below recompute from what remains). Same self-heal
+    -- as the serve path, applied up-front so we don't wait for a request per orphan.
+    local orphans = {}
+    for key in pairs(hashes) do
+        if (key:sub(1, 9)  == "cooldown:"    or key:sub(1, 7)  == "skills:"
+         or key:sub(1, 12) == "professions:" or key:sub(1, 13) == "accountchars:")
+           and not self:HasContent(gdb, key) then
+            orphans[#orphans + 1] = key
+        end
+    end
+    for _, key in ipairs(orphans) do hashes[key] = nil end
+
     -- Roll-ups: recompute if missing or stale.  InvalidateChar* / Invalidate*
     -- helpers only refresh the roll-up when their leaf changed, so a fresh
     -- recompute here covers the case where leaves existed but the roll-up
@@ -377,6 +569,9 @@ function HashManager:RebuildOnFirstLoad(DS, gdb)
     setEntry(hashes, "guild:skills",
         self:ComputeGuildSkillsHash(DS, gdb),
         rollupTime(hashes, "skills:"))
+    setEntry(hashes, "guild:professions",
+        self:ComputeGuildProfessionsHash(DS, gdb),
+        rollupTime(hashes, "professions:"))
 end
 
 -- ---------------------------------------------------------------------------
@@ -406,6 +601,10 @@ function HashManager:GetSkillsLevelMap(gdb)
     return copyEntries(ensureHashes(gdb), "skills:")
 end
 
+function HashManager:GetProfessionsLevelMap(gdb)
+    return copyEntries(ensureHashes(gdb), "professions:")
+end
+
 function HashManager:GetCraftersLevelMap(gdb)
     return copyEntries(ensureHashes(gdb), "crafters:")
 end
@@ -423,7 +622,7 @@ function HashManager:GetL0BroadcastMap(gdb)
         end
     end
     -- Roll-ups
-    for _, key in ipairs({ "guild:cooldowns", "guild:accountchars", "guild:skills" }) do
+    for _, key in ipairs({ "guild:cooldowns", "guild:accountchars", "guild:skills", "guild:professions" }) do
         local e = hashes[key]
         if e then map[key] = { hash = e.hash, updatedAt = e.updatedAt } end
     end
@@ -489,6 +688,15 @@ function HashManager:HasContent(gdb, itemKey)
         end
         return false
     end
+    if itemKey == "guild:professions" then
+        -- Servable when any character has any profession recorded.
+        if gdb.skills then
+            for ck in pairs(gdb.skills) do
+                if next(allProfessionSkills(gdb, ck)) then return true end
+            end
+        end
+        return false
+    end
     if itemKey:sub(1, 6) == "guild:" then return false end
 
     if itemKey:sub(1, 9) == "cooldown:" then
@@ -503,6 +711,11 @@ function HashManager:HasContent(gdb, itemKey)
         return gdb.altClaims
            and type(gdb.altClaims[owner]) == "table"
            and #gdb.altClaims[owner] > 0
+    end
+
+    if itemKey:sub(1, 12) == "professions:" then
+        local owner = itemKey:sub(13)
+        return next(allProfessionSkills(gdb, owner)) ~= nil
     end
 
     if itemKey:sub(1, 7) == "skills:" then

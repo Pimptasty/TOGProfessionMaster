@@ -908,6 +908,21 @@ local OPTIONS = {
                     gdb.syncTimes[charKey]        = nil
                     gdb.specializations[charKey]  = nil
                     gdb.factions[charKey]         = nil
+                    -- Drop the leaf hashes too, or they become orphans that keep
+                    -- being advertised and (for cooldowns) inflate our request
+                    -- stamps so owners stay silent. See RunPendingPurge.
+                    local DS = addon.Scanner and addon.Scanner.DS
+                    if DS and addon.HashManager and gdb.hashes then
+                        addon.HashManager:DropOrphanLeaf(DS, gdb, "cooldown:"     .. charKey)
+                        addon.HashManager:DropOrphanLeaf(DS, gdb, "skills:"       .. charKey)
+                        addon.HashManager:DropOrphanLeaf(DS, gdb, "professions:"  .. charKey)
+                        addon.HashManager:DropOrphanLeaf(DS, gdb, "accountchars:" .. charKey)
+                    elseif gdb.hashes then
+                        gdb.hashes["cooldown:"     .. charKey] = nil
+                        gdb.hashes["skills:"       .. charKey] = nil
+                        gdb.hashes["professions:"  .. charKey] = nil
+                        gdb.hashes["accountchars:" .. charKey] = nil
+                    end
                 end
                 addon:Print(L["MsgOwnDataPurged"])
                 -- See purgeGuildData: clear the Browser's recipe cache, and use

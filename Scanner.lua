@@ -316,22 +316,23 @@ function Scanner:InitDeltaSync()
                 local myHashes = (reqGdb and reqGdb.hashes) or {}
                 for _, itemKey in ipairs(baseline.keys) do
                     if itemKey:sub(1, 9) == "cooldown:" then
-                        -- v0.10.11: serve a cooldown leaf ONLY to a new-format peer
-                        -- (one that attached a stamp for this key) AND only when our
-                        -- copy is strictly NEWER than theirs. The requester sends
-                        -- stamp = its own updatedAt for the key, or -1 when it holds
-                        -- nothing (so any real copy wins → first acquisition works).
-                        -- A stampless request is an OLD client: its drifted hashes
-                        -- will never converge and it can't parse our absolute payload
-                        -- anyway, so serving it just feeds the 90-leaf send storm —
-                        -- we stay silent. Non-cooldown leaves are unchanged.
-                        local reqStamp = baseline.stamps and baseline.stamps[itemKey]
-                        if reqStamp ~= nil then
-                            local mine = myHashes[itemKey]
-                            local myTs = (mine and mine.updatedAt) or 0
-                            if myTs > (tonumber(reqStamp) or 0) then
-                                Scanner:BroadcastLeafToGuild(itemKey)
-                            end
+                        -- New-framework cooldown serve: prefer-newer. The requester
+                        -- stamps its own updatedAt for this key, or -1 = "I hold nothing"
+                        -- (a MISSING stamp is treated as -1 too, so a bare-offer request
+                        -- still resolves). Serve when our copy is strictly newer than
+                        -- theirs — first acquisition works because their -1 is below any
+                        -- real timestamp. If they already hold an equal-or-newer copy
+                        -- they wouldn't have requested, so the gate never wrongly
+                        -- refuses a legitimate new-client request. This is sound ONLY
+                        -- because both sides now carry owner-minted, verbatim-adopted
+                        -- timestamps (never recomputed) — the clean break from the
+                        -- mixed-version drift that froze v1.0.0. BroadcastLeafToGuild
+                        -- no-ops when we hold no backing data.
+                        local reqStamp = tonumber(baseline.stamps and baseline.stamps[itemKey]) or -1
+                        local mine     = myHashes[itemKey]
+                        local myTs     = (mine and mine.updatedAt) or 0
+                        if myTs > reqStamp then
+                            Scanner:BroadcastLeafToGuild(itemKey)
                         end
                     else
                         Scanner:BroadcastLeafToGuild(itemKey)
@@ -545,7 +546,7 @@ function Scanner:InitDeltaSync()
                 return
             end
             if itemKey == "guild:cooldowns" or itemKey == "guild:accountchars"
-               or itemKey == "guild:skills" then
+               or itemKey == "guild:skills" or itemKey == "guild:professions" then
                 -- Roll-up mismatch — ask for per-character sub-hashes.
                 addon:DebugPrint("Scanner:   → sending subhashes RequestData to", sender)
                 DS:RequestData(sender, { type = "subhashes", parent = itemKey })
@@ -1578,26 +1579,73 @@ function Scanner:DetectSpecializations()
 end
 
 -- ---------------------------------------------------------------------------
--- Gathering-profession scanning
+-- Profession scanning (the owner-authoritative profession registry)
 --
--- Records the local player's GATHERING professions — anything GetProfessions
--- reports that ISN'T a recipe/crafting profession (CRAFTING_PROFS, whose skill
--- already rides that profession's crafters: leaf). Herbalism / Skinning /
--- Fishing / Archaeology have no trade-skill window, so the recipe scan never
--- sees them; this is how "who gathers what" gets tracked. Version-agnostic:
--- GetProfessions only returns slots that exist on the client (e.g. no
--- Archaeology slot on Vanilla), so no flag branching is needed.
+-- Records the COMPLETE set of professions the local player currently holds —
+-- crafting AND gathering — into gdb.skills[charKey], the authoritative "who has
+-- what profession" registry that syncs on the skills:<charKey> leaf. This is the
+-- owner side of the dropped-profession fix: because a dropped profession has no
+-- trade-skill window to re-scan, the ONLY way it leaves the guild's data is for
+-- the owner to notice it's gone from their current profession set and broadcast a
+-- fresh snapshot that omits it (peers replace their row + prune crafters). See
+-- [[project-dropped-profession-fix]] / the skills: leaf in BuildLeafPayload.
 --
--- On a real change it invalidates the skills:<charKey> leaf and broadcasts, so
--- gathering skills sync guild-wide the same owner-authoritative, relay-by-anyone
--- way as every other leaf.
+-- On a real change it invalidates the skills:<charKey> leaf (owner MINT — the
+-- only place the hash is computed from data) and broadcasts, syncing the same
+-- owner-authoritative, relay-by-anyone way as every other leaf.
 -- ---------------------------------------------------------------------------
 
+-- Enumerate the professions the local player currently holds. Returns
+--   held      = { [profId] = { rank = N, max = N } }   (crafting AND gathering)
+--   reliable  = boolean — true only when the read can be TRUSTED FOR REMOVAL.
+-- Reliability matters because deleting a profession off an unreliable read would
+-- wipe data the player still has:
+--   * Cata/MoP: GetProfessions/GetProfessionInfo hand us the locale-independent
+--     skillLine ID directly → always reliable.
+--   * Era/TBC/Wrath: no GetProfessions, so skill-line NAMES are mapped through the
+--     English PROF_NAME_TO_ID. A non-English client can't resolve those names, so
+--     it would under-report — only trust removal on an English locale with a
+--     non-empty read (a genuinely profession-less char has nothing to remove).
+local function enumerateHeldProfessions()
+    local held     = {}
+    local reliable = false
+
+    -- Cata/MoP path — locale-independent skillLine IDs.
+    if GetProfessions then
+        local anySlot = false
+        for _, idx in ipairs({ GetProfessions() }) do
+            if idx then
+                local _n, _i, rank, max, _, _, skillLine = GetProfessionInfo(idx)
+                if skillLine then
+                    held[skillLine] = { rank = rank or 0, max = max or 0 }
+                    anySlot = true
+                end
+            end
+        end
+        if anySlot then reliable = true end
+    end
+
+    -- Classic path (Era/TBC/Wrath) — also the fallback if the Cata path yielded
+    -- nothing. Reads the character-panel skill lines (GetProfessions is a no-op on
+    -- Classic Era). A COLLAPSED header hides its children, so the caller expands
+    -- all headers first.
+    if not reliable and GetNumSkillLines and GetSkillLineInfo then
+        for i = 1, (GetNumSkillLines() or 0) do
+            -- name(1), isHeader(2), isExpanded(3), rank(4), _, _, maxRank(7)
+            local name, isHeader, _, rank, _, _, maxRank = GetSkillLineInfo(i)
+            if name and not isHeader then
+                local profId = PROF_NAME_TO_ID[name]
+                if profId then held[profId] = { rank = rank or 0, max = maxRank or 0 } end
+            end
+        end
+        local loc = (GetLocale and GetLocale()) or "enUS"
+        if next(held) and loc:sub(1, 2) == "en" then reliable = true end
+    end
+
+    return held, reliable
+end
+
 function Scanner:ScanGatheringProfessions()
-    -- Classic Era's GetProfessions() returns nothing — professions are read from
-    -- the character-panel SKILL LINES instead (the same data the Skills tab shows).
-    -- GetSkillLineInfo works on every supported client; on Retail it wouldn't list
-    -- gathering the same way, but the addon's targets are Classic-family.
     if not GetNumSkillLines or not GetSkillLineInfo then return end
     -- Re-entrancy guard: ExpandSkillHeader below can fire SKILL_LINES_CHANGED, which
     -- would re-enter this scan. The flag resets at the single exit point at the end,
@@ -1617,46 +1665,134 @@ function Scanner:ScanGatheringProfessions()
         if not gdb.skills[charKey] then gdb.skills[charKey] = {} end
         local stored  = gdb.skills[charKey]
         local changed = false
-        for i = 1, (GetNumSkillLines() or 0) do
-            -- GetSkillLineInfo: name(1), isHeader(2), isExpanded(3), rank(4),
-            -- numTempPoints(5), skillModifier(6), maxRank(7), ...
-            local name, isHeader, _, rank, _, _, maxRank = GetSkillLineInfo(i)
-            if not isHeader and name then
-                -- Map the skill NAME to a profession ID (same English name map the
-                -- trade-skill path uses). Only recipe-less GATHERING professions are
-                -- recorded here — crafting professions (incl. Mining via Smelting)
-                -- already sync their skill on the crafters: leaf, and every non-
-                -- profession skill (weapon skills, riding, languages) simply isn't in
-                -- the map, so it's ignored.
-                local profId = PROF_NAME_TO_ID[name]
-                if profId and not addon.CRAFTING_PROFS[profId] then
-                    rank, maxRank = rank or 0, maxRank or 0
-                    local prev = stored[profId]
-                    if not prev or prev.skillRank ~= rank or prev.skillMax ~= maxRank then
-                        stored[profId] = { skillRank = rank, skillMax = maxRank }
+
+        local held, reliable = enumerateHeldProfessions()
+
+        -- 1. Record / update every profession currently held (crafting AND
+        --    gathering). Recording crafting profs here means a profession appears in
+        --    the registry at its real rank even before its window is ever opened.
+        for profId, info in pairs(held) do
+            local prev = stored[profId]
+            if not prev or prev.skillRank ~= info.rank or prev.skillMax ~= info.max then
+                stored[profId] = { skillRank = info.rank, skillMax = info.max }
+                changed = true
+                addon:DebugPrint("Scanner: recorded profession", profId,
+                    "(", info.rank .. "/" .. info.max, ")")
+            end
+        end
+
+        -- 2. Drop professions no longer held — the dropped-profession fix. Guarded
+        --    two ways so we NEVER delete a profession the player still has:
+        --      * reliable read only (see enumerateHeldProfessions), AND
+        --      * absent across TWO consecutive reliable reads. A partial/early
+        --        skill-line read (common in the seconds after login — some
+        --        professions loaded, others not yet) would otherwise look like a
+        --        drop. A first-time "missing" prof is only FLAGGED, and a confirming
+        --        re-scan is scheduled; it's removed only if still missing next read
+        --        (a partial read self-corrects because the prof reappears).
+        local dropped = false
+        if reliable then
+            local candidates     = {}
+            local prevCandidates = self._dropCandidates or {}
+            local pendingConfirm = false
+            for profId in pairs(stored) do
+                if not held[profId] then
+                    candidates[profId] = true
+                    if prevCandidates[profId] then
+                        stored[profId] = nil
                         changed = true
-                        addon:DebugPrint("Scanner: recorded gathering skill", name,
-                            "(", profId, ")", rank .. "/" .. maxRank)
+                        dropped = true
+                        addon:DebugPrint("Scanner: profession gone (confirmed), dropping", profId)
+                    else
+                        pendingConfirm = true
+                        addon:DebugPrint("Scanner: profession missing (1st read), awaiting confirm", profId)
                     end
                 end
+            end
+            self._dropCandidates = candidates
+            -- Schedule the confirming second read so a genuine mid-session drop
+            -- still commits promptly (SKILL_LINES_CHANGED fires only once on a drop).
+            if pendingConfirm and not self._dropConfirmTimer then
+                self._dropConfirmTimer = Ace:ScheduleTimer(function()
+                    Scanner._dropConfirmTimer = nil
+                    Scanner:ScanGatheringProfessions()
+                end, 3)
             end
         end
 
         if changed then
-            -- Content-derived scan time for the skills:<charKey> leaf.
             if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
-            gdb.lastScan[charKey].skills = GetServerTime()
+            local now = GetServerTime()
+            gdb.lastScan[charKey].skills = now
+            -- `.professions` asserts we hold a COMPLETE authoritative snapshot for
+            -- ourselves — set only on a reliable read (ranks alone don't establish
+            -- membership authority). The reconcile + resurrection guards key off it.
+            if reliable then gdb.lastScan[charKey].professions = now end
+
             local DS = self.DS
+            -- Prune our OWN crafter rows for any profession we just dropped, so the
+            -- fresh snapshot and the recipe lists agree.
+            local pruned = false
+            if dropped then
+                pruned = self:ReconcileCraftersAgainstSkills(gdb, charKey)
+            end
+            -- Owner MINT of the gathering skills leaf (unchanged, backward-compat).
             if DS then addon.HashManager:InvalidateCharSkills(DS, gdb, charKey) end
+            -- Owner MINT of the professions leaf — the authoritative full snapshot
+            -- that carries the drop. Only on a reliable read (we set .professions
+            -- above only then), so we never assert a set we can't trust.
+            if DS and reliable then
+                addon.HashManager:InvalidateCharProfessions(DS, gdb, charKey)
+            end
             self:ScheduleBroadcast()
             if addon.callbacks then
-                addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey, { skills = true })
+                local scopes = { skills = true }
+                if pruned then scopes.recipes = true end
+                addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey, scopes)
             end
-            addon:DebugPrint("Scanner: gathering professions updated for", charKey)
+            addon:DebugPrint("Scanner: professions updated for", charKey,
+                "(reliable=", tostring(reliable), " dropped=", tostring(dropped), ")")
         end
     end
 
     self._scanningGather = false
+end
+
+-- Prune crafter rows for ONE owner against their AUTHORITATIVE profession snapshot.
+-- Removes the owner from every recipe of any profession their snapshot does not
+-- contain, and re-mints that profession's (aggregate) crafters hash so the pruned
+-- set propagates. Guarded: acts ONLY when we positively hold a complete snapshot
+-- for the owner (gdb.lastScan[owner].professions set) — never on mere absence of a
+-- skills row, so a peer we simply lack snapshot data for is left untouched. This is
+-- what turns "owner dropped a profession" into "their recipes disappear for
+-- everyone"; the crafters leaf itself can't express the deletion. Returns whether
+-- anything was pruned.
+function Scanner:ReconcileCraftersAgainstSkills(gdb, ownerKey)
+    if not gdb or not gdb.recipes or not ownerKey then return false end
+    if not (gdb.lastScan and gdb.lastScan[ownerKey]
+            and gdb.lastScan[ownerKey].professions) then
+        return false
+    end
+    local snap = gdb.skills and gdb.skills[ownerKey]
+    local changed = false
+    for profId, profRecipes in pairs(gdb.recipes) do
+        if not (snap and snap[profId]) then
+            local profChanged = false
+            for _, rd in pairs(profRecipes) do
+                if rd.crafters and rd.crafters[ownerKey] then
+                    rd.crafters[ownerKey] = nil
+                    profChanged = true
+                end
+            end
+            if profChanged then
+                changed = true
+                if self.DS then
+                    addon.HashManager:InvalidateProfession(self.DS, gdb, profId)
+                end
+            end
+        end
+    end
+    return changed
 end
 
 -- ---------------------------------------------------------------------------
@@ -2097,12 +2233,48 @@ function Scanner:BroadcastLeafToGuild(itemKey, players)
     local DS = self.DS
     if not DS then return end
     if not addon:GetGuildKey() then return end  -- never broadcast no-guild data
+
+    -- Serve-side coalescing (whole-leaf only). A leaf serve is a GUILD-WIDE broadcast,
+    -- so re-sending the SAME VERSION seconds later reaches nobody new — but every peer's
+    -- request triggers its own broadcast, so a leaf that many peers want (e.g. the one
+    -- client actually holding real cooldown data in a mixed-version guild) gets spammed
+    -- to everyone over and over. Coalesce only a repeat of the SAME hash within the
+    -- window. CRITICAL: a CHANGED leaf (new hash — the owner just started/updated a
+    -- cooldown) must always go out immediately, or the coalesce swallows the very update
+    -- peers are waiting for (this stalled 2-client cooldown sync). Scoped crafter replies
+    -- (players set) legitimately vary by which players were asked, so they're exempt.
+    if not players then
+        local cgdb    = addon:GetGuildDb()
+        local curHash = cgdb and cgdb.hashes and cgdb.hashes[itemKey] and cgdb.hashes[itemKey].hash
+        local last    = self._lastLeafBroadcast and self._lastLeafBroadcast[itemKey]
+        if last and last.hash == curHash and (GetServerTime() - last.at) < 10 then
+            addon:DebugPrint("Scanner: leaf serve coalesced (same version):", itemKey)
+            return
+        end
+    end
+
     local payload = self:BuildLeafPayload(itemKey, players)
     if not payload then
         addon:DebugPrint("Scanner: BroadcastLeafToGuild — no content for", itemKey)
+        -- Self-heal: we advertised a hash for a leaf we hold no data for (an orphan
+        -- hash that gossiped in via subhashes). Drop it so we stop advertising it and
+        -- so a fresh stamp=-1 request can pull the owner's real data. Only for an
+        -- UNSCOPED request — a scoped crafters reply can legitimately have no content
+        -- for the asked players without the whole leaf being orphaned.
+        if not players and self.DS then
+            local gdb = addon:GetGuildDb()
+            if gdb and addon.HashManager:DropOrphanLeaf(self.DS, gdb, itemKey) then
+                addon:DebugPrint("Scanner:   → dropped ORPHAN hash (advertised, no data):", itemKey)
+            end
+        end
         return
     end
     local _ok, sentBytes = DS:BroadcastData(payload, "GUILD", "BULK")
+    if not players then
+        self._lastLeafBroadcast = self._lastLeafBroadcast or {}
+        local sentLeaf = payload.leaves and payload.leaves[itemKey]
+        self._lastLeafBroadcast[itemKey] = { hash = sentLeaf and sentLeaf.hash, at = GetServerTime() }
+    end
     if DS.p2p then
         DS.p2p:OnItemCompleted(itemKey, addon:GetCharacterKey())
     end
@@ -2130,6 +2302,21 @@ function Scanner:BroadcastSubhashesToGuild(parentItemKey)
     if not gdb then return end
     local HM = addon.HashManager
 
+    -- Serve-side coalescing, same idea as BroadcastLeafToGuild: a subhash list is a
+    -- GUILD-WIDE broadcast, so if several peers request the same roll-up's subhashes at
+    -- once (a login storm, or many clients whose roll-up drifted this cycle), we'd send
+    -- the whole list — 20 KB+ for guild:accountchars — once per requester. Coalesce only
+    -- when the roll-up is UNCHANGED since our last send (same parent hash): if any
+    -- underlying leaf changed, peers need the fresh list now — don't swallow it. NOTE:
+    -- this only collapses BURSTS — it does nothing for the steady ~per-minute re-requests
+    -- driven by an un-converged roll-up (that only settles once peers are on the new code).
+    local curRollup = gdb.hashes and gdb.hashes[parentItemKey] and gdb.hashes[parentItemKey].hash
+    local last      = self._lastSubhashBroadcast and self._lastSubhashBroadcast[parentItemKey]
+    if last and last.hash == curRollup and (GetServerTime() - last.at) < 10 then
+        addon:DebugPrint("Scanner: subhash serve coalesced (unchanged):", parentItemKey)
+        return
+    end
+
     local subhashes
     if parentItemKey == "guild:cooldowns" then
         subhashes = HM:GetCooldownLevelMap(gdb)
@@ -2137,6 +2324,8 @@ function Scanner:BroadcastSubhashesToGuild(parentItemKey)
         subhashes = HM:GetAccountCharsLevelMap(gdb)
     elseif parentItemKey == "guild:skills" then
         subhashes = HM:GetSkillsLevelMap(gdb)
+    elseif parentItemKey == "guild:professions" then
+        subhashes = HM:GetProfessionsLevelMap(gdb)
     else
         addon:DebugPrint("Scanner: BroadcastSubhashesToGuild — unknown parent", parentItemKey)
         return
@@ -2152,6 +2341,11 @@ function Scanner:BroadcastSubhashesToGuild(parentItemKey)
         subsync   = 1,   -- presence beacon (see BuildLeafPayload)
     }
     local _ok, sentBytes = DS:BroadcastData(payload, "GUILD", "BULK")
+    self._lastSubhashBroadcast = self._lastSubhashBroadcast or {}
+    self._lastSubhashBroadcast[parentItemKey] = {
+        hash = gdb.hashes and gdb.hashes[parentItemKey] and gdb.hashes[parentItemKey].hash,
+        at   = GetServerTime(),
+    }
     addon:DebugPrint("Scanner: broadcast subhashes for", parentItemKey)
     if addon.callbacks then
         addon.callbacks:Fire("SYNC_SENT", "guild", tonumber(sentBytes) or 0, "subhashes: " .. parentItemKey)
@@ -2280,10 +2474,32 @@ function Scanner:BuildLeafPayload(itemKey, players)
             lastScanOut[owner] = { accountchars = ls.accountchars }
         end
 
+    elseif itemKey:sub(1, 12) == "professions:" then
+        -- v1.0.3: the OWNER-AUTHORITATIVE full profession snapshot for one character
+        -- — EVERY profession they currently have (crafting AND gathering), so a
+        -- profession they DROPPED (absent here) is deleted on every peer rather than
+        -- lingering forever. A SEPARATE leaf from skills: so un-updated clients (which
+        -- don't know this key) are wholly undisturbed — zero rollout churn. The hash
+        -- is the owner's minted token, shipped + relayed VERBATIM (receivers never
+        -- recompute) exactly like cooldowns.
+        local owner = itemKey:sub(13)
+        local snapshot = addon.HashManager:GetProfessionSnapshot(gdb, owner)
+        if not next(snapshot) then return nil end
+        payload.leaves[itemKey] = {
+            data      = snapshot,
+            hash      = entry and entry.hash      or 0,
+            updatedAt = entry and entry.updatedAt or 0,
+        }
+        local ls = gdb.lastScan and gdb.lastScan[owner]
+        if ls and ls.professions then
+            lastScanOut[owner] = { professions = ls.professions }
+        end
+
     elseif itemKey:sub(1, 7) == "skills:" then
         -- v1.0.0: a character's GATHERING-profession skills (Herbalism / Skinning /
         -- Fishing / Archaeology) — the recipe-less professions that have no crafters
         -- leaf to ride. Owner-authoritative + relayed like every other leaf.
+        -- UNCHANGED — the v1.0.3 dropped-profession work lives on professions: above.
         local owner = itemKey:sub(8)
         local skills = addon.HashManager:GetGatheringSkills(gdb, owner)
         if not next(skills) then return nil end
@@ -2656,10 +2872,22 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
                                 effTag = tag
                             end
                         end
+                        -- Resurrection guard (v1.0.3): if we hold a COMPLETE
+                        -- authoritative profession snapshot for this crafter and it
+                        -- does NOT include this profession, they dropped it — a stale
+                        -- relay of an old crafters leaf must not re-add them. An own
+                        -- scan that genuinely re-learned it refreshes that snapshot to
+                        -- include the profession first, so this only blocks stale
+                        -- resurrections, never a legitimate re-add.
+                        local ckSnap   = gdb.skills and gdb.skills[ck]
+                        local ckHasSnap = gdb.lastScan and gdb.lastScan[ck]
+                                          and gdb.lastScan[ck].professions
+                        local ckDropped = ckHasSnap and not (ckSnap and ckSnap[profId])
                         -- Federation gate: store only home / own / configured-
                         -- sister tags. Unlisted-guild data is dropped (and an
                         -- existing allowed tag, if any, is preserved untouched).
-                        if allowedTags[effTag] and existing.crafters[ck] ~= effTag then
+                        if not ckDropped and allowedTags[effTag]
+                           and existing.crafters[ck] ~= effTag then
                             existing.crafters[ck] = effTag
                             changed = true
                         end
@@ -2754,19 +2982,47 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                 local mine    = localHashes[itemKey]
                 local differs = not mine or mine.hash ~= peerEntry.hash
                 if differs and itemKey:sub(1, 9) == "cooldown:" then
-                    -- Owner-authoritative cooldowns: a bare hash difference is
-                    -- usually just an OLD client's drifted copy (same owner-lastScan,
-                    -- different hash) that we'd only drop on receipt. Pull ONLY when
-                    -- the peer holds a strictly NEWER version, or when we hold nothing
-                    -- at all (first acquisition). Attach our DTS as a stamp (-1 = "I
-                    -- hold nothing") so the responder applies the mirror gate.
-                    local peerTs = tonumber(peerEntry.updatedAt) or 0
-                    if mine and peerTs <= (mine.updatedAt or 0) then
+                    -- "Empty" means empty by DATA, never by hash. A leftover orphan
+                    -- hash (data purged, hash lingered) must NOT let us claim we hold a
+                    -- version: doing so sends the owner an inflated stamp, its copy
+                    -- isn't "strictly newer", it stays silent, and we never merge the
+                    -- cooldown we actually lack. So decide emptiness from gdb.cooldowns:
+                    --   • hold the data as an authoritative absolute copy → trust the
+                    --     strict-newer suppression and stamp with our own updatedAt;
+                    --   • hold no data (or only a legacy/untrustworthy copy) → ALWAYS
+                    --     pull and stamp -1 ("I have nothing"), so any real copy from
+                    --     the owner wins and serves. This is the "empty → merge it in"
+                    --     rule: an empty request must advertise -1, not a stale hash's ts.
+                    local cdOwner  = itemKey:sub(10)
+                    local haveData = gdb.cooldowns and gdb.cooldowns[cdOwner]
+                                     and next(gdb.cooldowns[cdOwner]) ~= nil
+                    local peerTs   = tonumber(peerEntry.updatedAt) or 0
+                    if haveData and mine and mine.abs and peerTs <= (mine.updatedAt or 0) then
                         differs = false
                     end
                     if differs then
                         stamps = stamps or {}
-                        stamps[itemKey] = (mine and mine.updatedAt) or -1
+                        stamps[itemKey] = (haveData and mine and mine.abs and mine.updatedAt) or -1
+                    end
+                end
+                if differs and itemKey:sub(1, 12) == "professions:" then
+                    -- Owner-authoritative professions (v1.0.3): like cooldowns, a bare
+                    -- hash difference against an equal-or-older copy is just a drifted
+                    -- peer. Pull ONLY a strictly newer version (or when we hold
+                    -- nothing), so peers don't churn re-fetching equal-age snapshots.
+                    local peerTs = tonumber(peerEntry.updatedAt) or 0
+                    if mine and peerTs <= (mine.updatedAt or 0) then
+                        differs = false
+                    end
+                end
+                if differs and itemKey:sub(1, 7) == "skills:" then
+                    -- Defer to the owner's authoritative professions leaf when we hold
+                    -- it: don't re-fetch their legacy gathering skills leaf (we ignore
+                    -- it on receive anyway). Stops us churning against an un-updated
+                    -- peer that still carries a gathering profession the owner dropped.
+                    local sOwner = itemKey:sub(8)
+                    if gdb.lastScan[sOwner] and gdb.lastScan[sOwner].professions then
+                        differs = false
                     end
                 end
                 if differs then
@@ -2775,9 +3031,11 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
             end
         end
         if #toRequest > 0 and DS and DS.RequestData then
-            -- Online gate (mirrors onSyncAccepted above): peer may have
-            -- gone offline between sending us their subhashes and our
-            -- follow-up leaf-data request landing on the wire.
+            -- Ask the subhashes SENDER for everything it advertised, with the fixed
+            -- data-based stamps (a cooldown we hold NO data for stamps -1, so an old
+            -- still-gated peer's `myTs > reqStamp` passes and it serves us). Online
+            -- gate mirrors onSyncAccepted — the peer may have gone offline between
+            -- their subhashes broadcast and this follow-up landing on the wire.
             if Scanner.GuildRoster and not Scanner.GuildRoster:IsOnline(sender) then
                 addon:DebugPrint("Scanner:   → skip leaf-data RequestData — peer offline:", sender)
             else
@@ -2884,6 +3142,10 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     local changedCrafters  = false
     local changedAlts      = false
     local changedSkills    = false
+    -- Owners whose authoritative profession snapshot we just adopted — after the
+    -- leaf loop we prune their crafter rows against the new set (drops recipes for
+    -- professions they no longer have). Set by the skills: leaf branch.
+    local reconcileOwners  = nil
     -- Our own charKey — we are the sole authority for our own cooldowns, so a peer
     -- (even a relay holding a stale/drifted copy) must never overwrite them.
     local ownKey = addon:GetCharacterKey()
@@ -2923,6 +3185,8 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                         local adopt = false
                         if not storedHash then
                             adopt = true
+                        elseif not storedHash.abs then
+                            adopt = true   -- upgrade a legacy copy to the authoritative absolute one
                         elseif storedHash.hash ~= token
                                and deliveredTs > (storedHash.updatedAt or 0) then
                             adopt = true
@@ -2945,38 +3209,59 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                             if next(newBucket) then
                                 gdb.cooldowns[owner] = newBucket
                                 -- Store the owner's token + updatedAt WITHOUT recomputing.
+                                -- Mark it ABSOLUTE so a legacy copy can't override it.
                                 if DS then
                                     addon.HashManager:StoreDeliveredCooldownLeaf(
-                                        DS, gdb, owner, token, deliveredTs)
+                                        DS, gdb, owner, token, deliveredTs, true)
                                 end
                                 changedCooldowns = true
                             end
                         end
                     end
-                else
-                    -- Legacy relative-remaining format (pre-v0.10.11 peer): DROP it.
-                    -- Merging would reconstruct a drifted expiry and reignite the
-                    -- churn. Any cooldown we already hold for this owner stays (it's
-                    -- display-only); we just don't UPDATE from the old format. Self-
-                    -- heals as owners upgrade and re-broadcast the absolute form.
-                    addon:DebugPrint("Scanner: dropped legacy-format cooldown leaf",
-                        itemKey, "from", sender)
+                elseif owner ~= ownKey then
+                    -- CLEAN BREAK (post-v1.0.0): the new framework is ABSOLUTE-format
+                    -- only. A non-abs (legacy relative-remaining) cooldown leaf can't be
+                    -- trusted without clock reconstruction that reignites the very drift
+                    -- the absolute format exists to kill, so we IGNORE it outright — no
+                    -- adopt, no reconstruct. The guild is all v1.0.x+; this path only
+                    -- fires for a stray pre-v0.10.11 payload, which we simply drop.
+                    addon:DebugPrint("Scanner: ignored non-abs cooldown leaf", itemKey, "from", sender)
                 end
                 if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
 
             elseif itemKey:sub(1, 13) == "accountchars:" then
                 local owner = itemKey:sub(14)
-                if type(leafData) == "table" then
-                    if not gdb.altClaims then gdb.altClaims = {} end
-                    if owner == senderKey then
-                        -- Authoritative replace for the broadcaster's own group.
+                -- Never let a peer overwrite our OWN alt group — we mint that locally.
+                if owner ~= ownKey and type(leafData) == "table" then
+                    -- Owner-authoritative (like cooldowns / professions): the alt group
+                    -- is minted only by its own account and adopted VERBATIM by everyone
+                    -- else — token + updatedAt stored as delivered, NEVER recomputed and
+                    -- NEVER union-merged. The old v0.7.0 path union-added incoming entries
+                    -- then recomputed the hash from its own accumulated view, so every
+                    -- client held a slightly different set, the leaf perpetually differed,
+                    -- and peers re-requested it every cycle (the accountchars churn). Now
+                    -- a relay just carries the owner's exact bytes, so everyone converges
+                    -- on one hash — and because it's a verbatim REPLACE, a dropped alt
+                    -- finally propagates (the grow-only union could never remove one).
+                    -- Gate on strict-newer so two equal-age copies can't ping-pong.
+                    local token       = leafEntry.hash or 0
+                    local deliveredTs = tonumber(leafEntry.updatedAt) or 0
+                    local storedHash  = gdb.hashes and gdb.hashes["accountchars:" .. owner]
+                    local adopt = false
+                    if not storedHash then
+                        adopt = true
+                    elseif storedHash.hash ~= token
+                           and deliveredTs > (storedHash.updatedAt or 0) then
+                        adopt = true
+                    end
+                    if adopt then
+                        if not gdb.altClaims then gdb.altClaims = {} end
                         local arr = {}
                         for _, ck in ipairs(leafData) do
                             if type(ck) == "string" then arr[#arr + 1] = ck end
                         end
                         table.sort(arr)
-                        -- Only a redraw-worthy change if the group actually differs
-                        -- (a redundant re-broadcast of the same group is a no-op).
+                        -- Redraw only when the group actually changed.
                         local prev = gdb.altClaims[owner]
                         local same = prev and #prev == #arr
                         if same then
@@ -2984,34 +3269,99 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                                 if prev[i] ~= arr[i] then same = false; break end
                             end
                         end
-                        if not same then changedAlts = true end
                         gdb.altClaims[owner] = arr
-                    else
-                        -- Relay: union add to existing.
-                        if not gdb.altClaims[owner] then gdb.altClaims[owner] = {} end
-                        local seen = {}
-                        for _, ck in ipairs(gdb.altClaims[owner]) do seen[ck] = true end
-                        for _, ck in ipairs(leafData) do
-                            if type(ck) == "string" and not seen[ck] then
-                                gdb.altClaims[owner][#gdb.altClaims[owner] + 1] = ck
-                                seen[ck] = true
-                                changedAlts = true   -- a genuinely new alt claim
+                        -- Store the owner's token + updatedAt WITHOUT recomputing.
+                        if DS then
+                            addon.HashManager:StoreDeliveredAccountCharsLeaf(
+                                DS, gdb, owner, token, deliveredTs)
+                        end
+                        if not same then changedAlts = true end
+                        touchedAltGroups = true
+                    end
+                end
+                if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
+
+            elseif itemKey:sub(1, 12) == "professions:" then
+                -- v1.0.3: the professions leaf is the OWNER-AUTHORITATIVE profession
+                -- registry. The owner mints its hash from its full profession set;
+                -- everyone else ADOPTS the delivered snapshot + hash VERBATIM and
+                -- NEVER recomputes (same rule as cooldowns — recompute-on-receive is
+                -- what caused the drift/churn disasters). Adopting REPLACES the owner's
+                -- profession set wholesale, which is how a DROPPED profession gets
+                -- deleted everywhere; the crafter-reconcile after the loop then prunes
+                -- their stale recipe rows. Separate leaf from skills: so un-updated
+                -- clients (which don't know this key) are wholly undisturbed.
+                local owner = itemKey:sub(13)
+                -- Never let a peer overwrite our OWN snapshot — we mint it locally in
+                -- ScanGatheringProfessions; a relay can only hold a stale copy.
+                if owner ~= ownKey and type(leafData) == "table" then
+                    local deliveredTs = tonumber(leafEntry.updatedAt) or 0
+                    local storedHash  = gdb.hashes and gdb.hashes["professions:" .. owner]
+                    -- Adopt-or-ignore by (token, updatedAt): unknown → take it;
+                    -- different token → take ONLY if STRICTLY newer than what we hold
+                    -- (strict, like cooldowns, so two drifted copies with equal
+                    -- owner-timestamps can't ping-pong forever during a rollout).
+                    -- CRITICAL: a professions leaf is AUTHORITATIVE only when the owner
+                    -- minted it from their own scan (updatedAt > 0). A leaf with
+                    -- updatedAt == 0 is a relayer's RebuildOnFirstLoad guess (fabricated
+                    -- from relayed skills data) — adopting it would set a bogus, TRUTHY
+                    -- lastScan.professions (0 is truthy in Lua!), which makes us ignore
+                    -- the owner's real skills leaf (orphan hashes we can't serve) and
+                    -- mis-filter their cooldowns. Non-positive timestamp NEVER adopts.
+                    local adopt = false
+                    if deliveredTs <= 0 then
+                        adopt = false
+                    elseif not storedHash then
+                        adopt = true
+                    elseif storedHash.hash ~= leafEntry.hash
+                           and deliveredTs > (storedHash.updatedAt or 0) then
+                        adopt = true
+                    end
+                    if adopt then
+                        -- Replace the profession set wholesale — deletes any
+                        -- profession the owner dropped.
+                        local newset = {}
+                        for profIdStr, rec in pairs(leafData) do
+                            local profId = tonumber(profIdStr)
+                            if profId and type(rec) == "table" then
+                                newset[profId] = {
+                                    skillRank = tonumber(rec.r) or 0,
+                                    skillMax  = tonumber(rec.m) or 0,
+                                }
                             end
                         end
-                        table.sort(gdb.altClaims[owner])
+                        gdb.skills[owner] = newset
+                        if not gdb.lastScan[owner] then gdb.lastScan[owner] = {} end
+                        -- `.professions` marks that we hold a COMPLETE authoritative
+                        -- snapshot for this owner — the reconcile + resurrection guards
+                        -- key off its presence/recency.
+                        gdb.lastScan[owner].professions = deliveredTs
+                        changedSkills = true
+                        reconcileOwners = reconcileOwners or {}
+                        reconcileOwners[owner] = true
+                        -- Store the owner's hash VERBATIM — never recompute on receive.
+                        if DS then
+                            addon.HashManager:StoreDeliveredProfessionsLeaf(
+                                DS, gdb, owner, leafEntry.hash, deliveredTs)
+                        end
                     end
-                    touchedAltGroups = true
                 end
-                if DS then addon.HashManager:InvalidateAccountChars(DS, gdb, owner) end
                 if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
 
             elseif itemKey:sub(1, 7) == "skills:" then
-                -- v1.0.0: a character's gathering-profession skills (Herbalism /
-                -- Skinning / Fishing / Archaeology). Max-rank-wins per profession —
-                -- skill only ever climbs, so this is drift-free and correct for both
-                -- the owner's own scan and a relay carrying an older copy.
+                -- v1.0.0 gathering-profession skills (Herbalism / Skinning / Fishing /
+                -- Archaeology), max-rank-wins. The leaf format is byte-identical to old
+                -- clients (zero rollout churn), BUT: once we hold this owner's
+                -- authoritative professions snapshot, that new-framework leaf is the
+                -- SINGLE SOURCE OF TRUTH for them — we IGNORE their legacy skills: leaf
+                -- entirely, so a stale relay can't resurrect a gathering profession
+                -- they dropped. (professions: already carries their gathering skills.)
+                -- We still merge skills: for owners we have NO snapshot for — i.e.
+                -- un-updated clients, which is exactly the legacy behavior.
                 local owner = itemKey:sub(8)
-                if type(leafData) == "table" then
+                local haveSnapshot = gdb.lastScan[owner]
+                                     and gdb.lastScan[owner].professions
+                if not haveSnapshot and type(leafData) == "table" then
                     if not gdb.skills[owner] then gdb.skills[owner] = {} end
                     for profIdStr, rec in pairs(leafData) do
                         local profId = tonumber(profIdStr)
@@ -3028,8 +3378,8 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                             end
                         end
                     end
+                    if DS then addon.HashManager:InvalidateCharSkills(DS, gdb, owner) end
                 end
-                if DS then addon.HashManager:InvalidateCharSkills(DS, gdb, owner) end
                 if DS and DS.p2p then DS.p2p:OnItemCompleted(itemKey, sender) end
 
             -- v0.7.0: recipemeta: leaf removed (metadata lives in shipped
@@ -3051,7 +3401,13 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                         senderKey, senderClaimsOwnScan, senderTag) then
                         changedCrafters = true
                     end
-                    -- Skills (per-charKey rank/max) ride along on crafters payloads.
+                    -- Skills (per-charKey rank/max) ride along on crafters payloads
+                    -- (this is also what flags the sender's authoritative own-scan
+                    -- above, so it must keep being sent). It may bump the RANK of a
+                    -- profession we already hold, but it must NOT create a profession
+                    -- row for a character whose authoritative snapshot (skills leaf)
+                    -- already established their set — otherwise a stale relay of an
+                    -- old crafters leaf would resurrect a profession they dropped.
                     if type(data.skills) == "table"
                        and type(data.skills[profId]) == "table" then
                         for ck, sk in pairs(data.skills[profId]) do
@@ -3059,14 +3415,28 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                                 if not gdb.skills[ck] then gdb.skills[ck] = {} end
                                 local existing = gdb.skills[ck][profId]
                                 local incomingRank = sk.skillRank or 0
-                                if not existing
-                                   or incomingRank > (existing.skillRank or 0) then
+                                if existing then
+                                    if incomingRank > (existing.skillRank or 0) then
+                                        gdb.skills[ck][profId] = {
+                                            skillRank = incomingRank,
+                                            skillMax  = sk.skillMax or incomingRank,
+                                        }
+                                        changedCrafters = true
+                                    end
+                                elseif not (gdb.lastScan[ck] and gdb.lastScan[ck].professions) then
+                                    -- No authoritative snapshot for this char yet (an
+                                    -- un-updated-client owner): keep legacy behavior
+                                    -- and create the row from the ride-along.
                                     gdb.skills[ck][profId] = {
                                         skillRank = incomingRank,
                                         skillMax  = sk.skillMax or incomingRank,
                                     }
                                     changedCrafters = true
                                 end
+                                -- else: we hold a complete authoritative snapshot that
+                                -- omitted this profession → it was dropped; ignore the
+                                -- stale ride-along. The owner's own next snapshot
+                                -- re-adds it if they truly re-learned it.
                             end
                         end
                     end
@@ -3095,6 +3465,17 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
 
     -- Rebuild altGroups derived view if any accountchars leaf was merged.
     if touchedAltGroups then self:RebuildAltGroups(gdb) end
+
+    -- Prune crafter rows for any owner whose authoritative profession snapshot we
+    -- just adopted — this is what makes a DROPPED profession's recipes disappear
+    -- (the crafters leaf can't express the deletion; the skills registry does).
+    if reconcileOwners then
+        for owner in pairs(reconcileOwners) do
+            if self:ReconcileCraftersAgainstSkills(gdb, owner) then
+                changedCrafters = true
+            end
+        end
+    end
 
     -- Recompute hashes for any professions touched (covers both recipemeta
     -- and crafters leaves; InvalidateProfession handles both leaves at once).

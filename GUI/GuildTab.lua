@@ -131,10 +131,16 @@ function GuildTab:BuildCounts()
         if not m[charKey] or SPEC_PARENT[spec] then m[charKey] = spec end
     end
 
+    -- Both signals are account-wide (skills + crafters are keyed by charKey
+    -- across every guild), so scope each character to the current guild before
+    -- counting — otherwise your own cross-guild alts (and any not-yet-purged
+    -- foreign crafters) inflate this guild's profession headcounts.
     if gdb then
         if gdb.skills then
             for charKey, profs in pairs(gdb.skills) do
-                for profId in pairs(profs) do addMember(profId, charKey) end
+                if addon:IsInCurrentGuildScope(charKey) then
+                    for profId in pairs(profs) do addMember(profId, charKey) end
+                end
             end
         end
         if gdb.recipes then
@@ -145,8 +151,10 @@ function GuildTab:BuildCounts()
                         local meta = profMeta and profMeta[recipeId]
                         local req  = meta and meta.requiredSpec
                         for charKey in pairs(rd.crafters) do
-                            addMember(profId, charKey)
-                            if req then noteInferred(profId, charKey, req) end
+                            if addon:IsInCurrentGuildScope(charKey) then
+                                addMember(profId, charKey)
+                                if req then noteInferred(profId, charKey, req) end
+                            end
                         end
                     end
                 end

@@ -343,8 +343,29 @@ local function CollectCooldownsByChar(viewMode)
         end)
         return merged
     end
+    -- Guild view. Cooldowns carry no guild tag, so scope the flat account-wide
+    -- map to the current guild by roster membership: own cross-guild alts AND
+    -- other-guild members (whose cooldowns synced while we were logged into that
+    -- guild) are filtered out, leaving only the current guild (+ sister guilds).
+    -- Without this, every character's cooldowns in the account-wide DB rendered
+    -- under whichever guild you were currently in.
     local gdb = addon:GetGuildDb()
-    return gdb and gdb.cooldowns or {}
+    local all = gdb and gdb.cooldowns
+    if not all then return {} end
+    local scoped = {}
+    local nInDb, nKept = 0, 0
+    for charKey, charCds in pairs(all) do
+        nInDb = nInDb + 1
+        if addon:IsInCurrentGuildScope(charKey) then
+            scoped[charKey] = charCds
+            nKept = nKept + 1
+        else
+            addon:DebugPrint("CooldownsTab: guild scope FILTERED OUT cooldown owner:", charKey)
+        end
+    end
+    addon:DebugPrint("CooldownsTab: guild view — cooldown owners in DB:", nInDb,
+        "| passed guild scope:", nKept)
+    return scoped
 end
 
 local function BuildRows(readyOnly, viewMode)
@@ -380,6 +401,13 @@ local function BuildRows(readyOnly, viewMode)
         local emittedGroups = {}
 
         for spellId, expiresAt in pairs(charCds) do
+            -- Hide a cooldown whose profession this character has unlearned (e.g.
+            -- an Alchemy transmute after they drop Alchemy). Authoritative against
+            -- their profession snapshot; a no-op for characters we hold no snapshot
+            -- for, or for non-profession cooldowns like Salt Shaker.
+            if addon:IsCooldownProfessionDropped(charKey, spellId) then
+                -- skip: profession dropped
+            else
             local remaining = expiresAt - now
 
             if data.transmutes[spellId] then
@@ -509,6 +537,7 @@ local function BuildRows(readyOnly, viewMode)
                         end
                     end
                 end
+            end
             end
         end
     end
@@ -894,12 +923,22 @@ function CooldownsTab:Draw(container)
 
     local readyBtn = AceGUI:Create("Button")
     readyBtn:SetText(self._readyOnly and L["ShowAll"] or L["ReadyOnly"])
-    readyBtn:SetWidth(90)
+    readyBtn:SetWidth(110)
     readyBtn:SetCallback("OnClick", function(_widget)
         self._readyOnly = not self._readyOnly
         _widget:SetText(self._readyOnly and L["ShowAll"] or L["ReadyOnly"])
         self:RedrawTable(container)
     end)
+    readyBtn:SetCallback("OnEnter", function(_widget)
+        addon.Tooltip.Owner(_widget.frame)
+        -- rawget avoids AceLocale's missing-key metatable (which fires a "Missing
+        -- entry" error on ACCESS, before our `or` fallback can run). Returns the
+        -- localized string when registered, nil otherwise → literal fallback.
+        GameTooltip:AddLine(rawget(L, "ReadyOnlyTooltip")
+            or "Toggle: show only cooldowns that are Ready, or show every cooldown.", 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    readyBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
     toolbar:AddChild(readyBtn)
 
     -- Two-level filter: Profession dropdown → Cooldown dropdown. Mirrors the

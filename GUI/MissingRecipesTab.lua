@@ -322,7 +322,16 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
             -- scope therefore leaves only recipes NObody in the guild has.
             local isKnown
             if guildScope then
-                isKnown = rd and rd.crafters and next(rd.crafters) ~= nil
+                -- "Known" only if a crafter in the CURRENT guild scope has it —
+                -- a recipe that merely one of your cross-guild alts (or a stale
+                -- foreign crafter) knows must still count as missing for THIS
+                -- guild. See addon:IsInCurrentGuildScope.
+                isKnown = false
+                if rd and rd.crafters then
+                    for ck in pairs(rd.crafters) do
+                        if addon:IsInCurrentGuildScope(ck) then isKnown = true; break end
+                    end
+                end
             else
                 isKnown = rd and rd.crafters and rd.crafters[charKey]
             end

@@ -355,6 +355,56 @@ local COOLDOWN_GROUPS = {
 }
 
 -- ---------------------------------------------------------------------------
+-- Cooldown spellId → profession ID
+-- Which profession each NON-transmute cooldown belongs to, so a character who
+-- UNLEARNS that profession stops showing its cooldown (checked against the
+-- authoritative gdb.skills snapshot). Transmutes are all Alchemy (171) and are
+-- assigned in Build() from the transmute set, so they aren't repeated here.
+-- ---------------------------------------------------------------------------
+
+local PROFESSION_OF = {
+    -- Leatherworking (165)
+    [140040] = 165, [140041] = 165,  -- Magnificence
+    -- Salt Shaker (item 15846): its Use effect "Requires Leatherworking (250)",
+    -- so dropping LW means you can no longer use it — its cooldown must go too.
+    [15846] = 165,
+    -- Tailoring (197)
+    [18560] = 197,  -- Mooncloth
+    [26751] = 197,  -- Primal Mooncloth
+    [31373] = 197,  -- Spellcloth
+    [36686] = 197,  -- Shadowcloth
+    [56001] = 197,  -- Moonshroud
+    [56002] = 197,  -- Ebonweave
+    [56003] = 197,  -- Spellweave
+    [56005] = 197,  -- Glacial Bag
+    [75141] = 197, [75142] = 197, [75144] = 197, [75145] = 197, [75146] = 197,  -- Dreamcloth
+    [125557] = 197, -- Imperial Silk
+    -- Enchanting (333)
+    [28027] = 333,  -- Prismatic Sphere
+    [28028] = 333,  -- Void Sphere
+    [116499] = 333, -- Sha Crystal
+    -- Jewelcrafting (755)
+    [47280] = 755,  -- Brilliant Glass
+    [62242] = 755,  -- Icy Prism
+    [73478] = 755,  -- Fire Prism
+    [131593] = 755, [131686] = 755, [131695] = 755, [131690] = 755,
+    [131691] = 755, [131688] = 755, [140050] = 755,  -- JC daily cuts
+    -- Inscription (773)
+    [61288] = 773,  -- Minor Inscription Research
+    [61177] = 773,  -- Northrend Inscription Research
+    [86654] = 773, [89244] = 773,  -- Forged Documents
+    [112996] = 773, -- Scroll of Wisdom
+    -- Blacksmithing (164)
+    [55208] = 164,  -- Titansteel Bar
+    [139170] = 164, -- Balanced Trillium Ingot
+    [138646] = 164, -- Lightning Steel Ingot
+    -- Engineering (202)
+    [139176] = 202, -- Jard's Peculiar Energy Source
+    -- Alchemy (171)
+    [60893] = 171,  -- Northrend Alchemy Research
+}
+
+-- ---------------------------------------------------------------------------
 -- Public accessor — builds version-appropriate tables once on first call
 -- ---------------------------------------------------------------------------
 
@@ -399,9 +449,17 @@ local function Build()
         end
     end
 
+    -- spellId → profession ID. Every transmute is Alchemy (171); the rest come
+    -- from the static PROFESSION_OF map. Drives the "unlearned the profession →
+    -- drop its cooldown" prune/filter against the authoritative gdb.skills set.
+    local professionOf = {}
+    for id in pairs(transmutes) do professionOf[id] = 171 end
+    for id, profId in pairs(PROFESSION_OF) do professionOf[id] = profId end
+
     return {
         cooldowns      = cooldowns,
         transmutes     = transmutes,
+        professionOf   = professionOf,
         reagents       = REAGENTS,
         multiReagents  = MULTI_REAGENTS,
         transReagents  = TRANSMUTE_REAGENTS,

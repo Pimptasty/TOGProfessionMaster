@@ -319,6 +319,147 @@ def localize_entries(out: dict, ctx: dict, build: str, locale: str,
     return res
 
 
+# ---------------------------------------------------------------------------
+# Enchant enrichment — target slot + structured stats (LibProfessionDB extras)
+#
+# These enrich the Enchanting (333) entries the library ships so consumers don't
+# have to re-derive them from the display string. Both are extracted
+# AUTHORITATIVELY from DBC — no recipe-name grepping, no effect-string parsing:
+#   * enchantSlot — from the recipe spell's SpellEquippedItems restriction.
+#   * stats       — from the SpellItemEnchantment effects (chasing the hidden
+#                   apply spell's SpellEffect auras for the common stat case).
+# Keys are WoW-canonical (ITEM_MOD_*_SHORT / RESISTANCEn_NAME, the GetItemStats
+# space), so a consumer can sum them straight into item-stat totals.
+# ---------------------------------------------------------------------------
+
+# EquippedItemInvTypes bit -> slot category (INVTYPE enum). Armor only; weapons
+# come through as EquippedItemClass==2 with an empty inv-type mask (see below).
+# INVTYPE_ROBE (20) is a chest piece, so it collapses onto CHEST.
+_ENCH_INV_SLOT = {
+    1: "HEAD", 3: "SHOULDER", 5: "CHEST", 6: "WAIST", 7: "LEGS", 8: "FEET",
+    9: "WRIST", 10: "HANDS", 14: "SHIELD", 15: "RANGED", 16: "BACK", 20: "CHEST",
+}
+
+# SpellEffect.EffectAura ids we translate into structured enchant stats, mapped
+# to their canonical GetItemStats key. MOD_STAT (29) is handled separately because
+# the primary is selected by EffectMiscValue_0. These are the auras the shipped
+# enchant apply-spells actually use; anything else (procs, %-haste, ...) yields no
+# static stat and simply contributes nothing.
+_ENCH_AURA_KEY = {
+    13:  "ITEM_MOD_SPELL_POWER",              # MOD_DAMAGE_DONE (spell damage)
+    34:  "ITEM_MOD_HEALTH",                    # MOD_INCREASE_HEALTH
+    35:  "ITEM_MOD_MANA",                      # MOD_INCREASE_ENERGY (mana)
+    85:  "ITEM_MOD_POWER_REGEN0_SHORT",        # MOD_POWER_REGEN (mp5)
+    99:  "ITEM_MOD_ATTACK_POWER_SHORT",        # MOD_ATTACK_POWER
+    124: "ITEM_MOD_RANGED_ATTACK_POWER_SHORT", # MOD_RANGED_ATTACK_POWER
+    135: "ITEM_MOD_SPELL_HEALING_DONE",        # MOD_HEALING_DONE
+    158: "ITEM_MOD_BLOCK_VALUE",               # MOD_SHIELD_BLOCKVALUE
+}
+# MOD_STAT (29) and MOD_RESISTANCE (22) are handled specially (misc-driven); the
+# rest map straight through _ENCH_AURA_KEY.
+_ENCH_INTERESTING_AURAS = frozenset({29, 22}) | frozenset(_ENCH_AURA_KEY)
+
+# MOD_STAT (aura 29) EffectMiscValue_0 -> primary key. -1 = all primaries.
+_ENCH_STAT_MISC = {
+    0: "ITEM_MOD_STRENGTH_SHORT",
+    1: "ITEM_MOD_AGILITY_SHORT",
+    2: "ITEM_MOD_STAMINA_SHORT",
+    3: "ITEM_MOD_INTELLECT_SHORT",
+    4: "ITEM_MOD_SPIRIT_SHORT",
+}
+_ENCH_ALL_PRIMARIES = tuple(_ENCH_STAT_MISC.values())
+
+# SpellItemEnchantment.Effect_i == 4 (RESISTANCE): EffectArg_i is the resistance
+# school (0 = armor, 1 = holy, 2 = fire, 3 = nature, 4 = frost, 5 = shadow,
+# 6 = arcane). RESISTANCE0_NAME is the game's own "armor" stat key.
+_ENCH_RES_KEY = {i: f"RESISTANCE{i}_NAME" for i in range(0, 7)}
+
+# SpellItemEnchantment.Effect_i == 5 (STAT, direct): EffectArg_i is an ItemMod
+# (ItemStatType) index. Rare in Classic (stats ship as type-3 equip spells), but
+# handled for later builds that encode them directly.
+_ENCH_ITEMMOD_KEY = {
+    0: "ITEM_MOD_MANA", 1: "ITEM_MOD_HEALTH",
+    3: "ITEM_MOD_AGILITY_SHORT", 4: "ITEM_MOD_STRENGTH_SHORT",
+    5: "ITEM_MOD_INTELLECT_SHORT", 6: "ITEM_MOD_SPIRIT_SHORT",
+    7: "ITEM_MOD_STAMINA_SHORT",
+}
+
+
+def enchant_slot_from_equip(spell_id: int, equip_by_spell: dict, name: str):
+    """Authoritative target slot for an enchant recipe, from the recipe spell's
+    SpellEquippedItems restriction. Armor slots come straight from the
+    EquippedItemInvTypes bitmask. Weapons (EquippedItemClass 2) carry no inv-type
+    bits in this table, so the 1H/2H split falls back to the enchant name — the
+    only residual name dependency, and enchant names are stable ("Enchant 2H
+    Weapon - ..." vs "Enchant Weapon - ..."). Returns a category string
+    (WEAPON1H/WEAPON2H/WRIST/HANDS/FEET/CHEST/BACK/SHIELD/HEAD/...) or None."""
+    info = equip_by_spell.get(spell_id)
+    if not info:
+        return None
+    cls, invmask, _subclass = info
+    if cls == 2:  # weapon: mask has no handedness, so read it off the name
+        n = (name or "").lower()
+        if "2h weapon" in n or "two-hand" in n or "two hand" in n:
+            return "WEAPON2H"
+        return "WEAPON1H"
+    cats = {cat for bit, cat in _ENCH_INV_SLOT.items() if invmask & (1 << bit)}
+    if len(cats) == 1:
+        return next(iter(cats))
+    return None   # unrestricted / ambiguous — leave for the consumer to skip
+
+
+def enchant_stats_from_dbc(eid: int, sie_by_id: dict, aura_by_spell: dict) -> dict:
+    """Structured { statKey: amount } for a SpellItemEnchantment, from DBC only:
+      * Effect 4 (RESISTANCE): EffectArg = school (0 = armor), amount = EffectPointsMin.
+      * Effect 5 (STAT, direct): EffectArg = ItemMod index, amount = EffectPointsMin.
+      * Effect 3 (EQUIP_SPELL): EffectArg = hidden apply spell; read ITS SpellEffect
+        auras. Classic stores these flat auras as (value - 1), so the granted
+        amount = EffectBasePoints + 1.
+    Proc / damage / use effects (Crusader, Fiery Weapon, ...) carry no static stat
+    and contribute nothing. Empty dict when nothing structural was found."""
+    row = sie_by_id.get(eid)
+    if not row:
+        return {}
+    stats: dict[str, int] = {}
+
+    def add(key, amount):
+        if key and amount:
+            stats[key] = stats.get(key, 0) + amount
+
+    for i in range(3):
+        try:
+            et = int(row.get(f"Effect_{i}") or 0)
+        except (TypeError, ValueError):
+            continue
+        if et == 0:
+            continue
+        try:
+            arg = int(row.get(f"EffectArg_{i}") or 0)
+            pts = int(row.get(f"EffectPointsMin_{i}") or 0)
+        except (TypeError, ValueError):
+            arg, pts = 0, 0
+        if et == 4:      # resistance / armor — amount is direct
+            add(_ENCH_RES_KEY.get(arg), pts)
+        elif et == 5:    # direct stat — amount is direct
+            add(_ENCH_ITEMMOD_KEY.get(arg), pts)
+        elif et == 3:    # equip spell — chase the apply spell's auras
+            for aura, misc, base in aura_by_spell.get(arg, ()):
+                amt = base + 1   # classic BasePoints store (value - 1)
+                if aura == 29:                       # MOD_STAT — misc selects the primary
+                    if misc == -1:
+                        for k in _ENCH_ALL_PRIMARIES:
+                            add(k, amt)
+                    else:
+                        add(_ENCH_STAT_MISC.get(misc), amt)
+                elif aura == 22:                     # MOD_RESISTANCE — misc is a school bitmask
+                    for school in range(0, 7):       # 0=armor,1=holy,2=fire,3=nature,4=frost,5=shadow,6=arcane
+                        if misc & (1 << school):     # (-1 = all schools, decodes correctly)
+                            add(_ENCH_RES_KEY.get(school), amt)
+                else:
+                    add(_ENCH_AURA_KEY.get(aura), amt)
+    return stats
+
+
 def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool = False) -> tuple:
     """Pull every recipe for every profession in PROF_FILES from one build.
 
@@ -338,6 +479,9 @@ def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool =
     item_sparse  = fetch_csv("ItemSparse",       build, refresh=refresh)
     spell_effects = fetch_csv("SpellEffect",     build, refresh=refresh)
     item_ench    = fetch_csv("SpellItemEnchantment", build, refresh=refresh)
+    # Per-spell equipped-item restriction — the authoritative source for an
+    # enchant recipe's target slot (which inventory types it can be cast on).
+    spell_equipped = fetch_csv("SpellEquippedItems", build, refresh=refresh)
 
     # Trainer skill-ranks (build-agnostic; loads from emulator SQL the
     # first time and caches). Used downstream as the authoritative source
@@ -495,8 +639,38 @@ def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool =
     # Take the first one — that's the primary output. Filter obsolete
     # items here too so we never tag a craftedItemId pointing at a
     # ZZOLD/TEST item even when those are the spell's primary output.
+    # SpellItemEnchantment rows keyed by enchant id (Effect/EffectArg/EffectPointsMin
+    # decode for structured stats — see enchant_stats_from_dbc).
+    sie_by_id: dict[int, dict] = {}
+    for row in item_ench:
+        try:
+            eid = int(row.get("ID") or 0)
+            if eid:
+                sie_by_id[eid] = row
+        except (TypeError, ValueError):
+            continue
+
+    # Recipe spell -> (EquippedItemClass, EquippedItemInvTypes, EquippedItemSubclass).
+    # First row per spell wins. Authoritative source for enchant target slots.
+    equip_by_spell: dict[int, tuple] = {}
+    for row in spell_equipped:
+        try:
+            sid = int(row.get("SpellID") or 0)
+            if sid and sid not in equip_by_spell:
+                equip_by_spell[sid] = (
+                    int(row.get("EquippedItemClass") or -1),
+                    int(row.get("EquippedItemInvTypes") or 0),
+                    int(row.get("EquippedItemSubclass") or 0),
+                )
+        except (TypeError, ValueError):
+            continue
+
     created_item_by_spell: dict[int, int] = {}
     enchant_id_by_spell: dict[int, int] = {}   # spell -> SpellItemEnchantment id (Effect 53)
+    # Apply-spell auras a type-3 (equip-spell) enchant grants. spell -> list of
+    # (EffectAura, EffectMiscValue_0, EffectBasePoints), filtered to the auras
+    # enchant_stats_from_dbc translates.
+    aura_by_spell: dict[int, list] = {}
     # spellId -> {effectIndex(0-based): displayed value}. Used to resolve
     # cross-spell enchant-name placeholders like "+$13624s1 All Stats", where
     # $<spellId>s<n> means "effect n of spell <spellId>". The displayed amount is
@@ -515,6 +689,10 @@ def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool =
                 val = pmin if pmin != 0 else base
                 if val != 0:
                     spell_points.setdefault(sid, {})[eidx] = val
+                aura = int(row.get("EffectAura") or 0)
+                if aura in _ENCH_INTERESTING_AURAS:
+                    misc = int(row.get("EffectMiscValue_0") or 0)
+                    aura_by_spell.setdefault(sid, []).append((aura, misc, base))
             except (TypeError, ValueError):
                 pass
             if effect == 24:  # CREATE_ITEM
@@ -631,6 +809,13 @@ def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool =
             # crafted gear has a real client tooltip, so we never fabricate one.
             ench_id = enchant_id_by_spell.get(spell_id)
             effect = enchant_name_by_id.get(ench_id) if ench_id else None
+            # Enchant enrichment (locale-independent): authoritative target slot
+            # (SpellEquippedItems) + structured stats (DBC effects). Only meaningful
+            # for enchants; None on every other recipe so clean_recipes omits them.
+            ench_slot = enchant_slot_from_equip(
+                spell_id, equip_by_spell, name_by_spell.get(spell_id, "")) if ench_id else None
+            ench_stats = enchant_stats_from_dbc(
+                ench_id, sie_by_id, aura_by_spell) if ench_id else None
 
             # Specialization gate: if any recipe-scroll item for this spell
             # requires a profession spec (ItemSparse.RequiredAbility), ship it so
@@ -657,6 +842,9 @@ def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool =
                 "requiredSkill":  required_skill,
                 "requiredSpec":   spec_req,
                 "effect":         effect,
+                "enchantId":      ench_id,
+                "enchantSlot":    ench_slot,
+                "stats":          ench_stats or None,
                 "reagents":       reagents_by_spell.get(spell_id, {}),
                 "items":          sorted(items_by_spell.get(spell_id, set())),
                 "craftedItemId":  created_item_by_spell.get(spell_id),
@@ -938,6 +1126,20 @@ def clean_recipes(prof_id: int, recipes: dict) -> dict:
         # Omitted when there's nothing to show.
         if entry.get("effect"):
             out["effect"] = entry["effect"]
+        # Enchant enrichment — present on any recipe whose craft applies a
+        # permanent enchant (all Enchanting recipes, plus Engineering scopes /
+        # belt tinkers); absent on ordinary item-producing recipes:
+        #   enchantId   — the SpellItemEnchantment id (the number in an item
+        #                 link's enchant slot), so a consumer can map a worn
+        #                 enchant back to its recipe.
+        #   enchantSlot — authoritative target slot category (from SpellEquippedItems).
+        #   stats       — structured { GetItemStats-key: amount } from DBC effects.
+        if entry.get("enchantId"):
+            out["enchantId"] = entry["enchantId"]
+        if entry.get("enchantSlot"):
+            out["enchantSlot"] = entry["enchantSlot"]
+        if entry.get("stats"):
+            out["stats"] = entry["stats"]
         if items:
             out["itemId"] = items[0]
         # craftedItemId: the item produced BY the craft spell (from
@@ -1010,9 +1212,10 @@ def emit_core_file(prof_id: int, filename: str, recipes: dict, game: str):
 
     Holds the structural fields that are byte-identical across every language —
     difficulty / reagents / requiredSkill / teaches / craftedItemId / itemId /
-    phase — so they're parsed and loaded exactly once instead of duplicated in
-    all 12 locale files. Guarded by IsGameVersion only (no GetLocale); the
-    per-flavour TOC lists core files BEFORE the locale name files."""
+    phase, plus the enchant enrichment (enchantId / enchantSlot / stats) — so
+    they're parsed and loaded exactly once instead of duplicated in all 12 locale
+    files. Guarded by IsGameVersion only (no GetLocale); the per-flavour TOC lists
+    core files BEFORE the locale name files."""
     cleaned = clean_recipes(prof_id, recipes)
     # A profession can be present in a build's SkillLineAbility yet contribute no
     # craftable recipes (e.g. Fishing in Vanilla). Don't write an empty file.
@@ -1030,6 +1233,11 @@ def emit_core_file(prof_id: int, filename: str, recipes: dict, game: str):
         if e.get("itemId"):        c["itemId"]        = e["itemId"]
         if e.get("craftedItemId"): c["craftedItemId"] = e["craftedItemId"]
         if e.get("phase"):         c["phase"]         = e["phase"]
+        # Enchant enrichment (locale-independent — the id, slot and stat amounts
+        # don't change across languages, so they live in _core, not the name files).
+        if e.get("enchantId"):     c["enchantId"]     = e["enchantId"]
+        if e.get("enchantSlot"):   c["enchantSlot"]   = e["enchantSlot"]
+        if e.get("stats"):         c["stats"]         = e["stats"]
         core[spell_id] = c
     body = lua_value(core, 1)
     target = LIBRARY_DATA_ROOT / game / "_core" / f"{filename}.lua"

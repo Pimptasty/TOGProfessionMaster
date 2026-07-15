@@ -354,6 +354,34 @@ local function BuildFullList(profId, viewMode, opts)
     -- so the background warm slices evenly even when each profession is small.
     local _yieldN = 0
 
+    -- Per-build memoization of the per-crafter visibility checks. A crafter appears
+    -- under EVERY recipe they know (a maxed blacksmith → 100+ recipes), so without this
+    -- IsMyCharacter / IsInCurrentGuildScope / IsVisibleCrafter would each run once per
+    -- (recipe × crafter) — tens of thousands of roster lookups on a big guild, which is
+    -- what froze the first (synchronous) open. Memoized by charKey they run once per
+    -- unique crafter. Safe: the checks are stable within one build pass, and
+    -- IsVisibleCrafter's FlagForPurge side-effect is idempotent (pendingPurge is a set).
+    local _mineMemo, _scopeMemo, _visMemo = {}, {}, {}
+    local function craftIsMine(ck)
+        local v = _mineMemo[ck]
+        if v == nil then v = addon:IsMyCharacter(ck) and true or false; _mineMemo[ck] = v end
+        return v
+    end
+    local function craftInScope(ck)
+        local v = _scopeMemo[ck]
+        if v == nil then v = addon:IsInCurrentGuildScope(ck) and true or false; _scopeMemo[ck] = v end
+        return v
+    end
+    local function craftIsVisible(ck, tag)
+        -- Key on ck+tag, not ck alone: a crafter's visibility depends on its guild tag,
+        -- which can legitimately differ across recipes during a mid-sync guild switch —
+        -- keying on ck alone would apply the first-seen tag's verdict to all its recipes.
+        local mk = ck .. "\0" .. tostring(tag)
+        local v = _visMemo[mk]
+        if v == nil then v = addon:IsVisibleCrafter(ck, tag) and true or false; _visMemo[mk] = v end
+        return v
+    end
+
     -- v0.7.5: per-client expansion cap. The shipped recipeDB is a universal
     -- union of every recipe across every expansion (wago.tools' MoP build
     -- inherits Vanilla / TBC / Wrath / Cata content), so an unfiltered
@@ -425,7 +453,12 @@ local function BuildFullList(profId, viewMode, opts)
         local crafterObjs = {}
         local youSelf, youAlts = nil, {}
         for ck, tag in pairs(profRecipeData.crafters) do
-            if addon:IsMyCharacter(ck) then
+            -- Own alts: shown in the "mine" view regardless of guild, but in the
+            -- guild/missing views ONLY when the alt is in the current guild scope
+            -- — otherwise a cross-guild alt (a toon of yours in another guild)
+            -- leaks its recipes into this guild's list. See IsInCurrentGuildScope.
+            if craftIsMine(ck)
+               and (thisViewMode == "mine" or craftInScope(ck)) then
                 if ck == myKey then
                     youSelf = { name = L["You"], online = true, isYou = true }
                 else
@@ -436,7 +469,7 @@ local function BuildFullList(profId, viewMode, opts)
                         isYou  = true,
                     })
                 end
-            elseif thisViewMode ~= "mine" and addon:IsVisibleCrafter(ck, tag) then
+            elseif thisViewMode ~= "mine" and craftIsVisible(ck, tag) then
                 local shortName   = ck:match("^(.-)%-") or ck
                 local online      = GuildRoster and GuildRoster:IsOnline(ck) or false
                 local displayName = shortName
@@ -519,7 +552,7 @@ local function BuildFullList(profId, viewMode, opts)
                     viewKeep = false
                     if rd and rd.crafters then
                         for ck in pairs(rd.crafters) do
-                            if addon:IsMyCharacter(ck) then viewKeep = true; break end
+                            if craftIsMine(ck) then viewKeep = true; break end
                         end
                     end
                 elseif viewMode == "missing" then
@@ -1547,10 +1580,20 @@ function BrowserTab:Warm()
         addon.Warmer:Queue(function()
             cache[listCacheKey(profId, viewMode, showAll)] =
                 BuildFullList(profId, viewMode, { showAll = showAll })
-            -- Re-render the open tab as each profession's cache lands (coalesced
-            -- via QueueRefresh) so freshly-synced data appears without a manual
-            -- tab/view switch or /reload. No-ops when the window is closed.
-            if addon.MainWindow and addon.MainWindow.QueueRefresh then
+            -- Re-render ONLY when the profession we just (re)built is the exact view
+            -- currently on screen. Refreshing after EVERY profession made a background
+            -- warm of N professions fire N full tab rebuilds (ReleaseChildren +
+            -- DrawTab — every dropdown/toolbar/pool) back-to-back while you were
+            -- looking at one of them: THAT is the Professions-tab freeze (each build
+            -- itself is ~0 ms; the rebuild storm is the hang). The viewed profession
+            -- still updates live; the other N-1 land silently in the cache and appear
+            -- instantly when you switch to them. Gated to an exact key match so the
+            -- refresh is always a cache HIT (never a fresh synchronous build).
+            if addon.MainWindow and addon.MainWindow.QueueRefresh
+               and addon.MainWindow.activeTab == "browser"
+               and self._selectedProfId == profId
+               and self._viewMode == viewMode
+               and (self._showAllRecipes and true or false) == showAll then
                 addon.MainWindow:QueueRefresh()
             end
         end)

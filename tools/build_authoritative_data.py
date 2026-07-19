@@ -153,6 +153,7 @@ _OBSOLETE_NAME_PATTERNS = [
     re.compile(r"^ZZ",            re.IGNORECASE),  # ZZOLD prefix on legacy gems
     re.compile(r"\[PH\]",         re.IGNORECASE),  # [PH] placeholder marker
     re.compile(r"\bOLD$",         re.IGNORECASE),  # trailing OLD marker
+    re.compile(r"^QAEnch",        re.IGNORECASE),  # QAEnchant/QAEnchhelp dev test enchant items
 ]
 
 
@@ -349,15 +350,26 @@ _ENCH_AURA_KEY = {
     13:  "ITEM_MOD_SPELL_POWER",              # MOD_DAMAGE_DONE (spell damage)
     34:  "ITEM_MOD_HEALTH",                    # MOD_INCREASE_HEALTH
     35:  "ITEM_MOD_MANA",                      # MOD_INCREASE_ENERGY (mana)
+    49:  "DODGE_PCT",                          # MOD_DODGE_PERCENT
+    51:  "BLOCK_PCT",                          # MOD_BLOCK_PERCENT (block chance)
+    52:  "CRIT_PCT",                           # MOD_CRIT_PERCENT (melee/ranged crit %)
+    54:  "HIT_PCT",                            # MOD_HIT_CHANCE (melee hit %)
+    55:  "SPELL_HIT_PCT",                      # MOD_SPELL_HIT_CHANCE
+    57:  "SPELL_CRIT_PCT",                     # MOD_SPELL_CRIT_CHANCE
     85:  "ITEM_MOD_POWER_REGEN0_SHORT",        # MOD_POWER_REGEN (mp5)
     99:  "ITEM_MOD_ATTACK_POWER_SHORT",        # MOD_ATTACK_POWER
     124: "ITEM_MOD_RANGED_ATTACK_POWER_SHORT", # MOD_RANGED_ATTACK_POWER
     135: "ITEM_MOD_SPELL_HEALING_DONE",        # MOD_HEALING_DONE
-    158: "ITEM_MOD_BLOCK_VALUE",               # MOD_SHIELD_BLOCKVALUE
+    140: "RANGED_HASTE_PCT",                   # MOD_RANGED_HASTE
+    158: "BLOCK_VALUE",                        # MOD_SHIELD_BLOCKVALUE
+    564: "BLOCK_VALUE",                        # (modern-numbered block value on some enchants)
 }
-# MOD_STAT (29) and MOD_RESISTANCE (22) are handled specially (misc-driven); the
-# rest map straight through _ENCH_AURA_KEY.
-_ENCH_INTERESTING_AURAS = frozenset({29, 22}) | frozenset(_ENCH_AURA_KEY)
+# The non-ITEM_MOD keys (CRIT_PCT / HIT_PCT / SPELL_*_PCT / DODGE_PCT / BLOCK_PCT /
+# BLOCK_VALUE / RANGED_HASTE_PCT / DEFENSE) are LibItemDB's WEIGHT_STATS keys verbatim,
+# so an enchant's crit/hit/avoidance/etc. sums into a stat-weighted (EP) total exactly
+# like an item's. MOD_STAT (29), MOD_RESISTANCE (22) and MOD_SKILL (30, defense) are
+# handled specially (misc-driven); the rest map straight through _ENCH_AURA_KEY.
+_ENCH_INTERESTING_AURAS = frozenset({29, 22, 30}) | frozenset(_ENCH_AURA_KEY)
 
 # MOD_STAT (aura 29) EffectMiscValue_0 -> primary key. -1 = all primaries.
 _ENCH_STAT_MISC = {
@@ -413,8 +425,9 @@ def enchant_stats_from_dbc(eid: int, sie_by_id: dict, aura_by_spell: dict) -> di
       * Effect 4 (RESISTANCE): EffectArg = school (0 = armor), amount = EffectPointsMin.
       * Effect 5 (STAT, direct): EffectArg = ItemMod index, amount = EffectPointsMin.
       * Effect 3 (EQUIP_SPELL): EffectArg = hidden apply spell; read ITS SpellEffect
-        auras. Classic stores these flat auras as (value - 1), so the granted
-        amount = EffectBasePoints + 1.
+        auras. The granted amount = EffectBasePoints + EffectDieSides — a fixed-value
+        effect is stored either as (value-1, die 1) or (value, die 0), so base+die
+        yields the real number in both cases (base+1 alone over-counts the die-0 form).
     Proc / damage / use effects (Crusader, Fiery Weapon, ...) carry no static stat
     and contribute nothing. Empty dict when nothing structural was found."""
     row = sie_by_id.get(eid)
@@ -443,8 +456,8 @@ def enchant_stats_from_dbc(eid: int, sie_by_id: dict, aura_by_spell: dict) -> di
         elif et == 5:    # direct stat — amount is direct
             add(_ENCH_ITEMMOD_KEY.get(arg), pts)
         elif et == 3:    # equip spell — chase the apply spell's auras
-            for aura, misc, base in aura_by_spell.get(arg, ()):
-                amt = base + 1   # classic BasePoints store (value - 1)
+            for aura, misc, base, die in aura_by_spell.get(arg, ()):
+                amt = base + die   # fixed value: (value-1,die 1) or (value,die 0)
                 if aura == 29:                       # MOD_STAT — misc selects the primary
                     if misc == -1:
                         for k in _ENCH_ALL_PRIMARIES:
@@ -455,9 +468,86 @@ def enchant_stats_from_dbc(eid: int, sie_by_id: dict, aura_by_spell: dict) -> di
                     for school in range(0, 7):       # 0=armor,1=holy,2=fire,3=nature,4=frost,5=shadow,6=arcane
                         if misc & (1 << school):     # (-1 = all schools, decodes correctly)
                             add(_ENCH_RES_KEY.get(school), amt)
+                elif aura == 30:                     # MOD_SKILL — only defense (skill line 95) is scored
+                    if misc == 95:
+                        add("DEFENSE", amt)
                 else:
                     add(_ENCH_AURA_KEY.get(aura), amt)
     return stats
+
+
+# ---------------------------------------------------------------------------
+# Applied-enchant catalog — the permanent gear enchants that are NOT crafted by
+# an enchanter but applied by a consumable item: Dire Maul arcanums, Zul'Gurub /
+# Zandalar head-shoulder-leg enchants, armor kits, shield spikes, etc. These
+# never appear in any profession's SkillLineAbility, so they're invisible to the
+# recipe extraction above — but Dibs' enchant picker needs them as slot options.
+#
+# Sourced authoritatively from the same DBC already loaded: every ENCHANT_ITEM
+# (SpellEffect Effect 53) whose apply spell is NOT in a profession skill line,
+# targets an armor/shield slot (SpellEquippedItems), and is granted by a real,
+# non-obsolete item (so [PH]/QA/cut placeholders drop out). Slot + stats reuse
+# the same helpers as the craftable enchants. Shipped as a standalone catalog
+# (lib:LoadEnchantsCore / LoadEnchantsNames) keyed by SpellItemEnchantment id —
+# NOT under a profId, so TOGPM's GetProfessions() loop never ingests them.
+# ---------------------------------------------------------------------------
+
+# Inventory-type bit -> slot category for the applied catalog. Armor + shield
+# only (no weapon/ranged: permanent weapon enchants are enchanter-crafted, and
+# item weapon buffs are temporary). ROBE (20) collapses onto CHEST.
+_APPLIED_SLOT = {
+    1: "HEAD", 3: "SHOULDER", 5: "CHEST", 6: "WAIST", 7: "LEGS", 8: "FEET",
+    9: "WRIST", 10: "HANDS", 14: "SHIELD", 16: "BACK", 20: "CHEST",
+}
+
+
+def _applied_enchant_slots(invmask: int):
+    """Sorted unique armor/shield slot categories from an EquippedItemInvTypes
+    mask. Empty when the enchant targets only non-armor slots (weapon/ranged)."""
+    cats = {cat for bit, cat in _APPLIED_SLOT.items() if invmask & (1 << bit)}
+    return sorted(cats)
+
+
+def build_applied_enchants(enchant_id_by_spell, all_prof_spells, equip_by_spell,
+                           items_by_spell, sie_by_id, aura_by_spell,
+                           enchant_name_by_id):
+    """{ enchantId: { slots, stats, itemId, name } } for every item-applied
+    permanent gear enchant (see section header). enUS names; localize_* layers
+    other locales. Keyed by SpellItemEnchantment id."""
+    out = {}
+    for apply_spell, eid in enchant_id_by_spell.items():
+        if apply_spell in all_prof_spells:
+            continue                                   # craftable — already in recipe data
+        info = equip_by_spell.get(apply_spell)
+        if not info:
+            continue
+        slots = _applied_enchant_slots(info[1])
+        if not slots:
+            continue                                   # not an armor/shield enchant
+        real_items = items_by_spell.get(apply_spell)   # already obsolete/QA/[PH]-filtered
+        if not real_items:
+            continue                                   # no real obtainable item — skip placeholders/cut
+        name = enchant_name_by_id.get(eid)
+        if not name:
+            continue
+        stats = enchant_stats_from_dbc(eid, sie_by_id, aura_by_spell)
+        out[eid] = {
+            "slots":  slots,
+            "stats":  stats or None,
+            "itemId": min(real_items),                 # a real granting item (lowest id = usually the base one)
+            "name":   name,
+        }
+    return out
+
+
+def localize_applied_enchant_names(applied: dict, spell_points: dict, build: str,
+                                   locale: str, refresh: bool = False) -> dict:
+    """{ enchantId: localized name } for the applied-enchant catalog, from the
+    localized SpellItemEnchantment strings (same resolver the recipe enchant
+    effects use). Falls back to the enUS name when a locale lacks a translation."""
+    item_ench_loc = fetch_csv("SpellItemEnchantment", build, refresh=refresh, locale=locale)
+    loc_names = build_enchant_names(item_ench_loc, spell_points)
+    return {eid: (loc_names.get(eid) or e["name"]) for eid, e in applied.items()}
 
 
 def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool = False) -> tuple:
@@ -692,7 +782,8 @@ def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool =
                 aura = int(row.get("EffectAura") or 0)
                 if aura in _ENCH_INTERESTING_AURAS:
                     misc = int(row.get("EffectMiscValue_0") or 0)
-                    aura_by_spell.setdefault(sid, []).append((aura, misc, base))
+                    die  = int(row.get("EffectDieSides") or 0)
+                    aura_by_spell.setdefault(sid, []).append((aura, misc, base, die))
             except (TypeError, ValueError):
                 pass
             if effect == 24:  # CREATE_ITEM
@@ -851,9 +942,29 @@ def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool =
                 "expansion":      build,
             }
         out[prof_id] = recipes
+
+    # Every spell in any profession's skill line — the craftable set, used to
+    # separate item-applied enchants (arcanums / ZG / kits) from enchanter recipes.
+    prof_skill_lines = set()
+    for pid, (_fn, subs) in PROF_FILES.items():
+        prof_skill_lines.add(pid)
+        prof_skill_lines.update(subs)
+    all_prof_spells = set()
+    for row in sla:
+        try:
+            if int(row.get("SkillLine") or 0) in prof_skill_lines:
+                all_prof_spells.add(int(row["Spell"]))
+        except (TypeError, ValueError, KeyError):
+            continue
+
+    applied_enchants = build_applied_enchants(
+        enchant_id_by_spell, all_prof_spells, equip_by_spell, items_by_spell,
+        sie_by_id, aura_by_spell, enchant_name_by_id)
+
     ctx = {
         "enchant_id_by_spell": enchant_id_by_spell,
         "spell_points":        spell_points,
+        "applied_enchants":    applied_enchants,
     }
     return out, ctx
 
@@ -1206,7 +1317,29 @@ LIBRARY_GAME_FOLDER = {
 LIBRARY_DATA_ROOT = ADDON_ROOT.parent / "ProfessionDB" / "Data"
 
 
-def emit_core_file(prof_id: int, filename: str, recipes: dict, game: str):
+def _applied_enchants_core_block(applied: dict) -> str:
+    """The `lib:LoadEnchantsCore({...})` call for the item-applied enchant catalog,
+    appended to the Enchanting _core file (which loads on every client, so no new
+    file / TOC entry is needed). Locale-independent fields only; names ride the
+    per-locale Enchanting name files via _applied_enchants_names_block."""
+    core = {}
+    for eid, e in applied.items():
+        c = {"slots": e["slots"]}
+        if e.get("stats"):  c["stats"]  = e["stats"]
+        if e.get("itemId"): c["itemId"] = e["itemId"]
+        core[eid] = c
+    return f"\nlib:LoadEnchantsCore({lua_value(core, 1)})\n"
+
+
+def _applied_enchants_names_block(names: dict) -> str:
+    """The `lib:LoadEnchantsNames({...})` call (localized enchant names), appended
+    to a locale's Enchanting name file."""
+    body = {eid: {"name": nm} for eid, nm in names.items()}
+    return f"\nlib:LoadEnchantsNames({lua_value(body, 1)})\n"
+
+
+def emit_core_file(prof_id: int, filename: str, recipes: dict, game: str,
+                   applied_enchants: dict = None):
     """ProfessionDB CORE output (locale-independent), once per game + profession:
     ProfessionDB/Data/<game>/_core/<filename>.lua.
 
@@ -1253,12 +1386,16 @@ def emit_core_file(prof_id: int, filename: str, recipes: dict, game: str):
         "\n"
         f"lib:LoadCore({prof_id}, {body})\n"
     )
+    # The item-applied enchant catalog (arcanums / ZG / kits) rides the Enchanting
+    # _core file — loaded on every client, so no new file or TOC entry is needed.
+    if applied_enchants:
+        contents += _applied_enchants_core_block(applied_enchants)
     target.write_text(contents, encoding="utf-8")
     return len(core), target
 
 
 def emit_names_file(prof_id: int, filename: str, recipes: dict,
-                    game: str, locale: str):
+                    game: str, locale: str, applied_enchant_names: dict = None):
     """ProfessionDB NAMES output (localized strings), per game + locale + prof:
     ProfessionDB/Data/<game>/<locale>/<filename>.lua.
 
@@ -1266,7 +1403,7 @@ def emit_names_file(prof_id: int, filename: str, recipes: dict,
     recipe id. Guarded by GetLocale() + IsGameVersion so only the matching
     language registers; the structural data comes from the _core file."""
     cleaned = clean_recipes(prof_id, recipes)
-    if not cleaned:
+    if not cleaned and not applied_enchant_names:
         return 0, None
     names = {}
     for spell_id, e in cleaned.items():
@@ -1289,6 +1426,10 @@ def emit_names_file(prof_id: int, filename: str, recipes: dict,
         "\n"
         f"lib:LoadNames({prof_id}, {body})\n"
     )
+    # Localized names for the item-applied enchant catalog ride the Enchanting
+    # name file (loaded for this locale), matching its _core LoadEnchantsCore.
+    if applied_enchant_names:
+        contents += _applied_enchants_names_block(applied_enchant_names)
     target.write_text(contents, encoding="utf-8")
     return len(names), target
 
@@ -1480,15 +1621,18 @@ def main():
         game = LIBRARY_GAME_FOLDER.get(label, label)
 
         # Core (locale-independent), once per profession from the canonical pass.
+        # The item-applied enchant catalog rides the Enchanting (333) _core file.
+        applied = ctx.get("applied_enchants") or {}
         g_core = 0
         for prof_id, (filename, _) in profs_sorted:
             recipes = out.get(prof_id, {})
             if not recipes:
                 continue
-            count, _ = emit_core_file(prof_id, filename, recipes, game)
+            count, _ = emit_core_file(prof_id, filename, recipes, game,
+                                      applied if prof_id == 333 else None)
             g_core += count
         core_total += g_core
-        print(f"{game:<10} {'_core':<8} {g_core:>9}")
+        print(f"{game:<10} {'_core':<8} {g_core:>9}  (+{len(applied)} applied enchants)")
 
         # Names, per locale. Skipped in --core-only mode (requiredSpec and the
         # other _core fields are locale-independent, so the name files are
@@ -1496,20 +1640,31 @@ def main():
         if args.core_only:
             continue
         by_locale = {"enUS": out}
+        # Applied-enchant catalog names per locale (rides the Enchanting name file).
+        # enUS uses the names already resolved in extract; only the real EXTRA_LOCALES
+        # fetch a localized SIE — enGB (and any MIRROR) copies its source, never fetches.
+        applied_names_by_locale = {"enUS": {eid: e["name"] for eid, e in applied.items()}}
         for loc in EXTRA_LOCALES:
             print(f"  [{label}] localizing {loc}", file=sys.stderr)
             by_locale[loc] = localize_entries(out, ctx, build_id, loc,
                                               refresh=args.refresh)
+            if applied:
+                applied_names_by_locale[loc] = localize_applied_enchant_names(
+                    applied, ctx["spell_points"], build_id, loc, refresh=args.refresh)
         for mloc, src in MIRROR_LOCALES.items():
             if src in by_locale:
                 by_locale[mloc] = by_locale[src]
+                if src in applied_names_by_locale:
+                    applied_names_by_locale[mloc] = applied_names_by_locale[src]
         for loc, data in sorted(by_locale.items()):
+            applied_names = applied_names_by_locale.get(loc) if applied else None
             loc_total = 0
             for prof_id, (filename, _) in profs_sorted:
                 recipes = data.get(prof_id, {})
                 if not recipes:
                     continue
-                count, _ = emit_names_file(prof_id, filename, recipes, game, loc)
+                count, _ = emit_names_file(prof_id, filename, recipes, game, loc,
+                                           applied_names if prof_id == 333 else None)
                 loc_total += count
             name_total += loc_total
             print(f"{game:<10} {loc:<8} {loc_total:>9}")

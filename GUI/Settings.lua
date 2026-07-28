@@ -1088,12 +1088,46 @@ end)
 -- Direct open (Shift+left-click on minimap, or /togpm settings)
 -- ---------------------------------------------------------------------------
 
+-- Re-run the AceGUI layout over the whole widget tree, deepest first.
+--
+-- Why: AceGUI's ScrollFrame decides whether to SHOW its scrollbar by comparing
+-- the scroll frame's height against a content height it CACHED during layout
+-- (`LayoutFinished` → `content:SetHeight(height)` → `FixScroll`), not against
+-- what the widgets actually measure now. Ace3 skinners — ElvUI in the report —
+-- restyle AceGUI widgets AFTER AceConfigDialog has laid the options out, which
+-- changes their real heights. The cached height stays at the pre-skin value, so
+-- the ScrollFrame believes everything fits: no scrollbar appears, the options
+-- past the bottom edge are clipped, and the mouse wheel doesn't help either
+-- (`MoveScroll` is a no-op while `scrollBarShown` is false) — the bottom of the
+-- Settings window becomes unreachable. Laying out again once the frame has
+-- settled re-measures the skinned widgets and lets FixScroll put the bar up.
+--
+-- Deepest-first so inner content heights are final before each parent measures
+-- them. Harmless when nothing skinned anything: the numbers come out the same.
+local function RelayoutTree(widget)
+    if type(widget) ~= "table" then return end
+    if type(widget.children) == "table" then
+        for _, child in ipairs(widget.children) do RelayoutTree(child) end
+    end
+    if type(widget.DoLayout) == "function" then pcall(widget.DoLayout, widget) end
+end
+
 function addon:OpenSettings()
     local frame = AceDialog.OpenFrames and AceDialog.OpenFrames["TOGProfessionMaster"]
     if frame and frame:IsShown() then
         AceDialog:Close("TOGProfessionMaster")
     else
         AceDialog:Open("TOGProfessionMaster")
+        -- Twice: next frame for skins that restyle synchronously on show, and a
+        -- beat later for the ones that defer their own work to a timer.
+        if C_Timer and C_Timer.After then
+            for _, delay in ipairs({ 0, 0.2 }) do
+                C_Timer.After(delay, function()
+                    local f = AceDialog.OpenFrames and AceDialog.OpenFrames["TOGProfessionMaster"]
+                    if f and f.frame and f.frame:IsShown() then RelayoutTree(f) end
+                end)
+            end
+        end
     end
 end
 

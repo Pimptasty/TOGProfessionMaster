@@ -978,15 +978,16 @@ function CraftingTab:BuildDetailPanel(parent)
     -- − and + buttons so the row looks full.
     local CR, CW = 12, DCTRL_W - 12
 
-    -- Craft is a SECURE action button so Enchanting can work: the Vanilla/TBC
-    -- Craft API is applied with DoCraft, which is PROTECTED (an addon calling it
-    -- trips ADDON_ACTION_FORBIDDEN). The only way an addon can apply an enchant is
-    -- a /cast in a SECURE macro (TSM does the same). So for the Craft window we
-    -- set a "/cast <recipe>" macro on this button per selection (RefreshDetail) and
-    -- the click casts it securely; for ordinary trade skills the macro is cleared
-    -- and PreClick runs the normal, non-protected Lua craft (DoTradeSkill, which
-    -- also supports batch quantity). PreClick is insecure but runs before the
-    -- secure cast, so the trade-skill path is unaffected.
+    -- Craft is a SECURE action button so Enchanting can work: for the Vanilla/TBC
+    -- Craft window we set a "/cast <recipe>" macro on this button per selection
+    -- (RefreshDetail) and the click casts it securely; for ordinary trade skills
+    -- the macro is cleared and PreClick runs the normal Lua craft (DoTradeSkill,
+    -- which also supports batch quantity). PreClick is insecure but runs before
+    -- the secure cast, so the trade-skill path is unaffected.
+    --
+    -- The click registration is set per selection in RefreshDetail, NOT here --
+    -- see the note there. "LeftButtonUp" alone is the correct (and only safe)
+    -- default for the insecure trade-skill path.
     local craftBtn = CreateFrame("Button", "TOGPMCraftButton", panel,
         "UIPanelButtonTemplate, SecureActionButtonTemplate")
     craftBtn:SetSize(CW, 24)
@@ -1133,6 +1134,32 @@ function CraftingTab:RefreshDetail()
         else
             self._dpCraft:SetAttribute("type", nil)
             self._dpCraft:SetAttribute("macrotext", nil)
+        end
+        -- The secure half of this button ONLY fires if the registered click
+        -- matches Blizzard's key-down/key-up gate. SecureActionButton_OnClick
+        -- runs the action only when
+        --   (down and useOnKeyDown) or (not down and not useOnKeyDown)
+        -- where useOnKeyDown falls back to the `ActionButtonUseKeyDown` CVar
+        -- (ElvUI / Bartender4 and Blizzard's own "use key down" option set it).
+        -- Registered for "LeftButtonUp" ONLY, the button was therefore DEAD for
+        -- every player with that CVar on: the click dispatched, the secure gate
+        -- discarded it, and no enchant was ever cast — while trade skills kept
+        -- working because they craft from the insecure PreClick, which isn't
+        -- gated. That is exactly the reported "Enchanting is the only profession
+        -- that doesn't work". TSM's SecureMacroActionButton branches on the same
+        -- CVar for the same reason.
+        --
+        -- Registering BOTH clicks satisfies the gate whichever way the CVar is
+        -- set (and whichever variant of the gate the client ships), and exactly
+        -- one of the two passes it, so the enchant casts once. Only do it in
+        -- secure/enchant mode: PreClick fires on every registered click, so with
+        -- both registered the trade-skill path would craft twice per click.
+        if self._dpCraft.RegisterForClicks then
+            if self._craftIsSecure then
+                self._dpCraft:RegisterForClicks("LeftButtonUp", "LeftButtonDown")
+            else
+                self._dpCraft:RegisterForClicks("LeftButtonUp")
+            end
         end
     end
 

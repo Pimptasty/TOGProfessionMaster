@@ -794,10 +794,18 @@ end
 -- Browser, which renders no cooldown data. A nil/empty scope (legacy or unknown
 -- caller) always refreshes, so this can only ever REDUCE redraws, never miss one
 -- a tab genuinely needs.
+-- `roster` belongs to every GUILD-SCOPED tab, not just the Guild tab. All four
+-- of them filter what they render through IsVisibleCrafter / IsInCurrentGuildScope,
+-- so a change in roster truth — most importantly the roster becoming ready after
+-- login, which is when the "hide nothing yet" cold-start guard lifts — changes
+-- what each of them should display. Leaving it only on `guild` is why a departed
+-- member kept showing on the Professions and Cooldowns tabs after a reload.
+-- crafting / ahprofit are excluded on purpose: they render YOUR OWN craftables
+-- and aren't roster-filtered.
 local TAB_SCOPES = {
-    browser   = { recipes = true, altgroups = true },
-    cooldowns = { cooldowns = true },
-    missing   = { recipes = true, altgroups = true },
+    browser   = { recipes = true, altgroups = true, roster = true },
+    cooldowns = { cooldowns = true, roster = true },
+    missing   = { recipes = true, altgroups = true, roster = true },
     guild     = { skills = true, recipes = true, altgroups = true, roster = true },
     crafting  = { recipes = true },
     ahprofit  = { recipes = true },

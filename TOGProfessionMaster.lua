@@ -438,6 +438,7 @@ local SLASH_COMMANDS = {
     ["myalts"]       = "DumpMyAlts",
     ["pullroster"]   = "PullSisterRoster",
     ["xgdiag"]       = "PrintCrossGuildDiagnostics",
+    ["whyvisible"]   = "ExplainVisibility",
     ["commtest"]     = "RunCommTest",
     ["help"]         = "PrintHelp",
 }
@@ -586,7 +587,17 @@ function Ace:OnEnable()
         -- every reference for each flagged charKey (departed members
         -- queued by display-time visibility checks).
         GuildRoster:RegisterCallback("OnRosterReady", function()
+            addon:OnRosterScopeChanged("ready")
             self:ScheduleTimer(function() addon:RunPendingPurge() end, 60)
+        end)
+
+        -- Someone joining or leaving mid-session changes who the guild-scoped
+        -- views should show, exactly like the ready transition does.
+        GuildRoster:RegisterCallback("OnMemberLeft", function()
+            addon:OnRosterScopeChanged("left")
+        end)
+        GuildRoster:RegisterCallback("OnMemberJoined", function()
+            addon:OnRosterScopeChanged("joined")
         end)
     end
 
@@ -1420,6 +1431,7 @@ function Ace:PrintHelp()
     self:Print("  /togpm versioncheck \226\128\148 " .. L["SlashHelpVersionCheck"])
     self:Print("  /togpm dumpprice <itemId|itemLink> \226\128\148 Dump full price diagnostics for an item")
     self:Print("  /togpm commtest [name] \226\128\148 Probe which addon-message channels the server relays")
+    self:Print("  /togpm whyvisible <name> \226\128\148 Explain why a character is still shown (or hidden)")
     self:Print("  /togpm debug        \226\128\148 " .. L["SlashHelpDebug"])
     self:Print("  /togpm help         \226\128\148 " .. L["SlashHelpHelp"])
 end
@@ -2008,6 +2020,77 @@ function addon:IsAltOfInRosterCharacter(charKey)
     return false
 end
 
+--- /togpm whyvisible <Name[-Realm]> — explain, gate by gate, why a character is
+--- still being displayed (or is hidden). Every "why is this ex-guildie still
+--- showing?" report reduces to one of the escape hatches in IsVisibleCrafter /
+--- IsInCurrentGuildScope, and from the outside they're indistinguishable — the
+--- roster lib never became ready, the crafter carries a sister-guild tag, they
+--- sit in a stale sister roster, or they're an alt of somebody still in the
+--- guild. This prints which one fired so a report can name the actual cause
+--- instead of "it isn't purging".
+function addon:ExplainVisibility(args)
+    local name = strtrim(args or "")
+    if name == "" then
+        Ace:Print("Usage: /togpm whyvisible <Name> or <Name-Realm>")
+        return
+    end
+    -- Bare name: assume our own realm, taken from our own character key so the
+    -- normalization matches exactly how keys are stored.
+    if not name:find("-", 1, true) then
+        local myRealm = (self:GetCharacterKey() or ""):match("%-(.+)$")
+        name = name .. "-" .. (myRealm or "")
+    end
+
+    local gdb   = self:GetGuildDb()
+    local GR    = self.Scanner and self.Scanner.GuildRoster
+    local myTag = self:GetCurrentGuildTag()
+
+    Ace:Print(("|cffFF8000whyvisible|r %s (guild scope: %s)"):format(
+        name, tostring(self:GetGuildKey() or "none")))
+
+    local function line(label, value)
+        Ace:Print(("  %s: %s"):format(label, tostring(value)))
+    end
+
+    line("own character", self:IsMyCharacter(name))
+    if not GR then
+        line("LibGuildRoster", "ABSENT — nothing is ever hidden (this alone explains it)")
+    else
+        local ready = not GR.IsReady or GR:IsReady()
+        line("roster ready", ready and "yes" or "NO — cold start, nothing is hidden yet")
+        line("in current guild roster", GR.IsInGuild and GR:IsInGuild(name) or false)
+        if GR.IsInAnyRoster then
+            line("in a SISTER roster", GR:IsInAnyRoster(name) or false)
+        end
+    end
+    line("alt of an in-roster character", self:IsAltOfInRosterCharacter(name))
+    line("current guild tag", myTag)
+
+    -- The stored crafter tag is what IsVisibleCrafter compares against; a
+    -- mismatch routes through the sister-guild branch rather than the plain
+    -- membership check, so it matters which one is on the entry.
+    local tags = {}
+    if gdb and gdb.recipes then
+        for _, recipes in pairs(gdb.recipes) do
+            for _, r in pairs(recipes) do
+                local t = r.crafters and r.crafters[name]
+                if type(t) == "string" then tags[t] = true end
+            end
+        end
+    end
+    local tagList = {}
+    for t in pairs(tags) do tagList[#tagList + 1] = t end
+    line("crafter tags stored for them", (#tagList > 0) and table.concat(tagList, ", ") or "none")
+
+    -- NOTE: IsVisibleCrafter is not side-effect free — a character that fails
+    -- every gate gets queued into pendingPurge for the timed sweep. That's the
+    -- normal display path doing its job, but call it out so running the
+    -- diagnostic isn't mistaken for a read-only inspection.
+    line("=> IsVisibleCrafter (current-guild tag)", self:IsVisibleCrafter(name, myTag))
+    line("=> IsInCurrentGuildScope", self:IsInCurrentGuildScope(name))
+    Ace:Print("  (a 'false' IsVisibleCrafter also queues them for the timed purge sweep)")
+end
+
 -- Return true if charKey appears as an alt in someone's accountChars / altGroups
 -- list. Used by the visibility gate to keep alts of in-guild members alive
 -- even when the alt itself isn't in the roster.
@@ -2024,6 +2107,35 @@ function addon:IsAltOfKnownCharacter(charKey)
         end
     end
     return false
+end
+
+--- Tell every guild-scoped view that roster truth has changed, so it re-runs its
+--- visibility gate. Debounced, because a roster build fires joined/left in bursts.
+---
+--- This closes the hole behind "TOGPM still shows someone who left the guild
+--- weeks ago". Until LibGuildRoster reports ready, `IsVisibleCrafter` /
+--- `IsInCurrentGuildScope` deliberately hide NOTHING — a half-built roster can't
+--- vouch for anyone, and blanking a legitimate list is far worse than briefly
+--- over-showing one. That guard is correct; what was missing is the other half of
+--- it. Nothing told the UI when the cold-start window CLOSED: the only roster
+--- callbacks anyone hooked were `OnMemberOnline` / `OnMemberOffline` (in
+--- BrowserTab), so after login an ex-member kept rendering until some unrelated
+--- event happened to rebuild the list. That is precisely the reported "I saw his
+--- name, clicked around a bit, and then it disappeared" — the click was what
+--- eventually triggered the rebuild, not the roster.
+---
+--- Reuses the same `GUILD_DATA_UPDATED` signal the sister-roster relay fires, so
+--- each tab re-scopes through its normal refresh path with no new plumbing.
+function addon:OnRosterScopeChanged(reason)
+    if self._rosterScopeTimer then return end
+    self._rosterScopeTimer = C_Timer.NewTimer(2, function()
+        addon._rosterScopeTimer = nil
+        addon:DebugPrint("Roster scope changed (" .. tostring(reason) .. ") — re-scoping views")
+        if addon.callbacks then
+            addon.callbacks:Fire("GUILD_DATA_UPDATED", "roster:" .. tostring(reason),
+                { roster = true })
+        end
+    end)
 end
 
 -- Add a charKey to the pending-purge list. The timed sweep at OnRosterReady +

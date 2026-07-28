@@ -454,11 +454,20 @@ function Engine:Craft(recipeId, index, qty)
     -- Craft Next tracked, so manual crafts left finished items stuck in queue).
     -- The Craft window (Enchanting) makes exactly one per DoCraft — no repeat
     -- arg — so the queue should expect a single success there, not `qty`.
-    -- The Vanilla/TBC Craft API (Enchanting) applies via DoCraft, which is a
-    -- PROTECTED function — an addon calling it trips ADDON_ACTION_FORBIDDEN and
-    -- the craft is blocked. (DoTradeSkill, used by every other profession, is
-    -- NOT protected.) So we cannot apply an enchant ourselves: pop Blizzard's own
-    -- Craft window so the player clicks its secure Create button, and say so once.
+    --
+    -- The interactive enchant path does NOT come through here: the Crafting tab's
+    -- Craft button is a secure action button that casts "/cast <recipe>" itself
+    -- (see GUI/CraftingTab.lua) and its PreClick returns early for enchants. This
+    -- branch is only reached by a QUEUED enchant (Craft Next / Craft All), so it
+    -- pops Blizzard's own Craft window for the player to click Create, and says so
+    -- once.
+    -- NOTE for future work: v0.8.3 introduced the secure-cast path on the premise
+    -- that `DoCraft` is a protected function. That premise was never validated and
+    -- looks wrong — TradeSkillMaster calls `DoCraft(index)` straight from a plain,
+    -- NON-secure button's OnClick in its classic-crafting path
+    -- (LibTSMWoW/Source/API/TradeSkill.lua `TradeSkill.Craft`). If that holds, this
+    -- branch could simply call DoCraft and let queued enchants craft in place.
+    -- Left alone here because it can't be verified on this account.
     if self._isCraftWindow then
         self:ShowDefaultUI()
         local now = GetTime and GetTime() or 0

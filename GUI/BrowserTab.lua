@@ -2609,10 +2609,19 @@ do
     -- Re-warm on guild/cross-guild data changes (debounced, starvation-capped).
     -- The recipe-list cache is built only from crafter/alt data, so a cooldown-
     -- only sync can't change it — skip the rewarm when the change scope carries
-    -- neither recipes nor altgroups. nil/unknown scope still rewarms (safe).
+    -- none of recipes / altgroups / roster. nil/unknown scope still rewarms (safe).
+    --
+    -- `roster` MUST rewarm even though it isn't recipe data: BuildFullList bakes
+    -- each crafter's visibility verdict into the cache, and a cache built during
+    -- the cold-start window (before LibGuildRoster is ready, when the gate hides
+    -- nobody) contains rows for characters who have since left the guild. That
+    -- poisoned cache is served for the rest of the session unless roster truth
+    -- invalidates it — which is why an ex-member survived a reload. Note this
+    -- runs regardless of whether the tab is on screen, on purpose: the background
+    -- pre-warm is exactly what caches the unfiltered list.
     addon:RegisterCallback("GUILD_DATA_UPDATED", function(_event, _charKey, scopes)
         if type(scopes) == "table" and next(scopes)
-           and not (scopes.recipes or scopes.altgroups) then
+           and not (scopes.recipes or scopes.altgroups or scopes.roster) then
             return
         end
         scheduleRewarm()

@@ -61,6 +61,12 @@ Engine._suppressUpdate = false  -- guard: ignore TRADE_SKILL_UPDATE while we mut
 Engine._closePending  = false   -- a debounced teardown is scheduled (see ScheduleClose)
 Engine._forceTakeoverOnce = false -- next show opens TOGPM regardless of the default (set by OpenProfession)
 Engine._hookedFrames  = {}      -- Blizzard frames whose OnShow we've hooked to inject the TOGPM toggle button
+Engine._tabDriven     = false   -- THIS session was opened by the Crafting tab, so no other
+                                -- profession window may stay on screen (see HideForeignWindows)
+Engine._suppressHooked = {}     -- frames whose OnShow we've hooked for tab-driven suppression
+Engine._tsmFrame      = nil     -- TSM's crafting frame while its UI is up (from TSM_API)
+Engine._tsmHooked     = false   -- our TSM_API UI callback is registered
+Engine._tsmSuppressFailed = false -- hiding TSM's window killed the session once; don't retry
 
 -- ---------------------------------------------------------------------------
 -- Which crafting UI opens when you open a profession. Default: Blizzard's own
@@ -220,6 +226,12 @@ function Engine:OpenProfession(name)
         return false
     end
     self._forceTakeoverOnce = true
+    -- This session belongs to the tab: no other profession window may stay on
+    -- screen for it. Arm the TSM callback BEFORE the cast so we catch its very
+    -- first show (the callback only fires on the transition into open).
+    self._tabDriven = true
+    self:EnsureTSMHook()
+    self:EnsureSuppressHook()
     if CastSpellByName then CastSpellByName(name) end
     return true
 end
@@ -632,6 +644,12 @@ function Engine:OnProfessionShow()
             self:ShowOurUI()
             if C_Timer and C_Timer.After then
                 C_Timer.After(0, function() self:ShowOurUI() end)
+                -- One more pass a beat later: TSM opens its window from a state
+                -- machine driven off the same event, and a rival addon can show
+                -- Blizzard's frame on its own delay — both land after the
+                -- next-frame pass above. The OnShow hook covers re-shows from
+                -- here on; this catches the initial one whatever its timing.
+                C_Timer.After(0.1, function() self:HideForeignWindows() end)
             end
         else
             -- Automatic profession open: stay fully hands-off, but keep our
@@ -676,6 +694,17 @@ function Engine:OnProfessionShow()
     -- the player is NEVER left unable to use a profession (the show event was
     -- suppressed — without this they'd have no window at all). Also their
     -- escape during development if the reskin breaks: `/togpm craft off`.
+    -- Takeover mode: TOGPM owns the crafting window for this session. Blizzard's
+    -- frame was suppressed at Init, but a third-party UI (TSM) registers the show
+    -- event itself and is unaffected by that — so claim the session and hide
+    -- whatever else appears, same as the tab-driven path.
+    self._tabDriven = true
+    self:EnsureTSMHook()
+    self:EnsureSuppressHook()
+    if C_Timer and C_Timer.After then
+        C_Timer.After(0.1, function() self:HideForeignWindows() end)
+    end
+
     self._autoOpened = true
     local ok = true
     if addon.MainWindow then
@@ -699,6 +728,11 @@ function Engine:OnProfessionClose()
     self._showingDefault = false
     self._autoOpened    = false
     self._forceTakeoverOnce = false
+    -- Session over: the next open belongs to whoever triggers it, so drop our
+    -- claim on the window. (_tsmFrame is cleared by TSM's own hide callback,
+    -- but a session can end without one — e.g. we hid the frame ourselves.)
+    self._tabDriven     = false
+    self._tsmFrame      = nil
     self:HideToggleButton()
 
     -- If we auto-opened the window for this craft session and the user is
@@ -720,6 +754,9 @@ end
 function Engine:ShowDefaultUI()
     if not self._sessionOpen then return end
     self._showingDefault = true
+    -- The user asked for the native window: stop suppressing foreign windows,
+    -- or the OnShow hook would hide the very frame we're about to summon.
+    self._tabDriven = false
     self:_RecordLastUI("blizzard")
 
     -- Fold our own window away first so the two don't stack.
@@ -752,20 +789,134 @@ end
 function Engine:ShowOurUI()
     if not self._sessionOpen then return end
     self._showingDefault = false
+    -- Reached either from a tab-driven open or from the TOGPM button on
+    -- Blizzard's frame. Both are the user choosing our tab, so from here on no
+    -- other profession window may sit on top of it.
+    self._tabDriven = true
+    self:EnsureTSMHook()
     self:_RecordLastUI("togpm")
 
-    local frame = self._isCraftWindow and _G.CraftFrame or _G.TradeSkillFrame
-    if frame and frame:IsShown() then
-        local prevOnHide = frame:GetScript("OnHide")
-        frame:SetScript("OnHide", nil)
-        HideUIPanel(frame)
-        frame:SetScript("OnHide", prevOnHide)
-    end
+    -- Clear the field for our tab: Blizzard's frames and, when the session is
+    -- ours, TSM's window too. HideForeignWindows no-ops unless _tabDriven.
+    self:_HideFrameSafely(self._isCraftWindow and _G.CraftFrame or _G.TradeSkillFrame, true)
+    self:EnsureSuppressHook()
+    self:HideForeignWindows()
     self:HideToggleButton()
 
     self._autoOpened = true
     if addon.MainWindow then addon.MainWindow:Open("crafting") end
     self:FireUpdate()
+end
+
+-- ---------------------------------------------------------------------------
+-- Foreign-window suppression for a TAB-DRIVEN session
+--
+-- Opening a profession means CASTING it — that is the only way to get a
+-- trade-skill session on Classic, and the live session is what the tab reads
+-- and crafts through. The cast fires TRADE_SKILL_SHOW / CRAFT_SHOW, which is
+-- exactly what every OTHER profession UI listens for. So clicking our Crafting
+-- tab also pops Blizzard's window, or TSM's — the reported "two windows open".
+--
+-- When the tab is what opened the session (_tabDriven), no other profession
+-- window may stay on screen. We can't stop the event reaching them, so we hide
+-- whatever appears:
+--   * Blizzard's TradeSkillFrame / CraftFrame — hidden here AND re-hidden from
+--     an OnShow hook, so an addon that shows them later can't leave one up.
+--   * TSM's crafting window — via its PUBLIC API (TSM_API.RegisterUICallback),
+--     which hands us the frame when it opens. See docs/DEPENDENCY_CONTRACTS.md:
+--     TSM has no "don't open for this session" API, so hiding the frame it
+--     gives us is the only integration point available.
+-- The user's "WoW UI" button clears _tabDriven, so choosing the native window
+-- mid-session turns all of this off and it stays up.
+-- ---------------------------------------------------------------------------
+
+-- Hide a frame WITHOUT letting its OnHide run. Every profession UI closes the
+-- trade-skill session from OnHide (Blizzard's calls CloseTradeSkill/CloseCraft;
+-- TSM's fires EV_FRAME_HIDE → TradeSkill.CloseUI) — and that session is the
+-- data source our tab is reading, so letting it fire would blank our own tab.
+-- Clearing the script around the hide is the same technique TSM itself uses on
+-- Blizzard's frame. `panel` picks HideUIPanel (UIPanel-managed Blizzard frames)
+-- over a plain Hide (TSM's frame is not UIPanel-managed).
+function Engine:_HideFrameSafely(frame, panel)
+    if not (frame and frame.IsShown and frame:IsShown()) then return false end
+    local prevOnHide = frame.GetScript and frame:GetScript("OnHide")
+    if prevOnHide then frame:SetScript("OnHide", nil) end
+    if panel and HideUIPanel then HideUIPanel(frame) else frame:Hide() end
+    if prevOnHide then frame:SetScript("OnHide", prevOnHide) end
+    return true
+end
+
+-- True while the trade-skill session we're reading is still alive. Used to
+-- verify a foreign-window hide didn't take the session down with it.
+function Engine:_SessionStillLive()
+    if not self._sessionOpen then return false end
+    if self._isCraftWindow then
+        return (GetCraftDisplaySkillLine and GetCraftDisplaySkillLine()) ~= nil
+    end
+    return (GetTradeSkillLine and GetTradeSkillLine()) ~= nil
+end
+
+-- Hide every profession window that isn't ours. No-op unless this session was
+-- opened by the tab.
+function Engine:HideForeignWindows()
+    if not (self._tabDriven and self._sessionOpen) then return end
+
+    -- Both Blizzard frames, not just the current session's: a profession switch
+    -- can leave the other one up.
+    self:_HideFrameSafely(_G.TradeSkillFrame, true)
+    if HAS_CRAFT_WINDOW then self:_HideFrameSafely(_G.CraftFrame, true) end
+
+    -- TSM's window. If clearing OnHide didn't hold and the session died, stop
+    -- trying for the rest of the play session — a visible second window is a
+    -- far smaller problem than a Crafting tab with no data in it.
+    if self._tsmFrame and not self._tsmSuppressFailed then
+        if self:_HideFrameSafely(self._tsmFrame, false) and not self:_SessionStillLive() then
+            self._tsmSuppressFailed = true
+            addon:DebugPrint("CraftingEngine: hiding TSM's crafting window closed the session — suppression disabled")
+        end
+    end
+end
+
+-- Re-hide on OnShow, so a window opened after our pass (TSM's FSM tick, a rival
+-- addon, Blizzard's load-on-demand frame arriving late) can't linger. Hooked
+-- once per frame; the handler defers because hiding a frame from inside its own
+-- OnShow is asking for trouble.
+function Engine:EnsureSuppressHook()
+    for _, name in ipairs({ "TradeSkillFrame", "CraftFrame" }) do
+        local frame = _G[name]
+        if frame and not self._suppressHooked[frame] then
+            self._suppressHooked[frame] = true
+            frame:HookScript("OnShow", function()
+                if not Engine._tabDriven then return end
+                if C_Timer and C_Timer.After then
+                    C_Timer.After(0, function() Engine:HideForeignWindows() end)
+                else
+                    Engine:HideForeignWindows()
+                end
+            end)
+        end
+    end
+end
+
+-- Register our TSM UI callback once. TSM_API only exists when TSM is installed,
+-- and RegisterUICallback ERRORS on a duplicate tag, so both are guarded. The
+-- callback is how we learn TSM's frame exists at all — it is not exposed any
+-- other way.
+function Engine:EnsureTSMHook()
+    if self._tsmHooked then return end
+    if not (TSM_API and TSM_API.RegisterUICallback) then return end
+    local ok = pcall(TSM_API.RegisterUICallback, "CRAFTING", "TOGProfessionMaster:CraftingTab",
+        function(shown, frame)
+            Engine._tsmFrame = shown and frame or nil
+            if not shown then return end
+            -- Fired from inside TSM's state-machine transition; never touch the
+            -- frame synchronously or its OnHide re-enters that transition.
+            if C_Timer and C_Timer.After then
+                C_Timer.After(0, function() Engine:HideForeignWindows() end)
+            end
+        end)
+    self._tsmHooked = ok and true or false
+    if not ok then addon:DebugPrint("CraftingEngine: TSM_API.RegisterUICallback failed") end
 end
 
 -- ---------------------------------------------------------------------------

@@ -520,6 +520,17 @@ local function addCandidateItemId(out, seen, value)
     end
 end
 
+-- Offline-test seam — the frame-free helpers. BuildRows below is already a
+-- method and needs no seam. See Tests/ahprofit_spec.lua.
+ProfitTab._charShort            = charShort
+ProfitTab._moneyText            = moneyText
+ProfitTab._colorProfit          = colorProfit
+ProfitTab._knownByMyChars       = knownByMyChars
+ProfitTab._itemIdFromLink       = itemIdFromLink
+ProfitTab._addCandidateItemId   = addCandidateItemId
+ProfitTab._enabledSourcesForMode = enabledSourcesForMode
+ProfitTab._countKeys            = countKeys
+
 function ProfitTab:BuildRows(mode)
     local gdb = addon:GetGuildDb()
     if not (gdb and gdb.recipes and addon.recipeDB and addon.Price) then return {} end

@@ -1659,6 +1659,13 @@ end
 -- nothing (ts 0), so empties never participate in the last-writer race.
 function addon:BroadcastSisterConfig()
     if not (Ace.db and Ace.db.profile) then return end
+    -- Never broadcast on GUILD while guildless. The client REFUSES such a send,
+    -- and since AceCommQueue-1.0 MINOR 5 a refusal with no delivery callback is
+    -- reported through geterrorhandler() — so a guildless player still holding a
+    -- config (configured it, then left; or received it by gossip) would get an
+    -- error in their bug catcher on every broadcast, including the ~12-minute
+    -- timer. The send was always being dropped; it just used to be silent.
+    if not self:GetGuildKey() then return end
     local ts = self:GetSisterGuildsTs()
     if ts <= 0 then return end
     local guilds = self:GetSisterGuilds()
@@ -1737,6 +1744,9 @@ function addon:BroadcastSisterRosters()
     if not GR or not GR.GetKnownRosters or not GR.GetRoster then return end
     if #self:GetSisterGuilds() == 0 then return end
     local homeKey = self:GetGuildKey()
+    -- Same guard as BroadcastSisterConfig: a GUILD send while guildless is
+    -- refused by the client and now surfaces as an error to the player.
+    if not homeKey then return end
     local now = (GetServerTime and GetServerTime()) or (time and time()) or 0
     for _, key in ipairs(GR:GetKnownRosters()) do
         if key ~= homeKey and self:IsSisterGuildKey(key) then

@@ -614,6 +614,15 @@ local function comparator(col, asc)
     end
 end
 
+-- Offline-test seam — the frame-free helpers (row filter, sort comparator,
+-- profession pickers, price-source tag). See Tests/craftingtab_spec.lua.
+CraftingTab._passesFilter      = passesFilter
+CraftingTab._comparator        = comparator
+CraftingTab._findProf          = findProf
+CraftingTab._findProfById      = findProfById
+CraftingTab._activeProfession  = activeProfession
+CraftingTab._PriceSourceTag    = PriceSourceTag
+
 function CraftingTab:FillList()
     local scroll = self._scroll
     if not scroll then return end

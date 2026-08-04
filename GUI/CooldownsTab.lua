@@ -794,6 +794,22 @@ local function CdMail_CalculateFulfillmentPlan(items, qtyNeeded, totalInBags)
              stacksToAttach = {}, totalAttachable = totalInBags }
 end
 
+-- ---------------------------------------------------------------------------
+-- Offline-test seam — everything above is frame-free logic (row building, the
+-- sort, the supply-mail planner); the first CreateFrame in this file is ~500
+-- lines below. `local` only because nothing outside the file calls them, which
+-- also put them out of the spec suite's reach. Not used at runtime.
+-- See Tests/cooldownrows_spec.lua.
+-- ---------------------------------------------------------------------------
+CooldownsTab._BuildRows                 = BuildRows
+CooldownsTab._SortRows                  = SortRows
+CooldownsTab._SecondsToString           = SecondsToString
+CooldownsTab._CollectCooldownsByChar    = CollectCooldownsByChar
+CooldownsTab._ComputeCol2InnerWidths    = ComputeCol2InnerWidths
+CooldownsTab._ProfessionMatchesRow      = ProfessionMatchesRow
+CooldownsTab._CountItemInBags           = CdMail_CountItemInBags
+CooldownsTab._CalculateFulfillmentPlan  = CdMail_CalculateFulfillmentPlan
+
 if not StaticPopupDialogs["TOGPM_SPLIT_STACK"] then
     StaticPopupDialogs["TOGPM_SPLIT_STACK"] = {
         text = "%s",

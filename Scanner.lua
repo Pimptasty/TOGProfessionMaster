@@ -105,7 +105,12 @@ local function isObsoleteItemName(n)
     if n:lower():find("%f[%w]deprecated%f[%W]") then return true end
     if n:lower():find("%f[%w]unused%f[%W]")     then return true end
     if n:lower():match("^zz")            then return true end  -- "ZZOLD Design: ..."
-    if n:lower():find("%[ph%]", 1, true) then return true end  -- "Manual: ... [PH]"
+    -- "[ph]" is matched PLAINLY, so it must be written plainly: with the plain
+    -- flag set, string.find treats the pattern literally, so the escaped form
+    -- "%[ph%]" searched for a percent sign followed by a bracket and never
+    -- matched anything. Every "Manual: … [PH]" placeholder sailed through this
+    -- filter and persisted in SavedVariables.
+    if n:lower():find("[ph]", 1, true) then return true end  -- "Manual: ... [PH]"
     if n:lower():match("%s+old$")        then return true end  -- "Pattern: ... OLD"
     return false
 end
@@ -123,6 +128,17 @@ local function cleanRecipeName(rawName, itemLink, recipeLink)
         or extractNameFromLink(recipeLink)
         or rawName
 end
+
+-- ---------------------------------------------------------------------------
+-- Offline-test seam — the pure name/reagent helpers above. `local` because
+-- nothing outside this file calls them; not used at runtime.
+-- See Tests/scanner_names_spec.lua.
+-- ---------------------------------------------------------------------------
+Scanner._mergeReagents       = mergeReagents
+Scanner._isBogusName         = isBogusName
+Scanner._isObsoleteItemName  = isObsoleteItemName
+Scanner._extractNameFromLink = extractNameFromLink
+Scanner._cleanRecipeName     = cleanRecipeName
 
 -- Broadcast state
 Scanner._pendingBroadcast = false
@@ -293,6 +309,30 @@ function Scanner:InitDeltaSync()
         -- payloads can interleave under sync load and CRC-fail silently.
         aceAddon  = addon.lib,
         namespace = "TOGPmv3",   -- v0.7.0: bare crafters leaf, no recipemeta; was TOGPmv2 in v0.2-v0.6
+
+        -- Delivery verdict (DeltaSync MINOR 17+). WoW silently discards addon
+        -- messages under congestion, and AceComm forwards only a boolean — so a
+        -- refused send is otherwise indistinguishable from a delivered one, and a
+        -- sync that has quietly stopped working looks exactly like an idle one.
+        -- DeltaSync counts every send either way; this callback is what turns a
+        -- refusal into something visible at the moment it happens. Ignored by an
+        -- older library (an unknown config key), so no version gate is needed.
+        onSendFailed = function(info)
+            Scanner._lastSendFailure = info
+            Scanner._sendFailureCount = (Scanner._sendFailureCount or 0) + 1
+            addon:DebugPrint("Scanner: send REFUSED — did NOT arrive:",
+                info and info.prefix, info and info.distribution,
+                info and info.target or "(broadcast)", info and info.bytes, "bytes")
+            -- Surface it in the sync log the user can actually see, but only the
+            -- first few: a guildless player broadcasting on GUILD would otherwise
+            -- generate one line per message forever, which trains people to ignore
+            -- the log entirely.
+            if addon.callbacks and Scanner._sendFailureCount <= 3 then
+                addon.callbacks:Fire("SYNC_SENT", "guild", 0,
+                    "|cffff4444REFUSED|r " .. tostring(info and info.channelType or "?")
+                    .. " — message did not arrive")
+            end
+        end,
 
         -- A guild member is asking us for data.  baseline carries the request
         -- type per the v0.2.0 protocol (see docs/v0.2.0-protocol.md §5):
@@ -948,6 +988,29 @@ function addon:PrintDeltaSyncStatus()
     addon:Print("  P2P: " .. (DS.p2p and "|cff00ff00loaded|r" or "|cffff4444not loaded|r")
         .. "  GuildRoster: " .. (Scanner.GuildRoster and "|cff00ff00loaded|r" or "|cffff4444missing|r"))
 
+    -- Delivery accounting (DeltaSync MINOR 17+). A non-zero "refused" count is
+    -- usually the fastest answer to "why isn't sync working" — those messages
+    -- never arrived, and nothing else in the game tells you. Absent on an older
+    -- library, in which case we say so rather than printing a misleading zero.
+    if DS.sendsDelivered ~= nil or DS.sendFailures ~= nil then
+        local refused = DS.sendFailures or 0
+        addon:Print("  Sends: delivered=" .. tostring(DS.sendsDelivered or 0)
+            .. "  refused=" .. (refused > 0 and ("|cffff4444" .. refused .. "|r") or "0")
+            .. "  not-attempted=" .. tostring(DS.sendsNotAttempted or 0))
+        local f = DS.lastSendFailure
+        if f then
+            addon:Print("    \226\148\148 last refusal: " .. tostring(f.prefix)
+                .. " " .. tostring(f.distribution)
+                .. " \226\134\146 " .. tostring(f.target or "(broadcast)")
+                .. "  " .. tostring(f.bytes) .. " bytes")
+        end
+        if refused > 0 and not addon:GetGuildKey() then
+            addon:Print("    \226\148\148 |cffffd100You are not in a guild|r \226\128\148 guild broadcasts are refused by the client; this is expected.")
+        end
+    else
+        addon:Print("  Sends: |cffaaaaaano delivery accounting|r (DeltaSync < MINOR 17)")
+    end
+
     -- Defer to DeltaSync's own detailed dump when the build exposes one.
     if DS.DebugStatus then
         addon:Print(sep)
@@ -1497,13 +1560,20 @@ end
 function Scanner:ResolveProfessionId(name)
     if not name then return nil end
 
-    -- Walk the character's own profession slots first.
-    local slots = { GetProfessions() }
-    for _, idx in ipairs(slots) do
-        if idx then
-            local pName, _, _, _, _, _, skillLine = GetProfessionInfo(idx)
-            if pName == name then
-                return skillLine
+    -- Walk the character's own profession slots first. GetProfessions is the
+    -- Cata+ API and is feature-detected at every OTHER call site in this addon
+    -- (enumerateHeldProfessions below, CraftingEngine:GetKnownProfessions) —
+    -- this one wasn't, and it sits in the hot path of every trade-skill and
+    -- craft-window scan, so on a client without the global nothing would scan
+    -- at all. Absent → fall through to the static name map, same as a slot walk
+    -- that finds nothing.
+    if GetProfessions and GetProfessionInfo then
+        for _, idx in ipairs({ GetProfessions() }) do
+            if idx then
+                local pName, _, _, _, _, _, skillLine = GetProfessionInfo(idx)
+                if pName == name then
+                    return skillLine
+                end
             end
         end
     end
@@ -2450,6 +2520,9 @@ function Scanner:BuildLeafPayload(itemKey, players)
         payload.leaves[itemKey] = {
             data      = cdAbs,
             hash      = entry and entry.hash      or 0,
+            -- Revision-2 token, shipped alongside. Absent when this leaf is
+            -- still V1-only, which tells the receiver to compare on revision 1.
+            hashV2    = entry and entry.hashV2,
             updatedAt = entry and entry.updatedAt or 0,
             abs       = 1,
         }
@@ -2467,6 +2540,9 @@ function Scanner:BuildLeafPayload(itemKey, players)
         payload.leaves[itemKey] = {
             data      = group,
             hash      = entry and entry.hash      or 0,
+            -- Revision-2 token, shipped alongside. Absent when this leaf is
+            -- still V1-only, which tells the receiver to compare on revision 1.
+            hashV2    = entry and entry.hashV2,
             updatedAt = entry and entry.updatedAt or 0,
         }
         local ls = gdb.lastScan and gdb.lastScan[owner]
@@ -2488,6 +2564,9 @@ function Scanner:BuildLeafPayload(itemKey, players)
         payload.leaves[itemKey] = {
             data      = snapshot,
             hash      = entry and entry.hash      or 0,
+            -- Revision-2 token, shipped alongside. Absent when this leaf is
+            -- still V1-only, which tells the receiver to compare on revision 1.
+            hashV2    = entry and entry.hashV2,
             updatedAt = entry and entry.updatedAt or 0,
         }
         local ls = gdb.lastScan and gdb.lastScan[owner]
@@ -2506,6 +2585,9 @@ function Scanner:BuildLeafPayload(itemKey, players)
         payload.leaves[itemKey] = {
             data      = skills,
             hash      = entry and entry.hash      or 0,
+            -- Revision-2 token, shipped alongside. Absent when this leaf is
+            -- still V1-only, which tells the receiver to compare on revision 1.
+            hashV2    = entry and entry.hashV2,
             updatedAt = entry and entry.updatedAt or 0,
         }
         local ls = gdb.lastScan and gdb.lastScan[owner]
@@ -2551,6 +2633,9 @@ function Scanner:BuildLeafPayload(itemKey, players)
         payload.leaves[itemKey] = {
             data      = crafters,
             hash      = entry and entry.hash      or 0,
+            -- Revision-2 token, shipped alongside. Absent when this leaf is
+            -- still V1-only, which tells the receiver to compare on revision 1.
+            hashV2    = entry and entry.hashV2,
             updatedAt = entry and entry.updatedAt or 0,
         }
         -- Include skill ranks for everyone who crafts in this profession.
@@ -2970,6 +3055,21 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
         Scanner._subsyncPeers[senderKey] = true
     end
 
+    -- Compare two hash entries on the HIGHEST REVISION BOTH ENDS ADVERTISE.
+    -- Revision 1 renders a number and its string form identically, so a real
+    -- difference can be invisible; revision 2 types each scalar. Shipping both
+    -- and choosing per-pair is what makes the rollout coordination-free: a peer
+    -- on an older build sends no hashV2, we fall back to revision 1 and still
+    -- agree, while two updated peers get the collision-free comparison. Mirrors
+    -- DeltaSync's own HashesDiffer, which does this for the OFFER protocol.
+    -- Retiring revision 1 later is: stop minting `hash`, then delete the fallback.
+    local function hashesDiffer(mine, theirs)
+        if mine.hashV2 ~= nil and theirs.hashV2 ~= nil then
+            return mine.hashV2 ~= theirs.hashV2
+        end
+        return mine.hash ~= theirs.hash
+    end
+
     -- ── Subhashes response ─────────────────────────────────────────────────
     -- Peer broadcast their per-character sub-hashes for a roll-up parent.
     -- Compare locally, request individual leaves we differ on.
@@ -2980,7 +3080,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
         for itemKey, peerEntry in pairs(data.subhashes) do
             if type(peerEntry) == "table" and peerEntry.hash then
                 local mine    = localHashes[itemKey]
-                local differs = not mine or mine.hash ~= peerEntry.hash
+                local differs = not mine or hashesDiffer(mine, peerEntry)
                 if differs and itemKey:sub(1, 9) == "cooldown:" then
                     -- "Empty" means empty by DATA, never by hash. A leftover orphan
                     -- hash (data purged, hash lingered) must NOT let us claim we hold a
@@ -3212,7 +3312,8 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                                 -- Mark it ABSOLUTE so a legacy copy can't override it.
                                 if DS then
                                     addon.HashManager:StoreDeliveredCooldownLeaf(
-                                        DS, gdb, owner, token, deliveredTs, true)
+                                        DS, gdb, owner, token, deliveredTs, true,
+                                        leafEntry.hashV2)
                                 end
                                 changedCooldowns = true
                             end
@@ -3273,7 +3374,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                         -- Store the owner's token + updatedAt WITHOUT recomputing.
                         if DS then
                             addon.HashManager:StoreDeliveredAccountCharsLeaf(
-                                DS, gdb, owner, token, deliveredTs)
+                                DS, gdb, owner, token, deliveredTs, leafEntry.hashV2)
                         end
                         if not same then changedAlts = true end
                         touchedAltGroups = true
@@ -3342,7 +3443,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                         -- Store the owner's hash VERBATIM — never recompute on receive.
                         if DS then
                             addon.HashManager:StoreDeliveredProfessionsLeaf(
-                                DS, gdb, owner, leafEntry.hash, deliveredTs)
+                                DS, gdb, owner, leafEntry.hash, deliveredTs, leafEntry.hashV2)
                         end
                     end
                 end

@@ -24,18 +24,16 @@ optional-dependencies:
   - auctionator
   - auctioneer
   - tradeskill-master
+# Folders are bare names (no trailing slash) and globs are repo-relative with a
+# single star -- see the BigWigs packager notes in ~/.claude/CLAUDE.md.
+# Anything beginning with a dot (.git, .github, .vscode, .claude, .luarc.json,
+# ...) is pruned by the packager automatically and must not be listed here.
 ignore:
-  - .git/
-  - .github/
-  - .vscode/
-  - .claude/
-  - docs/
-  - tools/
-  - "**/*.ps1"
-  - "**/*.bat"
+  - docs
+  - tools
+  - Tests
+  - "*.ps1"
+  - "*.bat"
   - "*.code-workspace"
-  - ".luarc.json"
-  - ".markdownlint.json"
-  - ".markdownlintignore"
   - "CLAUDE.md"
   - "CHANGELOG_ARCHIVE.md"

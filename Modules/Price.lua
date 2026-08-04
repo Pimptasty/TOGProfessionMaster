@@ -157,20 +157,30 @@ local function auctioneerReady()
        and type(AucAdvanced.API.GetMarketValue) == "function"
 end
 
+-- The item forms to probe Auctioneer with, in order of preference. Built by
+-- APPENDING rather than as a literal: the real item link is nil whenever the
+-- client hasn't cached the item yet, and a literal `{ itemLink, ... }` with a
+-- nil first element makes ipairs stop on entry — so the two synthetic forms
+-- below, which exist precisely FOR the uncached case, were unreachable exactly
+-- when they were needed and Auctioneer was never queried at all.
+local function auctioneerLinks(itemId)
+    local links = {}
+    local itemLink = select(2, GetItemInfo(itemId))
+    if type(itemLink) == "string" and itemLink ~= "" then links[#links + 1] = itemLink end
+    -- Canonical WoW itemstring form (8 fields) tends to sanitize/parse
+    -- consistently across pricing addons.
+    links[#links + 1] = ("item:%d:0:0:0:0:0:0:0"):format(itemId)
+    -- Compact form as a final fallback.
+    links[#links + 1] = ("item:%d"):format(itemId)
+    return links
+end
+
 local function auctioneerLive(itemId)
     if not auctioneerReady() then return nil end
     local fn = AucAdvanced and AucAdvanced.API and AucAdvanced.API.GetMarketValue
     if type(fn) ~= "function" then return nil end
 
-    local itemLink = select(2, GetItemInfo(itemId))
-    local fallbackLinks = {
-        itemLink,
-        -- Canonical WoW itemstring form (8 fields) tends to sanitize/parse
-        -- consistently across pricing addons.
-        ("item:%d:0:0:0:0:0:0:0"):format(itemId),
-        -- Keep compact form as a final fallback.
-        ("item:%d"):format(itemId),
-    }
+    local fallbackLinks = auctioneerLinks(itemId)
     local serverKey = AucAdvanced and AucAdvanced.Resources and AucAdvanced.Resources.ServerKey
 
     local function normalizePrice(v)
@@ -215,12 +225,7 @@ local function auctioneerCached(itemId)
     if not auctioneerCachedEnabled() then return nil end
     local fn = AucAdvanced and AucAdvanced.API and AucAdvanced.API.GetAlgorithmValue
 
-    local itemLink = select(2, GetItemInfo(itemId))
-    local fallbackLinks = {
-        itemLink,
-        ("item:%d:0:0:0:0:0:0:0"):format(itemId),
-        ("item:%d"):format(itemId),
-    }
+    local fallbackLinks = auctioneerLinks(itemId)
     local serverKey = AucAdvanced and AucAdvanced.Resources and AucAdvanced.Resources.ServerKey
 
     local function normalizePrice(v)
@@ -348,12 +353,10 @@ local function tsmAppHelperEnabled()
     return Ace and Ace.db and Ace.db.profile and Ace.db.profile.useTSMAppHelper == true
 end
 
-local function tsmAppHelperLoaded()
-    if addon and addon.IsAddOnLoaded then
-        return addon:IsAddOnLoaded("TradeSkillMaster_AppHelper") == true
-    end
-    return IsAddOnLoaded and IsAddOnLoaded("TradeSkillMaster_AppHelper") == true
-end
+-- (Removed: tsmAppHelperLoaded — an addon-loaded probe that nothing ever
+-- called. Readiness is decided by the useTSM / useTSMAppHelper toggles plus the
+-- presence of TSM_API, which is the real capability test; a separate
+-- IsAddOnLoaded check added nothing and could not be reached.)
 
 local function tsmReady()
     return (tsmEnabled() or tsmAppHelperEnabled())

@@ -150,6 +150,9 @@
         "ChatTypeInfo",
 
         "ElvUI",
+        "TSM_API",
+        "HideUIPanel",
+        "ShowUIPanel",
 
         "togProfessionMaster",
 
@@ -265,7 +268,26 @@
         "BrowseDropDown",
         "BrowseSearchButton",
         "IsUsableCheckButton",
-        "ShowOnPlayerCheckButton"
+        "ShowOnPlayerCheckButton",
+
+        "package",
+        "require",
+        "os",
+        "io",
+        "arg",
+        "debug",
+        "rawset",
+        "rawget",
+        "xpcall",
+        "loadstring",
+        "collectgarbage",
+        "describe",
+        "it",
+        "setup",
+        "teardown",
+        "before_each",
+        "after_each",
+        "pending"
     ],
     "diagnostics.disable": [
         "need-check-nil",
@@ -280,6 +302,7 @@
         "_*"
     ],
     "workspace.ignoreDir": [
-        "libs"
+        "libs",
+        "Tests"
     ]
 }

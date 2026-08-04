@@ -35,40 +35,73 @@ local POOL_SIZE  = 35
 -- through several sources so the link / tooltip work even when the cached
 -- itemLink and recipeLink are both missing (true for trainer-taught recipes
 -- and for stub-created entries before recipemeta arrives).
--- Priority: entry.itemLink (real item) > entry.recipeLink (real item) >
--- GetItemInfo(entry.id) for non-spell recipes (Browser keys non-spell recipes
--- by crafted-item ID) > GetSpellLink(entry.spellId) > synthetic
--- "item:<id>" / "spell:<id>" link.
+--
+-- entry.id is ALWAYS a spell id — every key in addon.recipeDB
+-- (LibProfessionDB) is the recipe's SkillLineAbility spell, for every
+-- profession and every flavour — so it must never be handed to an item API.
+-- Doing so silently resolves whatever unrelated ITEM happens to share the
+-- number: spell 13937 (Enchant 2H Weapon - Impact) vs item 13937 (Headmaster's
+-- Charge), which is exactly what made enchant hovers show a random staff.
+-- Crafted-item recipes escaped it only because entry.itemLink is populated
+-- from craftedItemId and wins first; enchants have no crafted item, so they
+-- fell straight through to the bad GetItemInfo(entry.id) lookup.
+--
+-- Priority: entry.itemLink (crafted item) > entry.recipeLink (recipe scroll) >
+-- GetItemInfo(entry.craftedItemId) > GetSpellLink(spellId) > synthetic
+-- "spell:<id>" link.
 local function ResolveRecipeLink(entry)
     if not entry then return nil end
     if type(entry.itemLink)   == "string" and entry.itemLink:find("|Hitem:")   then return entry.itemLink   end
     if type(entry.recipeLink) == "string" and entry.recipeLink:find("|Hitem:") then return entry.recipeLink end
-    if not entry.isSpell and type(entry.id) == "number" and GetItemInfo then
-        local _, link = GetItemInfo(entry.id)
+    if type(entry.craftedItemId) == "number" and GetItemInfo then
+        local _, link = GetItemInfo(entry.craftedItemId)
         if link then return link end
     end
-    local spellId = entry.spellId or (entry.isSpell and entry.id) or nil
-    if spellId and GetSpellLink then
+    -- entry.id is a recipeDB key, i.e. a spell id, with or without the isSpell
+    -- flag — deliberately NOT gated on the flag, so an entry built before the
+    -- flag existed still resolves as a spell instead of falling through to an
+    -- item lookup.
+    local spellId = entry.spellId or entry.id
+    if type(spellId) == "number" and GetSpellLink then
         local link = GetSpellLink(spellId)
         if link then return link end
     end
     -- Synthetic minimal link. Won't carry the proper colour or stats but
     -- will at least populate chat with something the user can paste.
-    if not entry.isSpell and type(entry.id) == "number" then
-        return "|cff71d5ff|Hitem:" .. entry.id .. "|h[" .. (entry.name or ("#" .. entry.id)) .. "]|h|r"
-    elseif spellId then
+    if spellId then
         return "|cff71d5ff|Hspell:" .. spellId .. "|h[" .. (entry.name or ("#" .. spellId)) .. "]|h|r"
     end
     return nil
 end
 
+-- Anchor the recipe's SPELL tooltip (the trade-skill spell: description +
+-- reagents). SetSpellByID isn't guaranteed on every Classic flavour, so fall
+-- back to the "spell:<id>" hyperlink form, which every client resolves (the
+-- same call CooldownsTab's popup uses). Returns true when something was set.
+local function SetSpellTooltip(tooltip, spellId)
+    if type(spellId) ~= "number" then return false end
+    if tooltip.SetSpellByID then
+        tooltip:SetSpellByID(spellId)
+    else
+        tooltip:SetHyperlink("spell:" .. spellId)
+    end
+    return true
+end
+
+-- Offline-test seam (Tests/browserlink_spec.lua). These file-locals carry the
+-- "is this number a spell id or an item id?" decision that made enchant hovers
+-- resolve an unrelated item, so the suite drives them directly. Unused at
+-- runtime — the addon always calls the locals.
+BrowserTab._ResolveRecipeLink = ResolveRecipeLink
+BrowserTab._SetSpellTooltip   = SetSpellTooltip
+
 -- Append the brand-coloured [TOGPM] crafters + IDs lines to GameTooltip
 -- for a BrowserTab entry. Pulls itemID and spellID from the entry, then
 -- defers to addon.Tooltip's shared helpers — same code paths the global
 -- item-hover tooltip uses, so Browser tooltips look identical to AH /
--- bag / chat-link tooltips. Crafters line only fires for item-keyed
--- entries (item-tooltip hook can't resolve crafters from a spell id);
--- IDs line always fires (gated on the user's tooltipShowIds setting).
+-- bag / chat-link tooltips. Crafters line only fires for recipes that
+-- produce an item (the item-tooltip hook resolves crafters from an item
+-- id, not a spell id); IDs line always fires (gated on tooltipShowIds).
 local function AppendBrandTooltipLines(entry)
     if not entry then return end
     -- Enriched effect text ("+5 Weapon Damage", "+12 Agility", "Mining") from
@@ -78,20 +111,24 @@ local function AppendBrandTooltipLines(entry)
     if entry.effect and entry.effect ~= "" then
         GameTooltip:AddLine(entry.effect, 0.4, 1, 0.4, true)
     end
-    -- Crafters line (only meaningful for item-keyed recipes).
-    if not entry.isSpell and type(entry.id) == "number" and addon.Tooltip.AppendCrafters then
-        addon.Tooltip.AppendCrafters(GameTooltip, entry.id)
+    -- Crafters line — keyed by the CRAFTED item, which is what the tooltip is
+    -- actually showing (AppendCraftersNow re-verifies via GameTooltip:GetItem
+    -- and bails on a mismatch). entry.id is a spell id and must never be used
+    -- here: it silently resolved an unrelated item and the line never appeared.
+    -- Enchants have no crafted item, so they legitimately get no crafters line
+    -- (the row / detail panel already lists them).
+    local craftedId = entry.craftedItemId
+    if type(craftedId) == "number" and addon.Tooltip.AppendCrafters then
+        addon.Tooltip.AppendCrafters(GameTooltip, craftedId)
     end
-    -- IDs line. For item-keyed entries, entry.id IS the item id and
-    -- entry.spellId is the cast spell. For spell-keyed entries (Enchanting
-    -- on Classic, every recipe on TBC), entry.id IS the spell id; surface
-    -- it as spellId in that case.
+    -- IDs line. entry.id is the recipe's spell id (every addon.recipeDB key
+    -- is); the item id, when the recipe produces one, is entry.craftedItemId.
     if addon.Tooltip.AppendBrandIds then
-        local itemID  = (not entry.isSpell) and entry.id or nil
-        local spellID = entry.spellId or (entry.isSpell and entry.id) or nil
-        addon.Tooltip.AppendBrandIds(GameTooltip, itemID, spellID)
+        local spellID = entry.spellId or entry.id
+        addon.Tooltip.AppendBrandIds(GameTooltip, craftedId, spellID)
     end
 end
+BrowserTab._AppendBrandTooltipLines = AppendBrandTooltipLines   -- test seam, see above
 
 -- Detail panel constants
 local DP_W    = 268   -- outer width of the right detail panel
@@ -588,6 +625,14 @@ local function BuildFullList(profId, viewMode, opts)
                                       or (meta.difficulty and meta.difficulty[1])
                     table.insert(list, {
                         id            = recipeId,
+                        -- Every addon.recipeDB key is the recipe's trade-skill
+                        -- SPELL id (LibProfessionDB builds them from
+                        -- SkillLineAbility), on every profession and every
+                        -- flavour — record that explicitly so no consumer
+                        -- mistakes `id` for an item id. The crafted item, when
+                        -- there is one, is craftedItemId below.
+                        spellId       = recipeId,
+                        isSpell       = true,
                         name          = name,
                         reqSkill      = reqSkill,
                         effect        = effect,
@@ -630,6 +675,31 @@ local function BuildFullList(profId, viewMode, opts)
     table.sort(list, function(a, b) return a.name < b.name end)
     return list
 end
+
+-- ---------------------------------------------------------------------------
+-- Offline-test seam
+--
+-- Everything above this line is the tab's LOGIC half — the recipe-list pipeline,
+-- the search and tier filters, the cache key — and it touches no frame at all
+-- (the first CreateFrame in this file is in Draw, below). It is `local` only
+-- because nothing outside the file needs it at runtime, which also put it out of
+-- reach of the spec suite. Exposing it here is what makes it testable WITHOUT
+-- relocating it: a move would buy nothing a name doesn't, and would mean a new
+-- file in all five .toc load orders. Not used by the addon at runtime — every
+-- caller below uses the local directly.
+-- See Tests/browserlist_spec.lua.
+-- ---------------------------------------------------------------------------
+BrowserTab._BuildFullList          = BuildFullList
+BrowserTab._FilterList             = FilterList
+BrowserTab._FilterTiers            = FilterTiers
+BrowserTab._TierBandKey            = TierBandKey
+BrowserTab._TierBandLabel          = TierBandLabel
+BrowserTab._listCacheKey           = listCacheKey
+BrowserTab._CollectRecipesForView  = CollectRecipesForView
+BrowserTab._GetProfDropdownEntries = GetProfDropdownEntries
+BrowserTab._ResolveReagentItemId   = ResolveReagentItemId
+BrowserTab._ResolveReagentItemLink = ResolveReagentItemLink
+BrowserTab._SKILL_TIER_BANDS       = SKILL_TIER_BANDS
 
 -- ---------------------------------------------------------------------------
 -- Draw
@@ -1350,6 +1420,12 @@ function BrowserTab:FillShoppingListSection(container)
                 addon.Tooltip.Owner(f)
                 GameTooltip:SetHyperlink(link)
                 GameTooltip:Show()
+            elseif type(sid) == "number" then
+                -- No crafted item (enchants): the shopping-list key IS the
+                -- recipe's spell id, so show the spell tooltip rather than
+                -- leaving the row with no hover at all.
+                addon.Tooltip.Owner(f)
+                if SetSpellTooltip(GameTooltip, sid) then GameTooltip:Show() end
             end
         end)
         f:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1816,18 +1892,18 @@ function BrowserTab:BuildPool(parent)
                 -- Custom-built tooltip: add the brand-colored crafters + IDs
                 -- lines as the LAST content so they sit at the bottom. The
                 -- conditional inside AppendBrandTooltipLines handles the
-                -- isSpell branch (skips crafters for spell-keyed entries).
+                -- crafted-item branch (no crafters line for enchants, which
+                -- produce no item).
                 AppendBrandTooltipLines(entry)
                 GameTooltip:Show()
                 return
             elseif type(entry.itemLink) == "string" and entry.itemLink:find("|Hitem:") then
                 GameTooltip:SetHyperlink(entry.itemLink)
-            elseif entry.spellId then
-                GameTooltip:SetSpellByID(entry.spellId)
-            elseif entry.isSpell then
-                GameTooltip:SetSpellByID(entry.id)
-            else
-                GameTooltip:SetHyperlink("item:" .. entry.id)
+            elseif not SetSpellTooltip(GameTooltip, entry.spellId or entry.id) then
+                -- No link, no spell id: name-only so the hover still says
+                -- something. Never "item:<entry.id>" — entry.id is a spell id
+                -- and that lookup lands on an unrelated item.
+                GameTooltip:SetText(entry.name or "", 1, 1, 1, 1, false)
             end
             -- For SetHyperlink branches the global tooltip hook will fire on
             -- Show() and add its own brand crafters+IDs (the hook dedups via
@@ -2132,7 +2208,7 @@ function BrowserTab:DrawDetail(entry)
 
     -- Tooltip + shift-click to insert link on the header button.
     -- ResolveRecipeLink falls back through itemLink → recipeLink →
-    -- GetItemInfo(entry.id) → GetSpellLink → synthetic "item:<id>" so
+    -- GetItemInfo(craftedItemId) → GetSpellLink → synthetic "spell:<id>" so
     -- the click always produces a link. The previous behaviour bound NO
     -- click handler when both itemLink and recipeLink were missing,
     -- silently swallowing shift-clicks on trainer-taught recipes and on
@@ -2140,18 +2216,10 @@ function BrowserTab:DrawDetail(entry)
     self._dpHdrBtn:SetScript("OnEnter", function()
         addon.Tooltip.Owner(self._dpHdrBtn)
         local link = ResolveRecipeLink(entry)
+        local sid  = link and tonumber(link:match("|Hspell:(%d+)"))
         if link and link:find("|Hitem:") then
             GameTooltip:SetHyperlink(link)
-        elseif link and link:find("|Hspell:") then
-            local sid = tonumber(link:match("|Hspell:(%d+)"))
-            if sid then
-                GameTooltip:SetSpellByID(sid)
-            else
-                GameTooltip:SetText(entry.name or "", 1, 1, 1, 1, false)
-            end
-        elseif entry.spellId then
-            GameTooltip:SetSpellByID(entry.spellId)
-        else
+        elseif not SetSpellTooltip(GameTooltip, sid or entry.spellId or entry.id) then
             GameTooltip:SetText(entry.name or "", 1, 1, 1, 1, false)
         end
         -- Brand crafters + IDs lines at the bottom — same helper used by
@@ -2521,8 +2589,11 @@ function BrowserTab:UpdateVirtualRows()
             -- width allows, then a greyed "+N" for the rest.
             fitCrafterText(f.crafterLbl, entry.crafters, colorOnline, colorOffline, colorYou)
 
-            -- Bank button: show if the crafted item itself has bank stock
-            local craftedId = not entry.isSpell and entry.id or nil
+            -- Bank button: show if the crafted item itself has bank stock.
+            -- Keyed by craftedItemId — entry.id is the recipe's spell id, so
+            -- the old `not entry.isSpell and entry.id` asked the bank for
+            -- stock of whatever item shares that number.
+            local craftedId = entry.craftedItemId
             if addon.Bank and craftedId and addon.Bank.GetStock(craftedId) > 0 then
                 f.bankBtn:SetScript("OnClick", function()
                     addon.Bank.ShowRequestDialog(craftedId, entry.name or "", entry.itemLink)

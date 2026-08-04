@@ -621,6 +621,20 @@ end
 -- Thin alias kept for the existing call sites below; the real work
 -- (including the Dropdown/EditBox label-area mouse trick) lives in the
 -- shared addon.GUI.AttachTooltip in GUI/SharedWidgets.lua.
+-- ---------------------------------------------------------------------------
+-- Offline-test seam — the frame-free half (missing-set computation, source
+-- formatting, the character/profession pickers). `local` only because nothing
+-- outside the file calls them; not used at runtime.
+-- See Tests/missingrecipes_spec.lua.
+-- ---------------------------------------------------------------------------
+MissingRecipesTab._BuildMissingList             = BuildMissingList
+MissingRecipesTab._FormatSources                = FormatSources
+MissingRecipesTab._HasNonTrainerSource          = HasNonTrainerSource
+MissingRecipesTab._CharShortName                = CharShortName
+MissingRecipesTab._GetCharactersWithProfessions = GetCharactersWithProfessions
+MissingRecipesTab._GetProfessionsForCharacter   = GetProfessionsForCharacter
+MissingRecipesTab._GetGuildProfessions          = GetGuildProfessions
+
 local function AttachWidgetTooltip(widget, title, desc)
     addon.GUI.AttachTooltip(widget, title, desc)
 end

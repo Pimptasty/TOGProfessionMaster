@@ -41,18 +41,40 @@ local function ensureHashes(gdb)
     return gdb.hashes
 end
 
---- Write a hash entry only if the new (hash, updatedAt) tuple differs from
---- what's already stored.  Idempotent for no-op recomputations.
+--- Write a hash entry only if the new (hash, hashV2, updatedAt) tuple differs
+--- from what's already stored.  Idempotent for no-op recomputations.
 --- Returns true if the entry was written, false if it was a no-op.
-local function setEntry(hashes, key, hash, updatedAt)
+local function setEntry(hashes, key, hash, updatedAt, hashV2)
     local existing = hashes[key]
     if existing
        and existing.hash == hash
+       and existing.hashV2 == hashV2
        and existing.updatedAt == updatedAt then
         return false
     end
-    hashes[key] = { hash = hash, updatedAt = updatedAt }
+    hashes[key] = { hash = hash, hashV2 = hashV2, updatedAt = updatedAt }
     return true
+end
+
+--- Mint BOTH hash revisions for a value.
+---
+--- Revision 1 renders a number and its string form identically, so `{v = 1}`
+--- and `{v = "1"}` hash the same and a real difference is invisible. Revision 2
+--- (DeltaSync MINOR 16+) types each scalar. Both ship side by side: every
+--- comparison — DeltaSync's own OFFER protocol and our subhash diff alike —
+--- uses the highest revision BOTH ends advertise, so a peer on an older build
+--- (which sends only `hash`) still agrees with us, and two updated peers get the
+--- collision-free comparison. That is what lets revision 1 eventually retire:
+--- drop it from this one function and delete the fallbacks.
+---
+--- Falls back to revision 1 alone on a DeltaSync without MakeHashEntry, in which
+--- case hashV2 is nil everywhere and every comparison stays on revision 1.
+local function mint(DS, data)
+    if DS.MakeHashEntry then
+        local e = DS:MakeHashEntry(data, nil)
+        return e.hash, e.hashV2
+    end
+    return DS:ComputeHash(data), nil
 end
 
 --- Look up a content-derived timestamp from gdb.lastScan, with 0 fallback.
@@ -120,24 +142,20 @@ local function allProfessionSkills(gdb, charKey)
     return out
 end
 
---- Hash for skills:<charKey> — that character's gathering-profession skill levels.
-function HashManager:ComputeCharSkillsHash(DS, gdb, charKey)
-    return DS:ComputeHash(gatheringSkills(gdb, charKey))
-end
-
 --- Payload map for skills:<charKey> (what the leaf ships). Mirrors the hashed shape.
+---
+--- There is deliberately no ComputeCharSkillsHash entry point beside this. The hash
+--- is minted only in InvalidateCharSkills, through mint(), which stamps BOTH hash
+--- revisions — a leaf minted through a revision-1-only helper would carry no hashV2
+--- and silently drop its whole roll-up back to revision 1 (see rollupOverV2).
 function HashManager:GetGatheringSkills(gdb, charKey)
     return gatheringSkills(gdb, charKey)
 end
 
---- Hash for professions:<charKey> — the character's full profession snapshot.
---- Owner-MINTED only; peers adopt it verbatim via StoreDeliveredProfessionsLeaf and
---- NEVER recompute it on receive (same owner-authoritative rule as cooldowns).
-function HashManager:ComputeCharProfessionsHash(DS, gdb, charKey)
-    return DS:ComputeHash(allProfessionSkills(gdb, charKey))
-end
-
 --- Payload map for professions:<charKey> (what the leaf ships). Mirrors the hashed shape.
+--- Owner-MINTED only (InvalidateCharProfessions); peers adopt the hash verbatim via
+--- StoreDeliveredProfessionsLeaf and NEVER recompute it on receive — the same
+--- owner-authoritative rule as cooldowns, and the same no-V1-only-path rule as above.
 function HashManager:GetProfessionSnapshot(gdb, charKey)
     return allProfessionSkills(gdb, charKey)
 end
@@ -145,7 +163,13 @@ end
 --- Hash for crafters:<profId> — crafter membership map for one profession.
 -- Independent of recipe metadata so the metadata leaf can stay stable while
 -- crafter membership changes (the common case).
-function HashManager:ComputeCraftersHash(DS, gdb, profId)
+--- The hashed SHAPE of a profession's crafter membership. Split out from the
+--- hash itself so both revisions mint from one construction.
+--- NOTE the deliberate `crafters[ck] = true`: a stored crafter value is a guild
+--- TAG STRING on a current client and a bare `true` on an old one, so
+--- normalising it here is what keeps the two computing the same hash. It also
+--- means this leaf can never hit the revision-1 number/string collision.
+local function craftersMap(gdb, profId)
     local map = {}
     if gdb.recipes and gdb.recipes[profId] then
         for recipeId, rd in pairs(gdb.recipes[profId]) do
@@ -162,7 +186,11 @@ function HashManager:ComputeCraftersHash(DS, gdb, profId)
             end
         end
     end
-    return DS:ComputeHash(map)
+    return map
+end
+
+function HashManager:ComputeCraftersHash(DS, gdb, profId)
+    return DS:ComputeHash(craftersMap(gdb, profId))
 end
 
 --- Per-(profession, player) sub-hash map for the optional player-level drill-down
@@ -219,6 +247,32 @@ local function rollupOver(hashes, prefix, DS)
     return DS:ComputeStructuredHash(leafNums)
 end
 
+--- Revision-2 roll-up, composed from the children's V2 tokens.
+---
+--- Returns nil unless EVERY contributing child carries one. That is the whole
+--- correctness rule here: a roll-up composed from a mix of V2 tokens and V1
+--- fallbacks is not comparable to another client's mix, so two clients holding
+--- identical data would compute different V2 roll-ups and re-sync forever. When
+--- any child is still V1-only — we adopted its token verbatim from a peer on an
+--- older build — this roll-up simply advertises no V2 and both ends fall back to
+--- revision 1, which they agree on. It upgrades itself the moment the last
+--- V1-only child is replaced by a newer owner-minted one.
+local function rollupOverV2(hashes, prefix, DS)
+    if not DS.ComputeHashV2 then return nil end
+    local leafNums = {}
+    local prefLen  = #prefix
+    local any = false
+    for key, entry in pairs(hashes) do
+        if key:sub(1, prefLen) == prefix then
+            if entry.hashV2 == nil then return nil end
+            leafNums[key] = entry.hashV2
+            any = true
+        end
+    end
+    if not any then return nil end
+    return DS:ComputeStructuredHash(leafNums)
+end
+
 --- Roll-up updatedAt: max across child leaves with this prefix.
 local function rollupTime(hashes, prefix)
     local maxT     = 0
@@ -247,6 +301,24 @@ function HashManager:ComputeGuildProfessionsHash(DS, gdb)
     return rollupOver(ensureHashes(gdb), "professions:", DS)
 end
 
+--- Recompose a roll-up from the STORED child tokens — never by re-hashing data.
+--- That is the rule the whole owner-authoritative model rests on: an adopted
+--- token must reach the roll-up exactly as its owner minted it, or two clients
+--- holding the same data compute different roll-ups and never converge. One
+--- helper so the prefix and roll-up key can't drift apart at ten call sites.
+local ROLLUP_OF = {
+    ["cooldown:"]     = "guild:cooldowns",
+    ["accountchars:"] = "guild:accountchars",
+    ["skills:"]       = "guild:skills",
+    ["professions:"]  = "guild:professions",
+}
+local function refreshRollup(hashes, prefix, DS)
+    setEntry(hashes, ROLLUP_OF[prefix],
+        rollupOver(hashes, prefix, DS),
+        rollupTime(hashes, prefix),
+        rollupOverV2(hashes, prefix, DS))
+end
+
 -- ---------------------------------------------------------------------------
 -- Targeted invalidation
 -- Each helper computes the new (hash, updatedAt) tuple from current content
@@ -256,15 +328,11 @@ end
 --- After a cooldown scan or merge for one character.
 function HashManager:InvalidateCharCooldowns(DS, gdb, charKey)
     local hashes = ensureHashes(gdb)
-    local hash   = self:ComputeCharCooldownHash(DS, gdb, charKey)
+    local hash, hashV2 = mint(DS, gdb.cooldowns and gdb.cooldowns[charKey] or {})
     local ts     = lastScan(gdb, charKey, "cooldowns")
-    local wrote  = setEntry(hashes, "cooldown:" .. charKey, hash, ts)
+    local wrote  = setEntry(hashes, "cooldown:" .. charKey, hash, ts, hashV2)
     -- Roll-up only needs to recompute when a child changed.
-    if wrote then
-        setEntry(hashes, "guild:cooldowns",
-            self:ComputeGuildCooldownsHash(DS, gdb),
-            rollupTime(hashes, "cooldown:"))
-    end
+    if wrote then refreshRollup(hashes, "cooldown:", DS) end
 end
 
 --- Adopt a cooldown leaf hash delivered by a peer VERBATIM (v0.10.11 owner-
@@ -282,17 +350,17 @@ end
 --- `isAbs` records whether this token came from the new ABSOLUTE format or the
 --- legacy relative one, so a drift-prone legacy copy can never override an
 --- authoritative absolute one for the same owner (the receiver checks entry.abs).
-function HashManager:StoreDeliveredCooldownLeaf(DS, gdb, ownerKey, token, updatedAt, isAbs)
+--- `tokenV2` is the owner's revision-2 token, adopted verbatim alongside the
+--- revision-1 one. Absent when the owner is on an older build — in which case
+--- this leaf stays V1-only and every roll-up it contributes to falls back to
+--- revision 1 until the owner upgrades and re-mints.
+function HashManager:StoreDeliveredCooldownLeaf(DS, gdb, ownerKey, token, updatedAt, isAbs, tokenV2)
     local hashes = ensureHashes(gdb)
-    local wrote  = setEntry(hashes, "cooldown:" .. ownerKey, token, updatedAt or 0)
+    local wrote  = setEntry(hashes, "cooldown:" .. ownerKey, token, updatedAt or 0, tokenV2)
     -- Refresh the format flag even on a no-op (hash, updatedAt) write.
     local entry = hashes["cooldown:" .. ownerKey]
     if entry then entry.abs = isAbs and true or nil end
-    if wrote then
-        setEntry(hashes, "guild:cooldowns",
-            self:ComputeGuildCooldownsHash(DS, gdb),
-            rollupTime(hashes, "cooldown:"))
-    end
+    if wrote then refreshRollup(hashes, "cooldown:", DS) end
     return wrote
 end
 
@@ -302,14 +370,10 @@ end
 --- StoreDeliveredAccountCharsLeaf.
 function HashManager:InvalidateAccountChars(DS, gdb, charKey)
     local hashes = ensureHashes(gdb)
-    local hash   = self:ComputeAccountCharsHash(DS, gdb, charKey)
+    local hash, hashV2 = mint(DS, gdb.altClaims and gdb.altClaims[charKey] or {})
     local ts     = lastScan(gdb, charKey, "accountchars")
-    local wrote  = setEntry(hashes, "accountchars:" .. charKey, hash, ts)
-    if wrote then
-        setEntry(hashes, "guild:accountchars",
-            self:ComputeGuildAccountCharsHash(DS, gdb),
-            rollupTime(hashes, "accountchars:"))
-    end
+    local wrote  = setEntry(hashes, "accountchars:" .. charKey, hash, ts, hashV2)
+    if wrote then refreshRollup(hashes, "accountchars:", DS) end
 end
 
 --- Adopt an accountchars leaf hash delivered by a peer VERBATIM (owner-authoritative,
@@ -321,14 +385,10 @@ end
 --- has already replaced gdb.altClaims[owner] with the delivered array; here we just
 --- record the owner's token + updatedAt and recompose the guild:accountchars roll-up
 --- from stored leaf hashes (no data re-hash).
-function HashManager:StoreDeliveredAccountCharsLeaf(DS, gdb, ownerKey, token, updatedAt)
+function HashManager:StoreDeliveredAccountCharsLeaf(DS, gdb, ownerKey, token, updatedAt, tokenV2)
     local hashes = ensureHashes(gdb)
-    local wrote  = setEntry(hashes, "accountchars:" .. ownerKey, token, updatedAt or 0)
-    if wrote then
-        setEntry(hashes, "guild:accountchars",
-            self:ComputeGuildAccountCharsHash(DS, gdb),
-            rollupTime(hashes, "accountchars:"))
-    end
+    local wrote  = setEntry(hashes, "accountchars:" .. ownerKey, token, updatedAt or 0, tokenV2)
+    if wrote then refreshRollup(hashes, "accountchars:", DS) end
     return wrote
 end
 
@@ -337,14 +397,10 @@ end
 --- (max-rank-wins), so recompute here is safe and old clients interoperate.
 function HashManager:InvalidateCharSkills(DS, gdb, charKey)
     local hashes = ensureHashes(gdb)
-    local hash   = self:ComputeCharSkillsHash(DS, gdb, charKey)
+    local hash, hashV2 = mint(DS, gatheringSkills(gdb, charKey))
     local ts     = lastScan(gdb, charKey, "skills")
-    local wrote  = setEntry(hashes, "skills:" .. charKey, hash, ts)
-    if wrote then
-        setEntry(hashes, "guild:skills",
-            self:ComputeGuildSkillsHash(DS, gdb),
-            rollupTime(hashes, "skills:"))
-    end
+    local wrote  = setEntry(hashes, "skills:" .. charKey, hash, ts, hashV2)
+    if wrote then refreshRollup(hashes, "skills:", DS) end
 end
 
 --- Owner MINT of the professions:<charKey> leaf — call ONLY on the character's own
@@ -353,14 +409,10 @@ end
 --- time. Everyone else adopts the result verbatim via StoreDeliveredProfessionsLeaf.
 function HashManager:InvalidateCharProfessions(DS, gdb, charKey)
     local hashes = ensureHashes(gdb)
-    local hash   = self:ComputeCharProfessionsHash(DS, gdb, charKey)
+    local hash, hashV2 = mint(DS, allProfessionSkills(gdb, charKey))
     local ts     = lastScan(gdb, charKey, "professions")
-    local wrote  = setEntry(hashes, "professions:" .. charKey, hash, ts)
-    if wrote then
-        setEntry(hashes, "guild:professions",
-            self:ComputeGuildProfessionsHash(DS, gdb),
-            rollupTime(hashes, "professions:"))
-    end
+    local wrote  = setEntry(hashes, "professions:" .. charKey, hash, ts, hashV2)
+    if wrote then refreshRollup(hashes, "professions:", DS) end
 end
 
 --- Adopt a professions leaf hash delivered by a peer VERBATIM (v1.0.3 owner-
@@ -371,14 +423,10 @@ end
 --- instead of churning. The caller has already replaced gdb.skills[owner] with the
 --- delivered snapshot; here we just record the owner's token + updatedAt and
 --- recompose the guild:professions roll-up from stored leaf hashes (no data re-hash).
-function HashManager:StoreDeliveredProfessionsLeaf(DS, gdb, ownerKey, token, updatedAt)
+function HashManager:StoreDeliveredProfessionsLeaf(DS, gdb, ownerKey, token, updatedAt, tokenV2)
     local hashes = ensureHashes(gdb)
-    local wrote  = setEntry(hashes, "professions:" .. ownerKey, token, updatedAt or 0)
-    if wrote then
-        setEntry(hashes, "guild:professions",
-            self:ComputeGuildProfessionsHash(DS, gdb),
-            rollupTime(hashes, "professions:"))
-    end
+    local wrote  = setEntry(hashes, "professions:" .. ownerKey, token, updatedAt or 0, tokenV2)
+    if wrote then refreshRollup(hashes, "professions:", DS) end
     return wrote
 end
 
@@ -396,17 +444,13 @@ function HashManager:DropOrphanLeaf(DS, gdb, itemKey)
     if not hashes or not hashes[itemKey] then return false end
     hashes[itemKey] = nil
     if itemKey:sub(1, 9) == "cooldown:" then
-        setEntry(hashes, "guild:cooldowns",
-            self:ComputeGuildCooldownsHash(DS, gdb), rollupTime(hashes, "cooldown:"))
+        refreshRollup(hashes, "cooldown:", DS)
     elseif itemKey:sub(1, 12) == "professions:" then
-        setEntry(hashes, "guild:professions",
-            self:ComputeGuildProfessionsHash(DS, gdb), rollupTime(hashes, "professions:"))
+        refreshRollup(hashes, "professions:", DS)
     elseif itemKey:sub(1, 7) == "skills:" then
-        setEntry(hashes, "guild:skills",
-            self:ComputeGuildSkillsHash(DS, gdb), rollupTime(hashes, "skills:"))
+        refreshRollup(hashes, "skills:", DS)
     elseif itemKey:sub(1, 13) == "accountchars:" then
-        setEntry(hashes, "guild:accountchars",
-            self:ComputeGuildAccountCharsHash(DS, gdb), rollupTime(hashes, "accountchars:"))
+        refreshRollup(hashes, "accountchars:", DS)
     end
     -- crafters:<profId> has no roll-up (it rides the L0 map directly) — the bare
     -- removal above is enough.
@@ -430,7 +474,8 @@ function HashManager:InvalidateProfession(DS, gdb, profId)
         end
     end
 
-    setEntry(hashes, "crafters:" .. key, self:ComputeCraftersHash(DS, gdb, profId), maxTs)
+    local hash, hashV2 = mint(DS, craftersMap(gdb, profId))
+    setEntry(hashes, "crafters:" .. key, hash, maxTs, hashV2)
 end
 
 -- ---------------------------------------------------------------------------
@@ -560,30 +605,25 @@ function HashManager:RebuildOnFirstLoad(DS, gdb)
     -- helpers only refresh the roll-up when their leaf changed, so a fresh
     -- recompute here covers the case where leaves existed but the roll-up
     -- was lost (e.g., v0.1.x guild:cooldowns survived but is now stale).
-    setEntry(hashes, "guild:cooldowns",
-        self:ComputeGuildCooldownsHash(DS, gdb),
-        rollupTime(hashes, "cooldown:"))
-    setEntry(hashes, "guild:accountchars",
-        self:ComputeGuildAccountCharsHash(DS, gdb),
-        rollupTime(hashes, "accountchars:"))
-    setEntry(hashes, "guild:skills",
-        self:ComputeGuildSkillsHash(DS, gdb),
-        rollupTime(hashes, "skills:"))
-    setEntry(hashes, "guild:professions",
-        self:ComputeGuildProfessionsHash(DS, gdb),
-        rollupTime(hashes, "professions:"))
+    refreshRollup(hashes, "cooldown:", DS)
+    refreshRollup(hashes, "accountchars:", DS)
+    refreshRollup(hashes, "skills:", DS)
+    refreshRollup(hashes, "professions:", DS)
 end
 
 -- ---------------------------------------------------------------------------
 -- Map accessors (consumed by Scanner P2P callbacks)
 -- ---------------------------------------------------------------------------
 
+-- Both hash revisions ride on the wire. `hashV2` is simply absent for a leaf we
+-- adopted from a peer on an older build, and a receiver falls back to revision 1
+-- for that key — which is exactly how the rollout stays coordination-free.
 local function copyEntries(hashes, prefix)
     local map = {}
     local prefLen = #prefix
     for key, entry in pairs(hashes) do
         if key:sub(1, prefLen) == prefix then
-            map[key] = { hash = entry.hash, updatedAt = entry.updatedAt }
+            map[key] = { hash = entry.hash, hashV2 = entry.hashV2, updatedAt = entry.updatedAt }
         end
     end
     return map
@@ -618,13 +658,13 @@ function HashManager:GetL0BroadcastMap(gdb)
     -- Per-profession (crafters only)
     for key, entry in pairs(hashes) do
         if key:sub(1, 9) == "crafters:" then
-            map[key] = { hash = entry.hash, updatedAt = entry.updatedAt }
+            map[key] = { hash = entry.hash, hashV2 = entry.hashV2, updatedAt = entry.updatedAt }
         end
     end
     -- Roll-ups
     for _, key in ipairs({ "guild:cooldowns", "guild:accountchars", "guild:skills", "guild:professions" }) do
         local e = hashes[key]
-        if e then map[key] = { hash = e.hash, updatedAt = e.updatedAt } end
+        if e then map[key] = { hash = e.hash, hashV2 = e.hashV2, updatedAt = e.updatedAt } end
     end
     return map
 end
@@ -647,14 +687,17 @@ end
 --- real computed hash naturally replaces the placeholder.
 function HashManager:PadMissingProfessionPlaceholders(DS, map)
     if not DS or not addon.CRAFTING_PROFS then return end
-    local placeholderHash = DS:ComputeHash({})
+    -- Both revisions of the empty-table hash, so a placeholder compares against a
+    -- peer's real entry on whichever revision they share. A V1-only placeholder
+    -- against a V2-carrying peer would fall back to revision 1 unnecessarily.
+    local phHash, phHashV2 = mint(DS, {})
     for profId in pairs(addon.CRAFTING_PROFS) do
         local available = (not addon.IsProfessionAvailable)
                        or addon.IsProfessionAvailable(profId)
         if available then
             local crKey = "crafters:" .. tostring(profId)
             if not map[crKey] then
-                map[crKey] = { hash = placeholderHash, updatedAt = 0 }
+                map[crKey] = { hash = phHash, hashV2 = phHashV2, updatedAt = 0 }
             end
         end
     end
@@ -673,11 +716,16 @@ function HashManager:HasContent(gdb, itemKey)
     -- false here would break the drill-down chain entirely: peers wouldn't
     -- offer for guild:* hashes, so the broadcaster's onSyncAccepted never
     -- fires, so the subhashes broadcast never happens.
+    -- Every branch returns a real boolean. `a and b ~= nil` yields NIL when `a`
+    -- is nil, so a predicate written that way answers "no" three different ways
+    -- (false / nil) depending on which table happens to be missing — fine for
+    -- `if HasContent(...)`, a trap for any caller that compares against false or
+    -- serialises the result.
     if itemKey == "guild:cooldowns" then
-        return gdb.cooldowns and next(gdb.cooldowns) ~= nil
+        return gdb.cooldowns ~= nil and next(gdb.cooldowns) ~= nil
     end
     if itemKey == "guild:accountchars" then
-        return gdb.altClaims and next(gdb.altClaims) ~= nil
+        return gdb.altClaims ~= nil and next(gdb.altClaims) ~= nil
     end
     if itemKey == "guild:skills" then
         -- Servable when any character has a gathering skill recorded.
@@ -700,17 +748,15 @@ function HashManager:HasContent(gdb, itemKey)
     if itemKey:sub(1, 6) == "guild:" then return false end
 
     if itemKey:sub(1, 9) == "cooldown:" then
-        local owner = itemKey:sub(10)
-        return gdb.cooldowns
-           and gdb.cooldowns[owner]
-           and next(gdb.cooldowns[owner]) ~= nil
+        local owner  = itemKey:sub(10)
+        local bucket = gdb.cooldowns and gdb.cooldowns[owner]
+        return bucket ~= nil and next(bucket) ~= nil
     end
 
     if itemKey:sub(1, 13) == "accountchars:" then
         local owner = itemKey:sub(14)
-        return gdb.altClaims
-           and type(gdb.altClaims[owner]) == "table"
-           and #gdb.altClaims[owner] > 0
+        local claim = gdb.altClaims and gdb.altClaims[owner]
+        return type(claim) == "table" and #claim > 0
     end
 
     if itemKey:sub(1, 12) == "professions:" then

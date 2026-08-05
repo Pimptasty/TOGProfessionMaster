@@ -103,6 +103,11 @@ end
 -- Register a probe and send it. `send` is a function returning (ok, err); we
 -- pcall it so a client-side rejection (e.g. not in a guild) is captured rather
 -- than aborting the whole run.
+--
+-- `send` receives the probe table as its second argument so a sender that has a
+-- delivery verdict available (the AceComm path — see the ace GUILD probe) can
+-- record it. The raw-API probes ignore it: SendAddonMessage's return value is
+-- the only signal there, and it is already covered by pcall.
 local function addProbe(label, send)
     local nonce = newNonce()
     local probe = {
@@ -113,7 +118,7 @@ local function addProbe(label, send)
     run.probes[#run.probes + 1] = probe
     run.byNonce[nonce] = probe
 
-    local ok, err = pcall(send, nonce .. "|" .. label)
+    local ok, err = pcall(send, nonce .. "|" .. label, probe)
     probe.sentOk  = ok
     probe.sentErr = ok and nil or tostring(err)
     return probe
@@ -140,20 +145,34 @@ local function buildReport()
     p(("|cffFF8000TOGPM CommTest|r — build %s (%s)  guild: %s"):format(
         tostring(build), ver, guild or "|cff999999none|r"))
 
-    local guildRawRecv, guildAceRecv
+    local guildRawRecv, guildAceRecv, guildAceDelivered
     for _, probe in ipairs(run.probes) do
         local status
         if not probe.sentOk then
             status = "|cffff4444SENT-FAIL|r " .. (probe.sentErr or "")
+        elseif probe.delivered == false or probe.reason == "rejected"
+                or probe.reason == "error" then
+            -- The message never reached the wire, so the server had nothing to
+            -- relay. Reporting this as "NO REPLY" would blame the core for what
+            -- the client did — the exact confusion this probe exists to resolve.
+            status = ("|cffff4444NOT SENT|r  client refused it (%s)"):format(
+                probe.reason or "refused")
         elseif probe.recv then
             status = ("|cff00ff00RECV|r  via %s from %s  (%dms)"):format(
                 probe.recvVia, probe.recvFrom, probe.recvAfter or 0)
+        elseif probe.wantsVerdict and probe.delivered == nil then
+            -- Accepted by the queue, but no terminal callback inside the listen
+            -- window. A blocked send queue looks exactly like this.
+            status = "|cffff4444NO REPLY|r  (no delivery verdict either — check /acq status)"
         else
             status = "|cffff4444NO REPLY|r"
         end
         p("  " .. pad(probe.label, 18) .. status)
         if probe.label == "raw GUILD"     then guildRawRecv = probe.recv end
-        if probe.label == "ace GUILD"     then guildAceRecv = probe.recv end
+        if probe.label == "ace GUILD"     then
+            guildAceRecv      = probe.recv
+            guildAceDelivered = probe.delivered
+        end
     end
 
     -- Verdict — focused on the GUILD hypothesis, since the live sync rides GUILD.
@@ -165,6 +184,11 @@ local function buildReport()
         p("  message never echoed back. The server core is dropping guild addon")
         p("  traffic (the suspected Cata per-channel opcode gap). Sync over GUILD")
         p("  cannot work here; a WHISPER/CHANNEL fallback is needed.")
+    elseif guildRawRecv and guildAceDelivered == false then
+        p("  |cffffd100GUILD raw works; the client REFUSED the AceComm send|r — that")
+        p("  message never reached the wire, so it says nothing about the core. Re-run")
+        p("  in a moment; if it keeps happening, check |cffFF8000/acq status|r for a send")
+        p("  queue that is blocked or counting refusals.")
     elseif guildRawRecv and guildAceRecv == false then
         p("  |cffffd100GUILD raw works but AceComm GUILD does not|r — the core relays")
         p("  guild addon messages, so the break is in the AceComm/queue/chunking")
@@ -233,8 +257,20 @@ function addon:RunCommTest(args)
             SendAddon(RAW_PREFIX, msg, "GUILD")
         end)
         if Ace.SendCommMessage then
-            addProbe("ace GUILD", function(msg)
-                Ace:SendCommMessage(ACE_PREFIX, msg, "GUILD")
+            addProbe("ace GUILD", function(msg, probe)
+                -- Take the delivery verdict (AceCommQueue-1.0 MINOR 5). Without
+                -- it a send the CLIENT refused is indistinguishable from a
+                -- message the SERVER failed to relay — both present as "NO
+                -- REPLY", and this probe exists precisely to tell those apart.
+                -- Fires once, for the whole message; may land after the listen
+                -- window closes, in which case the fields stay nil and the
+                -- report says the verdict never arrived.
+                probe.wantsVerdict = true
+                Ace:SendCommMessage(ACE_PREFIX, msg, "GUILD", nil, "NORMAL",
+                    function(_, _, _, delivered, reason)
+                        probe.delivered = delivered
+                        probe.reason    = reason
+                    end)
             end)
         end
     end

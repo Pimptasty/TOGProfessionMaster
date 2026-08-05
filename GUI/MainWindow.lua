@@ -46,16 +46,25 @@ addon.MainWindow = MainWindow
 --   addon.AceGUIFrameScripts(widget, {
 --       OnMouseDown = function(f, button) ... end,
 --   })
+-- Sentinel for "this event had NO handler before we touched it". A plain nil
+-- cannot express that: `saved[evt] = nil` stores no key at all, so the restore
+-- loop below never visits the event and OUR script stays on the widget — which
+-- is precisely the leak this helper exists to prevent, in the commonest case of
+-- all (a widget with no prior handler for the event). Found by
+-- Tests/gui_pool_spec.lua.
+local NO_PRIOR_SCRIPT = {}
+
 function addon.AceGUIFrameScripts(widget, scripts)
     if not (widget and widget.frame and scripts) then return end
     local saved = {}
     for evt, fn in pairs(scripts) do
-        saved[evt] = widget.frame:GetScript(evt)
+        saved[evt] = widget.frame:GetScript(evt) or NO_PRIOR_SCRIPT
         widget.frame:SetScript(evt, fn)
     end
     widget:SetCallback("OnRelease", function(self)
         if not self.frame then return end
         for evt, prior in pairs(saved) do
+            if prior == NO_PRIOR_SCRIPT then prior = nil end
             self.frame:SetScript(evt, prior)
         end
     end)

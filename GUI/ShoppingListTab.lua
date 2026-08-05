@@ -46,7 +46,11 @@ end
 
 --- Aggregate reagent requirements across the shopping list.
 -- Returns array of { itemId, itemName, needed, have, shortfall }
-local function BuildReagentList()
+--
+-- A method rather than a file-local so it can be tested directly: this is the
+-- arithmetic the whole tab exists to present, and everything around it is
+-- rendering. Covered by Tests/shoppinglist_spec.lua.
+function ShoppingListTab:BuildReagentList()
     local bl   = Ace.db.char.shoppingList
     local data = addon:GetCooldownData()
     local need = {}   -- [itemId] = totalNeeded
@@ -237,7 +241,7 @@ end
 -- ---------------------------------------------------------------------------
 
 function ShoppingListTab:FillMissingReagents(container)
-    local list = BuildReagentList()
+    local list = self:BuildReagentList()
 
     if #list == 0 then
         local lbl = AceGUI:Create("Label")

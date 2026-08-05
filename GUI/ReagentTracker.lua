@@ -34,7 +34,10 @@ local BANK_W  = 48
 -- separately as a "+N" annotation in the row.  Bank/mail counts are cached
 -- by ReagentWatch on BANKFRAME_CLOSED / MAIL_CLOSED so they persist between
 -- visits to the bank or mailbox.
-local function GetPlayerBagCount(itemId)
+-- Methods rather than file-locals so they can be tested directly: these two are
+-- the numbers the tracker exists to show ("need" and "have"), and everything
+-- else in this file is rendering. Covered by Tests/reagenttracker_spec.lua.
+function RT:GetPlayerBagCount(itemId)
     local total = 0
     for bag = 0, addon:GetNumBagSlots() do
         for slot = 1, addon:GetContainerNumSlots(bag) do
@@ -55,7 +58,7 @@ local function GetPlayerBagCount(itemId)
 end
 
 -- Consolidate all reagents from the shopping list into a sorted array.
-local function BuildReagentList()
+function RT:BuildReagentList()
     local sl   = Ace.db.char.shoppingList
     local byId = {}
     for _, entry in pairs(sl) do
@@ -134,7 +137,7 @@ end
 function RT:Refresh()
     if not self.frame or not self.frame:IsShown() then return end
 
-    local list = BuildReagentList()
+    local list = self:BuildReagentList()
 
     for i = #list + 1, #self._rows do
         self._rows[i]:Hide()
@@ -154,7 +157,7 @@ function RT:Refresh()
         local row = self:GetRow(i)
 
         local bankCount = addon.Bank and addon.Bank.GetStock(item.id) or 0
-        local have      = GetPlayerBagCount(item.id)
+        local have      = self:GetPlayerBagCount(item.id)
         local need      = item.need
 
         -- Icon (may be nil if not cached yet — silently blank)

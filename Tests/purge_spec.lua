@@ -23,6 +23,8 @@ setup(function()
 	env.loadModule("Data/CooldownIds.lua")
 	env.loadModule("Modules/HashManager.lua")
 	env.loadModule("Scanner.lua")
+	-- The cross-guild send verdicts land here, so the real module has to be in.
+	env.loadModule("Modules/SyncLog.lua")
 end)
 
 before_each(function()
@@ -237,6 +239,138 @@ describe("DropSisterGuildData", function()
 
 	it("ignores a nil key", function()
 		local ok = pcall(function() ns:DropSisterGuildData(nil) end)
+		assert.is_true(ok)
+	end)
+end)
+
+-- The delivery verdict on TOGPM's OWN sends (AceCommQueue-1.0 MINOR 5).
+--
+-- These two broadcasts are the only places TOGPM calls SendCommMessage itself;
+-- everything else rides DeltaSync, which runs its own OnSendResult. Until
+-- v1.0.6 they passed no callback, so a refusal went to the player's bug catcher
+-- from inside the comm layer and TOGPM learned nothing about its own federation
+-- traffic failing.
+--
+-- Scope: the library's suite proves it PRODUCES the verdict. What is ours is
+-- that we ask for one and read its five outcomes correctly — in particular that
+-- "suppressed" is not an error, since a wrapper dropping a send deliberately is
+-- the addon working as designed.
+describe("cross-guild send verdicts", function()
+	local realSend, realCanEdit, realPrint, calls
+
+	-- Stand in for the queue and hand back the verdict under test. Driving a
+	-- real refusal through the booted AceCommQueue would mean driving
+	-- ChatThrottleLib's bandwidth model as well, which is that library's own
+	-- suite's job; the contract is what is being asserted here.
+	local function sendYielding(delivered, reason)
+		ns.lib.SendCommMessage = function(_, prefix, _text, dist, _target, _prio, cb, arg)
+			calls[#calls + 1] = { prefix = prefix, dist = dist, cb = cb, arg = arg }
+			if cb then cb(arg, 0, 0, delivered, reason) end
+		end
+	end
+
+	local function failures()
+		local out = {}
+		for _, e in ipairs(ns.SyncLog:GetEntries()) do
+			if e.event == "failed" then out[#out + 1] = e end
+		end
+		return out
+	end
+
+	before_each(function()
+		realSend, realCanEdit, realPrint = ns.lib.SendCommMessage, ns.CanEditSisterGuilds, ns.Print
+		-- Quiet during setup: SetSisterGuilds broadcasts on change, and that send
+		-- is not the one under test.
+		ns.lib.SendCommMessage = function() end
+		ns.Print               = function() end
+		ns.CanEditSisterGuilds = function() return true end
+		ns:SetSisterGuilds("Sisterguild")
+		ns._seenSisterRoster = {}
+		ns.Scanner.GuildRoster = {
+			GetKnownRosters = function() return { "Horde-Testguild", "Horde-Sisterguild" } end,
+			GetRosterHash   = function() return 42 end,
+			GetRoster       = function() return { ["Bob-Testrealm"] = { class = "MAGE", level = 60 } } end,
+		}
+		ns.SyncLog:Clear()
+		calls = {}
+	end)
+
+	after_each(function()
+		ns.lib.SendCommMessage = realSend
+		ns.CanEditSisterGuilds = realCanEdit
+		ns.Print               = realPrint
+	end)
+
+	it("asks for a delivery verdict on the sister-config broadcast", function()
+		sendYielding(true, nil)
+		ns:BroadcastSisterConfig()
+		assert.equal(1, #calls)
+		assert.equal(ns.SisterCfgPrefix, calls[1].prefix)
+		assert.equal("GUILD", calls[1].dist)
+		assert.is_function(calls[1].cb)
+	end)
+
+	it("asks for a delivery verdict on the sister-roster broadcast", function()
+		sendYielding(true, nil)
+		ns:BroadcastSisterRosters()
+		assert.equal(1, #calls)
+		assert.equal(ns.SisterRosterPrefix, calls[1].prefix)
+		assert.is_function(calls[1].cb)
+	end)
+
+	it("records nothing when the message was delivered", function()
+		sendYielding(true, nil)
+		ns:BroadcastSisterConfig()
+		assert.equal(0, #failures())
+	end)
+
+	it("records a refusal to the Sync Log, naming what did not arrive", function()
+		sendYielding(false, "refused")
+		ns:BroadcastSisterConfig()
+		local f = failures()
+		assert.equal(1, #f)
+		assert.equal("guild", f[1].peer)
+		assert.is_true(f[1].detail:find("sister config", 1, true) ~= nil)
+		assert.is_true(f[1].detail:find("refused", 1, true) ~= nil)
+	end)
+
+	it("treats a deliberate suppression as success, not failure", function()
+		-- delivered == nil with reason "suppressed" is one of our own wrappers
+		-- dropping the send on purpose. Logging it would train the user to
+		-- ignore the log.
+		sendYielding(nil, "suppressed")
+		ns:BroadcastSisterConfig()
+		assert.equal(0, #failures())
+	end)
+
+	it("records the two nil verdicts that DO mean the message was lost", function()
+		for _, reason in ipairs({ "rejected", "error" }) do
+			ns.SyncLog:Clear()
+			sendYielding(nil, reason)
+			ns:BroadcastSisterConfig()
+			local f = failures()
+			assert.equal(1, #f)
+			assert.is_true(f[1].detail:find(reason, 1, true) ~= nil)
+		end
+	end)
+
+	it("names the guild whose roster failed, not just 'a roster'", function()
+		-- One broadcast pass can send several rosters; a bare "roster failed"
+		-- would not say which allied guild stopped propagating.
+		sendYielding(false, "refused")
+		ns:BroadcastSisterRosters()
+		local f = failures()
+		assert.equal(1, #f)
+		assert.is_true(f[1].detail:find("Horde-Sisterguild", 1, true) ~= nil)
+	end)
+
+	it("survives a verdict arriving before the guild DB exists", function()
+		-- The callback is the one path that can run at an arbitrary later time.
+		local saved = ns.guildDb
+		ns.guildDb = nil
+		sendYielding(false, "refused")
+		local ok = pcall(function() ns:BroadcastSisterConfig() end)
+		ns.guildDb = saved
 		assert.is_true(ok)
 	end)
 end)

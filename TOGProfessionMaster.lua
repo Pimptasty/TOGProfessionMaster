@@ -557,6 +557,20 @@ function Ace:OnInitialize()
         VC:Enable(self)
     end
 
+    -- AceCommQueue-1.0's own diagnostic surface. Nothing else registers it —
+    -- the standalone addon ships the library and its tests, with no loader file
+    -- — so unless we do it here `/acq status` does not exist in game, and a
+    -- blocked send queue can only be diagnosed from the error it eventually
+    -- throws 60s later. `status` prints per-queue inFlight, idle seconds and
+    -- refusal count, which is what identifies WHICH (prefix, distribution,
+    -- target) is stuck. The command has existed since MINOR 1, so the silent
+    -- lookup and feature test are pure defence: a missing or unexpectedly old
+    -- standalone must cost us a diagnostic, never a load-time error.
+    local ACQ = LibStub("AceCommQueue-1.0", true)
+    if ACQ and ACQ.RegisterSlashCommand then
+        ACQ:RegisterSlashCommand("/acq")
+    end
+
     addon:DebugPrint("OnInitialize complete. Version:", addon.Version)
 end
 
@@ -1651,6 +1665,39 @@ end
 
 addon.SisterCfgPrefix = "TOGPMxgc"   -- AceComm prefix (must be <= 16 chars)
 
+-- Delivery verdict for TOGPM's OWN AceComm sends — the two cross-guild
+-- broadcasts below. Everything else on the wire goes through DeltaSync, which
+-- runs its own `OnSendResult` and surfaces it via `/togpm dsstatus`; these two
+-- are the sends TOGPM makes directly, and until v1.0.6 nothing was listening.
+--
+-- AceCommQueue-1.0 MINOR 5 ends every accepted send in exactly ONE terminal
+-- callback: `delivered` is the verdict for the WHOLE message (true delivered /
+-- false refused by the client / nil never attempted) and `reason` names which.
+-- Pass no callback and the library reports a refusal through geterrorhandler()
+-- itself — correct, but it lands in the player's bug catcher attributed to the
+-- comm layer, and TOGPM learns nothing.
+--
+-- This is about VISIBILITY, not recovery. Both broadcasts are periodic (on
+-- change, plus the ~12-minute timer), so a refusal heals itself on the next
+-- tick; what was missing is any way to see that cross-guild propagation is
+-- failing. It goes to the Sync Log and the debug stream, where it's diagnosable.
+--
+-- `"suppressed"` is deliberately NOT treated as failure: it means one of our own
+-- wrappers dropped the send on purpose, and doing nothing is the correct
+-- response. `delivered` is a BOOLEAN, never an Enum.SendAddonMessageResult —
+-- AceComm discards the enum, so there is no way to learn *why* from here.
+local function OnXGuildSendResult(ctx, _sent, _total, delivered, reason)
+    if not (delivered == false or reason == "rejected" or reason == "error") then return end
+    local what = (ctx and ctx.what) or "cross-guild broadcast"
+    local why  = reason or "refused"
+    addon:DebugPrint("Cross-guild:", what, "NOT delivered (" .. why .. ")")
+    -- guildDb is nil-guarded because SyncLog writes straight into it; a send
+    -- that somehow resolves before OnInitialize must not take the callback down.
+    if addon.SyncLog and addon.guildDb then
+        addon.SyncLog:Record("failed", "guild", 0, what .. " (" .. why .. ")")
+    end
+end
+
 function addon:GetSisterGuildsTs()
     return (Ace.db and Ace.db.profile and tonumber(Ace.db.profile.sisterGuildsTs)) or 0
 end
@@ -1671,7 +1718,8 @@ function addon:BroadcastSisterConfig()
     local guilds = self:GetSisterGuilds()
     local ok, msg = pcall(function() return Ace:Serialize({ g = guilds, t = ts }) end)
     if ok and type(msg) == "string" then
-        Ace:SendCommMessage(addon.SisterCfgPrefix, msg, "GUILD")
+        Ace:SendCommMessage(addon.SisterCfgPrefix, msg, "GUILD", nil, "NORMAL",
+            OnXGuildSendResult, { what = "sister config" })
         self:DebugPrint("Cross-guild: broadcast sister config (ts", ts, ",", #guilds, "guild(s))")
     end
 end
@@ -1760,7 +1808,8 @@ function addon:BroadcastSisterRosters()
                 if #members > 0 then
                     local ok, msg = pcall(function() return Ace:Serialize({ k = key, h = hash, m = members }) end)
                     if ok and type(msg) == "string" then
-                        Ace:SendCommMessage(self.SisterRosterPrefix, msg, "GUILD")
+                        Ace:SendCommMessage(self.SisterRosterPrefix, msg, "GUILD", nil, "NORMAL",
+                            OnXGuildSendResult, { what = "sister roster " .. key })
                         -- Record our own send so we suppress next interval too
                         -- (broadcasting duty rotates rather than pinning one member).
                         self._seenSisterRoster[key] = { hash = hash, t = now }

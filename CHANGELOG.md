@@ -1,5 +1,45 @@
 # TOG Profession Master Changelog
 
+## [v1.0.6] (2026-08-04) - Finishing the comm-queue delivery contract: nothing sent is silent any more
+
+AceCommQueue-1.0 MINOR 5 turned sending from fire-and-forget into a two-way contract — every accepted send now ends in exactly one callback carrying the delivery verdict for the whole message. TOGProfessionMaster had adopted that contract for its sync traffic (through DeltaSync) but not for the three sends it makes directly, and had never registered the library's own diagnostic command. This release closes both gaps.
+
+### Bug Fixes
+
+- **A TOGPM mouse handler could keep firing inside another addon's window.** `AceGUIFrameScripts` exists to put a raw frame script on an AceGUI widget without leaking it — AceGUI pools widgets account-wide and recycles them into whatever addon asks next, so it saves the widget's prior script and restores it on release. It saved the prior script into a table keyed by event name, and when there **was** no prior script that store was `saved[event] = nil` — which writes no key at all, so the restore loop never visited that event and **our** handler stayed on the widget. The leak therefore happened in the commonest case of all: a widget with no existing handler for the event we wanted, which is every current caller. A released widget kept our `OnMouseDown` and fired it for its next owner. Now recorded with an explicit "there was nothing here" sentinel, so the event is restored to genuinely empty. Found by the new GUI specs, not by a report. Location: `GUI/MainWindow.lua`.
+
+### New Features
+
+- **`/acq status` now works in game.** AceCommQueue ships the command but no loader that registers it, and nothing else in the addon did either — so the one tool that shows what the comm queues are actually doing did not exist. It prints, per (prefix, distribution, target) queue: whether a send is in flight, how many seconds it has been quiet, how many messages are waiting behind it, and how many the client has refused this session. That is what identifies **which** queue is stuck when a send stops progressing, instead of waiting for the stall report 60 seconds later. `/acq on` / `/acq off` toggle the library's debug tracing. Registered defensively (silent LibStub lookup, feature-detected command) so an older standalone copy degrades to simply not having it. Location: `TOGProfessionMaster.lua`.
+
+### Improvements
+
+- **The two cross-guild broadcasts now take the delivery verdict, so failing federation traffic is visible.** `BroadcastSisterConfig` and `BroadcastSisterRosters` are the only sends TOGPM makes itself — everything else rides DeltaSync, which has its own delivery accounting behind `/togpm dsstatus`. These two passed no callback, which meant AceCommQueue reported a refusal through `geterrorhandler()` itself: correct behaviour by the library, but it lands in the player's bug catcher attributed to the comm layer, and the addon learned nothing about its own allied-guild propagation failing. Both now pass a callback and record a refusal to the **Sync Log** and the debug stream, naming what did not arrive (and, for a roster, **which** allied guild's). This is about visibility, not recovery: both broadcasts are periodic, so a refusal heals itself on the next pass — what was missing was any way to see it happening. A `"suppressed"` verdict is deliberately not treated as a failure, since that is one of our own wrappers dropping a send on purpose. Location: `TOGProfessionMaster.lua`.
+
+- **`/togpm commtest` no longer blames the server for a send the client refused.** The probe exists to answer one question — does this server core relay guild addon traffic? — and its AceComm probe reported a refused send as `NO REPLY`, which is the exact signature of a broken core. It now reads the delivery verdict: a send the client refused prints `NOT SENT — client refused it (reason)`, and the verdict block says plainly that this tells you nothing about the core and points at `/acq status`. A probe that was accepted but produced neither a receipt nor a verdict inside the listen window is now called out too, because that is what a blocked send queue looks like from the outside. Location: `Modules/CommTest.lua`.
+
+- **The offline suite can now test the GUI, and does — 787 specs.** The shared test harness gained a widget layer (`env/frames.lua`), so a spec can build a **real** AceGUI widget tree offline: factories return real objects, `SetParent` really re-parents, `GetScript` returns what was set, and an absent method answers `nil` rather than a truthy no-op — which is what makes a multi-flavour `if frame.SetResizeBounds then` feature test pick a real branch offline instead of always taking the retail one. Twelve new specs in `Tests/gui_pool_spec.lua` cover the two helpers written to survive AceGUI's account-wide widget recycling — `GUI.DetachPool` (pooled scroll rows must end up orphaned onto `UIParent`, hidden and unanchored, but still in the pool for the next attach) and `AceGUIFrameScripts` — which is what found the leak above. Nine more in `Tests/gui_scroll_spec.lua` cover `PersistentScroll.Acquire`, the one function five tabs get their scroll frame from and route their pooled-row cleanup through: that releasing the scroll really runs the tab's cleanup, that one tab's cleanup never fires for the next owner of the recycled widget, that a `LayoutFinished` a previous owner overrode **or nilled** is repaired (the v0.3.x regression that cost a tab its scrollbar after a few tab switches), and that a saved scroll position survives a rebuild per key. Eleven more in `Tests/minimap_spec.lua` take `GUI/MinimapButton.lua` from **0% to 91%**, against the real vendored LibDataBroker-1.1 and LibDBIcon-1.0: the click routing (plain left, shift+left, right, and a button with no binding), the tooltip documenting all three, and — the one with history — that LibDBIcon is handed the table that **persists**, seeded from the pre-v0.7.1 field, since LibDBIcon writes the new angle into it when the user drags the button and a throwaway table lost the position on every `/reload`. Eighteen more in `Tests/guildtab_spec.lua` take `GUI/GuildTab.lua` from **0% to 58%**, covering the two functions the Guild tab's claims about your guild rest on: that "who has this profession" is the **union** of recorded skills and known crafters (neither signal alone is complete — most crafters never open their window with the addon watching, and gathering professions have no recipes at all), that a cross-guild alt cannot inflate the headcount an officer recruits on, that a specialisation is inferred from the spec-gated recipes a crafter knows and that a sub-spec beats its parent, and that a skill reading can never render the impossible `375/300` the v1.0.1 fix removed. The whole suite runs on the widget layer rather than a per-spec opt-in, because every AceGUI widget file captures `CreateFrame` as a file-scope local at load, so the model has to be in place before Ace3 loads or no widget is testable at all. Every pre-existing spec passed the switch unchanged.
+
+  Thirteen more in `Tests/shoppinglist_spec.lua` cover the reagent arithmetic behind "what do I still need to buy" — the quantity multiplier, summing a reagent shared by two queued crafts into one line, what the bags already hold across several stacks, and that the shortfall is never negative, because "buy -6 Thorium Bars" is not a shopping list. `BuildReagentList` was made a method to make it reachable; everything around it is rendering.
+
+  Sixteen more in `Tests/reagentwatch_spec.lua` take `Modules/ReagentWatch.lua` from **0% to 78%**, driven through the real `BAG_UPDATE` and `PLAYER_LOGIN` events rather than by calling the internals, so the event wiring is under test too. The subject is the craft-ready alert's latch: it fires **once** when the reagents arrive, stays silent while they are still there (BAG_UPDATE fires constantly — without the latch that is a line of chat every time anything moves in your bags), re-arms only after the bags drop below the requirement, and — a separate code path written for exactly this — does **not** announce on login something that was already sitting in your bags.
+
+  Twenty-four more in `Tests/ahscanner_spec.lua` take `Modules/AHScanner.lua` from **0% to 29%** without needing an auction house: the scan-delay resolution (a configured `0` must not be honoured — that would mean no gap between queries at all), every guard that refuses to start, the queue the scan is built from, and the lowest-buyout selection every cost-to-craft figure rests on. Two of those have field history: a call site once passed `GetItemInfoInstant`'s first return — the item **id**, not the name — and the scanner died on the first `:lower()`; and a bid-only listing carries a buyout of `0`, which counted as a price would report every item as free. A wrong lowest-buyout is invisible in a way a crash is not: it produces a plausible number that simply is not the cheapest listing.
+
+  Twenty-four more in `Tests/cooldownalerts_spec.lua` take `Modules/CooldownAlerts.lua` from **0% to 88%**. Every rule in that module is about not annoying you, and all of them are silent when broken because the code only runs on a timer nobody watches: ding once on the transition to ready, stay quiet afterwards unless a reminder interval was asked for, say nothing in an instance if that setting is on — but **defer** rather than swallow, so it still fires when you leave — and reset cleanly when the cooldown is re-cast so the next expiry gets a fresh first alert. Group rows resolve to the **latest** expiry among their members, matching what the Cooldowns tab counts down to, so the ding lands the moment the row the user is watching reaches zero. Stale entries for characters that are no longer yours are dropped rather than sitting armed forever, never firing and never cleaned up.
+
+  Seventeen more in `Tests/reagenttracker_spec.lua` take `GUI/ReagentTracker.lua` from **0% to 31%** — the two numbers that window exists to show. "Have" is deliberately richer than the shopping list's: it counts the **bank and the mailbox** as well as your bags, because a stack sitting in the bank is not a reason to buy more. "Need" consolidates every reagent across the list, and resolves a reagent's item id from its item **link** when it carries no usable numeric id — reagents arrive from trade-skill scans in exactly that shape, and the failure it prevents is one reagent rendering as two rows that each show part of the requirement.
+
+  **One branch had never executed offline in the whole history of this suite.** The recipe browser drops any recipe whose spell does not exist on a Vanilla client — that is what keeps a synced later-expansion recipe out of a Classic Era list — but the guard reads `GetSpellInfo and not GetSpellInfo(recipeId)`, and the test harness had no `GetSpellInfo` at all, so it short-circuited and the filter was inert. Every browser spec had been passing with it switched off. The harness now installs it (raised from here), the specs declare which recipes exist on the simulated client, and the filter itself finally has a test.
+
+  Every one of these specs was **mutation-tested**: the behaviour it names was deleted from the source and the spec had to fail. That found one of them asserting nothing — a sub-spec test that passed with the rule removed, because it was measuring Lua table iteration order rather than the rule. Rewritten to control visit order (small contiguous recipe ids land in the table's array part) and asserted in **both** orders, since the rule has to hold whichever recipe the scan reaches first.
+
+- **Offline suite: eight new specs in `Tests/purge_spec.lua`** covering the delivery contract on both cross-guild broadcasts: that a callback is passed at all, that a delivered message logs nothing, that a refusal is logged naming the payload and the allied guild, that all three `nil` verdicts are told apart (`"suppressed"` is success; `"rejected"` and `"error"` are losses), and that a verdict arriving before the guild DB exists cannot take the callback down. Location: `Tests/purge_spec.lua`.
+
+- **`docs/DEPENDENCY_CONTRACTS.md` records the AceCommQueue adoption at MINOR 5** rather than at the original embed, so a later session can see what is taken up and what is deliberately left.
+
+---
+
 ## [v1.0.5] (2026-08-03) - Enchant recipes showed a random item's tooltip; the Crafting tab left a second window open
 
 ### Bug Fixes
@@ -347,167 +387,4 @@ First stable release of cross-guild profession sharing (matured across the v0.10
 
 ---
 
-## [v0.10.0] (2026-06-05) - Roster engine migration (LibGuildRoster-1.0)
-
-### Improvements
-
-- **Roster engine migrated to LibGuildRoster-1.0.** Guild-roster data (membership, online state, and the join/leave/online callbacks) now comes from the standalone LibGuildRoster-1.0 library (the GuildRoster addon) instead of the retired GuildCache-1.0. This is the foundation for upcoming cross-guild support. GuildRoster is now a dependency and installs automatically. Location: `Scanner.lua`, `TOGProfessionMaster.lua`, `Tooltip.lua`, `GUI/BrowserTab.lua`, `GUI/CooldownsTab.lua`.
-
-### Bug Fixes
-
-- **Pending-purge sweep now re-validates before deleting.** The timed sweep that removes departed members' data re-checks each flagged character against the live roster, deletes only confirmed non-members, and bails entirely if the roster isn't ready — closing any path where a legitimate guildmate's crafter data could be removed by a stale or early-login purge flag. Location: `TOGProfessionMaster.lua` (`RunPendingPurge`).
-- **Visibility gate hardened against an unbuilt roster.** A tag-matching crafter is shown (not flagged for purge) while the roster library is absent or still loading, restoring the pre-migration leniency and preventing early-login false-flags. Location: `TOGProfessionMaster.lua` (`IsVisibleCrafter`).
-
----
-
-## [v0.9.1] (2026-06-02) - Profit Planner UX, addon-wide sortable headers, search icons & persistence fixes
-
-### New Features
-
-- **Profit Planner profession filter now supports multi-select.** The Professions dropdown in the Profit tab is a native AceGUI multi-select dropdown (matching the Crafters/Sources dropdowns) that stays open while you tick multiple professions, with `Select All` / `Clear All` rows at the top. It defaults to all professions except Enchanting on first load (locale-safe `addon.PROF_NAMES[333]` lookup); once you clear the selection it stays cleared. Location: `GUI/AHProfitTab.lua`.
-
-- **Missing Recipes columns are now sortable.** Click the Recipe, Skill, or Sources headers to sort the list (click again to reverse); it defaults to skill ascending. Location: `GUI/MissingRecipesTab.lua`.
-
-- **Tab selection now persists across /reload and addon reopen.** The main window remembers which tab you were viewing (Browser, Cooldowns, Missing Recipes, Crafting, Profit Planner, Shopping List) in `lastMainTab` and restores it when you reopen the addon or reload the UI. Profit Planner's subtab (Live AH Profit vs Historical Profit) also persists independently in `profitSubTab`. Location: `GUI/MainWindow.lua`, `GUI/AHProfitTab.lua`, `TOGProfessionMaster.lua`.
-
-### Improvements
-
-- **Profit Planner money columns sized to fit the window.** Craft Cost, Sell Price, and Profit columns widened from 72px to 112px for readability while still fitting inside the minimized window (the right edge and scrollbar stay on-screen). Location: `GUI/AHProfitTab.lua`.
-
-- **Sortable column headers now share one consistent style across the addon.** On the Profit Planner, Cooldowns, Crafting, and Missing Recipes tabs, headers are centered over their columns with the up/down sort arrow placed beside the header text (measured via `GetStringWidth`) rather than at the column's far edge, plus a brand-colored glow that fades in on hover to signal "click to sort". Built as shared helpers (`ConfigureCenteredHeaderIcon`, `MakeHeaderHoverGlow`) so any future sortable header matches automatically. Location: `GUI/SharedWidgets.lua`, `GUI/AHProfitTab.lua`, `GUI/CooldownsTab.lua`, `GUI/CraftingTab.lua`, `GUI/MissingRecipesTab.lua`.
-
-- **Profit Planner row count moved to the window status bar.** "Rows: N" now follows the version string in the bottom status bar (e.g. `v0.9.1    Rows: 300`) instead of a mid-panel label, and reverts to just the version on other tabs. Location: `GUI/AHProfitTab.lua`, `GUI/MainWindow.lua`.
-
-- **Profit Planner recipe tooltips now show full game item tooltips with profit details.** Row hover anchors the game's native item tooltip (via `GameTooltip:SetHyperlink`) and appends a profit breakdown (source, craft cost, sell price, profit) below the standard item data, matching the enriched tooltip pattern from the Browser/Cooldowns tabs. Location: `GUI/AHProfitTab.lua`.
-
-- **AH data source toggle changes now prompt for /reload in settings.** Added a yellow warning label above the AH data source checkboxes (Auctionator, TSM, etc.) reminding users that toggling pricing integrations on/off requires a `/reload` to fully take effect, since external addon APIs are cached at load time. Location: `GUI/Settings.lua`.
-
-- **Search boxes now use a magnifying-glass icon instead of a text label.** The Profit Planner, Browser, Crafting, and Missing Recipes search fields show WoW's universal search icon inside the box (TSM-style) rather than a "Search recipes" label, via a shared `StyleSearchBox` helper. The Profit Planner "+ Profit only" checkbox also sits on the same center line as the dropdown controls. Location: `GUI/SharedWidgets.lua`, `GUI/AHProfitTab.lua`, `GUI/BrowserTab.lua`, `GUI/CraftingTab.lua`, `GUI/MissingRecipesTab.lua`.
-
-### Bug Fixes
-
-- **Profit Planner empty profession filter now shows no rows.** Previously, unchecking every profession (or using Clear All) displayed *all* rows and re-checked everything on the next redraw. An empty selection now matches no rows, and the all-except-Enchanting default applies only on first build. Location: `GUI/AHProfitTab.lua`.
-
-- **Sort arrow no longer vanishes after the first sort/filter.** The arrow texture was detached (`SetParent(nil)`) when its column went unsorted and never re-attached when shown again, so it disappeared once the sort column changed. `ConfigureHeaderIcon` now re-parents the texture before showing it, and sortable headers register `OnRelease` callbacks that clean up `widget._sortIcon` textures (Hide, SetParent(nil), ClearAllPoints, nil) so they don't bleed across pooled AceGUI widgets. Location: `GUI/SharedWidgets.lua`, `GUI/AHProfitTab.lua`, `GUI/CooldownsTab.lua`, `GUI/CraftingTab.lua`.
-
-- **Missing Recipes skill sort no longer buries default recipes.** Sorting by Skill now falls back to a recipe's orange difficulty tier when it has no explicit required-skill value (e.g. Basic Campfire), so low-skill recipes sort to the top instead of being treated as unknown and pushed to the bottom. Only recipes with neither value remain last. Location: `GUI/MissingRecipesTab.lua`.
-
-- **Fixed memory leak: GameTooltip now hides when switching tabs.** If the tooltip was showing for a Profit tab element when you switched tabs, it remained visible and anchored to the wrong position. `DetachPool` now calls `GameTooltip:Hide()` on tab detach. Location: `GUI/AHProfitTab.lua`.
-
----
-
-## [v0.9.0] (2026-06-01) - Shared global headers/sort across tabs
-
-### New Features
-
-- **Added a dedicated Profit Planner tab.** TOGPM now has a full AH profit-planning view for recipes known by your own characters, with separate Live AH Profit and Historical Profit subtabs so you can compare current listings against longer-horizon pricing without leaving the addon. The tab is wired into the main window as a first-class screen rather than a Crafting detail add-on, giving profit sorting/planning its own workspace. Location: `GUI/AHProfitTab.lua`, `GUI/MainWindow.lua`, `Locale/enUS.lua`.
-
-### Improvements
-
-- **One shared global sortable-header path now drives all sortable tabs.** Added shared helpers in `addon.GUI.Sort` for header-icon rendering and click-state transitions, then switched the Profit Planner, Cooldowns, and Crafting tab headers to use those globals instead of per-tab copies. Sort arrows now come from one reusable function (`ConfigureHeaderIcon`) with the same FGI-style texture behavior everywhere, and click transitions now use one shared state function (`Next` / `NextOrNone`) so tab behavior stays consistent as future columns are added. Location: `GUI/SharedWidgets.lua`, `GUI/AHProfitTab.lua`, `GUI/CooldownsTab.lua`, `GUI/CraftingTab.lua`.
-
-- **Column-header styling is further centralized through shared helpers.** Updated remaining table headers that were still hand-styled to use the shared brand/header factory, reducing drift between tabs and keeping color/style changes globally managed. Location: `GUI/ShoppingListTab.lua`, `GUI/BrowserTab.lua`.
-
-- **Labeled dropdowns and edit boxes now share one global label offset.** The old per-tab one-off nudges were replaced with a shared input-label helper that shifts labeled Dropdown/EditBox headers by the same 4px everywhere they appear, and restores the original anchors on release so pooled AceGUI widgets do not leak the tweak into other owners. Location: `GUI/SharedWidgets.lua`, `GUI/BrowserTab.lua`, `GUI/CooldownsTab.lua`, `GUI/MissingRecipesTab.lua`, `GUI/ShoppingListTab.lua`.
-
-- **Zebra striping is now global across tab row lists.** The shared `addon.GUI.ApplyRowStripe` helper now drives row banding throughout the addon table UIs (not just Profit Planner), so stripe appearance is centralized and consistent across Browser, Missing Recipes, Crafting, Cooldowns, and Shopping List views. Location: `GUI/SharedWidgets.lua`, `GUI/BrowserTab.lua`, `GUI/MissingRecipesTab.lua`, `GUI/CraftingTab.lua`, `GUI/CooldownsTab.lua`, `GUI/ShoppingListTab.lua`.
-
-- **Cooldowns rows now render with the same raw frame/fontstring model as Missing Recipes, while still using the shared GUI helpers.** The tab no longer relies on AceGUI row-cell widgets for the list body; each row now uses raw frame hit zones, textures, and fontstrings like the working Missing Recipes/Professions lists. The reworked rows now also detach their raw child frames through the shared `addon.GUI.DetachPool` release path when AceGUI recycles a row widget, so the pooled Cooldowns rows don't bleed into later widget reuses. Headers remain on the shared column factory and row hovers stay on the addon-wide tooltip-owner path. Location: `GUI/CooldownsTab.lua`, `GUI/SharedWidgets.lua`.
-
-- **Profit Planner now has Missing-Recipes-style subtab filters plus recipe search.** Each Profit subtab now renders its own toolbar with dynamic Profession and Crafter dropdowns populated only from rows currently present in that subtab, a `+ Profit only` toggle, a recipe search box, and a multi-select source filter that defaults to all sources currently enabled by settings for that mode. Filtering runs before sort/render and keeps per-subtab state. Location: `GUI/AHProfitTab.lua`.
-
-- **Profit Planner now shows all known craftable recipes, not only fully-priced rows.** Row construction no longer drops recipes just because the crafted item has no current sale source or because one or more reagents lack price data; those rows are now retained with clear "No price" source text and empty cost/profit values until pricing is available. Source filtering now applies only when a row actually has source data, so default views do not hide unpriced recipes. Location: `GUI/AHProfitTab.lua`.
-
-- **TSM App Helper pricing is now wired into material-cost lookups used by Profit/Crafting cost math.** The generic item-price resolver (`Price.Get`) now includes TSM live/history fallbacks (before TOGPM scan/vendor tiers), so reagent costing can consume TSM coverage instead of appearing unpriced when Auctionator/TOGPM scan data is absent. Also removed a hidden gate that required the separate "Use TSM" toggle for App Helper reads, so App Helper can function when its own toggle is enabled. Location: `Modules/Price.lua`.
-
-- **Crafting reagent source tags no longer truncate in the detail panel cost column.** The per-reagent cost field was width-limited to coin text only, which clipped trailing source suffixes (e.g. `[TOGPM]`/`[TSM]`) on longer values; the column now has enough width to extend left and render full cost+source text. Location: `GUI/CraftingTab.lua`.
-
-- **TSM sell-price lookup now falls back across the full TSM source stack to avoid nil sell prices when TSM has data.** The TSM bridge now tries both item string forms (`i:itemId` and `item:itemId`) and a broader ordered source chain (`DBMinBuyout`/`DBRecent`/`DBMarket`/`DBHistorical` plus `DBRegionMarketAvg` and `DBRegionSaleAvg` fallbacks), so items missing realm-live values can still resolve from TSM historical/region datasets in Profit views. Location: `Modules/Price.lua`.
-
-- **Profit Planner now resolves sell-price item IDs and source filters more defensively to avoid false `No price` rows.** Sell lookup now probes multiple candidate output IDs per recipe (scanned crafted-item link first, then LibProfessionDB crafted item, then fallback item field), using the first one that resolves a price. Historical/live views now also allow cross-mode fallback when one side is missing, and the Profit-tab enabled-source defaults were aligned with the shared `Price` module's TSM toggle logic so valid TSM rows are not filtered out accidentally. Location: `GUI/AHProfitTab.lua`.
-
-- **Per-tab scroll position now persists to SavedVariables and restores after tab switches/reopen.** The shared `PersistentScroll` helper now stores each tab's scroll status in `TOGPM_Settings.char.frames.scrollTabs` and restores from that table on redraw, so Browser/Cooldowns/Missing/Crafting/Profit return to the same place after refreshes, tab hops, and window reopen/reload. Profit keeps separate saved scroll for Live vs Historical subtabs. Location: `GUI/SharedWidgets.lua`, `GUI/BrowserTab.lua`, `GUI/CooldownsTab.lua`, `GUI/MissingRecipesTab.lua`, `GUI/CraftingTab.lua`, `GUI/AHProfitTab.lua`.
-
-- **BoP reagents no longer create false profit/cost gaps.** Craft-cost completeness now excludes Bind-on-Pickup reagents from the `priced == count` gate, so recipes like Gordok Ogre Suit are still costed/profited from their priceable materials even when BoP components (for example Ogre Tannin) have no AH/vendor market price. Non-BoP unpriced reagents still correctly mark totals as lower-bound. Location: `Modules/Price.lua`.
-
-- **Profit search box no longer drops keyboard focus after the first character.** The Profit tab search handler previously triggered a full table redraw on every `OnTextChanged`, which recreated the edit box and swallowed the caret. Search now refreshes rows in place (filter/sort/row repaint only) so typing remains continuous. Location: `GUI/AHProfitTab.lua`.
-
-- **TSM source labels now distinguish live quotes from AppHelper-backed data.** TSM prices are now classified by the exact TSM expression that resolved: `DBMinBuyout`/`DBRecent` remain `TSM Live`, while `DBMarket`/`DBHistorical`/region values are labeled as non-live (`TSM App`) so Profit/Crafting columns no longer show everything as live. Profit source filters were updated so both TSM categories stay visible by default in each subtab. Location: `Modules/Price.lua`, `TOGProfessionMaster.lua`, `GUI/AHProfitTab.lua`, `GUI/MainWindow.lua`.
-
-- **Auctioneer pricing is now integrated as an optional non-live source.** Added a new `Use Auctioneer pricing` toggle and wired `AucAdvanced.API.GetMarketValue` into sale/cost lookups as `Auctioneer App` (non-live), with source labels/colors, Profit source-filter support, Crafting source tags, and TOC/pkgmeta optional dependency declarations. This allows using Auctioneer-backed values when TSM is disabled, without mislabeling them as live quotes. Location: `Modules/Price.lua`, `GUI/Settings.lua`, `TOGProfessionMaster.lua`, `GUI/AHProfitTab.lua`, `GUI/CraftingTab.lua`, `GUI/MainWindow.lua`, `.toc` files, `.pkgmeta`.
-
-- **Auctioneer source naming now resolves more reliably on sell-price rows.** Auctioneer market-value lookup now tries canonical item string forms (including full 8-field `item:` form) before falling back, which avoids false `No price` rows where Auctioneer has data but couldn't parse a compact link form. Resulting rows now correctly show the `Auctioneer App` source label. Location: `Modules/Price.lua`.
-
-- **Auctioneer source naming now falls back to stat-engine values when market-value returns nil.** When Auctioneer's combined market-value PDF path has insufficient data for an item, TOGPM now probes common Auctioneer stat engines (`stat_simple`, `stat_histogram`, `stat_stddev`, `stat_iLevel`) before giving up, reducing remaining false `No price` rows and preserving `Auctioneer App` source labels where Auctioneer has usable pricing. Location: `Modules/Price.lua`.
-
-- **Auctioneer now has a separate cached-fallback toggle, mirroring live-then-helper behavior.** Settings now include a second checkbox directly under `Use Auctioneer pricing`: `Use Auctioneer cached pricing fallback`. Resolver flow now tries Auctioneer primary market value first, then only uses Auctioneer cached stat-engine values when primary returns nil and the cached toggle is enabled, matching the intended two-stage fallback model used by other pricing integrations. Location: `GUI/Settings.lua`, `Locale/enUS.lua`, `Modules/Price.lua`, `TOGProfessionMaster.lua`.
-
-- **Auctionator now has a separate historical/cached fallback toggle, matching the Auctioneer two-stage model.** Added `Use Auctionator cached historical fallback` directly under `Use Auctionator pricing`; resolver flow now tries Auctionator live first, then only uses Auctionator cached historical pricing when live is unavailable and the second toggle is enabled. Profit source defaults were aligned so `Auctionator History` is enabled only when this toggle is on. Location: `GUI/Settings.lua`, `Locale/enUS.lua`, `Modules/Price.lua`, `GUI/AHProfitTab.lua`, `TOGProfessionMaster.lua`.
-
-- **Auctioneer source labels are now split in UI to clearly show live vs cached origin.** Resolver output now distinguishes Auctioneer primary market values (`Auctioneer Live`) from stat-engine fallback values (`Auctioneer Cached`) instead of reporting both as one `Auctioneer App` bucket, aligning with the same live-vs-cached clarity used for TSM labels. Profit source filters, main help legend, and Crafting source tags now surface the split explicitly, with a back-compat migration path for existing saved Profit source selections. Location: `Modules/Price.lua`, `TOGProfessionMaster.lua`, `GUI/AHProfitTab.lua`, `GUI/MainWindow.lua`, `GUI/CraftingTab.lua`.
-
-- **Legacy Auctioneer alias text now resolves to `Auctioneer Cached` for consistency.** The old compatibility key (`auctioneer-app`) is still accepted for saved-state/back-compat paths, but its UI label/color now map to cached semantics so users never see contradictory `Auctioneer App` wording after the live/cached split. Location: `TOGProfessionMaster.lua`, `GUI/CraftingTab.lua`.
-
-- **Missing Recipes column-header sorting is now wired into the shared global sort path.** The header row now uses clickable shared column headers with global sort indicators and state transitions (same `addon.GUI.Sort` pipeline as other sortable tabs), and the tab now applies sort to Recipe, Skill, and Source before virtual-row render. This fixes the broken/no-op header clicks in Missing Recipes. Location: `GUI/MissingRecipesTab.lua`.
-
-- **Auctioneer live/cached probes are now more tolerant across API variants, and a new price diagnostic slash command was added.** The resolver now probes multiple Auctioneer call signatures and alternate stat-engine identifiers for cached values instead of relying on one strict signature, reducing false nils when Auctioneer builds/plugins expose slightly different APIs. Added `/togpm dumpprice <itemId|itemLink>` to print `Get`/`GetSaleLive`/`GetSaleHistorical` and Auctioneer live-vs-cached diagnostics for one item (for example Savory Deviate Delight `6657`) directly in chat. Location: `Modules/Price.lua`, `TOGProfessionMaster.lua`.
-
-- **Auctioneer cached pricing now falls back to Stat modules directly when algorithm APIs yield nil.** Some Auctioneer installations expose cached prices through loaded `Stat-*` modules even when `GetAlgorithmValue` is unavailable or non-productive; TOGPM now probes `AucAdvanced.GetAllModules(nil, "Stat")` + each module's `GetPriceArray` and picks the best seen-backed cached value before giving up. `dumpprice` output now also reports whether the Auctioneer module registry is available for this fallback path. Location: `Modules/Price.lua`, `TOGProfessionMaster.lua`.
-
-- **Global multi-select dropdown handler added, and Profit tab dropdown filters now all use it.** Added a shared `addon.GUI.MakeMultiSelectDropdown` factory (summary row + checkmark rows + no-empty fallback) and migrated Profit `Profession`, `Crafters`, and `Sources` filters to it so they now share one look/behavior and all support multi-select. Back-compat migration from older single-select `profession`/`crafter` state is handled automatically. Location: `GUI/SharedWidgets.lua`, `GUI/AHProfitTab.lua`.
-
-- **TOGPM scanned-AH source now has an explicit on/off gate (no bleed when disabled).** Added a dedicated `Use TOGPM scanned AH pricing` setting and wired the central resolver to honor it for both reagent costs and live sell-price paths; when turned off, TOGPM's cached AH values are excluded so external-only testing (for example Auctioneer-only) is accurate. Profit source defaults now also respect this toggle. Location: `Modules/Price.lua`, `GUI/Settings.lua`, `GUI/AHProfitTab.lua`, `TOGProfessionMaster.lua`.
-
-- **Blizzard Auction House now gets a native `TOGPM Scan` button.** Mirroring the profession-window TOGPM toggle pattern, the addon now injects a manual branded scan button directly onto the Blizzard AH frame (legacy and modern frame names), wired to TOGPM's full-scan path so users can trigger a TOGPM price refresh from the AH UI itself without opening any TOGPM tab first. Button state auto-disables while scans run and re-enables on completion/cancel/close. Location: `Modules/AHScanner.lua`.
-
-- **Profit-tab recipe icons now use Crafting-style fallbacks for reliable rendering.** Profit rows now resolve icons using crafted-item texture first and fall back to recipe spell texture when item-icon cache data is unavailable, fixing intermittent `?`/missing icons on entries like Savory Deviate Delight while preserving normal item-icon rendering when available. Location: `GUI/AHProfitTab.lua`.
-
-- **Profit now rejects recipe-scroll IDs when crafted output IDs exist.** For recipes that provide both IDs (for example Savory Deviate Delight: crafted `6657`, recipe scroll `6661`), Profit sell/icon candidate selection now anchors to crafted output and ignores scroll-item IDs, preventing recipe-scroll icon/source leakage in Profit rows. Location: `GUI/AHProfitTab.lua`.
-
-- **Browser and Cooldowns profession filters now use the shared global multi-select dropdown handler.** Both tabs now use `addon.GUI.MakeMultiSelectDropdown` for profession filtering so the selector look/behavior matches Profit (same summary row/checkmark UX) and supports selecting multiple professions at once. Cooldowns keeps its specific cooldown sub-filter visible only when exactly one profession is selected, preserving the existing two-level workflow without inconsistent dropdown styles. Location: `GUI/BrowserTab.lua`, `GUI/CooldownsTab.lua`, `GUI/SharedWidgets.lua`.
-
-- **Era recipe gating is now stricter in Missing Recipes and Browser to stop SoD/non-valid bleed-through.** Client-validity filtering no longer skips required-skill/high-ID sanity checks just because recipe metadata is lib-backed, and unknown-client suppression now checks crafted-item IDs as well as recipe-scroll IDs before showing rows. This keeps legitimate late-Vanilla recipes while filtering non-Era bleed from shared 1.15-era datasets. Location: `GUI/MissingRecipesTab.lua`, `GUI/BrowserTab.lua`.
-
-- **Global multi-select dropdown UX now supports true multi-pick sessions.** The redundant selected-row check indicator was removed by moving the selected-count summary into the collapsed control text, and multi-select menus now stay open while you toggle items so you can select/deselect several entries before clicking away. Profit filter updates now refresh rows in place (not full redraw) so the open pullout is preserved while selecting. Location: `GUI/SharedWidgets.lua`, `GUI/AHProfitTab.lua`.
-
-- **Fixed Missing Recipes `invalid order function for sorting` Lua error.** Header-sort logic now precomputes stable sort keys before `table.sort` instead of calling live item/spell lookup APIs inside the comparator, preventing comparator instability while cache lookups change during sort passes. Location: `GUI/MissingRecipesTab.lua`.
-
-- **Fixed blank captions on global multi-select dropdowns.** The collapsed selected-count text now persists correctly after list refreshes; dropdowns no longer render as empty dark boxes after the keep-open multi-select UX change. Location: `GUI/SharedWidgets.lua`.
-
-- **Fixed first-click multi-select behavior in profession filters.** The dropdown now clears AceGUI's internal selected row marker (so only per-item checkmarks are shown) and uses a short delayed reopen tick so the pullout reliably stays open while you pick multiple entries in one session. Location: `GUI/SharedWidgets.lua`.
-
-- **Fixed multi-select reopen race that could still close after each pick.** The shared dropdown now waits for the pullout to finish closing, then reopens once (with short retry ticks) instead of blindly toggling immediately, so multi-select sessions stay open consistently on first and subsequent clicks. Location: `GUI/SharedWidgets.lua`.
-
-- **Multi-select action rows now include both `Select all` and `Clear all`.** The old `Reset to all` action is now named `Select all`, and a new `Clear all` action clears every selected entry in one click for profession/crafter/source filters using the shared helper. Location: `GUI/SharedWidgets.lua`, `GUI/BrowserTab.lua`, `GUI/AHProfitTab.lua`.
-
-- **Fixed Missing Recipes tab crash (`attempt to index local 'kb' (a nil value)`) during sort.** Sort-key precompute now uses defensive fallback key generation inside the comparator so sparse/edge-case lists cannot crash when a compared row lacks a cached key. Location: `GUI/MissingRecipesTab.lua`.
-
-- **Fixed multi-select toggles that appeared to do nothing on some dropdowns.** The shared dropdown function now maps UI tokens back to canonical key types before mutating selection state, preventing numeric/string key mismatches from turning select/unselect clicks into no-ops. Location: `GUI/SharedWidgets.lua`.
-
-- **Multi-select dropdowns now use AceGUI's built-in multiselect flow directly.** The shared helper now calls `Dropdown:SetMultiselect(true)` and synchronizes selection via `SetItemValue(...)`, removing custom keep-open/reopen hacks and aligning behavior with AceGUI's native toggle handling while keeping shared `Select all` / `Clear all` actions. Location: `GUI/SharedWidgets.lua`.
-
-- **Fixed open multi-select pullouts going visually empty after a click.** The shared helper no longer rebuilds `SetList(...)` on every toggle while the pullout is open; it builds once and then only syncs check-state/text, matching AceGUI's open-time item rendering lifecycle. Location: `GUI/SharedWidgets.lua`.
-
-- **Fixed Missing Recipes sparse-list sort crash (`table index is nil`).** The comparator now guards nil operands before key lookup and never indexes the key cache with nil, preventing edge-case tab-open crashes when a sparse row list reaches `table.sort`. Location: `GUI/MissingRecipesTab.lua`.
-
----
-
-## [v0.8.4] (2026-06-01) — Enchanting shows a single "Enchant" button
-
-### Improvements
-
-- **Enchanting now presents one clean "Enchant" button.** Because an enchant is applied to a single item, the Crafting tab's controls for Enchanting are simplified to just an **Enchant** button (the secure `/cast` from v0.8.3) — the quantity stepper, **Craft Max**, and **Queue** are hidden (none apply to one-at-a-time enchanting), the button moves to the top of the controls column, and the detail panel sizes down to suit. Every other profession keeps the full Craft / Craft Max / Queue stack with the quantity controls. Also hardened: the now-secure Craft button's enable / position / attribute changes are guarded against combat lockdown (they can't be changed mid-combat). Location: `GUI/CraftingTab.lua`.
-
----
-
-## [v0.8.3] (2026-06-01) — Enchanting can be cast from the Crafting tab (protected-function fix)
-
-> The `DoCraft` error is gone for certain (we no longer call it); the secure-cast enchant path is pushed for **community testing** — there's no enchanter on the test account to verify it in-game.
-
-### Bug Fixes
-
-- **The `DoCraft` error is gone, and Enchanting should now craft from the Crafting tab.** Root cause of the long-running "can't enchant" bug: `DoCraft` — the Vanilla/TBC Craft API used for Enchanting — is a **protected** function, so an addon calling it from Lua trips `ADDON_ACTION_FORBIDDEN` and the craft is blocked. (That's why *only* Enchanting failed; `DoTradeSkill`, used by every other profession, isn't protected.) Fix — the same technique TradeSkillMaster uses: the **Craft button is now a secure action button** that, for an enchant, runs a `/cast <recipe>` macro. A `/cast` inside a secure macro is allowed, so the enchant casts and you click the target item to apply it — just like Blizzard's own Create button. Trade-skill professions keep the normal Lua craft (with batch quantity) via the button's PreClick. Craft Max / queued enchants still open Blizzard's Create button. Location: `GUI/CraftingTab.lua`, `Modules/Crafting/CraftingEngine.lua`, `Locale/enUS.lua`.
-
----
-
-> Older releases (v0.8.2 and earlier) are archived in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
+> Older releases (v0.10.0 and earlier) are archived in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).

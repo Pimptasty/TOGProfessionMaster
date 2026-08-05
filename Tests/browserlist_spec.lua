@@ -32,6 +32,12 @@ end)
 
 before_each(function()
 	env.install()
+	-- These recipes exist on the simulated client. Without this the Vanilla
+	-- "spell not on this client" filter in BuildFullList drops every one of
+	-- them — that filter had never actually run offline until the harness
+	-- installed GetSpellInfo, because its `GetSpellInfo and …` guard
+	-- short-circuited on a missing global.
+	env.spellsExist(POTION_SPELL, ELIXIR_SPELL, BOLT_SPELL)
 	gdb = env.resetDb()
 	env.roster({ { name = "Testchar", isOnline = true }, { name = "Bob", isOnline = true } })
 	HOME = ns:GetCurrentGuildTag()
@@ -68,6 +74,19 @@ end
 describe("BuildFullList", function()
 	it("returns nothing for a profession nobody crafts", function()
 		assert.same({}, B._BuildFullList(ALCHEMY, "guild", {}))
+	end)
+
+	it("drops a recipe whose spell does not exist on this client", function()
+		-- Vanilla-only filter: a synced recipe from a later expansion (or a
+		-- bogus id) has no spell here, and listing it would offer the player a
+		-- craft that cannot exist. Reachable offline only since the harness
+		-- installed GetSpellInfo — before that the guard short-circuited on the
+		-- missing global and this branch never ran.
+		knows("Bob-Testrealm", ALCHEMY, POTION_SPELL)
+		knows("Bob-Testrealm", ALCHEMY, 999999)      -- deliberately not declared
+		local list = B._BuildFullList(ALCHEMY, "guild", {})
+		assert.equal(1, #list)
+		assert.equal(POTION_SPELL, list[1].id)
 	end)
 
 	it("lists a recipe a guildmate crafts, with the crafter attached", function()

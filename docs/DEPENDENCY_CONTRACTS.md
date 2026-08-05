@@ -42,6 +42,8 @@ so a later session doesn't have to re-derive the same conclusions.
 | `MakeHashEntry` / `ComputeHashV2` | DS 16 | `HashManager` mints both revisions; `Scanner` ships, adopts and compares them. See the rollout notes below |
 | `GetRosterHash` | LGR 6 | `BroadcastSisterRosters` suppression — a roster whose membership set hasn't changed isn't re-broadcast |
 | AceCommQueue embedded on the AceAddon instance | ACQ 1 | `TOGProfessionMaster.lua`, immediately after `NewAddon` — the one non-optional item on DeltaSync's checklist |
+| Delivery verdict + `reason` on our own sends | ACQ 5 | `OnXGuildSendResult` in `TOGProfessionMaster.lua` (both cross-guild broadcasts) and the `ace GUILD` probe in `Modules/CommTest.lua`. Adopted in v1.0.6 — before that these three were the only sends in the addon with nobody listening, so a refusal reached the player's bug catcher from inside the comm layer and never reached TOGPM |
+| `RegisterSlashCommand` | ACQ 1 | `Ace:OnInitialize` registers `/acq`. Nothing else does — the standalone ships the library and its tests, no loader file — so without this call the library's only runtime diagnostic does not exist in game |
 
 ### Revision-2 hash rollout — how it works here
 
@@ -160,7 +162,19 @@ Covered offline by `Tests/craftsuppress_spec.lua`.
 
 ## 2. WoWAPITesting — `assert.is_truthy` missing from the bundled runner
 
-**Status:** open. Specs work around it.
+**Status:** DELIVERED 2026-08-03, adopted here 2026-08-04 (harness pin `b389a54`). The runner now
+resolves luassert's full modifier chain generically, so `assert.is_truthy` / `assert.is_falsy` and
+any other combination work. `assert.has_error`'s second argument is now the **expected error**
+rather than an ignored message — no TOGPM spec passed one, so nothing changed here.
+
+Existing specs still use the `assert.is_true(x ~= nil)` workaround; it is equivalent and correct, so
+it is being left alone rather than churned. New specs should use `assert.is_truthy`.
+
+Requests on the harness now live in [`Tests/HARNESS_CONTRACT.md`](../Tests/HARNESS_CONTRACT.md),
+which is the staging point the harness's own protocol asks for; this section stays as the record of
+one that closed.
+
+The original write-up follows, unchanged.
 
 ### What
 
@@ -190,12 +204,14 @@ assert.is_falsy(v)   -- passes when v is nil or false
 Until then TOGPM specs use `assert.is_true(x ~= nil)`, which is equivalent but
 noisier.
 
-### Related
+### Related — also delivered
 
-`Tests/coverage.lua` is currently **copied** into each addon rather than living
-in the harness. `GuildRoster/Tests/HARNESS_CONTRACT.md` already raises moving it
-into WoWAPITesting alongside `run.lua`; TOGPM now carries the third copy, which
-strengthens that case. No separate contract here — that one is already written.
+`Tests/coverage.lua` used to be **copied** into each addon (seven copies existed across the suite,
+in three functionally distinct lineages). It moved into the harness on 2026-08-03; TOGPM's local
+copy was deleted on 2026-08-04 and the invocation is now
+`lua Tests/wowapi/coverage.lua <targets>`. Verified identical on the switch — `TOGProfessionMaster.lua`
+703/1409, `Modules/HashManager.lua` 340/340 — so the number moving later means the code moved, not
+the tool.
 
 ---
 

@@ -156,7 +156,6 @@ describe("ScanGatheringProfessions", function()
 	it("never deletes from a read it cannot trust", function()
 		-- A non-English client can't map skill-line NAMES to ids, so the read is
 		-- unreliable and the delete path must not run at all.
-		env.guild.state.locale = nil
 		local realGetLocale = _G.GetLocale
 		_G.GetLocale = function() return "frFR" end
 		gdb.skills[ME] = { [182] = { skillRank = 225, skillMax = 300 } }

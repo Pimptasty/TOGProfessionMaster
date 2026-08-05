@@ -2,11 +2,10 @@
 --
 -- Layers three things on top of the shared WoWAPITesting harness (`Tests/wowapi`):
 --
---   1. The globals Ace3 and the addon read at LOAD time (bit, GetTime,
---      GetCurrentRegion, C_AddOns, Enum, …) — the harness covers the stat/unit
---      surface, not this one.
---   2. A BOOT of the real addon core: the real Ace3 chain and the real
---      AceCommQueue-1.0 / DeltaSync-1.0 from the sibling AddOns folders, then
+--   1. The globals the addon reads at LOAD time that the harness does not own
+--      (GetCurrentRegion, C_AddOns, the FrameXML stdlib aliases, StaticPopup…).
+--   2. A BOOT of the real addon core: the real Ace3 chain (via `env.ace`) and
+--      the real AceCommQueue-1.0 / DeltaSync-1.0 (via `env.libs`), then
 --      `TOGProfessionMaster.lua` itself. That is the exact code that ships, so
 --      an integration bug can't hide behind a stub — and it means specs read
 --      real tables (`addon.CRAFTING_PROFS`, the real AceDB defaults) instead of
@@ -33,57 +32,18 @@
 
 package.path = "./Tests/?.lua;" .. package.path
 
-local wow   = require("env.wow")
+local wow    = require("env.wow")
+local ace    = require("env.ace")
+local libs   = require("env.libs")
+local frames = require("env.frames")
 -- The shared guild-API model (roster iteration, chat format strings, the guild
 -- info APIs). Copied from GuildRoster/Tests — see the banner in env_guild.lua.
 local guild = require("env_guild")
 
-local M = { wow = wow, guild = guild }
+local M = { wow = wow, guild = guild, ace = ace, libs = libs, frames = frames }
 
--- ---------------------------------------------------------------------------
--- 0. One-time setup — genuinely global, not per-test state
--- ---------------------------------------------------------------------------
-
--- WoW ships LuaBitOp as the global `bit`; stock Lua 5.1 has none. Prefer a real
--- one, else fall back to a pure-Lua implementation returning SIGNED 32-bit
--- results exactly like LuaBitOp — code that normalises with `% 4294967296` is
--- normalising for a reason, and an unsigned stub would leave that untested.
--- (Copied from GuildRoster/Tests/env_guild.lua; see Tests/HARNESS_CONTRACT.md
--- there — it belongs in the harness, not in five addons.)
-if not _G.bit then
-	local ok, real = pcall(require, "bit")
-	if ok and type(real) == "table" and real.bxor then
-		_G.bit = real
-	else
-		local function toSigned(n)
-			n = n % 4294967296
-			if n >= 2147483648 then n = n - 4294967296 end
-			return n
-		end
-		local function bitwise(a, b, op)
-			a, b = a % 4294967296, b % 4294967296
-			local result, place = 0, 1
-			for _ = 1, 32 do
-				local x, y = a % 2, b % 2
-				local v
-				if op == "xor" then v = (x ~= y) and 1 or 0
-				elseif op == "and" then v = (x == 1 and y == 1) and 1 or 0
-				else v = (x == 1 or y == 1) and 1 or 0 end
-				result = result + v * place
-				a, b, place = (a - x) / 2, (b - y) / 2, place * 2
-			end
-			return toSigned(result)
-		end
-		_G.bit = {
-			bxor = function(a, b) return bitwise(a, b, "xor") end,
-			band = function(a, b) return bitwise(a, b, "and") end,
-			bor  = function(a, b) return bitwise(a, b, "or") end,
-			bnot = function(a) return toSigned(4294967295 - (a % 4294967296)) end,
-			lshift = function(a, n) return toSigned(a * (2 ^ n)) end,
-			rshift = function(a, n) return toSigned(math.floor((a % 4294967296) / (2 ^ n))) end,
-		}
-	end
-end
+-- `bit` (LuaBitOp, signed 32-bit) used to be hand-rolled here. The harness owns
+-- it as of 2026-08-03 — a local copy would now shadow it and drift.
 
 -- ---------------------------------------------------------------------------
 -- 1. Globals this env owns — reinstalled on every reset
@@ -114,7 +74,7 @@ local function installIdentity()
 	_G.IsInGuild    = function() return M.guildName ~= nil end
 	_G.GetGuildInfo = function()
 		if not M.guildName then return nil end
-		return M.guildName, guild.state.rankName, guild.state.rankIndex
+		return M.guildName, guild.model.guildRankName, guild.model.guildRankIndex
 	end
 	_G.UnitName            = function() return M.playerName end
 	_G.GetRealmName        = function() return M.realmName end
@@ -126,55 +86,61 @@ M.installIdentity = installIdentity
 
 function M.install()
 	for k, v in pairs(M.DEFAULTS) do M[k] = v end
-	-- The guild model first: it owns the roster iteration APIs, the chat format
+	-- The base env first: it owns C_ChatInfo, Enum, geterrorhandler, GetTime,
+	-- hooksecurefunc, xpcall, bit and the rest of the plumbing Ace3 and
+	-- ChatThrottleLib read. It must run BEFORE the guild model, which replaces
+	-- some of the same names.
+	--
+	-- `frames.reset()` rather than `wow.reset()`, for the WHOLE suite rather
+	-- than per-spec, and that is forced rather than chosen: every AceGUI widget
+	-- file opens with `local CreateFrame, UIParent = CreateFrame, UIParent`, so
+	-- AceGUI binds whichever model is installed when it loads and keeps it for
+	-- the rest of the run. Ace3 is loaded once, in boot(), so the widget layer
+	-- has to be in place before that or no AceGUI widget is ever testable.
+	-- (frames.reset() calls wow.reset() itself, first — never the other way
+	-- round, which would silently put the hollow frame back.)
+	--
+	-- The rich model is also the more faithful one: an absent method answers
+	-- nil, as in the client, instead of the hollow model's truthy no-op that
+	-- makes every `if frame.SetResizeBounds then` feature test true.
+	frames.reset()
+	-- Then the guild model: it owns the roster iteration APIs, the chat format
 	-- strings, and a clean member list per test. resetState() also reinstalls
 	-- every global it owns, which is what keeps one spec from corrupting a later
 	-- spec FILE through a stub it reassigned.
 	guild.resetState()
-	guild.state.playerName = M.playerName
-	guild.state.realm      = M.realmName
-	guild.state.faction    = M.faction
-	guild.state.guildName  = M.guildName
-	guild.state.inGuild    = M.guildName ~= nil
+	guild.model.realm     = M.realmName
+	guild.model.guildName = M.guildName
+	guild.model.inGuild   = M.guildName ~= nil
 
 	-- Identity AFTER the guild model, since they share several names.
 	installIdentity()
 
-	_G.hooksecurefunc      = function() end
-	_G.GetCurrentRegion    = function() return 1 end
+	-- Everything env.wow owns has been deleted from here rather than redefined.
+	-- The list, because it is long and each one was a shadow: hooksecurefunc,
+	-- SlashCmdList, DEFAULT_CHAT_FRAME, Enum, bit (2026-08-03); SendChatMessage,
+	-- C_BattleNet.SendGameData, C_Timer, StaticPopup*, print, time,
+	-- GetAddOnMetadata, GetCurrentRegion (2026-08-04). Shadowing any of them
+	-- silently swaps a faithful model for a stub — the hooksecurefunc no-op this
+	-- file used to carry meant ChatThrottleLib's Init had never once run here.
+	--
 	-- FrameXML aliases the Lua stdlib into globals; addon code uses the bare
-	-- names (`floor(x)`, `time()`), which stock Lua 5.1 does not have.
+	-- names (`floor(x)`, `date()`), which stock Lua 5.1 does not have. `time` is
+	-- deliberately absent — env.wow installs it, and it is a DIFFERENT clock from
+	-- GetTime().
 	_G.floor               = math.floor
 	_G.ceil                = math.ceil
 	_G.abs                 = math.abs
-	_G.time                = os.time
 	_G.date                = os.date
 	_G.IsAddOnLoaded       = function() return false end
-	_G.SlashCmdList        = _G.SlashCmdList or {}
-	_G.DEFAULT_CHAT_FRAME  = { AddMessage = function() end }
-	-- FrameXML tables that addon files index at LOAD time (registering a static
-	-- popup, adding a frame to the ESC-closes list). Created once and kept, not
-	-- replaced: an addon that registered into them at load would otherwise lose
-	-- its entry on the next reset.
-	_G.StaticPopupDialogs  = _G.StaticPopupDialogs or {}
-	_G.UISpecialFrames     = _G.UISpecialFrames or {}
-	_G.StaticPopup_Show    = function() end
-	_G.StaticPopup_Hide    = function() end
 
-	-- C_Timer: After returns NOTHING (only NewTimer/NewTicker hand back a
-	-- cancellable handle). Faithful on purpose — a fake handle from After would
-	-- make every `timer:Cancel()` "work" offline and silently no-op in game.
-	_G.C_Timer = {
-		After    = function() end,
-		NewTimer = function() return { Cancel = function() end } end,
-		NewTicker = function() return { Cancel = function() end } end,
-	}
-
-	_G.C_AddOns = {
-		GetAddOnMetadata = function() return "test" end,
-		IsAddOnLoaded    = function() return false end,
-		LoadAddOn        = function() end,
-	}
+	-- ADD to C_AddOns, never assign it: env.wow owns C_AddOns.GetAddOnMetadata,
+	-- and a wholesale `_G.C_AddOns = { … }` would drop it. That is the same
+	-- hazard as the wholesale C_ChatInfo assignment in the Adoption log — it
+	-- fails several layers away from the line that causes it.
+	_G.C_AddOns = _G.C_AddOns or {}
+	_G.C_AddOns.IsAddOnLoaded = function() return false end
+	_G.C_AddOns.LoadAddOn     = function() end
 
 	-- Blank recipe universe (and its derived indexes) unless a spec installs one.
 	if booted then
@@ -190,11 +156,10 @@ function M.install()
 		end
 	end
 
-	-- ChatThrottleLib indexes Enum at load; nothing under test reads a real
-	-- value from it, so a permissive stand-in is enough.
-	_G.Enum = setmetatable({}, { __index = function()
-		return setmetatable({}, { __index = function() return 0 end })
-	end })
+	-- `Enum` was a permissive stand-in here until the 2026-08-03 harness update.
+	-- env.wow now ships Enum.SendAddonMessageResult with Blizzard's REAL values,
+	-- which is what makes a delivery-verdict spec mean anything — keeping the
+	-- stand-in would shadow it and make every result compare equal to 0.
 end
 
 M.install()
@@ -203,30 +168,21 @@ M.install()
 -- 2. Boot the real addon core (once)
 -- ---------------------------------------------------------------------------
 
--- Ace3's own load order. Every entry is the REAL file from the sibling install —
--- the same code that ships to players. ChatThrottleLib lives inside AceComm-3.0's
--- folder, and AceComm asserts on it at load, so it must precede AceComm.
-M.LIBS = {
-	"../Ace3/LibStub/LibStub.lua",
-	"../Ace3/CallbackHandler-1.0/CallbackHandler-1.0.lua",
-	"../Ace3/AceLocale-3.0/AceLocale-3.0.lua",
-	"../Ace3/AceAddon-3.0/AceAddon-3.0.lua",
-	"../Ace3/AceEvent-3.0/AceEvent-3.0.lua",
-	"../Ace3/AceTimer-3.0/AceTimer-3.0.lua",
-	"../Ace3/AceSerializer-3.0/AceSerializer-3.0.lua",
-	"../Ace3/AceHook-3.0/AceHook-3.0.lua",
-	"../Ace3/AceConsole-3.0/AceConsole-3.0.lua",
-	"../Ace3/AceComm-3.0/ChatThrottleLib.lua",
-	"../Ace3/AceComm-3.0/AceComm-3.0.lua",
-	"../Ace3/AceDB-3.0/AceDB-3.0.lua",
-	-- AceGUI is needed to LOAD any GUI/ file (they grab it at file scope). It
-	-- must be loaded exactly once: unlike AceLocale, AceGUI-3.0 does not bail
-	-- when LibStub:NewLibrary returns nil for an already-registered version — it
-	-- indexes the nil and errors. Hence here, once, rather than per-spec.
-	"../Ace3/AceGUI-3.0/AceGUI-3.0.lua",
-	"../AceCommQueue-1.0/AceCommQueue-1.0.lua",
-	"../DeltaSync/DeltaSync.lua",
+-- Ace3 modules the addon core needs at load. `ace.load` derives the order from
+-- verified file-scope dependency edges (CallbackHandler before AceEvent,
+-- ChatThrottleLib before AceComm) — this list is what we USE, not an order.
+--
+-- AceGUI is here rather than per-spec because it must be loaded exactly once:
+-- unlike AceLocale it does not bail when LibStub:NewLibrary returns nil for an
+-- already-registered version — it indexes the nil and errors.
+M.ACE = {
+	"AceLocale-3.0", "AceAddon-3.0", "AceEvent-3.0", "AceTimer-3.0",
+	"AceSerializer-3.0", "AceHook-3.0", "AceConsole-3.0", "AceComm-3.0",
+	"AceDB-3.0", "AceGUI-3.0",
 }
+
+-- Suite libraries, from the sibling installs — the exact files that ship.
+M.LIBS = { "AceCommQueue-1.0", "DeltaSync-1.0" }
 
 -- Addon files loaded into the shared namespace, in .toc order. Only the ones
 -- that load cleanly without a UI are here; GUI files are loaded per-spec.
@@ -244,17 +200,14 @@ function M.boot()
 	if booted then return booted end
 	M.install()
 
-	-- The harness vendors LibStub already; skip a second copy if it's loaded.
-	for _, path in ipairs(M.LIBS) do
-		if not (path:find("LibStub") and _G.LibStub) then
-			local chunk = loadfile(path)
-			if not chunk then
-				error("env_togpm: required library not found: " .. path ..
-					"\nEvery TOG addon test env loads real libraries from the sibling AddOns" ..
-					" folder — check the install rather than stubbing it.")
-			end
-			chunk(path:match("([^/]+)%.lua$"), {})
+	ace.load(unpack(M.ACE))
+	for _, name in ipairs(M.LIBS) do
+		if not libs.available(name) then
+			error("env_togpm: required library not installed: " .. libs.pathsOf(name)[1] ..
+				"\nEvery TOG addon test env loads real libraries from the sibling AddOns" ..
+				" folder — check the install rather than stubbing it.")
 		end
+		libs.load(name)
 	end
 
 	local ns = {}
@@ -264,6 +217,46 @@ function M.boot()
 
 	booted = ns
 	return ns
+end
+
+--- `install()`, plus the frames module handed back so a GUI spec can reach
+--- `find` / `dump` / `contains` without a second require.
+---
+--- There is no opt-in/opt-out here: `install()` always installs the widget
+--- layer, because AceGUI captures `CreateFrame` at load and Ace3 loads once for
+--- the whole suite. This exists for readability at a GUI spec's call site.
+function M.installFrames()
+	M.install()
+	return frames
+end
+
+--- Declare that these spell ids EXIST on the simulated client, so
+--- `GetSpellInfo(id)` returns a name for them.
+---
+--- This is load-bearing, not decoration. On Vanilla the recipe browser drops
+--- any recipe whose spell the client does not have
+--- (`GetSpellInfo and not GetSpellInfo(recipeId)` — GUI/BrowserTab.lua), which
+--- is how recipes from later expansions are kept out of a Classic Era list.
+--- Until the harness installed `GetSpellInfo` that guard short-circuited and the
+--- filter had NEVER run offline; every spec was passing with it inert. A spec
+--- that puts a recipe in the DB and expects to see it must now say the spell
+--- exists, exactly as it would on a real client.
+---
+--- Call AFTER install()/installFrames(): `wow.reset()` empties `wow.spells`.
+function M.spellsExist(...)
+	for i = 1, select("#", ...) do
+		local id = (select(i, ...))
+		wow.spells[id] = wow.spells[id] or { name = "Spell " .. tostring(id) }
+	end
+	return M
+end
+
+--- The real AceGUI-3.0, with all 27 stock widget types registered.
+--- Loading is idempotent, so calling this per test is fine.
+function M.aceGUI()
+	M.boot()
+	ace.load("AceGUI-3.0")
+	return LibStub("AceGUI-3.0")
 end
 
 --- Load one more addon file into the booted namespace (e.g. a Module under test).
@@ -316,11 +309,9 @@ end
 function M.roster(members, ready)
 	local lib = guild.freshRoster()
 	guild.setMembers(members or {})
-	guild.state.playerName = M.playerName
-	guild.state.realm      = M.realmName
-	guild.state.faction    = M.faction
-	guild.state.guildName  = M.guildName
-	guild.state.inGuild    = M.guildName ~= nil
+	guild.model.realm     = M.realmName
+	guild.model.guildName = M.guildName
+	guild.model.inGuild   = M.guildName ~= nil
 	-- freshRoster reinstalls the guild model's globals, which overlap ours.
 	installIdentity()
 
@@ -360,13 +351,12 @@ local profDB
 function M.professionDB()
 	if profDB ~= nil then return profDB or nil end
 	M.boot()
-	local files = {
-		"../ProfessionDB/LibProfessionDB-1.0.lua",
-		"../ProfessionDB/Data/Vanilla/_core/Alchemy.lua",
-		"../ProfessionDB/Data/Vanilla/enUS/Alchemy.lua",
-	}
-	for _, path in ipairs(files) do
-		local chunk = loadfile(path)
+	if not libs.available("LibProfessionDB-1.0") then profDB = false; return nil end
+	libs.load("LibProfessionDB-1.0")
+	-- The manifest deliberately excludes the Data/ trees (hundreds of files of
+	-- addon payload), so reach for the one profession this env needs by path.
+	for _, file in ipairs({ "Data/Vanilla/_core/Alchemy.lua", "Data/Vanilla/enUS/Alchemy.lua" }) do
+		local chunk = loadfile(libs.pathOf("LibProfessionDB-1.0", file))
 		if not chunk then profDB = false; return nil end
 		chunk("ProfessionDB", {})
 	end

@@ -32,6 +32,9 @@ end)
 
 before_each(function()
 	env.install()
+	-- See browserlist_spec: recipes have to exist on the simulated client or
+	-- the Vanilla spell-existence filter drops them.
+	env.spellsExist(A, B, C)
 	gdb = env.resetDb()
 	env.roster({ { name = "Testchar", isOnline = true }, { name = "Bob", isOnline = true } })
 	env.setRecipeDB({

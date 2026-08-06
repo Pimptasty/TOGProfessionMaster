@@ -489,10 +489,7 @@ function CraftingTab:BuildPool(parent)
 
         f:SetScript("OnClick", function(rf)
             if rf._kind ~= "recipe" then return end
-            if IsShiftKeyDown() and rf._link and HandleModifiedItemClick then
-                HandleModifiedItemClick(rf._link)
-                return
-            end
+            if addon.ItemLink.Click(rf._link) then return end
             CraftingTab._selIndex = rf._index
             CraftingTab._selId    = rf._recipeId
             CraftingTab._qty      = 1
@@ -516,7 +513,7 @@ function CraftingTab:ShowItemTooltip(anchorFrame, index, link)
     local Engine = addon.CraftingEngine
     local info = Engine and Engine:GetOpenInfo()
     if link and GameTooltip.SetHyperlink then
-        GameTooltip:SetHyperlink(link)
+        addon.ItemLink.SetItem(GameTooltip, link)
     elseif info and info.isCraftWindow and GameTooltip.SetCraftItem then
         GameTooltip:SetCraftItem(index)
     elseif GameTooltip.SetTradeSkillItem then
@@ -973,10 +970,13 @@ function CraftingTab:BuildDetailPanel(parent)
         row:SetScript("OnEnter", function(rf)
             if not rf._link then return end
             addon.Tooltip.Owner(rf)
-            GameTooltip:SetHyperlink(rf._link)
+            addon.ItemLink.SetItem(GameTooltip, rf._link)
             GameTooltip:Show()
         end)
-        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        row:SetScript("OnLeave", function()
+            addon.ItemLink.EndHover(GameTooltip)
+            GameTooltip:Hide()
+        end)
 
         self._dpReagPool[#self._dpReagPool + 1] = row
     end

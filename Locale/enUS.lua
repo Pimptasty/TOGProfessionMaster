@@ -298,6 +298,8 @@ L["SettingsTooltipShowCrafters"]    = "Show guild crafters on item tooltips"
 L["SettingsTooltipShowCraftersDesc"]= "Append a [TOGPM] line listing every guildmate who can craft the item you're hovering. Online crafters in white, offline in grey. Bind-on-Pickup items are skipped (can't be traded anyway)."
 L["SettingsTooltipShowIds"]         = "Show item ID / spell ID on item tooltips"
 L["SettingsTooltipShowIdsDesc"]     = "Append a [TOGPM] line with the item ID and (if known) the recipe spell ID. Mostly useful for troubleshooting wrong icons or missing recipes — paste the IDs into Wowhead to verify what the addon is matching against."
+L["SettingsUseStockTooltips"]       = "Use the game's standard item tooltips"
+L["SettingsUseStockTooltipsDesc"]   = "Off by default. TOGPM normally draws its own trimmed tooltips inside the addon window, so a long list stays readable. Turn this on to get the same tooltip you'd see from a chat link instead — including the extra lines other addons add, such as All The Things.\n\n|cffff8000Note:|r the Missing Recipes list is the reason the trimmed version exists. Some addons hook the game tooltip and error on recipe scrolls (RecipeMaster is the known one), which takes the tooltip down with it. Turning this on re-exposes you to that. If tooltips start breaking on the Missing Recipes tab, turn it back off."
 
 -- Settings: TBC Anniversary phase filter
 L["SettingsTBCPhaseHeader"]     = "TBC Anniversary phase"

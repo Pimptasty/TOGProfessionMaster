@@ -132,15 +132,99 @@ function M.install()
 	_G.ceil                = math.ceil
 	_G.abs                 = math.abs
 	_G.date                = os.date
-	_G.IsAddOnLoaded       = function() return false end
+	-- `IsAddOnLoaded` used to be stubbed here. It is NOT — the bare global does
+	-- not exist on Classic Era (zero call sites under Interface/, and the harness
+	-- asserts its absence), so stubbing it pointed Compat's optional-dependency
+	-- check at a branch the client never takes. `C_AddOns.IsAddOnLoaded` is what
+	-- runs, and env.wow ships it.
+
+	-- Items, bags, spell cooldowns and spell knowledge were stubbed here until the
+	-- harness shipped them at 616c914. All four are gone now; steer the real ones
+	-- through `env.wow.items` / `.bags` / `.spellCooldowns` / `.knownSpells`, each
+	-- of which starts EMPTY for the reason this env argued for and the harness
+	-- then adopted as a general rule.
+	--
+	-- One deliberate difference from what was asked for, and it matters here: the
+	-- harness installs the container API under **C_Container only**, and specs an
+	-- assertion that the bare `GetContainerNumSlots` / `GetContainerItemInfo` /
+	-- `GetContainerItemLink` globals are ABSENT. Classic Era documents them only
+	-- under the namespace, has zero bare call sites, and — unlike the Item and
+	-- SpellBook families — Blizzard wrote no deprecation fallback for them. So
+	-- `Compat.lua` now takes its C_Container branch offline, which is the branch
+	-- it takes in game on every flavour this addon supports. The stub here had
+	-- been driving the other one.
+
+	-- `GetSpellTexture` — LOCAL STAND-IN; raised in Tests/HARNESS_CONTRACT.md
+	-- alongside `Item`. Reads `wow.spells`, so a spell nobody declared has NO
+	-- icon and the `if iconTexture then … else SetTexture(nil) end` fallback
+	-- every icon site here has stays reachable — same rule as the rest.
+	--
+	-- Returns `iconID, originalIconID` and returns NOTHING for an unknown spell
+	-- (SpellDocumentation.lua:357, `MayReturnNothing = true`). The bare global is
+	-- first-class on Classic Era, not a deprecation fallback: six bare call sites
+	-- under Interface/ and no Blizzard_DeprecatedSpell entry for it.
+	_G.GetSpellTexture = function(spellID)
+		local s = wow.spells[spellID]
+		if not s then return end
+		local icon = s.icon or 136243
+		return icon, icon
+	end
+	_G.C_Spell = _G.C_Spell or {}
+	_G.C_Spell.GetSpellTexture = _G.GetSpellTexture
+
+	-- `Item` / `ItemMixin` — the async item-data object. LOCAL STAND-IN; raised in
+	-- Tests/HARNESS_CONTRACT.md. Six call sites here, all of them the SAME
+	-- pattern: `GetItemInfo` misses, so the code parks a callback to fill the
+	-- label in later. With `wow.items` empty by default that miss is now the
+	-- normal path, which is exactly why this blocks so much of the GUI.
+	--
+	-- The callback is queued, NEVER run synchronously. Checked against
+	-- Blizzard_ObjectAPI/Classic/Item.lua: ContinueOnItemLoad goes straight to
+	-- ItemEventListener:AddCallback, which appends and requests a load — the
+	-- "fires immediately if already cached" in the comment above it is not what
+	-- the code does. A stand-in that called back inline would turn every async
+	-- branch synchronous and hide the ordering bugs this exists to catch.
+	M.pendingItemLoads = {}
+	local ItemMixin = {}
+	ItemMixin.__index = ItemMixin
+	function ItemMixin:GetItemID()   return self._itemID end
+	function ItemMixin:IsItemEmpty() return self._itemID == nil end
+	function ItemMixin:GetItemName() return (GetItemInfo(self._itemID)) end
+	function ItemMixin:GetItemLink() return (select(2, GetItemInfo(self._itemID))) end
+	function ItemMixin:GetItemIcon() return (select(10, GetItemInfo(self._itemID))) end
+	function ItemMixin:IsItemDataCached() return wow.items[self._itemID] ~= nil end
+	function ItemMixin:ContinueOnItemLoad(cb)
+		if type(cb) ~= "function" or self:IsItemEmpty() then
+			error("Usage: NonEmptyItem:ContinueOnLoad(callbackFunction)", 2)
+		end
+		local q = M.pendingItemLoads[self._itemID]
+		if not q then q = {}; M.pendingItemLoads[self._itemID] = q end
+		q[#q + 1] = cb
+	end
+	function ItemMixin:ContinueWithCancelOnItemLoad(cb)
+		self:ContinueOnItemLoad(cb)
+		local q = M.pendingItemLoads[self._itemID]
+		local index = #q
+		return function()
+			if q[index] then q[index] = false; return true end
+			return false
+		end
+	end
+	_G.ItemMixin = ItemMixin
+	_G.Item = {
+		CreateFromItemID = function(_, itemID)
+			if type(itemID) ~= "number" then error("Usage: Item:CreateFromItemID(itemID)", 2) end
+			return setmetatable({ _itemID = itemID }, ItemMixin)
+		end,
+	}
 
 	-- ADD to C_AddOns, never assign it: env.wow owns C_AddOns.GetAddOnMetadata,
 	-- and a wholesale `_G.C_AddOns = { … }` would drop it. That is the same
 	-- hazard as the wholesale C_ChatInfo assignment in the Adoption log — it
 	-- fails several layers away from the line that causes it.
 	_G.C_AddOns = _G.C_AddOns or {}
-	_G.C_AddOns.IsAddOnLoaded = function() return false end
-	_G.C_AddOns.LoadAddOn     = function() end
+	-- `IsAddOnLoaded` is env.wow's now; only LoadAddOn is still ours.
+	_G.C_AddOns.LoadAddOn = function() end
 
 	-- Blank recipe universe (and its derived indexes) unless a spec installs one.
 	if booted then
@@ -251,12 +335,169 @@ function M.spellsExist(...)
 	return M
 end
 
+--- Make an item's data ARRIVE, the way ITEM_DATA_LOAD_RESULT does in game:
+--- register it in `wow.items` and then run whatever callbacks were parked on it
+--- by `Item:CreateFromItemID(id):ContinueOnItemLoad(...)`.
+---
+--- Two separate things, deliberately not merged. Writing `wow.items[id]` alone
+--- models an item that was ALREADY cached when the frame drew — the label is
+--- filled in on the first pass and no callback is ever parked. This models the
+--- other case: the label drew blank, and the data turned up afterwards. Those
+--- are different code paths, and only this one can catch a callback that
+--- updates a fontstring belonging to a row that has since been recycled.
+function M.loadItem(itemID, fields)
+	wow.items[itemID] = fields or wow.items[itemID] or { name = "Item " .. tostring(itemID) }
+	local queued = M.pendingItemLoads and M.pendingItemLoads[itemID]
+	if not queued then return M end
+	M.pendingItemLoads[itemID] = nil
+	for _, cb in ipairs(queued) do
+		if cb then cb() end
+	end
+	return M
+end
+
 --- The real AceGUI-3.0, with all 27 stock widget types registered.
 --- Loading is idempotent, so calling this per test is fine.
 function M.aceGUI()
 	M.boot()
 	ace.load("AceGUI-3.0")
 	return LibStub("AceGUI-3.0")
+end
+
+--- Install a live trade-skill session: the profession window being open, with
+--- `recipes` in it. This is the state the whole Crafting tab is built on, and
+--- on Classic there is exactly one way to get it in game — cast the profession
+--- — so nothing in that tab is reachable offline without faking the session.
+---
+--- Each recipe: { name=, difficulty=, available=, reagents={ {name=,need=,have=} } }.
+--- Returns a `crafted` list that DoTradeSkill appends to, so a spec can assert
+--- what was actually crafted rather than only what was queued.
+---
+--- Faithful shapes, because they are what bites: GetTradeSkillInfo returns
+--- (name, type, numAvailable, isExpanded) and a HEADER row returns type
+--- "header" with no reagents — code that forgets headers walks off the end of
+--- the list, which is a real Classic-scan bug class.
+function M.tradeSkillSession(profName, recipes, opts)
+	recipes = recipes or {}
+	opts    = opts or {}
+	local crafted = {}
+
+	-- The character has to KNOW the profession, not just have its window open:
+	-- the Crafting tab asks the engine for known professions first and renders
+	-- "you have no professions" if the list is empty — which is how a whole tab
+	-- can draw, pass a smoke test, and cover almost nothing. On Classic that
+	-- list comes from the skill-line API, so the session installs it.
+	--
+	-- A HEADER row is included because the real skill list has them, and
+	-- `isHeader` is the flag consumers must skip on — a fake with no headers
+	-- lets a missing check pass here and fail in game.
+	local skills = { { name = "Professions", isHeader = true } }
+	for _, p in ipairs(opts.knows or { { name = profName or "Alchemy", rank = 300, max = 300 } }) do
+		skills[#skills + 1] = p
+	end
+	_G.GetNumSkillLines = function() return #skills end
+	_G.GetSkillLineInfo = function(i)
+		local s = skills[i]
+		if not s then return nil end
+		-- name, isHeader, isExpanded, rank, numTempPoints, modifier, maxRank
+		return s.name, s.isHeader or false, true, s.rank or 0, 0, 0, s.max or 0
+	end
+	_G.ExpandSkillHeader = function() end
+
+	_G.GetTradeSkillLine        = function() return profName or "Alchemy", 300, 300 end
+	_G.GetNumTradeSkills        = function() return #recipes end
+	_G.GetTradeSkillInfo        = function(i)
+		local r = recipes[i]
+		if not r then return nil end
+		return r.name, r.difficulty or "optimal", r.available or 1, r.isExpanded
+	end
+	_G.GetTradeSkillIcon        = function(i) return recipes[i] and (recipes[i].icon or 1) or nil end
+	_G.GetTradeSkillItemLink    = function(i) return recipes[i] and recipes[i].link or nil end
+	_G.GetTradeSkillNumReagents = function(i) return #((recipes[i] or {}).reagents or {}) end
+	_G.GetTradeSkillReagentInfo = function(i, j)
+		local r = ((recipes[i] or {}).reagents or {})[j]
+		if not r then return nil end
+		return r.name, r.texture or 1, r.need or 1, r.have or 0
+	end
+	_G.GetTradeSkillReagentItemLink = function(i, j)
+		local r = ((recipes[i] or {}).reagents or {})[j]
+		return r and r.link or nil
+	end
+	_G.DoTradeSkill = function(i, n) crafted[#crafted + 1] = { index = i, count = n or 1 } end
+	_G.CloseTradeSkill = function() end
+
+	-- The Craft window (Enchanting on Vanilla/TBC) is a SEPARATE API returning
+	-- the same shape. Wired to the same data so a spec can flip between them.
+	_G.GetNumCrafts             = function() return #recipes end
+	_G.GetCraftInfo             = function(i)
+		local r = recipes[i]
+		if not r then return nil end
+		return r.name, r.subSpellName or "", r.difficulty or "optimal", r.available or 1
+	end
+	_G.GetCraftIcon             = function(i) return recipes[i] and (recipes[i].icon or 1) or nil end
+	_G.GetCraftItemLink         = function(i) return recipes[i] and recipes[i].link or nil end
+	_G.GetCraftNumReagents      = function(i) return #((recipes[i] or {}).reagents or {}) end
+	_G.GetCraftReagentInfo      = function(i, j)
+		local r = ((recipes[i] or {}).reagents or {})[j]
+		if not r then return nil end
+		return r.name, r.texture or 1, r.need or 1, r.have or 0
+	end
+	_G.GetCraftReagentItemLink  = function(i, j)
+		local r = ((recipes[i] or {}).reagents or {})[j]
+		return r and r.link or nil
+	end
+	_G.GetCraftDisplaySkillLine = function() return profName or "Enchanting" end
+	_G.GetCraftedItemStatText   = function() return "" end
+	_G.DoCraft = function(i) crafted[#crafted + 1] = { index = i, count = 1 } end
+
+	-- Tell the engine the window is OPEN, through the handler the client's
+	-- TRADE_SKILL_SHOW drives — not by setting the flag, so the real
+	-- session-open path runs. Without this the engine reports no session and
+	-- the Crafting tab renders its "open a profession" state instead: the tab
+	-- draws, a smoke test passes, and almost nothing is covered.
+	local Engine = booted and booted.CraftingEngine
+	if Engine and Engine.OnProfessionShow and not opts.closed then
+		pcall(function() Engine:OnProfessionShow() end)
+	end
+
+	return crafted
+end
+
+--- Draw a tab into a REAL AceGUI container and hand back the container.
+---
+--- Every tab exposes `Draw(container)` and builds its entire UI from there, so
+--- this one call executes the construction path a player triggers by clicking
+--- the tab — several hundred lines per tab, none of it reachable before the
+--- harness had a widget layer. It is a smoke fixture on purpose: what it proves
+--- is "the constructor still runs against real AceGUI and real data", which is
+--- the failure that otherwise only shows up in game.
+---
+--- The container is a plain SimpleGroup rather than the real TabGroup child:
+--- tabs only ever call container methods (SetLayout/AddChild/ReleaseChildren),
+--- and using the TabGroup would drag in MainWindow's whole lifecycle.
+function M.drawTab(tab, opts)
+	opts = opts or {}
+	local GUI = M.aceGUI()
+	local container = GUI:Create(opts.widget or "SimpleGroup")
+	container:SetLayout(opts.layout or "List")
+	container:SetWidth(opts.width or 700)
+	container:SetHeight(opts.height or 480)
+	tab:Draw(container)
+	return container, GUI
+end
+
+--- Count the AceGUI children a draw produced, at any depth. A tab that "drew"
+--- but built nothing is the failure mode a bare pcall would miss.
+function M.countWidgets(container)
+	local n = 0
+	local function walk(w)
+		for _, child in ipairs(w.children or {}) do
+			n = n + 1
+			walk(child)
+		end
+	end
+	walk(container)
+	return n
 end
 
 --- Load one more addon file into the booted namespace (e.g. a Module under test).

@@ -114,6 +114,13 @@ local function addProbe(label, send)
         label  = label,
         nonce  = nonce,
         sentAt = GetTime(),
+        -- FALSE, not nil. The verdict block below distinguishes "probe came
+        -- back" from "probe demonstrably did not" with `== false`, and a nil
+        -- satisfies neither — so leaving this unset made the single most
+        -- important verdict ("GUILD addon relay appears BROKEN") unreachable:
+        -- on a server that drops guild addon traffic the tool printed an empty
+        -- Verdict section, which is the one situation it exists to diagnose.
+        recv   = false,
     }
     run.probes[#run.probes + 1] = probe
     run.byNonce[nonce] = probe
@@ -157,13 +164,26 @@ local function buildReport()
             -- the client did — the exact confusion this probe exists to resolve.
             status = ("|cffff4444NOT SENT|r  client refused it (%s)"):format(
                 probe.reason or "refused")
+        elseif probe.reason == "lost" then
+            -- AceCommQueue MINOR 6's terminal verdict on a stall it could not
+            -- recover from: the callback never came, ChatThrottleLib had no
+            -- record of the send, and the retries are spent. This is NOT the
+            -- "no verdict at all" case below — a verdict arrived and it said the
+            -- message is gone — so it must not be reported as one, or the reader
+            -- is sent to /acq status to look for a queue that has already given
+            -- up and moved on.
+            status = "|cffff4444LOST|r  queue gave up after retries (see /acq status: stalls=N)"
         elseif probe.recv then
             status = ("|cff00ff00RECV|r  via %s from %s  (%dms)"):format(
                 probe.recvVia, probe.recvFrom, probe.recvAfter or 0)
         elseif probe.wantsVerdict and probe.delivered == nil then
-            -- Accepted by the queue, but no terminal callback inside the listen
-            -- window. A blocked send queue looks exactly like this.
-            status = "|cffff4444NO REPLY|r  (no delivery verdict either — check /acq status)"
+            -- Accepted by the queue, and still no terminal callback inside the
+            -- listen window. Since MINOR 6 a genuinely blocked send is usually
+            -- ChatThrottleLib holding it — which the queue now waits out rather
+            -- than reporting — so this most often means "still in flight", not
+            -- "broken". /acq status distinguishes them: inFlight with a rising
+            -- idle is the former, stalls=N the latter.
+            status = "|cffff4444NO REPLY|r  (no delivery verdict yet — check /acq status)"
         else
             status = "|cffff4444NO REPLY|r"
         end

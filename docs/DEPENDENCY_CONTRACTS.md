@@ -27,8 +27,9 @@ Format follows `GuildRoster/Tests/HARNESS_CONTRACT.md`.
 ## 0. Adoption status — what we use, and what we deliberately don't
 
 Audited 2026-08-03 against the READMEs of DeltaSync-1.0 (v4.0.3 / MINOR 17),
-AceCommQueue-1.0 (MINOR 5) and LibGuildRoster-1.0 (0.2.5 / MINOR 10). Recorded
-so a later session doesn't have to re-derive the same conclusions.
+AceCommQueue-1.0 and LibGuildRoster-1.0 (0.2.5 / MINOR 10). Recorded so a later
+session doesn't have to re-derive the same conclusions.
+**AceCommQueue re-audited 2026-08-05 at MINOR 6.**
 
 ### Adopted
 
@@ -43,7 +44,38 @@ so a later session doesn't have to re-derive the same conclusions.
 | `GetRosterHash` | LGR 6 | `BroadcastSisterRosters` suppression — a roster whose membership set hasn't changed isn't re-broadcast |
 | AceCommQueue embedded on the AceAddon instance | ACQ 1 | `TOGProfessionMaster.lua`, immediately after `NewAddon` — the one non-optional item on DeltaSync's checklist |
 | Delivery verdict + `reason` on our own sends | ACQ 5 | `OnXGuildSendResult` in `TOGProfessionMaster.lua` (both cross-guild broadcasts) and the `ace GUILD` probe in `Modules/CommTest.lua`. Adopted in v1.0.6 — before that these three were the only sends in the addon with nobody listening, so a refusal reached the player's bug catcher from inside the comm layer and never reached TOGPM |
-| `RegisterSlashCommand` | ACQ 1 | `Ace:OnInitialize` registers `/acq`. Nothing else does — the standalone ships the library and its tests, no loader file — so without this call the library's only runtime diagnostic does not exist in game |
+| `RegisterSlashCommand` | ACQ 1 | `Ace:OnInitialize` registers `/acq`. Nothing else does — the standalone ships the library and its tests, no loader file — so without this call the library's only runtime diagnostic does not exist in game. Registering it is also what puts MINOR 6's `/acq unstick` in the player's hands, at no further cost here |
+| `reason = "lost"` | ACQ 6 | `OnXGuildSendResult` and the `ace GUILD` probe. **Not free on upgrade:** `"lost"` arrives with `delivered == nil`, so the MINOR 5 test (`delivered == false or rejected or error`) walked straight past it. It is also the failure that matters most — a send reported `"lost"` has already been released, re-sent under the retry budget and failed again, so unlike a refusal it will *not* heal itself on the next periodic pass |
+
+### The stall report: fixed upstream, and what that means here
+
+The `queue STALLED — 74s with no progress on an in-flight send` errors were
+**AceCommQueue misdiagnosing ordinary client throttling**, and MINOR 6 fixes it
+in the library, not here. Recorded because the shape of the fix decides what
+this addon should and should not do about it:
+
+- ChatThrottleLib moves a *throttled* send into its `Blocked` ring and retries it
+  ~2.5×/sec while firing **no callback**. From the queue's side that is
+  indistinguishable from a lost callback, and MINOR 5's 60-second timeout
+  reported it as a host-addon bug. `checkStall` now asks CTL first and stays
+  silent for as long as CTL still holds the message.
+- The default timeout moved 60 → **300s**, and a stall is now reported once per
+  queue per session, then counted as `stalls=N` in `/acq status`.
+- A genuine stall now **recovers**: the slot is released and the message re-sent
+  at the head of its bucket under the retry budget.
+
+**So TOGPM overrides neither `SetStallTimeout` nor `SetRetryPolicy`, and does not
+call `Unstick`.** The defaults are the tuned values, and forcing a release from
+here would re-introduce the duplicate-on-the-wire risk the library's own CTL
+safety test exists to prevent. What TOGPM owes the contract is reading the fifth
+reason correctly, which is the row above.
+
+### AceCommQueue: deliberately not adopted
+
+| Capability | Since | Why not |
+| --- | --- | --- |
+| `SetStallTimeout` / `SetRetryPolicy` | ACQ 5 | The MINOR 6 defaults (300s, standard retry budget) are the tuned values, chosen against exactly the traffic pattern that produced our stall reports. Overriding them here would be guessing against the library author's measurements |
+| `Unstick` / `/acq unstick` (called from TOGPM) | ACQ 6 | The command is already in the player's hands via our `/acq` registration. Calling it *automatically* from the addon would defeat the point: recovery already happens on its own after 300s, and a programmatic force-release is a way to reintroduce interleaved chunks if our own timing guess is worse than the library's |
 
 ### Revision-2 hash rollout — how it works here
 

@@ -66,6 +66,165 @@ function addon.GUI.Sort.NextOrNone(currentCol, currentAsc, clickedCol)
     return nil, true
 end
 
+-- ---------------------------------------------------------------------------
+-- Item links: ONE implementation of clicking and hovering an item, for every
+-- surface in the addon.
+--
+-- There used to be three, and they were not equivalent — which is why a
+-- shift-click worked on the Cooldowns tab and did nothing on the Browser tab:
+--
+--   HandleModifiedItemClick(link)  Cooldowns, Crafting, AH Profit
+--   ChatEdit_InsertLink(link)      Browser x3, Reagent Tracker, Compat
+--   editBox:Insert(link)           Missing Recipes, Shopping List
+--
+-- The middle one is the bug. `ChatEdit_InsertLink` is NOT a Classic Era API: it
+-- exists only inside Blizzard_DeprecatedChatInfo, behind
+-- `GetCVarBool("loadDeprecationFallbacks")`, as an alias for
+-- `ChatFrameUtil.InsertLink`. With that CVar off the global is nil — so the
+-- guarded call sites silently did nothing (the classic feature-test-disables
+-- failure) and the two UNGUARDED ones, the bank request dialog and the reagent
+-- tracker row, raised a nil-call error at the click.
+--
+-- `HandleModifiedItemClick` is Blizzard's own router and is the right answer
+-- everywhere: it honours the player's CHATLINK and DRESSUP bindings (which are
+-- not necessarily shift and ctrl), opens chat when it is closed, and routes to
+-- the social frame when that is what is up.
+-- ---------------------------------------------------------------------------
+addon.ItemLink = addon.ItemLink or {}
+local ItemLink = addon.ItemLink
+
+--- Route a modified click on an item link exactly as Blizzard's own item
+--- buttons do. Returns true when the click was consumed.
+---
+--- The fallback chain exists for the case where a stripped-down client (or a
+--- broken addon) has removed the router; it is deliberately ordered so the
+--- deprecated global is LAST and is never assumed to exist.
+function ItemLink.Click(link)
+    if not link then return false end
+    if HandleModifiedItemClick then
+        return HandleModifiedItemClick(link) and true or false
+    end
+    if not IsShiftKeyDown or not IsShiftKeyDown() then return false end
+    if ChatFrameUtil and ChatFrameUtil.InsertLink then
+        return ChatFrameUtil.InsertLink(link) and true or false
+    end
+    if ChatEdit_InsertLink then
+        return ChatEdit_InsertLink(link) and true or false
+    end
+    local box = ChatEdit_GetActiveWindow and ChatEdit_GetActiveWindow()
+    if box then box:Insert(link); return true end
+    return false
+end
+
+--- Does the player currently want an item comparison shown?
+---
+--- `IsModifiedClick("COMPAREITEMS")` rather than `IsShiftKeyDown()`, because
+--- the compare modifier is a rebindable setting — assuming shift would ignore
+--- anyone who has changed it. `alwaysCompareItems` is the CVar that pins the
+--- comparison on permanently, and Blizzard checks both together
+--- (Blizzard_GameTooltip/Classic/GameTooltip.lua:511).
+function ItemLink.WantsCompare()
+    if IsModifiedClick and IsModifiedClick("COMPAREITEMS") then return true end
+    if GetCVarBool and GetCVarBool("alwaysCompareItems") then return true end
+    return false
+end
+
+--- Show or hide the side-by-side comparison on `tip` to match the current
+--- modifier state. Safe to call repeatedly; that is what makes hold-to-compare
+--- work rather than press-before-hover-to-compare.
+function ItemLink.SyncCompare(tip)
+    if not tip then return false end
+    if ItemLink.WantsCompare() then
+        if GameTooltip_ShowCompareItem then
+            GameTooltip_ShowCompareItem(tip)
+            return true
+        end
+        return false
+    end
+    if GameTooltip_HideShoppingTooltips then GameTooltip_HideShoppingTooltips(tip) end
+    return false
+end
+
+--- Which tooltip frame a curated surface should draw into.
+---
+--- Default (setting off) is the caller's own private frame, when it has one.
+--- Missing Recipes owns one deliberately: third-party addons hook
+--- OnTooltipSetItem onto the GLOBAL GameTooltip instance, and RecipeMaster's
+--- handler nil-indexes `recipe.teaches` on a recipe scroll and takes the
+--- tooltip down with it. A private frame inheriting the same template never
+--- runs those hooks.
+---
+--- With `useStockItemTooltips` on, the player has asked for the stock tooltip
+--- everywhere — which is exactly a request for those third-party hooks to fire,
+--- ATT lines included, and therefore also a request to be exposed to them.
+function ItemLink.Tooltip(privateTip)
+    if not privateTip then return GameTooltip end
+    local db = addon.lib and addon.lib.db
+    if db and db.profile and db.profile.useStockItemTooltips then
+        return GameTooltip
+    end
+    return privateTip
+end
+
+-- Rows register here while hovered, so a modifier pressed DURING the hover
+-- re-evaluates. Blizzard's own frames re-check the modifier when the tooltip is
+-- built and never again, so without this the comparison only appears if the key
+-- was already down before the mouse arrived — which is not what the game does
+-- from a bag slot, and not what the request asked for.
+local hovered = nil
+local modifierWatcher = nil
+
+local function ensureModifierWatcher()
+    if modifierWatcher then return modifierWatcher end
+    modifierWatcher = CreateFrame("Frame")
+    modifierWatcher:RegisterEvent("MODIFIER_STATE_CHANGED")
+    modifierWatcher:SetScript("OnEvent", function()
+        if hovered and hovered.tip and hovered.tip:IsShown() then
+            ItemLink.SyncCompare(hovered.tip)
+        end
+    end)
+    return modifierWatcher
+end
+
+--- Note that `tip` is showing an item so the modifier watcher can update it.
+function ItemLink.BeginHover(tip)
+    if not tip then return end
+    ensureModifierWatcher()
+    hovered = { tip = tip }
+    ItemLink.SyncCompare(tip)
+end
+
+--- Stop tracking; call from OnLeave alongside hiding the tooltip.
+function ItemLink.EndHover(tip)
+    if tip and GameTooltip_HideShoppingTooltips then
+        GameTooltip_HideShoppingTooltips(tip)
+    end
+    hovered = nil
+end
+
+--- Test seam: what the watcher currently considers hovered.
+function ItemLink._Hovered() return hovered end
+
+--- Populate `tip` with an item, by link when we have one and by id otherwise,
+--- then keep the comparison in sync. Returns true when something was shown.
+---
+--- Link is preferred over id because a link carries enchants, suffixes and the
+--- quality colour; SetItemByID re-resolves the base item and loses them.
+function ItemLink.SetItem(tip, link, itemId)
+    if not tip then return false end
+    if link then
+        tip:SetHyperlink(link)
+    elseif itemId and tip.SetItemByID then
+        tip:SetItemByID(itemId)
+    elseif itemId then
+        tip:SetHyperlink("item:" .. itemId)
+    else
+        return false
+    end
+    ItemLink.BeginHover(tip)
+    return true
+end
+
 -- Shared header-arrow widget plumbing (FGI-style MoreArrow texture).
 -- Works for AceGUI header widgets and raw frame-backed header buttons.
 function addon.GUI.Sort.ConfigureHeaderIcon(widgetOrButton, isSorted, isAsc, justify)

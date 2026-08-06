@@ -4,7 +4,11 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(git -C \"c:/Program Files \\(x86\\)/World of Warcraft/_classic_era_/Interface/AddOns/TOGProfessionMaster\" push origin master)"
+      "Bash(git -C \"c:/Program Files \\(x86\\)/World of Warcraft/_classic_era_/Interface/AddOns/TOGProfessionMaster\" push origin master)",
+      "Bash(lua -e ' *)",
+      "Bash(markdownlint README.md CHANGELOG.md Tests/HARNESS_CONTRACT.md docs/DEPENDENCY_CONTRACTS.md)",
+      "Bash(echo \"md=$?\")",
+      "Bash(python -c ' *)"
     ]
   }
 }

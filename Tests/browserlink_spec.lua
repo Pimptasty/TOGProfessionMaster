@@ -164,15 +164,27 @@ end)
 describe("AppendBrandTooltipLines", function()
 	local lines, crafterIds, idLines
 
+	-- REPLACE THE TWO METHODS, NOT THE NAMESPACE. This used to assign a fresh
+	-- two-key table over `ns.Tooltip`, which silently deleted `Tooltip.Owner`
+	-- and `Tooltip.AnchorFrame` (both from Compat.lua) for every spec file that
+	-- ran after this one — invisible until something later actually used them,
+	-- and then failing several files away from the line that caused it. Same
+	-- hazard the env's "add to a namespace, never assign it" rule exists for.
+	local saved
+
 	before_each(function()
 		lines, crafterIds, idLines = {}, {}, {}
 		_G.GameTooltip = { AddLine = function(_, text) table.insert(lines, text) end }
-		ns.Tooltip = {
-			AppendCrafters  = function(_, itemID) table.insert(crafterIds, itemID) end,
-			AppendBrandIds  = function(_, itemID, spellID)
-				table.insert(idLines, { itemID = itemID, spellID = spellID })
-			end,
-		}
+		saved = { AppendCrafters = ns.Tooltip.AppendCrafters, AppendBrandIds = ns.Tooltip.AppendBrandIds }
+		ns.Tooltip.AppendCrafters = function(_, itemID) table.insert(crafterIds, itemID) end
+		ns.Tooltip.AppendBrandIds = function(_, itemID, spellID)
+			table.insert(idLines, { itemID = itemID, spellID = spellID })
+		end
+	end)
+
+	after_each(function()
+		ns.Tooltip.AppendCrafters = saved.AppendCrafters
+		ns.Tooltip.AppendBrandIds = saved.AppendBrandIds
 	end)
 
 	it("looks crafters up by the crafted item, never by the recipe's spell id", function()

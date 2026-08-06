@@ -205,15 +205,18 @@ function RT:Refresh()
         row:SetScript("OnEnter", function()
             if iLink then
                 addon.Tooltip.Owner(row)
-                GameTooltip:SetHyperlink(iLink)
+                addon.ItemLink.SetItem(GameTooltip, iLink)
                 GameTooltip:Show()
             end
         end)
-        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        row:SetScript("OnLeave", function()
+            addon.ItemLink.EndHover(GameTooltip)
+            GameTooltip:Hide()
+        end)
+        -- Was an UNGUARDED ChatEdit_InsertLink — nil on Classic Era without the
+        -- deprecation-fallback CVar, so this raised instead of linking.
         row:SetScript("OnClick", function(_, btn)
-            if btn == "LeftButton" and IsShiftKeyDown() and iLink then
-                ChatEdit_InsertLink(iLink)
-            end
+            if btn == "LeftButton" then addon.ItemLink.Click(iLink) end
         end)
 
         local y = -(HDR_H + (i - 1) * ROW_H)

@@ -322,6 +322,12 @@ local SETTINGS_DEFAULTS = {
         -- both, or neither. Read in Tooltip.lua's AppendCrafters.
         tooltipShowCrafters = false,
         tooltipShowIds      = false,
+        -- OFF by default. On, TOGPM's own row tooltips are drawn on the stock
+        -- GameTooltip so other addons' tooltip hooks (ATT and friends) fire on
+        -- them — which is the point, and also the risk: it re-exposes the
+        -- Missing Recipes list to third-party handlers that crash on recipe
+        -- scrolls. See GUI/SharedWidgets.lua ItemLink.Tooltip.
+        useStockItemTooltips = false,
 
         -- TBC Anniversary content phase. The recipe DB ships with `phase`
         -- field on TBC raid / Shattered-Sun / BT / Hyjal / Sunwell recipes
@@ -442,6 +448,12 @@ local SLASH_COMMANDS = {
     ["commtest"]     = "RunCommTest",
     ["help"]         = "PrintHelp",
 }
+
+-- Test seam. The offline suite drives every one of these through the real
+-- dispatcher, and its list was a hand-maintained mirror that had already fallen
+-- one command behind — so it now reads the table itself and fails if a command
+-- is added here without being covered.
+addon._SLASH_COMMANDS = SLASH_COMMANDS
 
 -- ---------------------------------------------------------------------------
 -- Lifecycle
@@ -1682,12 +1694,25 @@ addon.SisterCfgPrefix = "TOGPMxgc"   -- AceComm prefix (must be <= 16 chars)
 -- tick; what was missing is any way to see that cross-guild propagation is
 -- failing. It goes to the Sync Log and the debug stream, where it's diagnosable.
 --
--- `"suppressed"` is deliberately NOT treated as failure: it means one of our own
--- wrappers dropped the send on purpose, and doing nothing is the correct
--- response. `delivered` is a BOOLEAN, never an Enum.SendAddonMessageResult —
--- AceComm discards the enum, so there is no way to learn *why* from here.
+-- Four of the five reasons are failures and one is not:
+--
+--   "refused" / "rejected" / "error" — the client said no, or the send raised.
+--   "lost"      — MINOR 6. The callback never arrived, ChatThrottleLib has no
+--                 record of the send, and the retry budget is spent. `delivered`
+--                 is NIL here, not false, so the old `delivered == false` test
+--                 missed it entirely — and this is the single most important one
+--                 to see, because it is the terminal verdict on the stall that
+--                 MINOR 6 exists to recover from. A send that ends "lost" has
+--                 already been re-sent and failed again; silence here would hide
+--                 a cross-guild link that is down rather than merely slow.
+--   "suppressed" — one of our own wrappers dropped the send on purpose. Doing
+--                 nothing is the correct response, so it is NOT a failure.
+--
+-- `delivered` is a BOOLEAN, never an Enum.SendAddonMessageResult — AceComm
+-- discards the enum, so there is no way to learn *why* from here.
 local function OnXGuildSendResult(ctx, _sent, _total, delivered, reason)
-    if not (delivered == false or reason == "rejected" or reason == "error") then return end
+    if not (delivered == false or reason == "rejected" or reason == "error"
+            or reason == "lost") then return end
     local what = (ctx and ctx.what) or "cross-guild broadcast"
     local why  = reason or "refused"
     addon:DebugPrint("Cross-guild:", what, "NOT delivered (" .. why .. ")")

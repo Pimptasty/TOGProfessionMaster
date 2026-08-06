@@ -52,8 +52,17 @@ end
 -- into a plain table: { texture, count, locked, quality, readable,
 --                       lootable, link, filtered, noValue, itemId }
 -- ---------------------------------------------------------------------------
+-- Which branch actually runs: the C_Container one, on EVERY flavour this addon
+-- supports. Checked against Blizzard's per-flavour source rather than assumed —
+-- classic_era, classic_anniversary and classic (Cata/MoP) each ship
+-- ContainerDocumentation.lua defining the namespace, each has zero bare
+-- GetContainerItemInfo call sites under Interface/, and none of them has a
+-- deprecation fallback file for the container family (unlike Item and
+-- SpellBook, which do). The else branch below is kept as insurance for a build
+-- I cannot check, but nothing reaches it today — so do not treat it as the
+-- Classic path, and do not put a fix there expecting players to get it.
 if C_Container and C_Container.GetContainerItemInfo then
-    -- Shadowlands+ / Dragonflight builds
+    -- Every supported client takes this branch.
     function addon:GetContainerItemInfo(bag, slot)
         return C_Container.GetContainerItemInfo(bag, slot)
     end
@@ -67,7 +76,7 @@ if C_Container and C_Container.GetContainerItemInfo then
         return NUM_BAG_SLOTS or 4
     end
 else
-    -- Classic Era / TBC / Wrath / Cata / MoP — old globals
+    -- Unreachable on every live flavour (see the note above). Kept, not trusted.
     function addon:GetContainerItemInfo(bag, slot)
         local texture, count, locked, quality, readable,
               lootable, link, filtered, noValue, itemId =
@@ -107,7 +116,11 @@ end
 
 -- ---------------------------------------------------------------------------
 -- AddOn loaded check
--- C_AddOns.IsAddOnLoaded exists on Dragonflight+ retail only.
+-- The C_AddOns branch is the one that runs, on every flavour this addon
+-- supports — not just retail, as this comment used to claim. Classic Era ships
+-- C_AddOns.IsAddOnLoaded and has ZERO bare call sites for the old global under
+-- Interface/, so the `or IsAddOnLoaded` tail is a fallback for a client I cannot
+-- point at. Kept, not relied on.
 -- ---------------------------------------------------------------------------
 local _IsAddOnLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
 
@@ -301,15 +314,19 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
         itemBtn:SetScript("OnEnter", function()
             if d.currentItemLink then
                 addon.Tooltip.Owner(itemBtn)
-                GameTooltip:SetHyperlink(d.currentItemLink)
+                addon.ItemLink.SetItem(GameTooltip, d.currentItemLink)
                 GameTooltip:Show()
             end
         end)
-        itemBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        itemBtn:SetScript("OnLeave", function()
+            addon.ItemLink.EndHover(GameTooltip)
+            GameTooltip:Hide()
+        end)
+        -- Was an UNGUARDED ChatEdit_InsertLink, which is nil on Classic Era
+        -- unless the deprecation-fallback CVar is on — so this raised at the
+        -- click rather than linking anything.
         itemBtn:SetScript("OnClick", function()
-            if d.currentItemLink and IsShiftKeyDown() then
-                ChatEdit_InsertLink(d.currentItemLink)
-            end
+            addon.ItemLink.Click(d.currentItemLink)
         end)
         d.itemLbl = itemLbl
 

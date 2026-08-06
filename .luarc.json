@@ -210,6 +210,10 @@
         "TOGBankClassic_Options",
         "TOGBankClassic",
         "HandleModifiedItemClick",
+        "GameTooltip_ShowCompareItem",
+        "GameTooltip_HideShoppingTooltips",
+        "ChatFrameUtil",
+        "IsModifiedClick",
         "GetSpellTexture",
 
         "RegisterAddonMessagePrefix",

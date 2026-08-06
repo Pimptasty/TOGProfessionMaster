@@ -15,7 +15,11 @@
       "Bash(markdownlint CHANGELOG.md Tests/HARNESS_CONTRACT.md)",
       "Bash(echo \"lint=$?\")",
       "Bash(lua \"C:/Users/ianpl/AppData/Local/Temp/claude/c--Program-Files--x86--World-of-Warcraft--classic-era--Interface-AddOns-TOGProfessionMaster/c9ce231c-299d-443f-9850-982ded5aefe0/scratchpad/stall_probe.lua\")",
-      "Bash(lua Tests/wowapi/run.lua Tests/gui_scroll_spec.lua)"
+      "Bash(lua Tests/wowapi/run.lua Tests/gui_scroll_spec.lua)",
+      "Bash(COVERAGE_SUMMARY=1 COVERAGE_MIN=0 lua Tests/wowapi/coverage.lua GUI/AHProfitTab.lua)",
+      "Bash(lua Tests/wowapi/run.lua Tests/cooldownfilter_spec.lua)",
+      "Bash(lua Tests/wowapi/run.lua Tests/browservirtual_spec.lua)",
+      "Bash(COVERAGE_SUMMARY=1 COVERAGE_MIN=0 lua Tests/wowapi/coverage.lua GUI/BrowserTab.lua GUI/CooldownsTab.lua GUI/AHProfitTab.lua GUI/CraftingTab.lua)"
     ],
     "additionalDirectories": [
       "f:\\game development\\wowapitesting\\docs\\contracts"

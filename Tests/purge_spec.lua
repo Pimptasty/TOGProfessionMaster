@@ -343,8 +343,14 @@ describe("cross-guild send verdicts", function()
 		assert.equal(0, #failures())
 	end)
 
-	it("records the two nil verdicts that DO mean the message was lost", function()
-		for _, reason in ipairs({ "rejected", "error" }) do
+	it("records the three nil verdicts that DO mean the message was lost", function()
+		-- "lost" is AceCommQueue MINOR 6's terminal verdict on a stall it could
+		-- not recover from, and it arrives as delivered == NIL — so the original
+		-- `delivered == false` test walked straight past it. It is also the one
+		-- that matters most: a send reported "lost" has already been released
+		-- and re-sent under the retry budget and failed again, so unlike a
+		-- refusal it will NOT heal itself on the next periodic pass.
+		for _, reason in ipairs({ "rejected", "error", "lost" }) do
 			ns.SyncLog:Clear()
 			sendYielding(nil, reason)
 			ns:BroadcastSisterConfig()
@@ -352,6 +358,20 @@ describe("cross-guild send verdicts", function()
 			assert.equal(1, #f)
 			assert.is_true(f[1].detail:find(reason, 1, true) ~= nil)
 		end
+	end)
+
+	it("keeps telling suppression apart from lost, though both arrive as nil", function()
+		-- The whole reason `reason` exists. Collapsing them would either spam the
+		-- log with deliberate drops or hide a dead cross-guild link.
+		ns.SyncLog:Clear()
+		sendYielding(nil, "suppressed")
+		ns:BroadcastSisterConfig()
+		assert.equal(0, #failures())
+
+		ns.SyncLog:Clear()
+		sendYielding(nil, "lost")
+		ns:BroadcastSisterConfig()
+		assert.equal(1, #failures())
 	end)
 
 	it("names the guild whose roster failed, not just 'a roster'", function()

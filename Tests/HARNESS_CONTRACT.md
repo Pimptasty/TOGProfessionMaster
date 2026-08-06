@@ -8,7 +8,12 @@ carries the full text and the harness's responses. This file exists so a request
 Protocol, the one-way rule and the append-only rule live in
 [`Tests/wowapi/HARNESS_CONTRACT.md`](wowapi/HARNESS_CONTRACT.md).
 
-Pin: `8bc4c51` (2026-08-05). Adopted in full; suite green at 770.
+Pin: `2299e12` (2026-08-05). Adopted in full; suite green at 1054.
+
+**Not yet adopted:** `41fdefe` delivers `Item`/`ItemMixin` and `GetSpellTexture`, answering the open
+contract below. It landed after this pin, so the local stand-ins are still the ones running and are
+still correct — deleting them before moving the pin would remove the APIs entirely. Adopt the two
+together in the next session.
 
 `tools/verify-addons.lua` reports **57/57 TOC files load** for this addon, so nothing here is
 unloadable offline — every remaining coverage gap is an unwritten spec rather than an environment
@@ -16,7 +21,112 @@ limit.
 
 ## Open
 
-_None._ All three raised on 2026-08-04/05 were delivered same-day: `GetSpellInfo` (`5b8bd2e`), and
+Full text and exact contracts are in the tracked home; summaries here.
+
+### `Item` / `ItemMixin` and `GetSpellTexture` — the two globals every icon-and-label row needs
+
+Both raised together because they block the same thing: a list row that shows an icon and an item
+name. Local stand-ins are in `Tests/env_togpm.lua`'s `install()`.
+
+**`GetSpellTexture(spellIdentifier)`** → `iconID, originalIconID`, and returns **nothing** for an
+unknown spell (`SpellDocumentation.lua:357`, `MayReturnNothing = true`). First-class on Classic Era,
+not a deprecation fallback — six bare call sites under `Interface/` and no `Blizzard_DeprecatedSpell`
+entry, so it belongs in **both** spellings like the Cooldown family. Should read `wow.spells`, so a
+spell nobody declared has no icon and the `if iconTexture then … else SetTexture(nil) end` fallback
+every icon site has stays reachable.
+
+**`Item` / `ItemMixin`** — the async item-data object, six call sites here. **The callback must be
+QUEUED, never run inline.** `Blizzard_ObjectAPI/Classic/Item.lua:233` sends `ContinueOnItemLoad`
+straight to `ItemEventListener:AddCallback`, which appends and calls
+`C_Item.RequestLoadItemDataByID`; the "fires immediately if already loaded" in the comment above it
+is not what the code does. A stand-in that called back inline would make every async branch behave
+synchronously and hide exactly the ordering bugs it exists to catch — a callback that writes to a
+fontstring belonging to a pooled row that has since been recycled into another tab, for one.
+
+Minimum surface: `Item:CreateFromItemID(id)` (errors on a non-number, as the real one does),
+`GetItemID`, `IsItemEmpty`, `IsItemDataCached`, `GetItemName`, `GetItemLink`, `GetItemIcon`,
+`ContinueOnItemLoad`, `ContinueWithCancelOnItemLoad` (returns a canceller).
+
+**And the delivery needs a way to make the data ARRIVE**, which is the whole point of the object.
+The stand-in pairs with an `env.loadItem(itemID, fields)` fixture: register the item, then run the
+parked callbacks. Deliberately separate from writing `wow.items[id]` — that models an item that was
+**already cached when the frame drew**, so no callback is ever parked. The two are different code
+paths and only the second one can catch the recycled-row bug above.
+
+**Why this mattered here.** With `wow.items` empty by default the `GetItemInfo` miss is now the
+normal path, so `Item:CreateFromItemID` went from rarely-reached to reached on nearly every row —
+`attempt to index global 'Item'` took out fifteen specs the moment the tab drew real data. The
+harness's own default is what promoted this from a nice-to-have to a blocker, which seems worth
+saying out loud.
+
+### The modified-click and item-comparison surface
+
+`HandleModifiedItemClick`, `IsModifiedClick`, `GameTooltip_ShowCompareItem`,
+`GameTooltip_HideShoppingTooltips`, and `ChatFrameUtil.InsertLink`. Stubbed per-spec in
+`Tests/itemlink_spec.lua` rather than in the env, because what those specs assert is _which_ router
+the addon reaches for — which can only be checked by watching them.
+
+**Why it is worth the harness's time anyway:** this family is where a "verified present in
+GlobalAPI.lua" answer is most likely to be wrong, and it cost this addon six broken call sites.
+`ChatEdit_InsertLink` **is not a Classic Era API.** It exists only in
+`Blizzard_DeprecatedChatInfo/Deprecated_ChatFrame.lua:43`, behind
+`GetCVarBool("loadDeprecationFallbacks")`, as `ChatEdit_InsertLink = ChatFrameUtil.InsertLink`. With
+that CVar off the global is nil — so three of our call sites guarded it and silently did nothing,
+and three called it unguarded and raised at the click. Exactly the `InviteUnit` shape, and exactly
+what an env that installs the bare global would have hidden.
+
+So if these are ever installed, the request is: **install `HandleModifiedItemClick` and
+`ChatFrameUtil.InsertLink`, and spec that `ChatEdit_InsertLink` is ABSENT**, the way the container
+family was handled.
+
+`IsModifiedClick(action)` is the other half. It takes an action name (`"CHATLINK"`, `"DRESSUP"`,
+`"COMPAREITEMS"`) and resolves it against the player's binding — it is **not** a synonym for
+`IsShiftKeyDown`, and treating it as one silently breaks every player who has rebound the modifier.
+A stub should read a steerable table of held actions, empty by default.
+
+### `LockHighlight` / `UnlockHighlight` record no state
+
+`env/frames.lua`'s Button accepts both and keeps nothing, so a spec cannot ask whether a row is
+highlighted — and highlight **is** the selection model for a pooled list. TOGPM's recipe browser
+reuses 35 frames for thousands of recipes and marks the selected one with `LockHighlight`, so
+`Tests/browservirtual_spec.lua` has to `pending()` on the case that asks whether the right row is
+selected. Guarded with an explicit `pending()` rather than a silent skip, because the tempting
+workaround here is a test that asserts nothing.
+
+### `FrameUtil` is not installed
+
+`FrameUtil.RegisterFrameForEvents` / `UnregisterFrameForEvents` — FrameXML's batch event helpers.
+`Modules/AHScanner.lua` uses them to silence every other frame listening for
+`AUCTION_ITEM_LIST_UPDATE` during a full scan (the Auctionator pattern), so the whole full-scan path
+raises `attempt to index global 'FrameUtil'` offline.
+
+**Workaround here:** a local pair in `Tests/ahfullscan_spec.lua`'s `before_each`, implemented as a
+loop over `RegisterEvent`/`UnregisterEvent` so the frame's event state is real rather than a no-op.
+
+### Four more client globals — delivered, and it corrected the addon
+
+`GetItemInfo`, the bag API, `GetSpellCooldown`, `IsSpellKnown`. Delivered in `616c914`; all four
+stand-ins deleted from `Tests/env_togpm.lua`. The asked-for defaults (empty items, empty bags,
+`IsSpellKnown` **false**) were adopted as the harness's general rule rather than as four decisions.
+
+**Two things came back corrected, and both were right:**
+
+- **The bare bag globals were REFUSED, and refusing them was correct.** Classic Era, Anniversary and
+  Cata/MoP all document the container API under `C_Container` **only** — zero bare call sites, and
+  no deprecation fallback file for that family, where Item and SpellBook both have one. So the local
+  stub had been driving `Compat.lua`'s fallback branch, which **no supported client reaches**.
+  Verified per flavour against `F:\Blizzard API Docs` rather than taken on trust. Two
+  `cooldownrows_spec.lua` cases went red on adoption — they were the ones nilling `C_Container` to
+  reach that branch — and are rewritten against the namespace. `Compat.lua`'s comment claimed the
+  fallback was the Classic path; it is now labelled as unreachable insurance so nobody puts a fix
+  there expecting players to receive it.
+- **Two arities were short.** `GetItemInfo` returns 18 values, not 11, and the bare
+  `GetSpellCooldown` returns four (`start, duration, enable, modRate`), not three. Exactly the
+  failure mode flagged when raising it: a wrong-arity call site passes offline and breaks in game.
+
+## Delivered same-day, stand-ins removed
+
+All three raised on 2026-08-04/05 were delivered same-day: `GetSpellInfo` (`5b8bd2e`), and
 `libs.register`'s `major` field plus `AnimationGroup:SetToFinalAlpha` (`20626da`). Every local
 stand-in is deleted.
 
@@ -67,7 +177,11 @@ registration path, so it takes the whole `OnEnable` down. Affects every addon wi
 
 ## Local stand-ins
 
-_None._ All three are deleted:
+Currently two, both awaiting a pin move rather than a delivery: **`Item` / `ItemMixin`** and
+**`GetSpellTexture`** in `Tests/env_togpm.lua`. Delivered upstream at `41fdefe`, which is newer than
+this addon's pin — adopt the pin and delete them together, never one without the other.
+
+The three below are deleted:
 
 - **`readoptLoadTimeFrames()`** — raised and fixed the same day, at `9f0dd38`. `frames.reset()` was
   emptying the object registry, which is what `wow.advanceTime()` ticks and what event dispatch

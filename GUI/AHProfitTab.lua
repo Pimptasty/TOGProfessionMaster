@@ -1024,7 +1024,7 @@ function ProfitTab:BuildPool(parent)
             
             -- Show actual game item tooltip
             if row.itemLink then
-                GameTooltip:SetHyperlink(row.itemLink)
+                addon.ItemLink.SetItem(GameTooltip, row.itemLink)
             elseif row.displayItemId then
                 GameTooltip:SetItemByID(row.displayItemId)
             elseif row.itemId then
@@ -1061,10 +1061,7 @@ function ProfitTab:BuildPool(parent)
             local row = rf._row
             if not row then return end
             -- Shift-click keeps the standard "link item in chat" behaviour.
-            if IsShiftKeyDown() and row.itemLink and HandleModifiedItemClick then
-                HandleModifiedItemClick(row.itemLink)
-                return
-            end
+            if addon.ItemLink.Click(row.itemLink) then return end
             -- Plain click jumps to the Crafting tab and opens this recipe there.
             ProfitTab:GoToCrafting(row)
         end)

@@ -1152,7 +1152,11 @@ function MissingRecipesTab:BuildPool(parent)
         -- captures before either guard reaches the error.
         f:SetScript("OnEnter", function()
             if not (f._itemId or f._spellId) then return end
-            local tip = MissingRecipesTab:GetCustomTip()
+            -- ItemLink.Tooltip picks the frame: our private one by default (so
+            -- third-party OnTooltipSetItem hooks that crash on recipe scrolls
+            -- never run), or the stock GameTooltip when the player has turned
+            -- `useStockItemTooltips` on and asked for exactly those hooks.
+            local tip = addon.ItemLink.Tooltip(MissingRecipesTab:GetCustomTip())
             -- Anchor next to the row using the same screen-half logic as
             -- addon.Tooltip.Owner — popup appears just below the row when
             -- the row is in the upper half of the screen, just above
@@ -1203,24 +1207,31 @@ function MissingRecipesTab:BuildPool(parent)
             tip:AddLine(" ")
             tip:AddLine(L["MissingRowTooltipShift"], 0.7, 0.7, 0.7, true)
             tip:Show()
+            -- Register for hold-to-compare. Only meaningful when the row is
+            -- showing an ITEM — a recipe-scroll tooltip has an equip slot to
+            -- compare against, a spell tooltip does not.
+            if useItem then addon.ItemLink.BeginHover(tip) end
         end)
         f:SetScript("OnLeave", function()
+            addon.ItemLink.EndHover(GameTooltip)
             if MissingRecipesTab._customTip then
                 MissingRecipesTab._customTip:Hide()
             end
+            GameTooltip:Hide()
         end)
+        -- Was a raw editBox:Insert, which does nothing when chat is closed and
+        -- ignores the player's modified-click bindings. addon.ItemLink.Click
+        -- routes through Blizzard's own HandleModifiedItemClick, the same as
+        -- every other row in the addon now does.
         f:SetScript("OnMouseDown", function(_, button)
-            if button ~= "LeftButton" or not IsShiftKeyDown() then return end
+            if button ~= "LeftButton" then return end
             local link
             if f._itemId then
                 _, link = GetItemInfo(f._itemId)
             elseif f._spellId and GetSpellLink then
                 link = GetSpellLink(f._spellId)
             end
-            if link and ChatEdit_GetActiveWindow then
-                local editBox = ChatEdit_GetActiveWindow()
-                if editBox then editBox:Insert(link) end
-            end
+            addon.ItemLink.Click(link)
         end)
 
         self._pool[i] = f

@@ -400,15 +400,20 @@ describe("supply-mail planner", function()
 end)
 
 describe("CountItemInBags", function()
+	-- These two used to nil C_Container and install the bare bag globals, to
+	-- drive Compat's fallback branch. That branch is unreachable on every
+	-- flavour this addon supports — Classic Era, Anniversary and Cata/MoP all
+	-- document the container API under C_Container ONLY, with no bare call sites
+	-- and no deprecation fallback — so what they were really testing was code
+	-- the client never reaches. They now go through the real namespace, which is
+	-- the branch that runs in game.
 	it("totals every stack of the item and reports where they are", function()
-		_G.C_Container = nil
-		_G.GetContainerNumSlots = function(bag) return bag == 0 and 3 or 0 end
-		_G.GetContainerItemInfo = function(_, slot)
-			if slot == 1 then return "t", 12, false, 1, false, false, "|Hitem:2589|h", false, false, 2589 end
-			if slot == 2 then return "t", 8,  false, 1, false, false, "|Hitem:2589|h", false, false, 2589 end
-			if slot == 3 then return "t", 5,  false, 1, false, false, "|Hitem:999|h",  false, false, 999 end
-			return nil
-		end
+		env.wow.bags[0] = {
+			slots = 3,
+			[1] = { itemID = 2589, count = 12, link = "|Hitem:2589|h" },
+			[2] = { itemID = 2589, count = 8,  link = "|Hitem:2589|h" },
+			[3] = { itemID = 999,  count = 5,  link = "|Hitem:999|h" },
+		}
 		local total, stacks = CD._CountItemInBags(2589)
 		assert.equal(20, total)
 		assert.equal(2, #stacks)
@@ -416,9 +421,7 @@ describe("CountItemInBags", function()
 	end)
 
 	it("reports nothing when the item isn't carried", function()
-		_G.C_Container = nil
-		_G.GetContainerNumSlots = function() return 0 end
-		_G.GetContainerItemInfo = function() return nil end
+		-- Bags left empty, which is the harness default.
 		local total, stacks = CD._CountItemInBags(2589)
 		assert.equal(0, total)
 		assert.equal(0, #stacks)

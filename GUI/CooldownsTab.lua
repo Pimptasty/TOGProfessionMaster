@@ -1686,14 +1686,16 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         end
         reagentHit:SetScript("OnEnter", function()
             addon.Tooltip.Owner(reagentHit)
-            GameTooltip:SetHyperlink("item:" .. itemId)
+            addon.ItemLink.SetItem(GameTooltip, nil, itemId)
             GameTooltip:Show()
         end)
-        reagentHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        reagentHit:SetScript("OnLeave", function()
+            addon.ItemLink.EndHover(GameTooltip)
+            GameTooltip:Hide()
+        end)
         reagentHit:SetScript("OnClick", function(_, button)
-            if button == "LeftButton" and IsShiftKeyDown() then
-                local link = select(2, GetItemInfo(itemId))
-                if link then HandleModifiedItemClick(link) end
+            if button == "LeftButton" then
+                addon.ItemLink.Click((select(2, GetItemInfo(itemId))))
             end
         end)
         x2 = x2 + reagentW
@@ -2043,7 +2045,7 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
                 reagentHovered = true
                 reagentLbl:SetTextColor(1, 1, 0, 1)
                 addon.Tooltip.Owner(reagentZone)
-                GameTooltip:SetHyperlink("item:" .. reagentId)
+                addon.ItemLink.SetItem(GameTooltip, nil, reagentId)
                 showAbovePopup()
             end)
             reagentZone:SetScript("OnLeave", function()
@@ -2052,9 +2054,8 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
                 GameTooltip:Hide()
             end)
             reagentZone:SetScript("OnMouseUp", function(_, button)
-                if button == "LeftButton" and IsShiftKeyDown() then
-                    local link = select(2, GetItemInfo(reagentId))
-                    if link then HandleModifiedItemClick(link) end
+                if button == "LeftButton" then
+                    addon.ItemLink.Click((select(2, GetItemInfo(reagentId))))
                 end
             end)
 

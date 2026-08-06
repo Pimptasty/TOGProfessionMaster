@@ -1453,15 +1453,14 @@ function BrowserTab:FillShoppingListSection(container)
                 local rItemLink = ResolveReagentItemLink(r)
                 rf:SetScript("OnEnter", function()
                     addon.Tooltip.Owner(rf)
-                    if rItemLink then
-                        GameTooltip:SetHyperlink(rItemLink)
-                        GameTooltip:Show()
-                    elseif rItemId and GameTooltip.SetItemByID then
-                        GameTooltip:SetItemByID(rItemId)
+                    if addon.ItemLink.SetItem(GameTooltip, rItemLink, rItemId) then
                         GameTooltip:Show()
                     end
                 end)
-                rf:SetScript("OnLeave", function() GameTooltip:Hide() end)
+                rf:SetScript("OnLeave", function()
+                    addon.ItemLink.EndHover(GameTooltip)
+                    GameTooltip:Hide()
+                end)
 
                 local needed = (r.count or 1) * qty
                 rf.countLbl:SetText("|cffffffff x" .. needed .. "|r")
@@ -1829,13 +1828,7 @@ function BrowserTab:BuildPool(parent)
             -- click always produces a link even for trainer-taught recipes
             -- whose gdb entry has no link cached. Without this, shift-click
             -- silently did nothing for entries with nil itemLink/recipeLink.
-            if IsShiftKeyDown() then
-                local link = ResolveRecipeLink(entry)
-                if link and ChatEdit_InsertLink then
-                    ChatEdit_InsertLink(link)
-                    return
-                end
-            end
+            if addon.ItemLink.Click(ResolveRecipeLink(entry)) then return end
             self:DrawDetail(entry)
         end)
 
@@ -1898,7 +1891,7 @@ function BrowserTab:BuildPool(parent)
                 GameTooltip:Show()
                 return
             elseif type(entry.itemLink) == "string" and entry.itemLink:find("|Hitem:") then
-                GameTooltip:SetHyperlink(entry.itemLink)
+                addon.ItemLink.SetItem(GameTooltip, entry.itemLink)
             elseif not SetSpellTooltip(GameTooltip, entry.spellId or entry.id) then
                 -- No link, no spell id: name-only so the hover still says
                 -- something. Never "item:<entry.id>" — entry.id is a spell id
@@ -2230,11 +2223,8 @@ function BrowserTab:DrawDetail(entry)
     end)
     self._dpHdrBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     self._dpHdrBtn:SetScript("OnClick", function(_, btn)
-        if btn == "LeftButton" and IsShiftKeyDown() then
-            local link = ResolveRecipeLink(entry)
-            if link and ChatEdit_InsertLink then
-                ChatEdit_InsertLink(link)
-            end
+        if btn == "LeftButton" then
+            addon.ItemLink.Click(ResolveRecipeLink(entry))
         end
     end)
 
@@ -2325,16 +2315,14 @@ function BrowserTab:DrawDetail(entry)
             if rLink or rItemId then
                 rf:SetScript("OnEnter", function()
                     addon.Tooltip.Owner(rf)
-                    if rLink then
-                        GameTooltip:SetHyperlink(rLink)
-                    elseif GameTooltip.SetItemByID then
-                        GameTooltip:SetItemByID(rItemId)
-                    else
-                        return
+                    if addon.ItemLink.SetItem(GameTooltip, rLink, rItemId) then
+                        GameTooltip:Show()
                     end
-                    GameTooltip:Show()
                 end)
-                rf:SetScript("OnLeave", function() GameTooltip:Hide() end)
+                rf:SetScript("OnLeave", function()
+                    addon.ItemLink.EndHover(GameTooltip)
+                    GameTooltip:Hide()
+                end)
                 -- OnMouseDown (not OnClick) for the row's shift-click-link behaviour.
                 -- Parent OnClick competes with the child bankBtn's OnClick on some
                 -- WoW builds — the parent-Button click handler swallows the event
@@ -2344,9 +2332,7 @@ function BrowserTab:DrawDetail(entry)
                 -- This matches the recipe-row mouse handler pattern at
                 -- BrowserTab.lua:936 (which always worked).
                 rf:SetScript("OnMouseDown", function(_, btn)
-                    if btn == "LeftButton" and IsShiftKeyDown() and rLink then
-                        ChatEdit_InsertLink(rLink)
-                    end
+                    if btn == "LeftButton" then addon.ItemLink.Click(rLink) end
                 end)
                 rf:SetScript("OnClick", nil)  -- ensure no stale OnClick from a prior render
             else

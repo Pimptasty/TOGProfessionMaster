@@ -597,6 +597,12 @@ fullProcessLegacy = function()
     batch(1)
 end
 
+-- Offline-test seam. The per-unit arithmetic above is what every cost-to-craft
+-- figure in the addon rests on, and it goes wrong silently: pricing a stack as
+-- a single item inflates the whole price DB by the stack size.
+-- See Tests/ahfullscan_spec.lua.
+AH._fullProcessLegacy = function() return fullProcessLegacy() end
+
 -- Modern replicate processor (C_AuctionHouse.GetReplicateItemInfo is 0-indexed).
 fullProcessModern = function()
     local n = (C_AuctionHouse and C_AuctionHouse.GetNumReplicateItems and C_AuctionHouse.GetNumReplicateItems()) or 0
@@ -628,6 +634,11 @@ fullProcessModern = function()
     end
     batch(1)
 end
+
+-- Offline-test seam for the Cata/MoP path. Its own case rather than sharing the
+-- legacy one because the API it reads is **0-indexed** while the loop is
+-- 1-based, and losing that `- 1` silently drops the first listing of every scan.
+AH._fullProcessModern = function() return fullProcessModern() end
 
 --- Kick off a full scan. `auto` suppresses the throttle message (used by the
 --- auto-on-open trigger). Returns false + reason when it can't start.

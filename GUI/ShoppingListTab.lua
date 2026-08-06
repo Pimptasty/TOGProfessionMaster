@@ -284,20 +284,16 @@ function ShoppingListTab:FillMissingReagents(container)
         local itemId = entry.itemId
         itemLbl:SetCallback("OnEnter", function(_widget)
             addon.Tooltip.Owner(_widget.frame)
-            GameTooltip:SetItemByID(itemId)
+            addon.ItemLink.SetItem(GameTooltip, select(2, GetItemInfo(itemId)), itemId)
             GameTooltip:Show()
         end)
-        itemLbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-        -- Shift-click → insert item link into chat
+        itemLbl:SetCallback("OnLeave", function()
+            addon.ItemLink.EndHover(GameTooltip)
+            GameTooltip:Hide()
+        end)
         itemLbl:SetCallback("OnClick", function(_widget, _event, button)
-            if button == "LeftButton" and IsShiftKeyDown() then
-                local _, link = GetItemInfo(itemId)
-                if link and ChatEdit_GetActiveWindow then
-                    local editBox = ChatEdit_GetActiveWindow()
-                    if editBox then
-                        editBox:Insert(link)
-                    end
-                end
+            if button == "LeftButton" then
+                addon.ItemLink.Click((select(2, GetItemInfo(itemId))))
             end
         end)
         row:AddChild(itemLbl)

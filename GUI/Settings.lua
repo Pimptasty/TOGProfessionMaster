@@ -764,17 +764,22 @@ local OPTIONS = {
             get   = function() return Ace.db.profile.tooltipShowIds ~= false end,
             set   = function(_, val) Ace.db.profile.tooltipShowIds = val and true or false end,
         },
-        useStockItemTooltips = {
-            name  = L["SettingsUseStockTooltips"],
-            desc  = L["SettingsUseStockTooltipsDesc"],
-            type  = "toggle",
-            order = 19.53,
-            width = "full",
-            -- `== true`, not `~= false`: this one is OFF by default, and
-            -- `nil ~= false` is true — which would silently ship it enabled for
-            -- anyone whose profile predates the setting.
-            get   = function() return Ace.db.profile.useStockItemTooltips == true end,
-            set   = function(_, val) Ace.db.profile.useStockItemTooltips = val and true or false end,
+        tooltipRecipeDetails = {
+            name   = L["SettingsTooltipRecipeDetails"],
+            desc   = L["SettingsTooltipRecipeDetailsDesc"],
+            type   = "select",
+            order  = 19.53,
+            width  = "full",
+            values = function()
+                return {
+                    auto   = L["SettingsTooltipRecipeDetailsAuto"],
+                    always = L["SettingsTooltipRecipeDetailsAlways"],
+                    never  = L["SettingsTooltipRecipeDetailsNever"],
+                }
+            end,
+            sorting = { "auto", "always", "never" },
+            get   = function() return Ace.db.profile.tooltipRecipeDetails or "auto" end,
+            set   = function(_, val) Ace.db.profile.tooltipRecipeDetails = val end,
         },
 
         -- ---- Phase filtering (TBC Anniversary only) ------------------------

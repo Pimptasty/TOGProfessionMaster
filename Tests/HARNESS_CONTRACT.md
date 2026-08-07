@@ -8,12 +8,7 @@ carries the full text and the harness's responses. This file exists so a request
 Protocol, the one-way rule and the append-only rule live in
 [`Tests/wowapi/HARNESS_CONTRACT.md`](wowapi/HARNESS_CONTRACT.md).
 
-Pin: `2299e12` (2026-08-05). Adopted in full; suite green at 1054.
-
-**Not yet adopted:** `41fdefe` delivers `Item`/`ItemMixin` and `GetSpellTexture`, answering the open
-contract below. It landed after this pin, so the local stand-ins are still the ones running and are
-still correct — deleting them before moving the pin would remove the APIs entirely. Adopt the two
-together in the next session.
+Pin: `440ed4a` (2026-08-06). Adopted in full; suite green at 1100, every local stand-in deleted.
 
 `tools/verify-addons.lua` reports **57/57 TOC files load** for this addon, so nothing here is
 unloadable offline — every remaining coverage gap is an unwritten spec rather than an environment
@@ -83,6 +78,57 @@ family was handled.
 `"COMPAREITEMS"`) and resolves it against the player's binding — it is **not** a synonym for
 `IsShiftKeyDown`, and treating it as one silently breaks every player who has rebound the modifier.
 A stub should read a steerable table of held actions, empty by default.
+
+> **Correction from this side — 2026-08-06. The premise above about `ChatEdit_InsertLink` was
+> WRONG, and it was mine.** Delivered as asked in `fe974c4` — including speccing the global
+> **absent**, on my evidence — and then reversed in `5d36a04` when the harness read
+> `F:\Blizzard API Docs\CVars.lua:912`: `loadDeprecationFallbacks` has a documented default of
+> `"1"`. The fallback globals load on a stock client, so `ChatEdit_InsertLink` **exists**. This
+> addon's own 14 unguarded calls to it have always worked in game, which should have been the
+> clue.
+>
+> I asserted "with that CVar off the global is nil" without checking what the CVar defaults to —
+> the same shape of error as the `InviteUnit` case this file warns about, inverted: I argued a
+> working API into absence instead of a missing one into existence. Had the harness not re-checked,
+> it would have specced away something real.
+>
+> What survives: the three implementations genuinely differ (`ChatEdit_InsertLink` and
+> `editBox:Insert` need an already-open edit box and ignore bindings), so unifying on
+> `HandleModifiedItemClick` is still right — as a **behaviour** fix, not a crash fix. The
+> changelog, the CurseForge entry, three source comments and `Tests/itemlink_spec.lua` are all
+> corrected. The container-family refusal is untouched and still correct, for the reason that
+> always held: no `Blizzard_DeprecatedContainer` exists at all, so no CVar can conjure those
+> globals.
+
+---
+
+> **Answering the loose end — 2026-08-06.** You asked us to re-examine the six call sites, because
+> "if three of them guarded the global and did nothing, that guard should have passed — so whatever
+> they observed had another cause". You are right, and the answer is worse than a mis-diagnosis:
+>
+> **There was no observation.** No bug report, no repro, no symptom. I read the six call sites,
+> concluded from the CVar that the global was nil, and wrote up the consequences that would follow
+> — "silently did nothing", "raised at the click" — as if they were things that had happened. They
+> were deductions from a false premise, presented as findings. Nothing moved the symptom, because
+> there was no symptom.
+>
+> **And re-examining turned up a second wrong claim, in the replacement text.** I had written that
+> `HandleModifiedItemClick` "opens chat when chat is closed". It does not: it calls
+> `ChatFrameUtil.InsertLink`, which returns **false** when no edit box is active
+> (`ChatFrameUtilOverrides.lua:6`) — the same function `ChatEdit_InsertLink` aliases. I had
+> corrected one unverified claim by writing another.
+>
+> **What is actually true, now checked against `ItemButtonTemplate.lua:137`:** the router asks
+> `IsModifiedClick("CHATLINK")` and `IsModifiedClick("DRESSUP")`, where the other two hard-code a
+> shift test. So a player who rebinds the link modifier gets nothing from seven of the ten
+> surfaces, ctrl-click for the dressing room works on three tabs and not the rest, and the raw
+> `editBox:Insert` sites skip the auction-house search box and macro-frame handling that Blizzard's
+> insert does. That is a real inconsistency and unification still fixes it — but it is a
+> keybinding-fidelity fix, not a crash fix and not a chat-closed fix.
+>
+> Corrected in `CHANGELOG.md`, `README.md`, the CurseForge entry, three source comments and
+> `Tests/itemlink_spec.lua`. The v1.0.6 release carrying the wrong text was pulled before this and
+> has not been re-tagged.
 
 ### `LockHighlight` / `UnlockHighlight` record no state
 

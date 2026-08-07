@@ -6,6 +6,7 @@
 -- copy-pasted plumbing each.
 
 local _, addon = ...
+local Ace    = addon.lib
 local AceGUI = LibStub("AceGUI-3.0")
 local L      = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 
@@ -77,18 +78,27 @@ end
 --   ChatEdit_InsertLink(link)      Browser x3, Reagent Tracker, Compat
 --   editBox:Insert(link)           Missing Recipes, Shopping List
 --
--- The middle one is the bug. `ChatEdit_InsertLink` is NOT a Classic Era API: it
--- exists only inside Blizzard_DeprecatedChatInfo, behind
--- `GetCVarBool("loadDeprecationFallbacks")`, as an alias for
--- `ChatFrameUtil.InsertLink`. With that CVar off the global is nil — so the
--- guarded call sites silently did nothing (the classic feature-test-disables
--- failure) and the two UNGUARDED ones, the bank request dialog and the reagent
--- tracker row, raised a nil-call error at the click.
+-- They are not equivalent, and that is what made the addon feel inconsistent.
+-- `ChatEdit_InsertLink` and `editBox:Insert` hard-code a shift check instead of
+-- asking `IsModifiedClick("CHATLINK")`, so a rebound link modifier did nothing
+-- on those seven surfaces, and ctrl-click for the dressing room existed on three
+-- tabs and not the rest.
+--
+-- CORRECTION, recorded because it was wrong here first: an earlier version of
+-- this comment claimed `ChatEdit_InsertLink` does not exist on Classic Era
+-- because it sits behind `GetCVarBool("loadDeprecationFallbacks")`. It does
+-- sit there, but `CVars.lua:912` documents that CVar defaulting to "1" -- the
+-- fallback globals load on a stock client, and this addon's own 14 unguarded
+-- calls to it have always worked. Unifying is a behaviour fix, not a crash fix.
 --
 -- `HandleModifiedItemClick` is Blizzard's own router and is the right answer
 -- everywhere: it honours the player's CHATLINK and DRESSUP bindings (which are
--- not necessarily shift and ctrl), opens chat when it is closed, and routes to
--- the social frame when that is what is up.
+-- not necessarily shift and ctrl), routes to the social frame when that is what
+-- is up, and fills the auction-house search box or an open macro when those have
+-- focus. It does NOT open chat that is closed -- it calls
+-- ChatFrameUtil.InsertLink, which returns false when no edit box is active
+-- (ChatFrameUtilOverrides.lua:6). An earlier version of this comment claimed
+-- otherwise.
 -- ---------------------------------------------------------------------------
 addon.ItemLink = addon.ItemLink or {}
 local ItemLink = addon.ItemLink
@@ -147,23 +157,501 @@ end
 
 --- Which tooltip frame a curated surface should draw into.
 ---
---- Default (setting off) is the caller's own private frame, when it has one.
---- Missing Recipes owns one deliberately: third-party addons hook
---- OnTooltipSetItem onto the GLOBAL GameTooltip instance, and RecipeMaster's
---- handler nil-indexes `recipe.teaches` on a recipe scroll and takes the
---- tooltip down with it. A private frame inheriting the same template never
---- runs those hooks.
+--- Always the caller's own private frame when it has one. Missing Recipes owns
+--- one deliberately: third-party addons hook OnTooltipSetItem onto the GLOBAL
+--- GameTooltip instance, and RecipeMaster's handler nil-indexes `recipe.teaches`
+--- on a recipe scroll and takes the tooltip down with it. A private frame
+--- inheriting the same template never runs those hooks.
 ---
---- With `useStockItemTooltips` on, the player has asked for the stock tooltip
---- everywhere — which is exactly a request for those third-party hooks to fire,
---- ATT lines included, and therefore also a request to be exposed to them.
+--- This used to consult a `useStockItemTooltips` setting. That setting was built
+--- on a premise that did not survive checking -- that the game has a stock
+--- tooltip for a RECIPE. It does not: a trade-skill recipe is a spell, and the
+--- only stock recipe tooltips (`SetTradeSkillItem` / `SetCraftItem`) are
+--- index-based and valid only while the profession window is open. What the
+--- game does have a tooltip for is the recipe's teaching ITEM, which is what
+--- RecipeTooltipSource below resolves.
 function ItemLink.Tooltip(privateTip)
-    if not privateTip then return GameTooltip end
-    local db = addon.lib and addon.lib.db
-    if db and db.profile and db.profile.useStockItemTooltips then
-        return GameTooltip
+    return privateTip or GameTooltip
+end
+
+--- What a recipe's hover should be built from. Returns one of:
+---
+---   "item", itemId       -- a real teaching scroll exists; show ITS tooltip and
+---                           other addons' hooks contribute for free
+---   "synthetic", record  -- no such item exists (trainer-taught); draw the same
+---                           scroll SHAPE ourselves from the record's fields
+---   nil                  -- a skill-rank book, or a recipe we know nothing about
+---
+--- The two are exact complements, asserted by ItemDB's builder on every run, so
+--- every recipe takes exactly one branch and the list has no seam at the point
+--- where real scrolls run out. Roughly two thirds are "item" and one third
+--- "synthetic" -- 1,073 vs 572 on Vanilla, 1,453 vs 814 on TBC.
+---
+--- The synthetic record carries NO item id, by design and by spec upstream: a
+--- fabricated id is the field something eventually hands to GetItemInfo or an
+--- auction search, and it fails silently because a fictional id is permanently
+--- cache-cold. Branch on the returned kind, never on a missing id.
+---
+--- `record.name` is composed by LibItemDB as its localized prefix plus the
+--- client's own spell name, so it is nil for a spell this client does not know
+--- and for the gathering lines, which have no real scroll to derive a prefix
+--- from. Callers already holding the recipe name should prefer `record.prefix`
+--- and compose it themselves.
+function ItemLink.RecipeTooltipSource(profId, recipeId)
+    if not recipeId then return nil end
+
+    local itemId, isRankBook = ItemLink.TeachingItem(profId, recipeId)
+    if isRankBook then return nil end
+    if itemId then return "item", itemId end
+
+    local pdb = addon.GetProfessionDB and addon:GetProfessionDB()
+    if pdb and pdb.GetSyntheticRecipeScroll then
+        local rec = pdb:GetSyntheticRecipeScroll(recipeId)
+        if rec then return "synthetic", rec end
     end
-    return privateTip
+    return nil
+end
+
+--- The two header lines a recipe-scroll tooltip opens with, for a recipe that
+--- has no real scroll — so the tooltip we draw ourselves opens the same way the
+--- game's would.
+---
+--- Returns `title, requiresLine`, either of which may be nil:
+---
+---   "Plans: Barbaric Shoulders"
+---   "Requires Leatherworking (200)"
+---
+--- The prefix comes from LibItemDB's derived, localized table — never a
+--- hardcoded "Plans: ". That mattered more than it looks: frFR is `"Plans : "`
+--- with a space before the colon and zhCN uses a full-width colon, so an English
+--- table would have been visibly wrong in two locales on day one.
+---
+--- Falls back to the profession-name form this addon used before ("Tailoring:
+--- Azure Silk Gloves") when no prefix is available — the gathering lines have no
+--- real scroll for one to be derived from, and Wrath/Cata/Mists have no data yet.
+function ItemLink.ScrollHeader(profId, recipeId, recipeName, profName)
+    if not recipeName then return nil, nil end
+
+    local pdb  = addon.GetProfessionDB and addon:GetProfessionDB()
+    local rec  = (pdb and pdb.GetSyntheticRecipeScroll and recipeId)
+                 and pdb:GetSyntheticRecipeScroll(recipeId) or nil
+    local prefix = rec and rec.prefix
+    if not prefix and pdb and pdb.GetRecipeScrollPrefix and profId then
+        prefix = pdb:GetRecipeScrollPrefix(profId)
+    end
+
+    local title
+    if prefix then
+        title = prefix .. recipeName
+    elseif profName and profName ~= "" then
+        title = profName .. ": " .. recipeName
+    else
+        title = recipeName
+    end
+
+    -- requiredSkill comes from ProfessionDB, NOT from the synthetic record.
+    -- LibItemDB MINOR 18 ships it as 1 for every recipe on 8 of 12 skill lines
+    -- -- all 104 Tailoring, all 82 Engineering, all 79 Enchanting, all 22 Mining
+    -- -- which rendered "Requires Mining (1)" on Smelt Truesilver, a recipe that
+    -- needs 230. Raised as a defect on the contract. ProfessionDB has the real
+    -- per-recipe value and always has; there was never a reason to prefer the
+    -- other one. Omit the line entirely rather than print a number we cannot
+    -- stand behind.
+    local meta  = addon.GetRecipeMeta and profId and addon:GetRecipeMeta(profId, recipeId)
+    local skill = meta and meta.requiredSkill
+    local requires
+    if skill and skill > 1 and profName and profName ~= "" then
+        requires = ("Requires %s (%d)"):format(profName, skill)
+    end
+
+    -- Fourth return: whether THIS character meets that skill requirement.
+    -- The game colours an unmet requirement red, and it is the single most
+    -- useful thing the line says -- "Requires Engineering (190)" in white reads
+    -- as satisfied whether or not it is. Read from our own scanned skills
+    -- rather than a client API so it is right for the character the tooltip is
+    -- about; nil skill data means "cannot say", which renders as met rather
+    -- than crying wolf in red on a profession we simply have not scanned.
+    local metRequirement = true
+    if skill and skill > 1 then
+        local gdb     = addon.GetGuildDb and addon:GetGuildDb()
+        local charKey = addon.GetCharacterKey and addon:GetCharacterKey()
+        local mine    = gdb and gdb.skills and charKey and gdb.skills[charKey]
+                        and gdb.skills[charKey][profId]
+        if mine and mine.skillRank then metRequirement = mine.skillRank >= skill end
+    end
+
+    -- Third return: the scroll's own "Use: Teaches you how to craft X." line.
+    -- The game's scroll tooltip always carries one and ours did not, which is
+    -- one of the visible differences between the two. Localized and derived
+    -- from the TEACHING SPELL's description at build time -- not the scroll
+    -- item's, whose Description field is populated for only 60 of 1,073.
+    -- Added as a THIRD return rather than folded into the header so existing
+    -- two-value call sites keep working unchanged.
+    return title, requires, rec and rec.useText or nil, metRequirement
+end
+
+--- The quality colour for a crafted item, as an "ffRRGGBB" hex, or nil.
+---
+--- Recipe rows used to read this out of the cached `itemLink` alone, which is
+--- populated only when the client happened to have that item cached when the
+--- row was built. So the same recipe was coloured or not depending on what the
+--- player had recently seen, and one armour set could render its pieces in
+--- different colours -- quality is a fixed property of the item and must never
+--- depend on cache state.
+---
+--- Order matters: a real link is authoritative when present, ItemDB answers
+--- offline for everything else, and GetItemInfo is last because it returns nil
+--- for a cold item and would otherwise mask ItemDB's shipped answer.
+--- @return string|nil hex like "ffa335ee"
+function ItemLink.QualityHex(itemLink, itemId)
+    if type(itemLink) == "string" then
+        local hex = itemLink:match("|c(ff%x%x%x%x%x%x)|H")
+        if hex then return hex end
+    end
+    if type(itemId) ~= "number" then return nil end
+
+    local idb = addon.GetItemDB and addon:GetItemDB()
+    if idb and idb.GetLink then
+        local link = idb:GetLink(itemId)
+        local hex = type(link) == "string" and link:match("|c(ff%x%x%x%x%x%x)|H")
+        if hex then return hex end
+    end
+
+    -- Last resort, and only useful for an item the client already has cached.
+    if _G.GetItemInfo and _G.GetItemQualityColor then
+        local _, _, quality = _G.GetItemInfo(itemId)
+        if quality then
+            local _, _, _, hex = _G.GetItemQualityColor(quality)
+            -- The fourth return is already "ffRRGGBB" on Classic; guard anyway
+            -- rather than trusting the shape.
+            if type(hex) == "string" and hex:match("^ff%x%x%x%x%x%x$") then return hex end
+        end
+    end
+    return nil
+end
+
+--- Source-kind key -> locale key, and the order they display in.
+---
+--- Canonical: `MissingRecipesTab` and the recipe-detail block below both read
+--- these, so adding a kind or changing the order happens in one place. The
+--- locale keys keep their `MissingSrc*` names -- they were written for that tab
+--- and renaming them would churn twelve locale files to no effect.
+ItemLink.SOURCE_LABELS = {
+    vendor    = "MissingSrcVendor",
+    drop      = "MissingSrcDrop",
+    quest     = "MissingSrcQuest",
+    crafted   = "MissingSrcCrafted",
+    container = "MissingSrcContainer",
+    fishing   = "MissingSrcFishing",
+    trainer   = "MissingSrcTrainer",
+}
+ItemLink.SOURCE_ORDER = { "vendor", "drop", "quest", "crafted", "container", "fishing", "trainer" }
+
+--- The recipe-detail block's DATA: skill-up difficulty, and where the recipe
+--- comes from. Pure -- returns values, renders nothing -- so the shape can be
+--- asserted without a tooltip.
+---
+--- @return string|nil difficulty  the four colour-coded breakpoints, e.g. the
+---         `FormatSkillTiers` string "300 320 330 340" in orange/yellow/green/grey
+--- @return table|nil  sources     localized labels, in `SOURCE_ORDER`, or nil
+---
+--- **`sources` is keyed by RECIPE SPELL, not by item, and that is the whole
+--- reason this reads `addon.sourceDB` rather than `LibItemDB:GetSources`.** An
+--- item-keyed lookup can only answer for a recipe that HAS a teaching scroll,
+--- which excludes every trainer-taught recipe -- 31% of the Vanilla set, and the
+--- population most in need of a "where does this come from" line, since there is
+--- no scroll to inspect. Measured against the shipped Vanilla data: item-keyed
+--- answers for 44.6% of recipes, `sourceDB` for 74.9% (1172 of 1565), and its
+--- single largest kind is `trainer` at 508 recipes -- precisely the set the
+--- item-keyed lookup structurally cannot see.
+---
+--- Either return may be nil independently. A recipe with no source data gets no
+--- Sources heading rather than a heading over nothing: 25% of recipes have none,
+--- and "Sources: (blank)" reads as a bug in the addon rather than a gap in the
+--- data. Same reasoning as the `Requires` line, which omits rather than printing
+--- a number it cannot stand behind.
+function ItemLink.RecipeDetails(profId, recipeId)
+    if not profId or not recipeId then return nil, nil end
+
+    local difficulty
+    local meta = addon.GetRecipeMeta and addon:GetRecipeMeta(profId, recipeId)
+    if meta and (meta.difficulty or meta.requiredSkill) and addon.FormatSkillTiers then
+        local tiers = addon.FormatSkillTiers(meta.difficulty, meta.requiredSkill)
+        -- FormatSkillTiers answers "-" when it has nothing worth printing; that
+        -- is a placeholder for a table cell, not something to head a block with.
+        if tiers and tiers ~= "-" then difficulty = tiers end
+    end
+
+    local sources
+    local entry = addon.sourceDB and addon.sourceDB[profId] and addon.sourceDB[profId][recipeId]
+    if entry then
+        for _, kind in ipairs(ItemLink.SOURCE_ORDER) do
+            local npcs = entry[kind]
+            -- A kind present but EMPTY is a real state in this data (the porter
+            -- emits the key before it knows any npc), and it must not produce a
+            -- label -- that would assert a source we cannot name.
+            if npcs and next(npcs) ~= nil then
+                local key   = ItemLink.SOURCE_LABELS[kind]
+                local label = (key and L[key]) or kind
+                sources = sources or {}
+                sources[#sources + 1] = label
+            end
+        end
+    end
+
+    return difficulty, sources
+end
+
+--- Which of YOUR characters know the profession but not this recipe.
+---
+--- RecipeMaster's "Unlearned:" section, and the one place we are structurally
+--- better placed than it is: RM's spell path covers four skill lines (Mining,
+--- Poisons, Engineering, Enchanting) and adds nothing on the rest, silently.
+--- This reads our own synced store, which has skills, specialisations and alt
+--- groups for **every** profession, so the section answers everywhere.
+---
+--- Scoped to YOUR characters, not the guild, and deliberately: "who in the guild
+--- can make this" is already the crafters line, and a guild-wide unlearned list
+--- would be forty names of no use to anyone. The actionable question this
+--- answers is "which of my toons could still learn it".
+---
+--- @return table|nil { { name, skill, spec }, ... } sorted by name, or nil
+function ItemLink.UnlearnedBy(profId, recipeId)
+    if not profId or not recipeId then return nil end
+    local gdb = addon.GetGuildDb and addon:GetGuildDb()
+    if not gdb or not gdb.skills then return nil end
+
+    local rd       = gdb.recipes and gdb.recipes[profId] and gdb.recipes[profId][recipeId]
+    local crafters = (rd and rd.crafters) or {}
+
+    local out
+    for charKey, profs in pairs(gdb.skills) do
+        -- Has the profession, is mine, and has NOT learned this recipe. All
+        -- three matter: without the skills check every alt would be listed as
+        -- "unlearned" on a profession it does not even have.
+        if profs[profId] and not crafters[charKey]
+           and addon.IsMyCharacter and addon:IsMyCharacter(charKey) then
+            local spec
+            local specId = gdb.specializations and gdb.specializations[charKey]
+                           and gdb.specializations[charKey][profId]
+            -- Resolved at runtime, as the Guild tab does. Returns nil for a spell
+            -- this client does not know, which is why the name is optional below
+            -- rather than assumed.
+            if specId and GetSpellInfo then spec = (GetSpellInfo(specId)) end
+            out = out or {}
+            out[#out + 1] = {
+                name  = charKey:match("^(.-)%-") or charKey,
+                skill = profs[profId].skillRank,
+                spec  = spec,
+            }
+        end
+    end
+    if out then table.sort(out, function(a, b) return a.name < b.name end) end
+    return out
+end
+
+--- Render the recipe-detail block onto a tooltip, in RecipeMaster's shape:
+---
+---     TOGPM
+---     Difficulty
+---       300 320 330 340
+---     Sources
+---       Trainer
+---
+--- Headings sit flush and the values indent by two spaces. Deliberately NOT
+--- `AddDoubleLine` -- that right-aligns the value against the tooltip's widest
+--- line, so the numbers jump around depending on what else is on the tooltip.
+---
+--- Adds nothing at all when there is nothing to say, so a caller can invoke it
+--- unconditionally without having to pre-check.
+---
+--- @param tooltip table the tooltip being built
+--- @param profId number|nil the profession that owns the recipe
+--- @param recipeId number|nil the recipe's craft SPELL id
+--- @return boolean whether any line was added
+function ItemLink.AppendRecipeDetails(tooltip, profId, recipeId)
+    if not tooltip or not tooltip.AddLine then return false end
+
+    -- "never" is honoured HERE rather than at each call site, so it holds for
+    -- our own windows too. The RecipeMaster / "auto" half is not here: it asks
+    -- whether the tooltip is one RM can see, which only the caller knows.
+    local mode = Ace and Ace.db and Ace.db.profile and Ace.db.profile.tooltipRecipeDetails
+    if mode == "never" then return false end
+
+    -- ONE block per tooltip, whatever recipe asked for it. Several paths reach
+    -- here for a single hover -- BrowserTab appends explicitly, AND the global
+    -- hook fires again on Show() for a tooltip built by SetHyperlink.
+    --
+    -- Keyed on "has a block been drawn", NOT on the recipe id, and that
+    -- distinction is load-bearing: **seven Vanilla items are produced by more
+    -- than one recipe** (Gold Bar comes from Alchemy's Transmute Iron to Gold
+    -- *and* Mining's Smelt Gold; the Gordok Ogre Suit from both Leatherworking
+    -- and Tailoring). On such a row BrowserTab passes the row's own recipe while
+    -- the global hook independently resolves the first recipe indexed for that
+    -- item -- a different id -- so an id-keyed guard matches neither and draws
+    -- the block twice. A tooltip describes one thing; two blocks is always wrong.
+    --
+    -- Cleared by OnTooltipCleared, which the client fires on SetOwner at the
+    -- start of every hover, so a genuinely new hover still renders.
+    if tooltip._togpmRecipeBlock then return false end
+
+    local difficulty, sources = ItemLink.RecipeDetails(profId, recipeId)
+    local unlearned = ItemLink.UnlearnedBy(profId, recipeId)
+    if not difficulty and not sources and not unlearned then return false end
+    tooltip._togpmRecipeBlock = recipeId
+
+    local brand = addon.BrandColor or "ffFF8000"
+    tooltip:AddLine("|n|c" .. brand .. "TOGPM|r")
+
+    if difficulty then
+        tooltip:AddLine(L["TooltipDifficulty"])
+        -- Already colour-coded per tier by FormatSkillTiers, so the line's own
+        -- r/g/b must be white or it would tint the escape sequences' fallback.
+        tooltip:AddLine("  " .. difficulty, 1, 1, 1)
+    end
+
+    if sources then
+        tooltip:AddLine(L["TooltipSources"])
+        for _, label in ipairs(sources) do
+            tooltip:AddLine("  " .. label, 1, 1, 1)
+        end
+    end
+
+    if unlearned then
+        -- The trailing colon is RecipeMaster's, on this heading only -- its own
+        -- Difficulty and Sources headings have none. Matched rather than
+        -- normalised: the point of the block is that a player reads one coherent
+        -- section whichever addon drew it, and our tidier version would be the
+        -- thing that looked out of place.
+        -- Red, and the same red as "Already known" one block up (Blizzard's
+        -- RED_FONT_COLOR, 1/0.13/0.13) rather than a second hand-picked one.
+        -- The two lines are opposites -- known here, not known there -- so a
+        -- player reading both should see one palette, not two.
+        tooltip:AddLine(L["TooltipUnlearned"], 1, 0.13, 0.13)
+        for _, c in ipairs(unlearned) do
+            local detail = c.skill and L["TooltipSkill"]:format(c.skill) or nil
+            if detail and c.spec then detail = detail .. ", " .. c.spec
+            elseif c.spec         then detail = c.spec end
+            tooltip:AddLine("  " .. c.name .. (detail and (" (" .. detail .. ")") or ""), 1, 1, 1)
+        end
+    end
+
+    return true
+end
+
+--- Everything OTHER addons would have contributed if this tooltip carried an item.
+---
+--- This is the whole difference between our hand-built recipe tooltip and the
+--- game's. A tooltip built from AddLine calls has no item, so `OnTooltipSetItem`
+--- never fires -- and that single hook is how AllTheThings, TOGBankClassic and
+--- TradeSkillMaster all attach. On the ~65% of recipes with a real teaching
+--- scroll we call SetHyperlink and get all three for free; on the trainer-taught
+--- third we get none of them, and the two tooltips look nothing alike.
+---
+--- None of the three offers a "render your block into my tooltip" entry point
+--- except ATT, so the other two are re-rendered here from data this addon
+--- already reads. That is a deliberate duplication of their layout, and it will
+--- drift if they restyle -- the alternative is the trainer-taught third of every
+--- profession staying visibly second-class, which is worse.
+---
+--- Every step is independently guarded: any of the three being absent, disabled
+--- or mid-load leaves the tooltip exactly as it was.
+---
+--- @param tooltip table the tooltip being built (already has lines)
+--- @param spellId number|nil the recipe's craft spell id -- ATT is keyed by this
+--- @param craftedItemId number|nil the item the recipe produces, for bank + price
+function ItemLink.AppendIntegrations(tooltip, spellId, craftedItemId)
+    if not tooltip or not tooltip.AddLine then return end
+    local brand = addon.BrandColor or "ffFF8000"
+
+    -- 1. AllTheThings. The only one with a real API for this, and it lives in
+    -- LibItemDB rather than LibProfessionDB -- the recipe-scroll move left it
+    -- behind, which ItemDB caught. Keyed by SPELL, so it also answers for
+    -- recipes that have no scroll item at all: exactly this case.
+    if type(spellId) == "number" then
+        local idb = addon.GetItemDB and addon:GetItemDB()
+        if idb and idb.AttachExternalRecipeInfo then
+            -- Returns whether it actually added lines; it pcalls into ATT
+            -- internally, so a broken/updated ATT cannot take the tooltip down.
+            idb:AttachExternalRecipeInfo(tooltip, spellId)
+        end
+    end
+
+    -- 1b. Every OTHER addon, via ItemDB's universal bridge. `HookScript`
+    -- composes, so GameTooltip's OnTooltipSetSpell chain is one function that
+    -- calls every installed addon's handler in turn -- and each handler
+    -- operates on the tooltip it is PASSED. Replaying that chain is the only
+    -- way to reach an addon that exposes no API at all: RecipeMaster keeps its
+    -- entire namespace private (`local addonName, rm = ...`, zero _G writes),
+    -- so there is nothing to call into.
+    --
+    -- Keyed on the SPELL chain, not the item one, because that is the half
+    -- that can answer for a recipe with no teaching item -- which is the whole
+    -- population this function exists for.
+    --
+    -- Returns false when no chain exists or a handler declined; that is not an
+    -- error and there is nothing to do about it.
+    do
+        local idb = addon.GetItemDB and addon:GetItemDB()
+        if idb and idb.ApplyExternalTooltipHooks then
+            idb:ApplyExternalTooltipHooks(tooltip, "OnTooltipSetSpell")
+        end
+    end
+
+    if type(craftedItemId) ~= "number" then return end
+
+    -- 2. TOGBankClassic. No callable renderer exists -- its OnTooltipSetItem
+    -- handler is a file-local closure -- so the block is rebuilt here from
+    -- addon.Bank, which reads the same TOGBankClassic_Guild data the real one
+    -- does. Deliberately mirrors its heading + AddDoubleLine shape.
+    if addon.Bank and addon.Bank.GetBanksWithItem then
+        local banks = addon.Bank.GetBanksWithItem(craftedItemId)
+        if banks and #banks > 0 then
+            tooltip:AddLine(" ")
+            tooltip:AddLine("TOGBankClassic", 1, 0.82, 0)
+            tooltip:AddLine("Bankers:", 0.4, 0.8, 1)
+            for _, bank in ipairs(banks) do
+                tooltip:AddDoubleLine(bank.name, tostring(bank.count), 1, 1, 1, 1, 1, 1)
+            end
+        end
+    end
+
+    -- 3. Prices, through ItemDB's integration registry rather than rendered
+    -- here. This used to reach into addon.Price and lay the rows out itself,
+    -- which meant duplicating TSM's labels and guessing its shape. ItemDB owns
+    -- every third-party bridge now, so this asks once and gets whichever
+    -- providers the player actually has -- TSM, Auctionator, or neither.
+    local idb = addon.GetItemDB and addon:GetItemDB()
+    if not (idb and idb.GetExternalPrices and idb.GetLink) then return end
+
+    -- The registry keys off LINKS, not ids: passing an id silently returns
+    -- nothing, so resolve one first and bail if we cannot.
+    local link = idb:GetLink(craftedItemId)
+    if type(link) ~= "string" then return end
+
+    local byProvider = idb:GetExternalPrices(link)
+    if not byProvider then return end
+
+    -- Sorted so the block does not reorder itself between hovers -- pairs()
+    -- over the provider table would.
+    local providers = {}
+    for name in pairs(byProvider) do providers[#providers + 1] = name end
+    table.sort(providers)
+
+    local money = _G.GetCoinTextureString
+    for _, name in ipairs(providers) do
+        tooltip:AddLine(" ")
+        tooltip:AddLine("|c" .. brand .. name .. "|r")
+        for _, row in ipairs(byProvider[name]) do
+            -- `formatted` only where the provider supplies its own money
+            -- formatting (TSM does, Auctionator does not), so fall back to
+            -- ours rather than assuming it is there.
+            local shown = row.formatted
+                or (money and row.value and money(row.value))
+                or tostring(row.value)
+            tooltip:AddDoubleLine(row.label, shown, 0.4, 0.8, 1, 1, 1, 1)
+        end
+    end
 end
 
 -- Rows register here while hovered, so a modifier pressed DURING the hover
@@ -179,19 +667,33 @@ local function ensureModifierWatcher()
     modifierWatcher = CreateFrame("Frame")
     modifierWatcher:RegisterEvent("MODIFIER_STATE_CHANGED")
     modifierWatcher:SetScript("OnEvent", function()
-        if hovered and hovered.tip and hovered.tip:IsShown() then
-            ItemLink.SyncCompare(hovered.tip)
+        if not (hovered and hovered.tip and hovered.tip:IsShown()) then return end
+        -- `rebuild` exists for the curated tooltips. A tooltip assembled out of
+        -- AddLine calls has no ITEM attached, so GameTooltip_ShowCompareItem has
+        -- nothing to compare against and the modifier would appear to do
+        -- nothing. Those surfaces hand us a rebuild function that redraws the
+        -- row for the current modifier state — showing the real item tooltip
+        -- while the key is held, and going back to the trimmed one on release.
+        if hovered.rebuild then
+            hovered.rebuild()
+            return
         end
+        ItemLink.SyncCompare(hovered.tip)
     end)
     return modifierWatcher
 end
 
 --- Note that `tip` is showing an item so the modifier watcher can update it.
-function ItemLink.BeginHover(tip)
+---
+--- `rebuild` is optional and only needed by a surface whose tooltip is
+--- hand-built; see the comment in the watcher above. It must re-render the
+--- tooltip for the CURRENT modifier state and is responsible for calling
+--- BeginHover again if it still wants updates.
+function ItemLink.BeginHover(tip, rebuild)
     if not tip then return end
     ensureModifierWatcher()
-    hovered = { tip = tip }
-    ItemLink.SyncCompare(tip)
+    hovered = { tip = tip, rebuild = rebuild }
+    if not rebuild then ItemLink.SyncCompare(tip) end
 end
 
 --- Stop tracking; call from OnLeave alongside hiding the tooltip.
@@ -223,6 +725,78 @@ function ItemLink.SetItem(tip, link, itemId)
     end
     ItemLink.BeginHover(tip)
     return true
+end
+
+--- The item that TEACHES a recipe — the "Pattern: X" / "Plans: X" scroll — or nil
+--- when the recipe is trainer-taught and no such item exists.
+---
+--- Not wired into any tooltip yet. This is the resolver the scroll-link tooltip
+--- would sit on, specced first so the swap is a decision about looks rather than
+--- a gamble on whether the data is there.
+---
+--- **nil is a real and common answer, not missing data.** ItemDB measured it at
+--- 572 of 1,645 Vanilla recipes and 814 of 2,267 on TBC — roughly a third are
+--- trainer-taught. Any caller MUST have a fallback.
+---
+--- Two sources, in this order, and both are load-bearing:
+---
+---   1. `LibItemDB:GetRecipeItem(spellID)` (MINOR 17+). Authoritative: built from
+---      `ItemEffect -> SpellEffect[Effect = 36].EffectTriggerSpell`, so it is DBC
+---      truth and locale-independent. Ships Vanilla and TBC only, today.
+---   2. LibProfessionDB's `meta.itemId`. Covers Wrath / Cata / Mists, which ItemDB
+---      has not generated yet — without this the feature would silently do nothing
+---      on three of the five flavours this addon supports.
+---
+--- `isRankBook` is the second return and matters: *Expert Fishing - The Bass and
+--- You* genuinely teaches a spell, so the DBC join resolves it correctly, but it
+--- is a skill-RANK book rather than a recipe. Callers listing recipes should skip
+--- those. Classified from data by ItemDB, so no string-matching on titles.
+function ItemLink.TeachingItem(profId, recipeId)
+    if not recipeId then return nil, false end
+
+    -- ProfessionDB, not ItemDB. The recipe-scroll mapping moved there at
+    -- ProfessionDB MINOR 8 / v1.5.0, because it is keyed by craft spell id
+    -- exactly as recipes are. ItemDB still answers GetLink for the resulting id.
+    local pdb = addon.GetProfessionDB and addon:GetProfessionDB()
+    if pdb and pdb.GetRecipeItem then
+        local itemId, isRankBook = pdb:GetRecipeItem(recipeId)
+        if itemId then return itemId, isRankBook and true or false end
+    end
+
+    local meta = addon.GetRecipeMeta and profId and addon:GetRecipeMeta(profId, recipeId)
+    if meta and meta.itemId and meta.itemId > 0 then return meta.itemId, false end
+
+    return nil, false
+end
+
+--- Lift a button/icon above an AceGUI Frame's invisible resize handles.
+---
+--- AceGUI's Frame widget lays two MOUSE-ENABLED resize strips along the bottom
+--- edge: `sizer_s` spans the full width and is 25 tall, `sizer_se` is a 25x25
+--- corner (AceGUIContainer-Frame.lua:253-280). Anything parented to that frame
+--- and parked on the bottom status row overlaps them, and the sizers win
+--- hit-testing over the overlap — so only the part of the button above y=25
+--- responds and the lower portion is dead.
+---
+--- The geometry is not marginal. The help icon sits 15px up and is 24 tall, so
+--- 10 of its 24 pixels are inside the strip; the gear is 8 of 20. That is the
+--- reported "bottom half of the buttons is not clickable".
+---
+--- Ported from FastGuildInvite, which hit this first and fixed it the same way
+--- (fastguildinvite/functions.lua:15 `LiftAboveSizers`). Call AFTER the button
+--- has its parent and its SetPoint. `offset` defaults to 5, which clears the
+--- +1 sizers with margin.
+---
+--- Honest limit: what WoW does with a frame-level TIE is not something I have
+--- established. AceGUI's own close button ties with the sizers and is perfectly
+--- clickable in game, so "same level loses" is plainly not the whole rule. The
+--- lift is here because FGI hit this on its own bottom-row buttons and lifting
+--- fixed it, and because clearing the strips outright removes the question.
+function addon.GUI.LiftAboveSizers(button, offset)
+    if not (button and button.GetParent and button.SetFrameLevel) then return end
+    local parent = button:GetParent()
+    local base = (parent and parent.GetFrameLevel and parent:GetFrameLevel()) or 0
+    button:SetFrameLevel(base + (offset or 5))
 end
 
 -- Shared header-arrow widget plumbing (FGI-style MoreArrow texture).

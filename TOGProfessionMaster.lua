@@ -322,12 +322,18 @@ local SETTINGS_DEFAULTS = {
         -- both, or neither. Read in Tooltip.lua's AppendCrafters.
         tooltipShowCrafters = false,
         tooltipShowIds      = false,
-        -- OFF by default. On, TOGPM's own row tooltips are drawn on the stock
-        -- GameTooltip so other addons' tooltip hooks (ATT and friends) fire on
-        -- them — which is the point, and also the risk: it re-exposes the
-        -- Missing Recipes list to third-party handlers that crash on recipe
-        -- scrolls. See GUI/SharedWidgets.lua ItemLink.Tooltip.
-        useStockItemTooltips = false,
+
+        -- Recipe-detail block (difficulty tiers + where the recipe comes from)
+        -- on tooltips the GAME built. "auto" | "always" | "never".
+        --
+        -- Defaults to "auto": render it unless RecipeMaster is loaded, since RM
+        -- already draws this on every tooltip it can see. "always" exists
+        -- because loaded is not the same as contributing -- RM's own display
+        -- switches are addon-private and unreadable, so a player who has RM
+        -- installed with those switched off would otherwise get the block from
+        -- neither addon. Our OWN tooltips ignore this gate entirely (RM cannot
+        -- see them) but do respect "never".
+        tooltipRecipeDetails = "auto",
 
         -- TBC Anniversary content phase. The recipe DB ships with `phase`
         -- field on TBC raid / Shattered-Sun / BT / Hyjal / Sunwell recipes
@@ -2419,6 +2425,20 @@ function addon:GetItemDB()
         self._itemDB = (LibStub and LibStub("LibItemDB-1.0", true)) or false
     end
     return self._itemDB or nil
+end
+
+-- LibProfessionDB (required dependency, read via LibStub). Cached the same way
+-- as GetItemDB above and resolved lazily so load order does not matter.
+--
+-- This is where the recipe-scroll data lives as of ProfessionDB v1.5.0 / MINOR 8
+-- -- it moved from LibItemDB because it is keyed by craft spell id, exactly as
+-- recipes are. LibItemDB keeps GetLink / GetName, which answer questions about
+-- an ITEM, so both libraries get asked the question each one owns.
+function addon:GetProfessionDB()
+    if self._profDB == nil then
+        self._profDB = (LibStub and LibStub("LibProfessionDB-1.0", true)) or false
+    end
+    return self._profDB or nil
 end
 
 -- A crafted item's stats as a display/search string ("+5 Strength, +12 Stamina"),

@@ -26,7 +26,6 @@
         "strtrim",
         "_G",
         "Menu",
-
         "UIParent",
         "WorldFrame",
         "Minimap",
@@ -40,7 +39,6 @@
         "ShoppingTooltip2",
         "ShoppingTooltip3",
         "ChatFrame1",
-
         "CreateFrame",
         "hooksecurefunc",
         "LibStub",
@@ -49,7 +47,6 @@
         "C_AddOns",
         "C_Item",
         "C_Container",
-
         "GetRealmName",
         "GetNormalizedRealmName",
         "UnitName",
@@ -57,7 +54,6 @@
         "UnitLevel",
         "GetServerTime",
         "GetTime",
-
         "GetNumGuildMembers",
         "GetGuildRosterInfo",
         "GetGuildInfo",
@@ -66,16 +62,13 @@
         "CanViewOfficerNote",
         "CanEditOfficerNote",
         "IsGuildLeader",
-
         "GetSpellInfo",
         "GetSpellLink",
         "IsSpellKnown",
         "GetMinimapShape",
-
         "GetItemInfo",
         "GetItemInfoInstant",
         "GetItemQualityColor",
-
         "GetTradeSkillLine",
         "GetNumTradeSkills",
         "GetTradeSkillInfo",
@@ -116,10 +109,8 @@
         "GetTrainerServiceCost",
         "GetTrainerServiceSkillLine",
         "bit",
-
         "SendChatMessage",
         "ChatFrame_AddMessageEventFilter",
-
         "IsShiftKeyDown",
         "IsControlKeyDown",
         "IsAltKeyDown",
@@ -129,7 +120,6 @@
         "PickupItem",
         "DressUpItemLink",
         "ChatEdit_InsertLink",
-
         "GetAddOnMetadata",
         "UpdateAddOnMemoryUsage",
         "GetAddOnMemoryUsage",
@@ -137,7 +127,6 @@
         "GetContainerNumSlots",
         "GetContainerItemLink",
         "GetContainerItemInfo",
-
         "StaticPopupDialogs",
         "StaticPopup_Show",
         "UISpecialFrames",
@@ -148,14 +137,11 @@
         "RaidWarningFrame",
         "UIErrorsFrame",
         "ChatTypeInfo",
-
         "ElvUI",
         "TSM_API",
         "HideUIPanel",
         "ShowUIPanel",
-
         "togProfessionMaster",
-
         "TOGPM_Professions",
         "TOGPM_OwnProfessions",
         "TOGPM_SyncTimes",
@@ -170,7 +156,6 @@
         "TOGPM_Specializations",
         "TOGPM_Frames",
         "TOGPM_CharacterSettings",
-
         "SlashCmdList",
         "NUM_BAG_SLOTS",
         "NUM_CHAT_WINDOWS",
@@ -189,7 +174,6 @@
         "UIDropDownMenu_CreateInfo",
         "ToggleDropDownMenu",
         "SLASH_TOGProfessionMaster1",
-
         "BackdropTemplateMixin",
         "Item",
         "GetCurrentKeyBoardFocus",
@@ -210,21 +194,19 @@
         "TOGBankClassic_Options",
         "TOGBankClassic",
         "HandleModifiedItemClick",
+        "GetCVarBool",
         "GameTooltip_ShowCompareItem",
         "GameTooltip_HideShoppingTooltips",
         "ChatFrameUtil",
         "IsModifiedClick",
         "GetSpellTexture",
-
         "RegisterAddonMessagePrefix",
         "SendAddonMessage",
         "FCF_SetWindowName",
         "FCF_DockFrame",
         "FCF_Close",
-
         "TooltipDataProcessor",
         "Enum",
-
         "ClickSendMailItemButton",
         "GetSendMailItem",
         "ATTACHMENTS_MAX_SEND",
@@ -244,7 +226,6 @@
         "PickupContainerItem",
         "GetContainerItemCooldown",
         "GetCooldownTimestamp",
-
         "UnitAffectingCombat",
         "InCombatLockdown",
         "GetSpellCooldown",
@@ -258,7 +239,6 @@
         "CloseSpecialWindows",
         "UIDropDownMenu_SetSelectedValue",
         "SOUNDKIT",
-
         "CanSendAuctionQuery",
         "QueryAuctionItems",
         "GetNumAuctionItems",
@@ -273,7 +253,6 @@
         "BrowseSearchButton",
         "IsUsableCheckButton",
         "ShowOnPlayerCheckButton",
-
         "package",
         "require",
         "os",

@@ -142,7 +142,7 @@ local RESET_COLOR   = "|r"
 -- addon's same-frame hook (Pawn, Wowhead Looter, AtlasLoot, Auctionator,
 -- etc.) so the TOGPM lines sit at the BOTTOM of the tooltip instead of
 -- mid-stack between other addons' contributions.
-local function AppendCraftersNow(tooltip, itemID)
+local function AppendCraftersAndIds(tooltip, itemID)
     -- The deferred call may fire after the user has hovered off the
     -- original item. Re-verify the tooltip is still showing the same
     -- item before polluting the new content. Cheap: one GetItem call.
@@ -239,6 +239,116 @@ local function AppendCraftersNow(tooltip, itemID)
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- Recipe-detail block (difficulty + sources) on GAME-BUILT item tooltips
+-- ---------------------------------------------------------------------------
+
+-- itemId -> { { profId, recipeId }, ... }, covering BOTH ways an item relates to
+-- a recipe: the item a recipe PRODUCES, and the scroll that TEACHES it. A player
+-- hovering either one is asking about the same recipe.
+--
+-- Built once and cached, deliberately. ResolveRecipesForItem above walks every
+-- shipped recipe (~1,565 on Vanilla) on each call, which was tolerable while the
+-- only caller was the opt-in IDs line -- this block runs on every item tooltip in
+-- the game, so an O(n) scan per hover is not. The data is static shipped content
+-- loaded at startup, so one build is enough and there is nothing to invalidate.
+-- Held on the addon table, not as a file-local, so it invalidates the same way
+-- `_craftedItemMap` does when recipeDB is replaced. In game that happens once at
+-- load; in the test suite a spec swaps recipeDB per case, and a file-local would
+-- cache the first spec's data for the whole run.
+local function RecipesForItem(itemID)
+    if not addon._recipeItemIndex then
+        local index = {}
+        addon._recipeItemIndex = index
+        local function add(itemId, profId, recipeId)
+            if type(itemId) ~= "number" or itemId <= 0 then return end
+            local list = index[itemId]
+            if not list then list = {}; index[itemId] = list end
+            list[#list + 1] = { profId = profId, recipeId = recipeId }
+        end
+        for profId, profRecipes in pairs(addon.recipeDB or {}) do
+            for recipeId, meta in pairs(profRecipes) do
+                add(meta.craftedItemId, profId, recipeId)
+                -- The teaching scroll. Resolved through ItemLink.TeachingItem so
+                -- this index cannot disagree with what the browser's own tooltip
+                -- resolves -- it is the same lookup, ProfessionDB first and the
+                -- recipe's own meta.itemId second (the latter being the ONLY
+                -- source on Wrath / Cata / Mists).
+                local scrollId = addon.ItemLink and addon.ItemLink.TeachingItem
+                                 and addon.ItemLink.TeachingItem(profId, recipeId)
+                if scrollId ~= meta.craftedItemId then add(scrollId, profId, recipeId) end
+            end
+        end
+    end
+    return addon._recipeItemIndex[itemID]
+end
+addon.Tooltip._RecipesForItem = RecipesForItem   -- exposed for specs
+
+--- Should the block render on a tooltip the GAME built?
+---
+--- The coverage rule, and it is one line: **if we built the tooltip we render
+--- the block; if the game built it, RecipeMaster does -- unless RM is not there,
+--- in which case we do that too.** RM covers 100% of what it can see (it hooks
+--- OnTooltipSetItem) and 0% of ours (a tooltip assembled from AddLine calls
+--- carries no item, so its hook never fires), which is why this is a
+--- tooltip-TYPE split and needs no per-profession logic.
+---
+--- **Loaded is not the same as contributing, and we cannot tell.** RM's handlers
+--- are gated on its own `showAltsTooltipInfo` / `showSourcesTooltipInfo`
+--- settings, which are addon-private -- it writes nothing to `_G`
+--- (`local addonName, rm = ...`), so nothing can read them. A player with RM
+--- installed and both switched off would get the block from neither addon. That
+--- is what "always" is for.
+local function RecipeDetailsMode()
+    local mode = Ace.db and Ace.db.profile and Ace.db.profile.tooltipRecipeDetails
+    return mode or "auto"
+end
+
+local function ShouldRenderOnGameTooltip()
+    local mode = RecipeDetailsMode()
+    if mode == "never"  then return false end
+    if mode == "always" then return true  end
+    -- Detected by ADDON NAME, not namespace: RM exports nothing to _G.
+    return not (addon.IsAddOnLoaded and addon:IsAddOnLoaded("RecipeMaster"))
+end
+addon.Tooltip._ShouldRenderOnGameTooltip = ShouldRenderOnGameTooltip
+
+local function AppendRecipeDetailsForItem(tooltip, itemID)
+    if not ShouldRenderOnGameTooltip() then return end
+
+    -- Gate on recipe-ness FIRST. Every item tooltip in the game reaches here,
+    -- so the common case -- grey vendor trash -- must cost one hash lookup and
+    -- nothing more.
+    local hits = RecipesForItem(itemID)
+    if not hits then return end
+
+    -- Same re-verify the crafters path does: a deferred call can land after the
+    -- user has hovered off, and appending then writes onto the wrong item.
+    local _, currentLink = tooltip:GetItem()
+    if not currentLink or ItemIdFromLink(currentLink) ~= itemID then return end
+
+    -- One block, even when several recipes produce this item (different
+    -- professions making the same reagent). Rendering the block twice reads as
+    -- a bug; the first hit is the one the browser would also have shown.
+    local hit = hits[1]
+    addon.ItemLink.AppendRecipeDetails(tooltip, hit.profId, hit.recipeId)
+end
+
+-- Everything the GLOBAL hook appends, in tooltip order: crafters, IDs, then the
+-- recipe block at the bottom.
+--
+-- Deliberately NOT what `addon.Tooltip.AppendCrafters` points at below. That is
+-- BrowserTab's entry point for tooltips WE built, and those must render the
+-- recipe block unconditionally -- the RecipeMaster gate applies only to tooltips
+-- the game built, which RM can actually see. Routing our own tooltips through
+-- here would hand a RecipeMaster user an addon window with the block missing.
+local function AppendCraftersNow(tooltip, itemID)
+    AppendCraftersAndIds(tooltip, itemID)
+    -- Has its own toggle and its own gate, so it must not sit behind the
+    -- crafters/IDs early-return: a player with both of those off still gets it.
+    AppendRecipeDetailsForItem(tooltip, itemID)
+end
+
 -- Dedup wrapper: a single tooltip Show can trigger multiple hook paths
 -- (modern PostCall, legacy OnTooltipSetItem, fallback Show-hook). The
 -- _togpmAppended==itemID guard collapses them to one append per item per
@@ -260,7 +370,11 @@ end
 
 -- Exposed so BrowserTab can call it directly on its custom-built tooltips
 -- (those paths bypass SetHyperlink so the global hook never fires).
-addon.Tooltip.AppendCrafters = AppendCraftersNow
+--
+-- Points at the crafters/IDs half ONLY, not the composite above. BrowserTab adds
+-- the recipe block itself, ungated, because a tooltip we built is one
+-- RecipeMaster cannot see.
+addon.Tooltip.AppendCrafters = AppendCraftersAndIds
 
 -- Append just the brand-coloured `[TOGPM] itemId=N spellId=N` line, without
 -- any crafters lookup. For BrowserTab's spell-only tooltip branches
@@ -294,8 +408,13 @@ local function OnTooltipSetItem(tooltip)
 end
 
 local function OnTooltipCleared(tooltip)
-    tooltip._togpmAppended = nil
+    tooltip._togpmAppended    = nil
+    -- Without this the recipe block renders once and then never again on that
+    -- frame -- GameTooltip is reused for every hover in the game, so the flag
+    -- would outlive the item it was set for.
+    tooltip._togpmRecipeBlock = nil
 end
+addon.Tooltip._OnTooltipCleared = OnTooltipCleared   -- exposed for specs
 
 -- Register after PLAYER_LOGIN so SavedVariables are loaded
 Ace:RegisterEvent("PLAYER_LOGIN", function()

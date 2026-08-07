@@ -33,17 +33,13 @@ MissingRecipesTab.WINDOW_SIZE = { width = 720, height = 500, locked = true }
 -- client (Jewelcrafting on Vanilla, Inscription on Vanilla / TBC) is
 -- hidden even if the character somehow has stale skill data for it cached.
 
--- Source key → locale key. Order here drives display order on each row.
-local SRC_LABELS = {
-    vendor    = "MissingSrcVendor",
-    drop      = "MissingSrcDrop",
-    quest     = "MissingSrcQuest",
-    crafted   = "MissingSrcCrafted",
-    container = "MissingSrcContainer",
-    fishing   = "MissingSrcFishing",
-    trainer   = "MissingSrcTrainer",
-}
-local SRC_ORDER = { "vendor", "drop", "quest", "crafted", "container", "fishing", "trainer" }
+-- Source key → locale key, and the order that drives display order on each row.
+-- Canonical copies live in GUI/SharedWidgets.lua (loaded earlier per the TOC),
+-- because the recipe-detail tooltip block renders the same kinds and the two
+-- silently disagreeing is exactly the drift worth avoiding: a source kind added
+-- to one list would render as a raw lowercase key in the other.
+local SRC_LABELS = addon.ItemLink.SOURCE_LABELS
+local SRC_ORDER  = addon.ItemLink.SOURCE_ORDER
 
 -- Tab state — survives tab switches but resets on UI reload.
 MissingRecipesTab._scope           = nil      -- "personal" | "guild" sub-tab
@@ -1152,10 +1148,11 @@ function MissingRecipesTab:BuildPool(parent)
         -- captures before either guard reaches the error.
         f:SetScript("OnEnter", function()
             if not (f._itemId or f._spellId) then return end
-            -- ItemLink.Tooltip picks the frame: our private one by default (so
-            -- third-party OnTooltipSetItem hooks that crash on recipe scrolls
-            -- never run), or the stock GameTooltip when the player has turned
-            -- `useStockItemTooltips` on and asked for exactly those hooks.
+            -- ItemLink.Tooltip picks the frame — our private one whenever this
+            -- tab supplies it, so the third-party OnTooltipSetItem hooks that
+            -- crash on recipe scrolls never run. Routed through the helper
+            -- rather than used directly so there is one place that decision
+            -- lives if it ever needs to change again.
             local tip = addon.ItemLink.Tooltip(MissingRecipesTab:GetCustomTip())
             -- Anchor next to the row using the same screen-half logic as
             -- addon.Tooltip.Owner — popup appears just below the row when
@@ -1219,10 +1216,11 @@ function MissingRecipesTab:BuildPool(parent)
             end
             GameTooltip:Hide()
         end)
-        -- Was a raw editBox:Insert, which does nothing when chat is closed and
-        -- ignores the player's modified-click bindings. addon.ItemLink.Click
-        -- routes through Blizzard's own HandleModifiedItemClick, the same as
-        -- every other row in the addon now does.
+        -- Was a raw editBox:Insert, which ignores the player's modified-click
+        -- bindings and skips the AH-search and macro handling Blizzard's own
+        -- insert does. addon.ItemLink.Click
+        -- routes through Blizzard's own HandleModifiedItemClick, as every other
+        -- row in the addon now does.
         f:SetScript("OnMouseDown", function(_, button)
             if button ~= "LeftButton" then return end
             local link

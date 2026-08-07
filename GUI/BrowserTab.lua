@@ -127,6 +127,19 @@ local function AppendBrandTooltipLines(entry)
         local spellID = entry.spellId or entry.id
         addon.Tooltip.AppendBrandIds(GameTooltip, craftedId, spellID)
     end
+    -- Recipe details (difficulty + sources), UNGATED by the RecipeMaster check.
+    -- That gate asks "would RM already have drawn this?", and for a tooltip in
+    -- our own window the answer is always no: RM attaches through
+    -- OnTooltipSetItem, which never fires for a tooltip assembled from AddLine
+    -- calls, and does not fire for our SetHyperlink branches either because RM
+    -- has no idea our window exists. Gating here would hand a RecipeMaster user
+    -- an addon window with the block conspicuously missing. "Never" still wins —
+    -- that check lives inside AppendRecipeDetails.
+    --
+    -- Called on every branch because this function is: the real-scroll tooltip,
+    -- the scroll-shaped one, and the name-only fallback all route through here,
+    -- and the block must not depend on which one a given recipe happened to get.
+    addon.ItemLink.AppendRecipeDetails(GameTooltip, entry.profId, entry.id)
 end
 BrowserTab._AppendBrandTooltipLines = AppendBrandTooltipLines   -- test seam, see above
 
@@ -436,7 +449,12 @@ local function BuildFullList(profId, viewMode, opts)
     --   spellId > 25000    : defensive gate for Classic Era against untagged
     --                        post-Vanilla recipes (covers Cata / SoD /
     --                        Anniversary additions that lack minExpansion).
-    --   season             : SoD seasonal content — hide on non-SoD clients.
+    --   season             : SoD seasonal content — hidden on EVERY client,
+    --                        including a SoD realm. This addon does not support
+    --                        Season of Discovery; IsSoD() exists only to relax
+    --                        the exclusion gates above, never to enable SoD
+    --                        behaviour. (This line used to read "hide on non-SoD
+    --                        clients", which the code below has never done.)
     local clientExp, clientMaxSkill
     if     addon.isVanilla then clientExp, clientMaxSkill = 1, 300
     elseif addon.isTBC     then clientExp, clientMaxSkill = 2, 375
@@ -625,6 +643,15 @@ local function BuildFullList(profId, viewMode, opts)
                                       or (meta.difficulty and meta.difficulty[1])
                     table.insert(list, {
                         id            = recipeId,
+                        -- The profession this row belongs to. Rows are built per
+                        -- profession and consumers used to read profName only, so
+                        -- this was never recorded -- which silently cost two
+                        -- things: ScrollHeader could not look the recipe up and
+                        -- dropped its "Requires Engineering (190)" line, and
+                        -- TeachingItem's meta.itemId fallback was unreachable.
+                        -- That fallback is the ONLY teaching-item source on
+                        -- Wrath / Cata / Mists, where no scroll data is generated.
+                        profId        = thisProfId,
                         -- Every addon.recipeDB key is the recipe's trade-skill
                         -- SPELL id (LibProfessionDB builds them from
                         -- SkillLineAbility), on every profession and every
@@ -1093,6 +1120,14 @@ function BrowserTab:Draw(container)
             -- EnsureDetailPanel, re-parented + re-anchored next Draw),
             -- so we detach but do NOT nil it.
             addon.GUI.DetachPool(self._detailOuter)
+            -- Belt and braces with the stillAttached() guard in
+            -- AnchorScrollToFill: drop the layout hook outright, so a container
+            -- that outlives this draw cannot re-anchor the scroll to the chrome
+            -- we just detached. The guard alone is enough today; this makes it
+            -- impossible for a future caller to re-introduce by reaching the
+            -- hook another way, and it is what CLAUDE.md asks for anyway —
+            -- a LayoutFinished override must not survive its owner.
+            if self._container then self._container.LayoutFinished = nil end
         end,
     })
     container:AddChild(scroll)
@@ -1115,9 +1150,32 @@ function BrowserTab:Draw(container)
     end
 
     -- Anchor scroll frame to fill the left column (right edge = detail panel left - gap).
+    --
+    -- Both anchors are RAW frames that the scroll's own onRelease detaches
+    -- (DetachPool re-parents them to UIParent and strips their points). Nothing
+    -- prevents this hook from running afterwards — opening the Settings dialog
+    -- triggers one layout pass and that is enough — and anchoring the scroll to
+    -- a frame now sitting at UIParent's origin drags it right out of the window
+    -- and across the game world. Reported in game at v1.0.6 from the gear icon
+    -- AND from shift-clicking the minimap button, which is what showed the
+    -- button was never the variable: both merely call OpenSettings.
+    --
+    -- So the anchors are checked for still being attached to this tab's
+    -- container before use. Bailing leaves the scroll where it was, which is
+    -- the correct degraded behaviour — the next Draw re-anchors it properly.
+    local function stillAttached(frame)
+        if not frame then return false end
+        local p, guard = frame, 0
+        while p and guard < 20 do
+            if p == container.frame or p == container.content then return true end
+            p = p.GetParent and p:GetParent() or nil
+            guard = guard + 1
+        end
+        return false
+    end
     local function AnchorScrollToFill()
         if not (self._scroll and self._scroll.frame) then return end
-        if not self._detailOuter then return end
+        if not (stillAttached(headerBar) and stillAttached(self._detailOuter)) then return end
         self._scroll.frame:ClearAllPoints()
         self._scroll.frame:SetPoint("TOPLEFT",     headerBar, "BOTTOMLEFT",  0, 0)
         self._scroll.frame:SetPoint("BOTTOMRIGHT", self._detailOuter, "BOTTOMLEFT", -DP_GAP, 0)
@@ -1343,7 +1401,13 @@ function BrowserTab:FillShoppingListSection(container)
             f.icon:SetTexture(nil)
         end
 
-        local colorHex = ent and type(ent.itemLink) == "string" and ent.itemLink:match("|c(ff%x%x%x%x%x%x)|H")
+        -- Quality colour of the CRAFTED item. Falls back to ItemDB's shipped
+        -- quality when the link is not cached, which is most of the time on a
+        -- fresh login -- reading the link alone left the colour depending on
+        -- what the player had recently looked at, so pieces of one set could
+        -- render in different colours.
+        local colorHex = addon.ItemLink and addon.ItemLink.QualityHex
+            and addon.ItemLink.QualityHex(ent and ent.itemLink, ent and ent.craftedItemId)
         f.nameLbl:SetText(colorHex and ("|c" .. colorHex .. name .. "|r") or name)
         f.qtyLbl:SetText(tostring(qty))
 
@@ -1832,24 +1896,112 @@ function BrowserTab:BuildPool(parent)
             self:DrawDetail(entry)
         end)
 
-        f:SetScript("OnEnter", function()
+        -- Rendered as a named function because it is re-run when the compare
+        -- modifier changes while the row is hovered — see the two branches
+        -- below that hand it to ItemLink.BeginHover as the rebuild callback.
+        local function renderRowTooltip()
             local entry = f._entry
             if not entry then return end
             addon.Tooltip.Owner(f)
+
+            -- The CRAFTED item is what a player wants compared against their
+            -- gear — `recipeLink` is the recipe scroll, which equips nothing.
+            local craftedLink = (type(entry.itemLink) == "string"
+                                 and entry.itemLink:find("|Hitem:")) and entry.itemLink or nil
+
+            -- Two ways to end up on the real item tooltip: the player turned
+            -- the setting on, or they are holding the compare modifier right
+            -- now. The second matters because the curated tooltip below is
+            -- assembled from AddLine calls and carries no item, so a comparison
+            -- has nothing to attach to; swapping to the real tooltip for as
+            -- long as the key is held is what makes hold-to-compare work here
+            -- at all, and it returns to the trimmed version on release.
+            if craftedLink and addon.ItemLink.WantsCompare() then
+                addon.ItemLink.SetItem(GameTooltip, craftedLink)
+                AppendBrandTooltipLines(entry)
+                GameTooltip:Show()
+                addon.ItemLink.BeginHover(GameTooltip, renderRowTooltip)
+                return
+            end
+
+            -- THE REAL RECIPE TOOLTIP, where the game has one to give.
+            -- RecipeTooltipSource answers "item" for the ~65% of recipes with a
+            -- genuine teaching scroll ("Plans: Barbaric Shoulders"). That tooltip
+            -- natively embeds the crafted item AND lets other addons'
+            -- OnTooltipSetItem hooks contribute -- which is the whole reason a
+            -- chat link looked richer than our own list.
+            --
+            -- The link comes from LibItemDB SYNCHRONOUSLY. Deliberately not
+            -- GetItemInfo: a cold scroll's async cache-fill fires
+            -- GET_ITEM_INFO_RECEIVED, and that refresh storm is what crept the
+            -- Missing Recipes list. Falls through to the scroll-SHAPED tooltip
+            -- below when no link is cached, rather than showing an empty one.
+            local kind, teachingId = addon.ItemLink.RecipeTooltipSource(entry.profId, entry.id)
+            if kind == "item" then
+                local idb = addon:GetItemDB()
+                local scrollLink = idb and idb.GetLink and idb:GetLink(teachingId)
+                if scrollLink then
+                    GameTooltip:SetHyperlink(scrollLink)
+                    AppendBrandTooltipLines(entry)
+                    GameTooltip:Show()
+                    addon.ItemLink.BeginHover(GameTooltip, renderRowTooltip)
+                    return
+                end
+            end
+
             -- Only use recipeLink if it is a real item link; enchanting stores
             -- enchant:SPELLID here which produces an unhelpful tooltip.
             if entry.recipeLink and entry.recipeLink:find("|Hitem:") then
                 GameTooltip:SetHyperlink(entry.recipeLink)
+                addon.ItemLink.BeginHover(GameTooltip, renderRowTooltip)
             elseif entry.reagents and #entry.reagents > 0 then
                 local parts = {}
                 for _, r in ipairs(entry.reagents) do
                     table.insert(parts, r.name .. " (" .. r.count .. ")")
                 end
                 local reagentLine = (SPELL_REAGENTS or "Reagents:") .. " " .. table.concat(parts, ", ")
-                local header = (entry.profName and entry.profName ~= "")
-                    and (entry.profName .. ": " .. entry.name) or entry.name
+                -- Titled like the scroll the game does not have, so the list has
+                -- no visible seam where real scrolls run out -- a third of every
+                -- profession. Prefix is LibItemDB's localized, derived one.
+                local header, requires, useText, metReq = addon.ItemLink.ScrollHeader(
+                    entry.profId, entry.id, entry.name, entry.profName)
                 GameTooltip:ClearLines()
-                GameTooltip:AddLine("|cffffff00" .. header .. "|r")
+                GameTooltip:AddLine("|cffffff00" .. (header or entry.name) .. "|r")
+                if requires then
+                    -- Red when this character cannot meet it, exactly as the
+                    -- game colours an unmet requirement. Without this the line
+                    -- reads as satisfied whether or not it is, which is the
+                    -- one thing it exists to tell you.
+                    if metReq == false then
+                        GameTooltip:AddLine(requires, 1, 0.13, 0.13)
+                    else
+                        GameTooltip:AddLine(requires, 1, 1, 1)
+                    end
+                end
+                -- "Already known", red, between the requirement and the Use
+                -- line — where the game's scroll puts it. Keyed on the `isYou`
+                -- crafter, which only THIS character gets (alts are tagged
+                -- "You (Altname)" without it), matching the game: a scroll is
+                -- "already known" to the character reading it, not to the
+                -- account. ITEM_SPELL_KNOWN is Blizzard's localized string.
+                local knownByMe = false
+                for _, crafter in ipairs(entry.crafters or {}) do
+                    if crafter.isYou then knownByMe = true break end
+                end
+                if knownByMe then
+                    GameTooltip:AddLine(_G.ITEM_SPELL_KNOWN or "Already known", 1, 0.13, 0.13)
+                end
+                -- "Use: Teaches you how to craft X." — ordered directly under
+                -- the requirement, which is where the game's scroll puts it.
+                -- ITEM_SPELL_TRIGGER_ONUSE is Blizzard's own localized "Use:",
+                -- so this reads correctly in every client language; the stored
+                -- sentence carries only the verb phrase.
+                if useText then
+                    local usePrefix = _G.ITEM_SPELL_TRIGGER_ONUSE
+                    GameTooltip:AddLine(
+                        usePrefix and (usePrefix .. " " .. useText) or useText,
+                        1, 1, 1, true)
+                end
                 GameTooltip:AddLine(reagentLine, 1, 1, 1, true)
                 -- Only scrape crafted-item tooltip for real item links (not enchant:).
                 if type(entry.itemLink) == "string" and entry.itemLink:find("|Hitem:") then
@@ -1864,6 +2016,15 @@ function BrowserTab:BuildPool(parent)
                             local rt = _G["TOGPMItemScraperTextRight" .. li]
                             local lStr = (lt and lt:GetText()) or ""
                             local rStr = (rt and rt:GetText()) or ""
+                            -- Drop the crafted item's own "Requires <Prof> (N)"
+                            -- when it repeats the line we already put at the
+                            -- top. They are different facts wearing identical
+                            -- text -- ours is the skill to LEARN the recipe,
+                            -- the item's is the skill to USE what it makes --
+                            -- and printing both just looks like a bug.
+                            if requires and lStr == requires then
+                                lStr, rStr = "", ""
+                            end
                             if lStr ~= "" or rStr ~= "" then
                                 local lr, lg, lb = 1, 1, 1
                                 local rr, rg, rb = 1, 1, 1
@@ -1888,10 +2049,30 @@ function BrowserTab:BuildPool(parent)
                 -- crafted-item branch (no crafters line for enchants, which
                 -- produce no item).
                 AppendBrandTooltipLines(entry)
+                -- Everything the OTHER addons would have added if this tooltip
+                -- carried an item. It does not — it is AddLine calls — so
+                -- OnTooltipSetItem never fires and ATT / TOGBankClassic / TSM
+                -- are all silently absent here while appearing on the real
+                -- scroll tooltip one row up. This is what made the two look
+                -- like different addons.
+                addon.ItemLink.AppendIntegrations(
+                    GameTooltip, entry.spellId or entry.id, entry.craftedItemId)
                 GameTooltip:Show()
+                -- Keep listening even though this tooltip cannot itself
+                -- compare: pressing the modifier re-runs this function, which
+                -- takes the branch above and swaps to the real item tooltip.
+                addon.ItemLink.BeginHover(GameTooltip, renderRowTooltip)
                 return
-            elseif type(entry.itemLink) == "string" and entry.itemLink:find("|Hitem:") then
+            end
+
+            -- Tracks whether the tooltip ended up carrying a real ITEM. Only a
+            -- real item makes OnTooltipSetItem fire, and that hook is how ATT /
+            -- TOGBankClassic / TSM attach — so it decides whether we add their
+            -- lines ourselves below or would be duplicating theirs.
+            local hasItem = false
+            if type(entry.itemLink) == "string" and entry.itemLink:find("|Hitem:") then
                 addon.ItemLink.SetItem(GameTooltip, entry.itemLink)
+                hasItem = true
             elseif not SetSpellTooltip(GameTooltip, entry.spellId or entry.id) then
                 -- No link, no spell id: name-only so the hover still says
                 -- something. Never "item:<entry.id>" — entry.id is a spell id
@@ -1906,9 +2087,22 @@ function BrowserTab:BuildPool(parent)
             -- double-up on SetHyperlink branches — the manual call wins,
             -- the hook's later call early-returns.
             AppendBrandTooltipLines(entry)
+            -- Same reasoning as the curated branch, but only where the tooltip
+            -- has NO item: a SetHyperlink tooltip already gets ATT /
+            -- TOGBankClassic / TSM from their own OnTooltipSetItem hooks, and
+            -- adding ours on top would print every block twice.
+            if not hasItem then
+                addon.ItemLink.AppendIntegrations(
+                    GameTooltip, entry.spellId or entry.id, entry.craftedItemId)
+            end
             GameTooltip:Show()
+        end
+
+        f:SetScript("OnEnter", renderRowTooltip)
+        f:SetScript("OnLeave", function()
+            addon.ItemLink.EndHover(GameTooltip)
+            GameTooltip:Hide()
         end)
-        f:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
         self._pool[i] = f
     end
@@ -2568,7 +2762,13 @@ function BrowserTab:UpdateVirtualRows()
             f._entry = entry
             f.icon:SetTexture(entry.icon)
 
-            local colorHex = type(entry.itemLink) == "string" and entry.itemLink:match("|c(ff%x%x%x%x%x%x)|H")
+            -- Quality colour of the CRAFTED item, resolved through ItemDB when
+            -- the link is not cached. Reading entry.itemLink alone made the
+            -- colour depend on what the client happened to have seen, so the
+            -- same recipe was coloured on one login and not the next, and one
+            -- armour set could render its pieces in different colours.
+            local colorHex = addon.ItemLink and addon.ItemLink.QualityHex
+                and addon.ItemLink.QualityHex(entry.itemLink, entry.craftedItemId)
             f.nameLbl:SetText(colorHex and ("|c" .. colorHex .. entry.name .. "|r") or entry.name)
 
             -- Crafter summary: fit as many names as the (drag-resizable) column

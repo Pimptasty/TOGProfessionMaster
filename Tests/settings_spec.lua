@@ -48,10 +48,15 @@ setup(function()
 	-- so it has to run once more for the hook to fire. That hands the addon a
 	-- second AceDB object; the original is restored in teardown so no later
 	-- spec file inherits it.
-	savedDb = ns.lib.db
-	ns.lib:OnInitialize()
-
+	-- Guarded: settingsbleed_spec.lua performs the same re-init, and
+	-- AddToBlizOptions raises on a second call with the same path. Whichever
+	-- file the runner reaches first registers; the other reads what is there.
 	local registry = LibStub("AceConfigRegistry-3.0")
+	if not registry:GetOptionsTable("TOGProfessionMaster") then
+		savedDb = ns.lib.db
+		ns.lib:OnInitialize()
+	end
+
 	options = registry:GetOptionsTable("TOGProfessionMaster")("dialog", "AceConfigDialog-3.0")
 end)
 

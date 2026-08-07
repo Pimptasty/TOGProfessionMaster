@@ -322,9 +322,8 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
             addon.ItemLink.EndHover(GameTooltip)
             GameTooltip:Hide()
         end)
-        -- Was an UNGUARDED ChatEdit_InsertLink, which is nil on Classic Era
-        -- unless the deprecation-fallback CVar is on — so this raised at the
-        -- click rather than linking anything.
+        -- Was a bare ChatEdit_InsertLink, which is deaf to a rebound CHATLINK
+        -- modifier and offers no ctrl-click dressing room.
         itemBtn:SetScript("OnClick", function()
             addon.ItemLink.Click(d.currentItemLink)
         end)

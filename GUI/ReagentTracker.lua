@@ -213,8 +213,8 @@ function RT:Refresh()
             addon.ItemLink.EndHover(GameTooltip)
             GameTooltip:Hide()
         end)
-        -- Was an UNGUARDED ChatEdit_InsertLink — nil on Classic Era without the
-        -- deprecation-fallback CVar, so this raised instead of linking.
+        -- Was a bare ChatEdit_InsertLink, which only writes into an ALREADY-OPEN
+        -- edit box and ignores the player's modified-click bindings.
         row:SetScript("OnClick", function(_, btn)
             if btn == "LeftButton" then addon.ItemLink.Click(iLink) end
         end)

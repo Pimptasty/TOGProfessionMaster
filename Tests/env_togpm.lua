@@ -154,69 +154,10 @@ function M.install()
 	-- it takes in game on every flavour this addon supports. The stub here had
 	-- been driving the other one.
 
-	-- `GetSpellTexture` — LOCAL STAND-IN; raised in Tests/HARNESS_CONTRACT.md
-	-- alongside `Item`. Reads `wow.spells`, so a spell nobody declared has NO
-	-- icon and the `if iconTexture then … else SetTexture(nil) end` fallback
-	-- every icon site here has stays reachable — same rule as the rest.
-	--
-	-- Returns `iconID, originalIconID` and returns NOTHING for an unknown spell
-	-- (SpellDocumentation.lua:357, `MayReturnNothing = true`). The bare global is
-	-- first-class on Classic Era, not a deprecation fallback: six bare call sites
-	-- under Interface/ and no Blizzard_DeprecatedSpell entry for it.
-	_G.GetSpellTexture = function(spellID)
-		local s = wow.spells[spellID]
-		if not s then return end
-		local icon = s.icon or 136243
-		return icon, icon
-	end
-	_G.C_Spell = _G.C_Spell or {}
-	_G.C_Spell.GetSpellTexture = _G.GetSpellTexture
-
-	-- `Item` / `ItemMixin` — the async item-data object. LOCAL STAND-IN; raised in
-	-- Tests/HARNESS_CONTRACT.md. Six call sites here, all of them the SAME
-	-- pattern: `GetItemInfo` misses, so the code parks a callback to fill the
-	-- label in later. With `wow.items` empty by default that miss is now the
-	-- normal path, which is exactly why this blocks so much of the GUI.
-	--
-	-- The callback is queued, NEVER run synchronously. Checked against
-	-- Blizzard_ObjectAPI/Classic/Item.lua: ContinueOnItemLoad goes straight to
-	-- ItemEventListener:AddCallback, which appends and requests a load — the
-	-- "fires immediately if already cached" in the comment above it is not what
-	-- the code does. A stand-in that called back inline would turn every async
-	-- branch synchronous and hide the ordering bugs this exists to catch.
-	M.pendingItemLoads = {}
-	local ItemMixin = {}
-	ItemMixin.__index = ItemMixin
-	function ItemMixin:GetItemID()   return self._itemID end
-	function ItemMixin:IsItemEmpty() return self._itemID == nil end
-	function ItemMixin:GetItemName() return (GetItemInfo(self._itemID)) end
-	function ItemMixin:GetItemLink() return (select(2, GetItemInfo(self._itemID))) end
-	function ItemMixin:GetItemIcon() return (select(10, GetItemInfo(self._itemID))) end
-	function ItemMixin:IsItemDataCached() return wow.items[self._itemID] ~= nil end
-	function ItemMixin:ContinueOnItemLoad(cb)
-		if type(cb) ~= "function" or self:IsItemEmpty() then
-			error("Usage: NonEmptyItem:ContinueOnLoad(callbackFunction)", 2)
-		end
-		local q = M.pendingItemLoads[self._itemID]
-		if not q then q = {}; M.pendingItemLoads[self._itemID] = q end
-		q[#q + 1] = cb
-	end
-	function ItemMixin:ContinueWithCancelOnItemLoad(cb)
-		self:ContinueOnItemLoad(cb)
-		local q = M.pendingItemLoads[self._itemID]
-		local index = #q
-		return function()
-			if q[index] then q[index] = false; return true end
-			return false
-		end
-	end
-	_G.ItemMixin = ItemMixin
-	_G.Item = {
-		CreateFromItemID = function(_, itemID)
-			if type(itemID) ~= "number" then error("Usage: Item:CreateFromItemID(itemID)", 2) end
-			return setmetatable({ _itemID = itemID }, ItemMixin)
-		end,
-	}
+	-- `GetSpellTexture` and `Item`/`ItemMixin` were stand-ins here until the
+	-- harness shipped them at 41fdefe. Both deleted; steer the real ones
+	-- through `env.wow.spells` (an undeclared spell has no icon) and
+	-- `env.wow.items` + the harness's own item-load fixture.
 
 	-- ADD to C_AddOns, never assign it: env.wow owns C_AddOns.GetAddOnMetadata,
 	-- and a wholesale `_G.C_AddOns = { … }` would drop it. That is the same
@@ -335,26 +276,11 @@ function M.spellsExist(...)
 	return M
 end
 
---- Make an item's data ARRIVE, the way ITEM_DATA_LOAD_RESULT does in game:
---- register it in `wow.items` and then run whatever callbacks were parked on it
---- by `Item:CreateFromItemID(id):ContinueOnItemLoad(...)`.
----
---- Two separate things, deliberately not merged. Writing `wow.items[id]` alone
---- models an item that was ALREADY cached when the frame drew — the label is
---- filled in on the first pass and no callback is ever parked. This models the
---- other case: the label drew blank, and the data turned up afterwards. Those
---- are different code paths, and only this one can catch a callback that
---- updates a fontstring belonging to a row that has since been recycled.
-function M.loadItem(itemID, fields)
-	wow.items[itemID] = fields or wow.items[itemID] or { name = "Item " .. tostring(itemID) }
-	local queued = M.pendingItemLoads and M.pendingItemLoads[itemID]
-	if not queued then return M end
-	M.pendingItemLoads[itemID] = nil
-	for _, cb in ipairs(queued) do
-		if cb then cb() end
-	end
-	return M
-end
+-- `M.loadItem` lived here until the harness shipped `wow.loadItem(id, fields)`
+-- at 41fdefe, with the same two-call design this env asked for: writing
+-- `wow.items[id]` models an item already cached when the frame drew, and
+-- `wow.loadItem` models the data arriving afterwards and flushing the parked
+-- ContinueOnItemLoad callbacks. Use `env.wow.loadItem`.
 
 --- The real AceGUI-3.0, with all 27 stock widget types registered.
 --- Loading is idempotent, so calling this per test is fine.
@@ -616,8 +542,12 @@ end
 --- rather than in each spec means it cannot be forgotten.
 function M.setRecipeDB(db)
 	local ns = M.boot()
-	ns.recipeDB        = db or {}
-	ns._craftedItemMap = nil
+	ns.recipeDB          = db or {}
+	ns._craftedItemMap   = nil
+	-- Tooltip.lua's item -> recipe index is derived from recipeDB and cached for
+	-- the session (in game recipeDB is built once at load). A spec swapping
+	-- recipeDB must drop it too, or every later case reads the first one's data.
+	ns._recipeItemIndex  = nil
 	ns._itemStatText   = nil
 	ns._itemTTText     = nil
 	return ns.recipeDB

@@ -13,6 +13,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Only use Bash/PowerShell for operations with no dedicated tool equivalent: running scripts, git commands, process management.
 
+## Peer review and harness contracts (Always Follow)
+
+Two standing append-only conversation files. **Read both at the start of any session that touches
+this addon's code or tests** — a session watcher only catches writes made while a session is already
+running, so this pointer is the only thing that fires unconditionally.
+
+| File | Raised by | Answered by | What it is |
+| --- | --- | --- | --- |
+| [docs/AUDIT.md](docs/AUDIT.md) | a **review session** | **us** | Peer-review findings against this addon. Each carries a `file:line` and a concrete failure scenario. |
+| [Tests/HARNESS_CONTRACT.md](Tests/HARNESS_CONTRACT.md) | **us** | the **harness** | Things `Tests/wowapi` is missing. Mirrored into `WoWAPITesting/docs/contracts/TOGProfessionMaster.md` during a harness session. |
+
+- **Both are APPEND-ONLY in both directions.** Never edit, re-title, re-order or move what the other
+  side wrote. Answer underneath with an `> **Addon response — YYYY-MM-DD — FIXED | DISPUTED | WON'T
+  FIX | NOT A DEFECT | DEFERRED.**` block.
+- **A fixed finding is answered in place and stays where it is.** Do not add a `Fixed` section and
+  move it there — the failure scenario's value is sitting next to the code it describes. Flip its
+  row in the Status table instead; that table is the only place state is tracked.
+- **Never overwrite `docs/AUDIT.md` with the harness's `AUDIT_TEMPLATE.md`.** A review session can
+  write findings before we adopt, and the reviewer's session is gone — nothing else holds a copy.
+- **Never edit `Tests/wowapi`.** It is a submodule checkout; the next pull discards edits. A gap in
+  the harness goes in `Tests/HARNESS_CONTRACT.md`, with a reference implementation staged locally so
+  the suite still runs.
+
 ## Project Overview
 
 WoW Classic Era addon (Lua 5.1) that tracks guild profession recipes, cooldowns, and reagents across all characters and alts using a peer-to-peer sync system. Supports Vanilla/TBC/Wrath/Cata/MoP via a single codebase with version flags.

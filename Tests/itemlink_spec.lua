@@ -6,13 +6,17 @@
 --   ChatEdit_InsertLink(link)       Browser x3, Reagent Tracker, Compat
 --   editBox:Insert(link)            Missing Recipes, Shopping List
 --
--- The middle one was a live bug, not just an inconsistency. `ChatEdit_InsertLink`
--- is NOT a Classic Era API: Blizzard defines it only inside
--- Blizzard_DeprecatedChatInfo, behind `GetCVarBool("loadDeprecationFallbacks")`,
--- as an alias for ChatFrameUtil.InsertLink. With that CVar off the global is
--- nil, so three call sites silently did nothing and three raised a nil-call
--- error at the click. The regression test for that is
--- "works on a client with no ChatEdit_InsertLink at all", below.
+-- They are not equivalent, and that is the point. `HandleModifiedItemClick` is
+-- Blizzard's own router: it asks `IsModifiedClick("CHATLINK")` and
+-- `IsModifiedClick("DRESSUP")` rather than hard-coding shift and ctrl, and it
+-- routes to the social frame, the auction-house search box or an open macro when
+-- one of those has focus. The other two check shift directly, so a rebound link
+-- modifier did nothing on seven of the ten surfaces.
+--
+-- CORRECTION: an earlier version of this header claimed `ChatEdit_InsertLink`
+-- does not exist on Classic Era. It does -- `CVars.lua:912` documents
+-- `loadDeprecationFallbacks` defaulting to "1", so the fallback globals load on
+-- a stock client. The unification is a behaviour fix, not a crash fix.
 --
 -- These specs stub the Blizzard routers deliberately rather than asking the
 -- harness for them: what is under test is WHICH router this addon reaches for,
@@ -50,8 +54,11 @@ before_each(function()
 		IsShiftKeyDown               = _G.IsShiftKeyDown,
 	}
 
-	-- A client that looks like Classic Era: the modern router is present, the
-	-- deprecated alias is NOT.
+	-- Baseline: the router present and the older paths cleared, so a test that
+	-- cares which one we reach for starts from a clean slate. This is a FIXTURE
+	-- choice, not a claim about the client — Classic Era does ship
+	-- `ChatEdit_InsertLink` (see the correction in the header). Tests that need
+	-- it re-install it themselves.
 	_G.HandleModifiedItemClick = function(link)
 		calls.handled[#calls.handled + 1] = link
 		return true
@@ -94,12 +101,25 @@ describe("Click — which router it reaches for", function()
 		assert.equal(0, #calls.handled)
 	end)
 
-	it("works on a client with no ChatEdit_InsertLink at all", function()
-		-- The regression. Classic Era has no such global unless the
-		-- deprecation-fallback CVar is on, and the old code either called it
-		-- unguarded (error) or guarded it and silently did nothing.
-		assert.is_nil(_G.ChatEdit_InsertLink)
+	it("prefers the router even when the deprecated global is available", function()
+		-- CORRECTED. This spec used to assert `ChatEdit_InsertLink` is nil on
+		-- Classic Era, on my reading that it lives behind
+		-- `GetCVarBool("loadDeprecationFallbacks")`. It does live there — but
+		-- `CVars.lua:912` gives that CVar a documented default of "1", so the
+		-- fallback globals load on a stock client and the global EXISTS. This
+		-- addon has 14 unguarded calls to it that have always worked in game.
+		--
+		-- So the property worth pinning is not absence, it is PREFERENCE: the
+		-- two are not equivalent, and we must reach for the router.
+		-- `ChatEdit_InsertLink` is a straight alias for ChatFrameUtil.InsertLink:
+		-- it ignores the player's CHATLINK/DRESSUP bindings and offers no
+		-- ctrl-click dressing room.
+		_G.ChatEdit_InsertLink = function(l)
+			calls.deprecated[#calls.deprecated + 1] = l; return true
+		end
 		assert.is_true(IL.Click(LINK))
+		assert.same({ LINK }, calls.handled)
+		assert.equal(0, #calls.deprecated)
 	end)
 
 	it("does not consult the shift key itself", function()
@@ -258,28 +278,105 @@ describe("hold-to-compare", function()
 	end)
 end)
 
-describe("Tooltip — curated versus stock", function()
+describe("Tooltip — which frame a curated surface draws into", function()
 	local private = { name = "private" }
 
-	it("uses the caller's private frame by default", function()
+	it("always uses the caller's private frame when it has one", function()
+		-- No longer conditional. The `useStockItemTooltips` setting this used to
+		-- consult was deleted: it promised "the game's standard tooltip" for a
+		-- recipe, and the game has no such thing — a trade-skill recipe is a
+		-- spell, and the only stock recipe tooltips are index-based and valid
+		-- only while the profession window is open.
 		assert.equal(private, IL.Tooltip(private))
 	end)
 
-	it("uses the stock GameTooltip once the setting is on", function()
-		ns.lib.db.profile.useStockItemTooltips = true
-		assert.equal(_G.GameTooltip, IL.Tooltip(private))
-	end)
-
-	it("defaults to OFF, so nobody is opted into third-party tooltip hooks", function()
-		-- The setting exists to let other addons' hooks fire on our rows. Those
-		-- hooks are also what crash on recipe scrolls, which is why the private
-		-- frame exists at all — so the default has to be the safe one.
-		assert.is_not_true(ns.lib.db.profile.useStockItemTooltips)
-		assert.equal(private, IL.Tooltip(private))
-	end)
-
-	it("uses the stock tooltip for a caller that has no private frame", function()
+	it("uses the stock tooltip for a caller with no private frame", function()
 		assert.equal(_G.GameTooltip, IL.Tooltip(nil))
+	end)
+end)
+
+describe("RecipeTooltipSource — which branch a recipe takes", function()
+	local ALCHEMY, SPELL, SCROLL = 171, 17187, 12656
+
+	local function profDB(t) ns._profDB = t end
+
+	before_each(function() ns._profDB = nil end)
+	-- and after: the cache is session-long, so a leftover stub reaches later
+	-- spec FILES, not just later tests.
+	after_each(function() ns._profDB = nil end)
+
+	it("says item when a real teaching scroll exists", function()
+		profDB({ GetRecipeItem = function(_, id)
+			return id == SPELL and SCROLL or nil, false
+		end })
+		local kind, payload = IL.RecipeTooltipSource(ALCHEMY, SPELL)
+		assert.equal("item", kind)
+		assert.equal(SCROLL, payload)
+	end)
+
+	it("says synthetic when none exists, and hands back the descriptor", function()
+		profDB({
+			GetRecipeItem = function() return nil, false end,
+			GetSyntheticRecipeScroll = function(_, id)
+				if id ~= SPELL then return nil end
+				return { name = "Plans: Thing", prefix = "Plans: ", professionID = 164,
+				         requiredSkill = 200, isSynthetic = true }
+			end,
+		})
+		local kind, rec = IL.RecipeTooltipSource(ALCHEMY, SPELL)
+		assert.equal("synthetic", kind)
+		assert.equal("Plans: Thing", rec.name)
+		assert.is_true(rec.isSynthetic)
+	end)
+
+	it("never hands back an item id on the synthetic branch", function()
+		-- The upstream constraint, mirrored here so OUR side cannot start
+		-- inventing one either. A fabricated id is what eventually reaches
+		-- GetItemInfo or an auction search and fails silently.
+		profDB({
+			GetRecipeItem = function() return nil, false end,
+			GetSyntheticRecipeScroll = function()
+				return { prefix = "Plans: ", professionID = 164, isSynthetic = true }
+			end,
+		})
+		local _, rec = IL.RecipeTooltipSource(ALCHEMY, SPELL)
+		assert.is_nil(rec.itemID)
+		assert.is_nil(rec.itemId)
+		assert.is_nil(rec.id)
+	end)
+
+	it("takes exactly one branch — the two sources are complements", function()
+		-- ItemDB's builder asserts the partition on every run. If both ever
+		-- answered for one recipe, the real item must win: it is the only one
+		-- that produces a genuine tooltip.
+		profDB({
+			GetRecipeItem = function() return SCROLL, false end,
+			GetSyntheticRecipeScroll = function() error("must not be consulted") end,
+		})
+		assert.equal("item", (IL.RecipeTooltipSource(ALCHEMY, SPELL)))
+	end)
+
+	it("returns nothing for a skill-rank book, which is not a recipe", function()
+		profDB({
+			GetRecipeItem = function() return 16083, true end,
+			GetSyntheticRecipeScroll = function() error("must not be consulted") end,
+		})
+		assert.is_nil((IL.RecipeTooltipSource(ALCHEMY, 7732)))
+	end)
+
+	it("returns nothing when neither source knows the recipe", function()
+		profDB({ GetRecipeItem = function() return nil, false end,
+		         GetSyntheticRecipeScroll = function() return nil end })
+		assert.is_nil((IL.RecipeTooltipSource(ALCHEMY, SPELL)))
+	end)
+
+	it("survives an ItemDB too old for the synthetic table", function()
+		profDB({ GetRecipeItem = function() return nil, false end })   -- MINOR < 18
+		assert.is_nil((IL.RecipeTooltipSource(ALCHEMY, SPELL)))
+	end)
+
+	it("does not raise without a recipe id", function()
+		assert.is_nil((IL.RecipeTooltipSource(ALCHEMY, nil)))
 	end)
 end)
 

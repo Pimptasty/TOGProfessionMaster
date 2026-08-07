@@ -292,14 +292,27 @@ L["MissingSrcTrainer"]          = "Trainer"
 L["MissingSrcOther"]            = "Other"
 L["MissingSrcUnknown"]          = "Unknown"
 
+-- Recipe-detail tooltip block (ItemLink.AppendRecipeDetails). Headings only —
+-- the source labels themselves are the MissingSrc* strings above, shared so a
+-- translator writes "Trainer" once.
+L["TooltipDifficulty"]          = "Difficulty"
+L["TooltipSources"]             = "Sources"
+-- Trailing colon is deliberate: RecipeMaster puts one on this heading and not on
+-- the other two, and the block is meant to read the same whichever addon drew it.
+L["TooltipUnlearned"]           = "Unlearned:"
+L["TooltipSkill"]               = "Skill %d"
+
 -- Settings: global item tooltip lines
 L["SettingsTooltipHeader"]          = "Item tooltip"
 L["SettingsTooltipShowCrafters"]    = "Show guild crafters on item tooltips"
 L["SettingsTooltipShowCraftersDesc"]= "Append a [TOGPM] line listing every guildmate who can craft the item you're hovering. Online crafters in white, offline in grey. Bind-on-Pickup items are skipped (can't be traded anyway)."
 L["SettingsTooltipShowIds"]         = "Show item ID / spell ID on item tooltips"
 L["SettingsTooltipShowIdsDesc"]     = "Append a [TOGPM] line with the item ID and (if known) the recipe spell ID. Mostly useful for troubleshooting wrong icons or missing recipes — paste the IDs into Wowhead to verify what the addon is matching against."
-L["SettingsUseStockTooltips"]       = "Use the game's standard item tooltips"
-L["SettingsUseStockTooltipsDesc"]   = "Off by default. TOGPM normally draws its own trimmed tooltips inside the addon window, so a long list stays readable. Turn this on to get the same tooltip you'd see from a chat link instead — including the extra lines other addons add, such as All The Things.\n\n|cffff8000Note:|r the Missing Recipes list is the reason the trimmed version exists. Some addons hook the game tooltip and error on recipe scrolls (RecipeMaster is the known one), which takes the tooltip down with it. Turning this on re-exposes you to that. If tooltips start breaking on the Missing Recipes tab, turn it back off."
+L["SettingsTooltipRecipeDetails"]       = "Recipe details on tooltips"
+L["SettingsTooltipRecipeDetailsDesc"]   = "Add a block showing the recipe's skill-up difficulty (orange / yellow / green / grey) and where it comes from (trainer, drop, vendor, quest, container) — on recipe scrolls and on the items they make, anywhere in the game.\n\nThis addon's own windows always show it (RecipeMaster cannot see a tooltip we build ourselves), except on Never."
+L["SettingsTooltipRecipeDetailsAuto"]   = "Automatic — skip it when RecipeMaster is loaded"
+L["SettingsTooltipRecipeDetailsAlways"] = "Always — even alongside RecipeMaster"
+L["SettingsTooltipRecipeDetailsNever"]  = "Never"
 
 -- Settings: TBC Anniversary phase filter
 L["SettingsTBCPhaseHeader"]     = "TBC Anniversary phase"

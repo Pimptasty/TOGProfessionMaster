@@ -2,6 +2,183 @@
 
 Older releases moved out of CHANGELOG.md to keep the live file under the GitHub release-body size limit (the BigWigs packager publishes CHANGELOG.md as the release body). Entries are unchanged; see CHANGELOG.md for current releases.
 
+## [v0.10.10] (2026-06-30) - Live-refresh fixes, leaner recipe sync & a live Sync Log
+
+Follow-up to v0.10.9's guild-mode work. With sync finally flowing on private servers, testing surfaced that incoming guild data was being ingested into the database but the **Professions tab didn't show it** until a `/reload` — switching tabs didn't help either. The data was live in memory the whole time; the bugs were all in the Browser's recipe-list cache (a performance snapshot the Professions tab renders from, separate from the live data the Cooldowns/Missing Recipes tabs read directly). Sync itself was never the problem. This release also makes recipe sync **much leaner** with an optional per-player drill-down, turns the Sync Log into a live, copyable diagnostic, and adds pickers for the crafter-alert sound and on-screen visual.
+
+### New Features
+
+- **Sync Log is live, persistent, and copyable.** *Settings → General → Sync Log.* The window now updates in real time as sync events happen — no more clicking to refresh — remembers its position and size across `/reload`, and its contents are selectable and copyable (read-only) for pasting into bug reports. Entries are also far more informative: **sends now show what actually went out** — a crafter transfer names its **profession** (`crafters:165 (Leatherworking)`) instead of a bare id, and a per-player transfer names the exact player — instead of a meaningless "0 B"; the hash-offer and sub-hash sends are logged for the first time; and a dedicated **size column** reports the real byte size of **every** message — sends included (which previously reported nothing) — beside the payload type, all under a **column-header row** (Time / Event / Size / Peer / Detail) above the live box. The **send**-size figures specifically require **DeltaSync v3.2.1+** (which now returns the serialized size to the host) — that dependency is *only* for those send numbers in the Sync Log; on an older DeltaSync they show "—" and everything else in the addon behaves identically. Location: `Modules/SyncLog.lua`, `GUI/Settings.lua`, `Scanner.lua`.
+
+- **Choose your crafter-alert sound and visual.** *Settings → Alerts.* Two new dropdowns let you pick which **sound** (Chime, Ready Check, Raid Warning, Auction Bell, Whisper, Map Ping) and which **on-screen visual** (full-screen flash in gold / red / blue, a raid-warning banner, top-center error text, or a taskbar flash for when you're alt-tabbed) fire when a guild crafter comes online. Selecting an option **previews it**, and each dropdown greys out while its matching suppress toggle is on. The old "Suppress screen flash" toggle is renamed "Suppress alert visual" to match. Localized. Location: `GUI/Settings.lua`, `TOGProfessionMaster.lua`.
+
+- **Jump from the Profit Planner straight to the Crafting tab.** Clicking a row in the Profit Planner now opens that recipe directly in the Crafting tab, ready to craft (shift-click still links the item in chat — the tooltip spells out both). If you've hidden the Crafting tab (*Settings → Crafting*), it tells you how to bring it back instead of silently doing nothing. Location: `GUI/AHProfitTab.lua`, `GUI/CraftingTab.lua`.
+
+### Bug Fixes
+
+- **Professions tab now updates live as guild data arrives.** Two root causes, both fixed: (1) the background cache rewarm rebuilt the recipe list but never re-rendered the open tab, so freshly-synced recipes sat in the cache unseen; the rewarm now redraws the visible tab the instant the viewed profession's list is rebuilt — and does so **without losing your scroll position**. (2) The rewarm's debounce timer was **starved on actively-syncing realms**: every data update reset a 10s timer, so when updates arrived faster than that (a busy guild, or a private server catching up), the rebuild *never fired at all* — which is why even switching tabs showed nothing and only a `/reload` worked. The debounce is now capped so a rebuild always lands within ~10s, even under continuous traffic. Location: `GUI/BrowserTab.lua`.
+- **Purge buttons now clear the Professions display immediately.** "Purge all guild data" and "Purge my character data" did clear the database (Cooldowns and Missing Recipes emptied instantly), but the Professions tab re-rendered stale rows because its recipe cache isn't keyed on the database and wasn't being invalidated. The cache is now wiped on purge before the refresh, so the tab reflects the empty state at once. Location: `GUI/BrowserTab.lua`, `GUI/Settings.lua`.
+- **"All Professions" view now reflects your own freshly-scanned professions.** Scanning a profession locally (opening its window) committed the recipes to the database but raised no UI-refresh signal — only *received* sync did — so the cached "All Professions" list stayed stale. Most visible right after a purge: the All Professions filter showed "no data yet" while selecting a specific profession showed the recipes (that filter rebuilt fresh on a cache miss). Now a local scan that actually changes your recipe set refreshes the UI on the same path a peer update uses, gated on a real change so crafting's repeated scan events don't churn the open tab. Location: `Scanner.lua`.
+- **Professions tab now reflects members going online and offline.** Each crafter's online status is baked into the recipe-list cache when it's built, so a roster change alone didn't update the tab — someone logging off kept showing as online until the next data change or `/reload`. Roster online/offline transitions now invalidate and refresh the tab (debounced, and only while it's on screen so login/logout bursts don't thrash the pre-warm), so status reflects within ~2s. Location: `GUI/BrowserTab.lua`.
+- **Cooldown supply-mail now finds your reagents on older TBC / Classic clients.** On builds without `C_Container` (older TBC and some private servers), the legacy `GetContainerItemInfo` returns only 7 values — **no item ID** — so the mail helper's bag scan matched nothing and reported *"you have no &lt;reagent&gt; in your bags"* even when you had it. (The reagent count shown on the row uses `GetItemCount` and was correct all along, which is why it looked contradictory.) The compat shim now derives the item ID from the item link when the API omits it, so `.itemID` is always populated — fixing the mail scan on every supported client (and any other bag lookup that keys on item ID). Location: `Compat.lua`. Thanks to Bzum for the report.
+
+### Improvements
+
+- **Leaner recipe sync — per-player drill-down.** Previously, when *anyone* in the guild changed a recipe, peers re-fetched that entire profession's crafter set — on a large guild a single transfer of ~90 KB. Recipe sync now negotiates a **per-player hash list** under each profession and pulls **only the players whose recipes actually differ**, newest-scanned first and each as its own small message — so a one-person, one-recipe change ships just that player's recipes instead of the whole profession, the data populates incrementally, and traffic interleaves far better on congested or slow servers. It's **fully additive and backward-compatible**: feature-detected, so it engages only between updated clients and falls back to the existing whole-profession path for anyone else — no coordinated guild-wide update required, no wire-format break, no namespace bump. Location: `Scanner.lua`, `Modules/HashManager.lua`.
+- **Consistent TSM setting labels.** The two TradeSkillMaster pricing toggles now both read "TSM" — *"Use TSM pricing"* and *"Use TSM App Helper pricing"* — instead of one spelling out "TradeSkillMaster" and the other abbreviating. Location: `GUI/Settings.lua`.
+- **Crafter column fills the available width.** The Professions tab's crafter summary used to show a fixed "2 names + N more"; it now fits **as many crafter names as the column's current width allows**, with a greyed "+N" for the rest, and re-fits live when you drag the window wider or narrower. Location: `GUI/BrowserTab.lua`.
+
+---
+
+## [v0.10.9] (2026-06-29) - Guild-only sync mode for private servers
+
+Resolves the "nothing syncs on Whitemane" investigation. Diagnostics confirmed that Whitemane (and similar emulated **Cataclysm** servers) **deliver addon messages over GUILD fine but silently drop them over WHISPER** — and TOGPM's sync is hash-then-fetch, where the fetch request rides WHISPER. Hash offers went out on guild chat and arrived, but the follow-up data request never landed, so members kept broadcasting while nothing ever came back. This release adds an opt-in toggle that reroutes the whisper-based sync traffic onto the guild channel.
+
+### New Features
+
+- **Guild-only sync mode** — *Settings → General → Sync.* For private/emulated servers that don't deliver addon whispers (e.g. Whitemane "Maelstrom"). When enabled, DeltaSync's directed channels (QUERY / RESPONSE / DELTA / OFFER / HANDSHAKE) are rerouted from WHISPER to GUILD, with each message stamped for its intended recipient so other members ignore it — directed delivery over a broadcast transport. **Opt-in and OFF by default**, so nothing changes on retail/Classic Era or any server where whispers work. The setting is **realm-scoped** (enable it once, all your alts on that realm inherit it) and **feature-detected** — the toggle is hidden unless the installed DeltaSync supports guild-mode (**requires DeltaSync v3.2.0+**). Cross-guild sharing auto-disables while it's on (it can't work on a whisper-dead server anyway). Coordinate per guild: on an affected realm, **everyone should enable it** — directed traffic only reaches members who also have it on. Localized in all shipped languages. Location: `Scanner.lua`, `GUI/Settings.lua`, `TOGProfessionMaster.lua`.
+
+### Notes
+
+- **Diagnosing this used `/togpm commtest`** (from v0.10.7/0.10.8) plus raw two-player tests, which is how we isolated WHISPER-drop-but-GUILD-works. If guild sync ever looks dead on a server, that command remains the fastest way to see which addon-message channels the server actually relays.
+
+---
+
+## [v0.10.8] (2026-06-28) - Fix: commtest missing from per-flavor TOCs
+
+Follow-up to v0.10.7. The new diagnostic shipped in only one of the addon's five TOC files, so it never loaded on the very clients it was built for. This release wires it into all of them.
+
+### Bug Fixes
+
+- **`/togpm commtest` now loads on TBC / Wrath / Cata / MoP clients.** v0.10.7 added `Modules/CommTest.lua` to only the base `TOGProfessionMaster.toc`. WoW loads the *flavor-specific* TOC when one exists, so on TBC/Wrath/Cata/Mists clients — including privately-hosted Cataclysm servers like **Whitemane "Maelstrom"** — the file was never in the load list, `RunCommTest` stayed undefined, and `/togpm commtest` silently fell through to the help menu (the command's help line still showed because that lives in the always-loaded main file, which is what made it look present). Added the line to all four flavor TOCs (`_TBC`, `_Wrath`, `_Cata`, `_Mists`) so the diagnostic is available on every supported version. Location: `TOGProfessionMaster_TBC.toc`, `TOGProfessionMaster_Wrath.toc`, `TOGProfessionMaster_Cata.toc`, `TOGProfessionMaster_Mists.toc`.
+
+### Notes
+
+- **Whitemane runs a modern Classic-engine client, not the original 4.3.4 client.** Diagnostics surfaced that its addon-message API is `C_ChatInfo.SendAddonMessage` (the bare global `SendAddonMessage` is `nil`), and `C_ChatInfo.SendAddonMessage` returns a `SendAddonMessageResult` code. The `commtest` probe already handles this via its `C_ChatInfo` shim; this corrects the v0.10.7 note that assumed the original 4.3.4 client.
+
+---
+
+## [v0.10.7] (2026-06-27) - Private-server addon-comm diagnostics
+
+Groundwork for running TOGPM on privately-hosted **Cataclysm 4.3.4 (build 15595)** servers such as **Whitemane "Maelstrom"**, where some emulation cores leave the Cataclysm per-channel addon opcodes (`CMSG_MESSAGECHAT_ADDON_GUILD`, …) unhandled and silently drop guild addon traffic — which makes the sync stack look dead even though the addon loads fine. This release adds a diagnostic to pinpoint exactly which addon-message channels a given server relays. **No change to existing behavior** — it's a new, opt-in command; nothing in the live sync path was touched.
+
+### New Features
+
+- **`/togpm commtest [name]` — addon-channel diagnostic probe.** Fires a tagged addon message on every distribution (GUILD, WHISPER→self, a temporary CHANNEL, and PARTY/RAID when grouped), listens briefly for which ones echo back, then prints a copy-pasteable verdict including the client build number. The **GUILD self-echo is the decisive test** and works solo — on a healthy core you receive your own guild addon message; if the server drops guild addon traffic you get nothing. It probes **both** the raw `SendAddonMessage` path and your actual AceComm + AceCommQueue send path, so a server-side drop is distinguishable from a wrapper/chunking issue. Pass a player name to add a real two-player WHISPER probe. Run it on your home realm (control) and on the private server (test); the diff identifies the broken channel and which fallback (WHISPER/CHANNEL) is viable. Cross-version safe — uses `C_ChatInfo` where present, bare globals on 4.3.4, registers prefixes only where that API exists, and deliberately uses an `OnUpdate` timer instead of `C_Timer` (which the original 4.3.4 client lacks). Location: `Modules/CommTest.lua`.
+
+---
+
+## [v0.10.6] (2026-06-12) - Cross-guild profession sharing & crafting hands-off
+
+First stable release of cross-guild profession sharing (matured across the v0.10.x beta line) plus new crafting-window controls. **Fully backward-compatible** — single-guild use is unchanged, and cross-guild sharing stays completely dormant until you configure an allied guild. Cross-guild requires DeltaSync **v3.1.0+** and GuildRoster **v6+** (both install/update automatically).
+
+### New Features
+
+- **Cross-guild profession sharing.** Share recipe and crafter data between two socially-linked guilds that can't reach each other over the normal guild addon channel. An **officer or the guild leader** sets the allied guild under **Settings → Cross-Guild** (the list is guild-wide and members see it read-only); once **both** guilds list each other (it's bilateral — a one-sided config does nothing, and a guild you don't list can't pull or inject anything), their crafters become visible to each other. The allied-guild list propagates across your guild automatically, allied rosters are shared so **every** member sees the crafters (not just whoever pulled them), and a live **Diagnostics** panel plus `/togpm xgdiag` show exactly what's synced. With no allied guild configured, the addon does nothing cross-guild — purely local. Location: `Scanner.lua`, `TOGProfessionMaster.lua`, `GUI/Settings.lua`.
+- **Crafting hands-off mode** — *Settings → Crafting, on by default.* TOGPM no longer opens or forces a crafting window when you open a profession; Blizzard's window (or another addon such as TSM / Skillet) owns it, so no second window appears beside it. The TOGPM toggle button still rides on the Blizzard window when it's shown, and the Crafting tab stays available from the main window. **If you previously enabled "Open the TOGPM Crafting tab automatically," untick this to keep that behavior.** Requires `/reload`. Location: `Modules/Crafting/CraftingEngine.lua`.
+- **Hide the Crafting tab** — *Settings → Crafting.* Removes the Crafting tab from the main window entirely, for those who craft with another addon. Requires `/reload`. Location: `GUI/MainWindow.lua`.
+
+### Bug Fixes
+
+- **Browser performance overhaul — instant tab open and instant search.** The recipe list (the expensive part: DB lookups, the per-crafter visibility gate, item tooltip text) is now built **once** and cached, and pre-warmed in the background after login — sliced across frames so it's invisible — so opening the Professions tab and switching professions are instant instead of taking a second or more. Searching just filters the cache (no rebuild, no per-keystroke freeze). This removes the multi-second tab-load and search stutter that had grown as cross-guild sharing enlarged the crafter sets. Location: `GUI/BrowserTab.lua`, `TOGProfessionMaster.lua`.
+
+### Improvements
+
+- **Settings window is tabbed** (General / Cross-Guild) and remembers its position, size, and selected tab across `/reload`.
+- **Roster engine** runs on the standalone LibGuildRoster-1.0 (GuildRoster addon), an auto-installed dependency — the foundation for cross-guild support.
+
+---
+
+## [v0.10.5-beta] (2026-06-09) - Roster propagation & Browser search fix (beta)
+
+> **Beta build.** Completes the cross-guild "anyone is a transfer point" model. Backward-compatible; single-guild operation is unchanged. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+**.
+
+### New Features
+
+- **Sister-roster propagation (Part B).** The visibility gate keeps an allied crafter only if their character is in a sister roster you hold — so a member who configured an allied guild but never *pulled* its roster would purge every relayed crafter. Now a member who holds a sister roster broadcasts it on the guild channel and everyone applies it, so the whole guild sees allied crafters, not just the puller. A "recently-seen by hash" suppression keeps it to ~one broadcaster per interval (duty rotates if that member logs off), fresh pulls propagate within ~10s, and receipt is gated by the allied-guild list (an unlisted guild's roster is never accepted). This is the piece that makes federated members churn-free without each pulling. Location: `TOGProfessionMaster.lua`, `Scanner.lua`.
+
+### Bug Fixes
+
+- **Browser (recipe) search no longer freezes on each keystroke.** Two causes: the search box rebuilt the whole list synchronously on every character (no debounce — the fix that was already in Missing Recipes had never been applied here), and the per-recipe crafter list was built *before* the search filter ran, so every keystroke walked every recipe's crafter set — which grew heavier as cross-guild sharing added crafters. The search now debounces (~200ms) and applies the cheap client-version + name/effect filters before the expensive crafter-list build, so excluded recipes are skipped. Location: `GUI/BrowserTab.lua`.
+
+---
+
+## [v0.10.4-beta] (2026-06-09) - Cross-guild bilateral federation gate (beta)
+
+> **Beta build.** Security model for cross-guild sharing. Backward-compatible; single-guild operation is unchanged. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+**.
+
+### New Features
+
+- **Bilateral federation — both guilds must list each other.** Cross-guild data now only flows when **both** sides have configured each other as allied guilds. A one-sided config does nothing; a stranger, an accidental config, or a malicious puller from a guild you don't list gets nothing. Enforced by gating every direction:
+  - **Serve gate:** we hand over our data only if we list the requester's guild **and** the request proves they list us (it carries their guild key + sister-guild set). Plus an anti-spoof check — once we hold the requester's guild roster, the requester must actually be a member of it.
+  - **Accept gate:** we ingest cross-guild data only from a guild on our list.
+  - **Merge gate:** every crafter is kept only if its guild tag is our home, our own alts, or a *listed* sister — so data for an unlisted guild is dropped even when it arrives relayed inside a home-guild broadcast, and is never re-relayed.
+  - **Roster gate:** we persist/re-feed a sister roster only for a guild we list; a de-configured guild can't be resurrected on login.
+  - **De-configure cleanup:** removing a guild from the list (or receiving a federated removal) tears down its roster and stops its data from displaying.
+- **No allied guilds configured → purely local operation.** With an empty list the permitted-tag set collapses to home + your own alts, so the addon does nothing cross-guild at all. Location: `Scanner.lua`, `TOGProfessionMaster.lua`.
+
+---
+
+## [v0.10.3-beta] (2026-06-09) - Cross-guild config propagation & churn fix (beta)
+
+> **Beta build.** Continues the cross-guild work. Backward-compatible and dormant until an allied guild is configured. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+**. For the relay/anti-churn behavior, **all participating beta players need this build** — a peer on an older build re-broadcasts relayed crafters with the guild tag stripped.
+
+### New Features
+
+- **Allied-guild config now propagates across your guild.** The allied-guild list you set under Settings → Cross-Guild is broadcast to the rest of your guild (on change, every ~12 minutes, and via a new **Sync now** button), so every member participates — essential once editing becomes officer-only. Conflict resolution is last-writer-wins by the timestamp captured when the list was set; members re-broadcast what they hold without clobbering a newer edit. A member holding no config never broadcasts. Location: `TOGProfessionMaster.lua`, `GUI/Settings.lua`.
+
+### Bug Fixes
+
+- **Relayed cross-guild crafters no longer churn under mixed addon versions.** Because guild sync is gossip, a single guildmate on an older build (no per-crafter tags) re-broadcasts relayed sister crafters with the tag stripped; the receiver then re-stamped them as the home guild, the visibility gate purged them (not in the home roster), the relay re-added them, and the cycle repeated — counts visibly oscillating with no membership change. The merge now treats an explicit shipped tag as authoritative and **never lets a tagless (older-build) broadcast overwrite an attribution it already holds**, so a known cross-guild crafter stops flipping. The roster gate still decides visibility, so genuine leavers are still purged. Location: `Scanner.lua` (`MergeCraftersIntoGdb`).
+
+### Improvements
+
+- **Diagnostics: orphan breakdown.** The Cross-Guild diagnostics now show, per allied guild, how many crafters match the roster vs. are orphaned (with a few example keys), making it easy to tell roster-matching issues from genuine non-members. Location: `GUI/Settings.lua`.
+
+---
+
+## [v0.10.2-beta] (2026-06-09) - Cross-guild relay attribution & diagnostics (beta)
+
+> **Beta build.** Continues the cross-guild work from v0.10.1-beta. Backward-compatible and dormant until an allied guild is configured. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+** (both install/update automatically). For cross-guild relay to work, **all** participating players need this build.
+
+### New Features
+
+- **Cross-guild diagnostics panel.** A live, read-only status section on **Settings → Cross-Guild** showing dependency status (DeltaSync/RosterSync, LibGuildRoster/multi-roster), known rosters (home + each sister) with member counts, configured allied guilds, crafter counts per guild, and persisted allied rosters with feed timestamps. Plus a "Pull from player" field to trigger a pull without the slash command. Location: `GUI/Settings.lua`.
+- **`/togpm xgdiag` command.** Dumps the same cross-guild diagnostics to chat as plain lines for easy copy-paste when troubleshooting. Location: `GUI/Settings.lua`, `TOGProfessionMaster.lua`.
+
+### Bug Fixes
+
+- **Cross-guild attribution now survives relays.** The crafters sync leaf previously shipped bare character keys with no guild tag, on the assumption that every crafter in a payload belonged to the receiver's guild. In a confederation that assumption breaks: when a member who holds sister-guild data rebroadcasts it into their home guild, those sister crafters were re-stamped as the home guild and then hidden/purged by the visibility gate (not in the home roster). The leaf now ships each crafter's **origin guild tag** (already stored locally), so a relaying "bridge" member can propagate allied-guild crafters into their home guild with attribution intact. The leaf **hash is unchanged** (it already normalized values before hashing), so old and new clients stay in sync — but both ends of a relay must run this build for tags to be preserved. Location: `Scanner.lua` (`BuildLeafPayload`, `MergeCraftersIntoGdb`).
+
+---
+
+## [v0.10.1-beta] (2026-06-09) - Cross-guild profession sharing (beta)
+
+> **Beta build.** This is the first testable cut of cross-guild sharing. It is fully backward-compatible — single-guild users are unaffected and the feature stays dormant until an allied guild is configured — but the cross-guild round-trip has not yet been validated with live players. Please report issues. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+** (both install/update automatically).
+
+### New Features
+
+- **Cross-guild profession sharing (beta).** TOGPM can now share recipe/crafter data between two socially-linked guilds that can't reach each other over the normal guild addon channel. Configure an allied guild under **Settings → Cross-Guild**, and your crafters become discoverable to them (and theirs to you). Built on directed peer-to-peer whispers — no extra chat channel required. Location: `GUI/Settings.lua`, `Scanner.lua`, `TOGProfessionMaster.lua`.
+- **Sister-guild roster tracking.** Allied-guild rosters are pulled, persisted across `/reload`, and kept live via LibGuildRoster-1.0's multi-roster store, so allied crafters survive a session restart and stay correctly attributed to their own guild. Location: `Scanner.lua` (`PersistSisterRoster`, `RefeedSisterRosters`, `OnSisterRosterUpdated`).
+- **`/togpm pullroster <player>` command.** Manually pull an online allied-guild member's roster **and** crafter data on demand — the testing/bootstrap path before automatic discovery lands. Location: `TOGProfessionMaster.lua`.
+
+### Improvements
+
+- **Settings window is now tabbed.** Options are organized into General and Cross-Guild tabs (with room for officer/GM-only settings as features grow). Location: `GUI/Settings.lua`.
+- **Each guild stays authoritative for its own membership.** Cross-guild data exchange shares only a guild's *own* crafters and is opt-in (nothing is served until you configure an allied guild), so attribution can never bleed between guilds in a multi-guild confederation. Location: `Scanner.lua` (`BuildFullGuildPayload`).
+
+### Bug Fixes
+
+- **Settings window position, size, and selected tab now persist across `/reload`.** The standalone options window kept its geometry in a runtime-only table; it's now backed by SavedVariables (`.char.frames.settings`), matching the main window. Location: `GUI/Settings.lua`.
+
+### Known Limitations (beta)
+
+- Allied-guild crafters currently display as **offline** — live presence arrives with automatic `/who` discovery in a later beta.
+- Cooldown sharing is **not** yet cross-guild (crafter data only this build).
+- Allied data must be bootstrapped with `/togpm pullroster <name>`; automatic discovery is not in this build.
+
+---
+
 ## [v0.10.0] (2026-06-05) - Roster engine migration (LibGuildRoster-1.0)
 
 ### Improvements

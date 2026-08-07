@@ -244,6 +244,9 @@ function MainWindow:Open(tabKey)
     helpIcon:SetSize(24, 24)
     helpIcon:SetPoint("BOTTOMRIGHT", f.frame, "BOTTOMRIGHT", -153, 15)
     helpIcon:EnableMouse(true)
+    -- Above AceGUI's bottom resize strips, or the lower 10px of this 24px icon
+    -- is dead to clicks and tooltips. See addon.GUI.LiftAboveSizers.
+    addon.GUI.LiftAboveSizers(helpIcon)
     local helpTex = helpIcon:CreateTexture(nil, "OVERLAY")
     helpTex:SetAllPoints(helpIcon)
     helpTex:SetTexture("Interface\\Common\\help-i")
@@ -393,6 +396,9 @@ function MainWindow:Open(tabKey)
     gearIcon:SetPoint("BOTTOMLEFT", helpIcon, "BOTTOMRIGHT", 3, 2)
     gearIcon:SetNormalTexture("Interface\\Icons\\Trade_Engineering")
     gearIcon:SetPushedTexture("Interface\\Icons\\Trade_Engineering")
+    -- Same fix as helpIcon: 8 of this button's 20px sit inside sizer_s, so
+    -- without the lift its lower two-fifths are dead to clicks.
+    addon.GUI.LiftAboveSizers(gearIcon)
     local gearPushed = gearIcon:GetPushedTexture()
     if gearPushed then gearPushed:SetVertexColor(0.7, 0.7, 0.7) end
     gearIcon:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")

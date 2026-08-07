@@ -98,6 +98,41 @@ describe("BuildFullList", function()
 		assert.is_false(list[1].greyed)
 	end)
 
+	it("stamps profId on every row", function()
+		-- Rows are built per profession and consumers only ever read profName, so
+		-- this field went unrecorded for a long time and cost three things
+		-- silently: ScrollHeader could not look the recipe up and dropped its
+		-- "Requires Alchemy (100)" line, TeachingItem's meta.itemId fallback --
+		-- the ONLY teaching-item source on Wrath/Cata/Mists -- became
+		-- unreachable, and the recipe-detail tooltip block has nothing to key on.
+		--
+		-- browservirtual_spec cannot catch this: its `entryFor` fixture writes
+		-- profId itself, so it asserts a field production never emitted.
+		-- Fabricating the input is how a spec ends up testing only itself.
+		knows("Bob-Testrealm", ALCHEMY, POTION_SPELL)
+		knows("Bob-Testrealm", ALCHEMY, ELIXIR_SPELL)
+		local list = B._BuildFullList(ALCHEMY, "guild", {})
+		assert.equal(2, #list)
+		for _, row in ipairs(list) do
+			assert.equal(ALCHEMY, row.profId, "row '" .. tostring(row.name) .. "' carries no profId")
+		end
+	end)
+
+	it("stamps each row's OWN profession in an all-professions build", function()
+		-- The assertion above passes even if the builder stamped the profId it
+		-- was ASKED for rather than the one it is currently iterating -- they are
+		-- the same number in a single-profession build. Here they cannot be: the
+		-- request is 0 ("all"), so a row carrying 0 would prove the wrong
+		-- variable was read, and every consumer would then look the recipe up
+		-- under a profession that does not exist.
+		knows("Bob-Testrealm", ALCHEMY,   POTION_SPELL)
+		knows("Bob-Testrealm", TAILORING, BOLT_SPELL)
+		local byId = {}
+		for _, row in ipairs(B._BuildFullList(0, "guild", {})) do byId[row.id] = row.profId end
+		assert.equal(ALCHEMY,   byId[POTION_SPELL])
+		assert.equal(TAILORING, byId[BOLT_SPELL])
+	end)
+
 	it("sorts by name so the list is stable between builds", function()
 		knows("Bob-Testrealm", ALCHEMY, POTION_SPELL)
 		knows("Bob-Testrealm", ALCHEMY, ELIXIR_SPELL)

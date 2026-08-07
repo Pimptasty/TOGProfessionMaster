@@ -1,14 +1,76 @@
 # TOG Profession Master Changelog
 
-## [v1.0.6] (2026-08-05) - Item links unified, hold-to-compare, a leaked mouse handler and the comm-queue delivery contract
+## [v1.0.6] (2026-08-06) - Recipe details on every tooltip, the scroll data source moves, and item links unified
 
-AceCommQueue-1.0 MINOR 5 turned sending from fire-and-forget into a two-way contract — every accepted send now ends in exactly one callback carrying the delivery verdict for the whole message. TOGProfessionMaster had adopted that contract for its sync traffic (through DeltaSync) but not for the three sends it makes directly, and had never registered the library's own diagnostic command. This release closes both gaps, and takes up MINOR 6's fifth verdict on top.
+The recipe browser's tooltips are meant to open like the game's own scroll —
+`Schematic: Biznicks 247x128 Accurascope` — and fall back to a scroll-*shaped*
+one for the third of recipes that are trainer-taught and have no scroll at all.
+That data now comes from ProfessionDB rather than ItemDB, the ids behind it are
+no longer derived by matching names, and the recipe detail a player wants —
+difficulty, where it comes from, which of your alts could still learn it — now
+appears on every tooltip in the game rather than only inside this window.
+
+This release also carries the item-link and comm-queue work originally written
+up under v1.0.6: AceCommQueue-1.0 MINOR 5 turned sending from fire-and-forget
+into a two-way contract, where every accepted send ends in exactly one callback
+carrying the delivery verdict for the whole message. TOGProfessionMaster had
+adopted that contract for its sync traffic (through DeltaSync) but not for the
+three sends it makes directly, and had never registered the library's own
+diagnostic command. Both gaps are closed here, plus MINOR 6's fifth verdict.
 
 **On the `queue STALLED — 74s with no progress` errors:** they were **AceCommQueue misreading ordinary client throttling**, and the fix is in that library at MINOR 6, not here. ChatThrottleLib moves a throttled send into its blocked ring and retries it several times a second while firing no callback at all, which from the queue's side is indistinguishable from a callback that was lost — so the 60-second timeout reported normal whisper throttling on a busy realm as a bug in the host addon. The library now asks ChatThrottleLib before reporting anything, waits 300 seconds instead of 60, and **recovers** rather than staying blocked. Nothing in TOGPM caused those errors and nothing in TOGPM had to change to stop them; **update the standalone AceCommQueue-1.0 addon and they go away.** What this release owes that contract is reading its new verdict correctly, below.
 
 ### Bug Fixes
 
-- **Shift-clicking an item did nothing on half the addon, and errored on the other half.** There were three different implementations of the same gesture, and the middle one was broken outright: `ChatEdit_InsertLink` **is not a Classic Era API**. Blizzard defines it only inside `Blizzard_DeprecatedChatInfo`, behind the `loadDeprecationFallbacks` CVar, as an alias for `ChatFrameUtil.InsertLink` — so with that CVar off the global is simply nil. Three call sites (the recipe browser's rows, its detail header, its detail reagent rows) guarded the call and therefore **silently did nothing**; three more (the bank request dialog, the Reagent Tracker rows, and the browser's reagent shift-click) called it unguarded and **raised a Lua error at the click**. All six now go through one shared router. Found by checking the function against Blizzard's own Classic Era source rather than assuming a global that "has always been there" still exists. Location: `Compat.lua`, `GUI/BrowserTab.lua`, `GUI/ReagentTracker.lua`, `GUI/MissingRecipesTab.lua`, `GUI/ShoppingListTab.lua`.
+- **Recipe tooltips showed the pre-move `Engineering: …` header instead of
+  `Schematic: …` for every recipe.** ProfessionDB's 26 shipped data files were
+  still registering against `LibItemDB-1.0`, the handle they were generated with
+  before the move, so every scroll query returned nil and this addon fell through
+  to its oldest fallback. Fixed in ProfessionDB v1.5.0 — **update that addon**;
+  no change was needed here. Location: `ProfessionDB/Data/`.
+
+- **The teaching-item ids were built by matching recipe names against item
+  names.** That 57-line matcher is gone, replaced by the authoritative DBC join
+  `ItemEffect.SpellID → SpellEffect[Effect=36].EffectTriggerSpell` — the same
+  relationship the client uses. Cross-checking the two found **42
+  disagreements**, and then a second bug only the cross-check could surface: the
+  candidate list included ids for items that do not exist in the client's item
+  table. With an existence filter the two extractions agree on **all 1,073**.
+  Location: `tools/build_authoritative_data.py`.
+
+- **Both `[Bank]` buttons in the Shopping List did nothing.** They called
+  `TOGBankClassic.RequestItem(itemId)` behind a guard that tested for that
+  function first — but `_G.TOGBankClassic` is that addon's UI controller
+  *frame*, which has never carried such a field, so the guard was never once
+  true. The buttons looked enabled and silently did nothing for their whole
+  life; the guard is what hid it. Now routed through
+  `addon.Bank.ShowRequestDialog`, which every other surface already used, and
+  which says so in chat when no banker stocks the item instead of opening an
+  empty dialog. Location: `GUI/ShoppingListTab.lua`.
+
+- **Recipe-list name colours depended on what the client had cached.** The
+  quality colour was read only from the crafted item's cached `itemLink`, so
+  the same recipe rendered coloured on one login and plain on the next. Now
+  falls back to ItemDB's shipped quality, which answers offline for every item;
+  `GetItemInfo` is consulted last, because it returns nil for a cold item and
+  asking it first would discard a perfectly good shipped answer. Both row pools
+  were affected. Location: `GUI/SharedWidgets.lua`, `GUI/BrowserTab.lua`.
+
+- **The `Requires <Profession> (N)` line was missing from every browser recipe
+  tooltip.** Rows are built per profession and consumers only ever read
+  `profName`, so the row never recorded `profId` — and without it `ScrollHeader`
+  could not look the recipe up, so it dropped the line silently. The same
+  omission made `TeachingItem`'s `meta.itemId` fallback unreachable, which is
+  the **only** teaching-item source on Wrath, Cata and Mists. Location:
+  `GUI/BrowserTab.lua`.
+
+- **`Requires Mining (1)` on a recipe that needs 230.** The skill number came
+  from a field that is a floor of 1 on eight of twelve skill lines, so it was
+  wrong for roughly 313 records. The header now reads the correct per-recipe
+  value ProfessionDB has always carried, and **omits the line entirely** when
+  there is no number worth standing behind. Location: `GUI/SharedWidgets.lua`.
+
+- **Shift-click ignored your keybindings on seven of the ten surfaces that offer it.** There were three implementations of the same gesture: `HandleModifiedItemClick` (Cooldowns, Crafting, Profit Planner), `ChatEdit_InsertLink` (recipe browser ×3, Reagent Tracker, the bank dialog) and a raw `editBox:Insert` (Missing Recipes, Shopping List). Only the first is Blizzard's own router, and only it asks `IsModifiedClick("CHATLINK")` — the other two hard-code a shift check, so anyone who has rebound the link modifier got nothing from those seven surfaces, and ctrl-click for the dressing room existed on three tabs and not the rest. The raw `editBox:Insert` sites also skipped the auction-house search box and macro-frame handling that Blizzard's insert does. All ten now share one router. Location: `Compat.lua`, `GUI/BrowserTab.lua`, `GUI/ReagentTracker.lua`, `GUI/MissingRecipesTab.lua`, `GUI/ShoppingListTab.lua`, `GUI/SharedWidgets.lua`.
 
 - **A TOGPM mouse handler could keep firing inside another addon's window.** `AceGUIFrameScripts` exists to put a raw frame script on an AceGUI widget without leaking it — AceGUI pools widgets account-wide and recycles them into whatever addon asks next, so it saves the widget's prior script and restores it on release. It saved the prior script into a table keyed by event name, and when there **was** no prior script that store was `saved[event] = nil` — which writes no key at all, so the restore loop never visited that event and **our** handler stayed on the widget. The leak therefore happened in the commonest case of all: a widget with no existing handler for the event we wanted, which is every current caller. A released widget kept our `OnMouseDown` and fired it for its next owner. Now recorded with an explicit "there was nothing here" sentinel, so the event is restored to genuinely empty. Found by the new GUI specs, not by a report. Location: `GUI/MainWindow.lua`.
 
@@ -16,7 +78,92 @@ AceCommQueue-1.0 MINOR 5 turned sending from fire-and-forget into a two-way cont
 
 ### New Features
 
-- **Shift-click any item in the addon to link it in chat — everywhere, the way the rest of WoW does.** Every item name, reagent row and recipe header now routes through Blizzard's own `HandleModifiedItemClick`, the same function the game's own bag and character panes use. It honours **your** modified-click bindings rather than assuming shift, opens chat when chat is closed, and posts to the social frame when that is what is open. Ctrl-click to preview in the dressing room comes along free, because it is the same router. Location: `GUI/SharedWidgets.lua` and every tab.
+- **ATT, TOGBankClassic and price lines now appear on trainer-taught recipe
+  tooltips too.** They never did, and the reason is structural: those addons all
+  attach through `OnTooltipSetItem`, and a tooltip built from `AddLine` calls
+  carries no item, so the hook never fires. Recipes with a real scroll went
+  through `SetHyperlink` and got all three for free; the trainer-taught third
+  got none of them, which is why the two looked like different addons.
+
+  AllTheThings and prices now come from **ItemDB's `Integrations.lua`
+  registry** — one place owning every third-party bridge, so this addon asks
+  once and renders whatever providers the player actually has (TSM,
+  Auctionator, or neither) instead of duplicating each one's labels and layout.
+  Provider formatting is preferred where offered, because showing a different
+  number to the one TSM shows everywhere else is worse than showing none.
+
+  TOGBankClassic's block is still rebuilt here, because its renderer is a
+  file-local closure with no callable form. That is duplicated layout and it
+  will drift if that addon restyles; a contract asking it to expose
+  `AppendTo(tooltip, itemId)` is raised in its
+  `docs/DEPENDENCY_CONTRACTS.md`. Location: `GUI/SharedWidgets.lua`,
+  `GUI/BrowserTab.lua`.
+
+- **Recipe details — skill-up difficulty and where the recipe comes from — now
+  appear on tooltips everywhere, not just in our window.** Bags, bank, chat
+  links, the auction house, trainers, vendors: hovering a recipe scroll *or the
+  item it makes* adds a block in the shape RecipeMaster uses.
+
+  ```text
+  TOGPM
+  Difficulty
+    275 300 310 320      <- orange / yellow / green / grey
+  Sources
+    Trainer
+  Unlearned:                    <- red
+    Bob (Skill 71, Elixir Master)
+  ```
+
+  **Where the source data comes from is the part that matters.** It is read from
+  this addon's own `Data/Sources/`, which is keyed by recipe **spell** — not from
+  an item-keyed lookup, which can only answer for a recipe that has a teaching
+  scroll. Measured against the shipped Vanilla set: item-keyed covers 44.6% of
+  recipes, spell-keyed covers **74.9%** (1172 of 1565), and its single largest
+  kind is `trainer` at 508 recipes — precisely the third of every profession that
+  has no scroll to inspect and most needs the line. The Sources heading is
+  omitted rather than shown empty for the ~25% with no data.
+
+  **`Unlearned:` lists which of your own characters could still learn it**, with
+  their skill rank and specialisation. This is the section where we are
+  structurally better placed than RecipeMaster rather than merely equal to it:
+  RM's spell path covers four skill lines — Mining, Poisons, Engineering,
+  Enchanting — and adds nothing on the other eight, silently. Ours reads the
+  addon's own synced store, which carries skills, specialisations and alt groups
+  for **every** profession, so the section answers everywhere. Scoped to your
+  characters rather than the guild on purpose: "who in the guild can make this"
+  is already the crafters line, and a guild-wide unlearned list would be forty
+  names nobody can act on. The heading is red — the same red as the
+  `Already known` line a few rows up (Blizzard's `RED_FONT_COLOR`) rather than a
+  second hand-picked one, since the two lines are exact opposites and should read
+  as one palette. The character rows stay white so only the heading carries the
+  warning.
+
+  **Coverage is decided by who built the tooltip, not by profession.** If we
+  built it, we render the block; if the game built it, RecipeMaster does — unless
+  RM is not installed, in which case we do that too. RM attaches through
+  `OnTooltipSetItem`, which never fires for a tooltip we assemble from `AddLine`
+  calls, so the two never overlap and no per-profession logic is needed.
+
+  A setting (*Interface → AddOns → TOG Profession Master → Recipe details on
+  tooltips*) forces it on or off, because *loaded* is not the same as
+  *contributing*: RM's own display switches are addon-private and unreadable, so
+  a player running RM with those turned off would otherwise get the block from
+  neither addon. Location: `GUI/SharedWidgets.lua`, `Tooltip.lua`,
+  `GUI/BrowserTab.lua`, `GUI/Settings.lua`.
+
+- **`Already known`, in red, on recipes this character knows** — between the
+  requirement and the Use line, where the game's scroll puts it. Keyed on the
+  `isYou` crafter, so it means what the game means: known to the character
+  reading it, not to the account. An alt knowing the recipe does not trigger it.
+  Location: `GUI/BrowserTab.lua`.
+
+- **The scroll's `Use: Teaches you how to craft X.` line.** The game's scroll
+  tooltip always carries one and ours did not. Localized, and derived at build
+  time from the teaching *spell's* description rather than the scroll item's —
+  the item field is populated for only 60 of 1,073 Vanilla scrolls against the
+  spell's 1,022. Location: `GUI/SharedWidgets.lua`.
+
+- **Shift-click any item in the addon to link it in chat — everywhere, the way the rest of WoW does.** Every item name, reagent row and recipe header now routes through Blizzard's own `HandleModifiedItemClick`, the same function the game's own bag and character panes use. It honours **your** modified-click bindings rather than assuming shift, posts to the social frame when that is what is open, and drops a link into the auction-house search box or an open macro when those have focus. Ctrl-click to preview in the dressing room comes along free, because it is the same router. Location: `GUI/SharedWidgets.lua` and every tab.
 
 - **Hold the compare modifier over an item to see it against what you're wearing.** The side-by-side comparison the game gives you from a bag slot, now on every item in the addon. It follows the modifier **while you hover** — pressing shift with the tooltip already open works — which is how the game behaves and is not free: Blizzard's own frames check the modifier once, when the tooltip is built, and never again. Gated on `IsModifiedClick("COMPAREITEMS")` and the `alwaysCompareItems` CVar, so a rebound compare key and the always-on setting are both respected. Location: `GUI/SharedWidgets.lua`.
 
@@ -26,13 +173,102 @@ AceCommQueue-1.0 MINOR 5 turned sending from fire-and-forget into a two-way cont
 
 ### Improvements
 
+- **`Tests/integrations_spec.lua`** — 12 specs pinning the shape of those
+  blocks, weighted toward the absent cases: no ATT, no bank addon, TSM installed
+  but switched off, no banker holding the item. Each must leave the tooltip
+  untouched rather than erroring or printing an empty heading.
+
+- **`Tests/scrollintegration_spec.lua` — the tooltip path is now tested against
+  the real shipped data**, not a fake ProfessionDB. Every other spec hands
+  `ItemLink` a fixture, which proves the branching and proves nothing about
+  whether the library answers on a live client; that gap is precisely what let
+  the header bug above ship green. This one loads the real library, executes the
+  real data files, and asserts a genuine Engineering recipe resolves to its
+  actual scroll. Verified by mutation: reintroducing the defect fails it.
+
+- Both halves of the teaching-item lookup are asserted independently — through
+  ProfessionDB with the fallback removed, and through the recipe's own `itemId`
+  with the library removed — so neither can rot unnoticed. The second is the
+  path Wrath, Cata and Mists rely on entirely, since no recipe-scroll data is
+  generated for those flavours yet.
+
+- **Two new spec files were corrupting later ones, and the suite was not
+  actually green.** `scrollintegration_spec.lua` overwrote `addon.GetProfessionDB`
+  to return the **real** shipped library, and `integrations_spec.lua` blanked
+  `addon.Bank` / `addon.Price` / `addon.GetItemDB` — neither restored what it
+  replaced. The whole suite shares one addon table, so both leaked into every
+  later spec file: 13 assertions in `teachingitem_spec.lua` silently read
+  shipped data instead of their own fixtures, and 2 in `shoppingbank_spec.lua`
+  died on `attempt to index field 'Bank'` with no visible connection to the file
+  that caused it. Every one of those files passes on its own, so only a
+  whole-suite run reproduces it. Both now restore in `after_each`; the suite is
+  **1190/1190** under the harness's own runner. This is the same discipline the
+  env follows for globals, and the one `teachingitem_spec.lua` already followed
+  for its own cached library handle.
+
+- **`Tests/recipedetails_spec.lua`** — 35 specs on the new block, weighted toward
+  the two things a reader would get wrong. That sources are keyed by recipe
+  **spell** and therefore answer for trainer-taught recipes, which is the whole
+  reason the block is worth having; and that the RecipeMaster gate is a
+  tooltip-**type** split, so our own windows render it unconditionally while
+  game-built tooltips defer. Verified by mutation: dropping the scroll half of
+  the item index, labelling a source kind whose npc list is empty, and dropping
+  the already-learned / is-mine filters from the Unlearned list each fail exactly
+  the specs that name them and no others.
+
+- **The recipe block could render twice on one tooltip, on the seven Vanilla
+  items that more than one recipe produces.** Gold Bar comes from Alchemy's
+  *Transmute Iron to Gold* **and** Mining's *Smelt Gold*; the Gordok Ogre Suit
+  from both Leatherworking and Tailoring. Two paths legitimately draw the block
+  for a single hover — the browser passes the row's own recipe, the global
+  tooltip hook independently resolves the first recipe indexed for that item —
+  and the guard against drawing twice was keyed on the **recipe id**, which on
+  those items differs between the two callers, so it matched neither. Now keyed
+  on whether a block has been drawn at all: a tooltip describes one thing.
+
+  Found by a method the test harness published today — *a spec per feature does
+  not test the PAIR, and coverage cannot see it*. Both appenders were specced
+  thoroughly in isolation and one of those specs was actively **ratifying** this
+  behaviour, asserting a second block should render. Its suggested diagnostic
+  ("grep each spec file for the other feature's vocabulary") returned zero in one
+  command. Location: `GUI/SharedWidgets.lua`.
+
+- **`profId` on browser rows is now actually tested**, in `browserlist_spec.lua`.
+  It had been recorded as "fixed but untestable", on the belief that the guild-db
+  fixture could not drive the real row builder — which was wrong; that spec file
+  has driven it all along. A stale commented-out attempt and a "NOT COVERED" note
+  were left in `scrollintegration_spec.lua` claiming otherwise, and have been
+  removed rather than left to mislead again. The field is load-bearing for three
+  things now, including the new tooltip block, so a written-down coverage hole
+  that did not need to exist was worth closing. Two specs: every row carries it,
+  and an **all-professions** build stamps each row's *own* profession rather than
+  the one that was requested — the second is the one that matters, because those
+  are the same number in a single-profession build, so the obvious test passes
+  against the wrong variable. Confirmed by mutation.
+
+- **Offline harness adopted, `2299e12` → `502e31b`** (40 commits). The relevant
+  ones for this addon: `time(dateTable)` had been dropping its argument, so any
+  date computation silently collapsed onto "now"; `wow.setBuild(flavour)` now
+  covers all six clients using the interface numbers from this addon's own
+  per-flavour TOCs, which lets a spec probe a version gate on every client
+  rather than only the one the shared env happens to be set to; and Classic
+  Era's default interface moved 11508 → 11509 to match what we ship.
+
+- **`docs/AUDIT.md`** — the standing peer-review conversation, the inverse of a
+  harness contract: findings are raised by a review session and answered here.
+  It exists now so that a review has somewhere to land. The first audit written
+  under this protocol went into a repo with no index entry and no pointer, and
+  no later session had any way to find it — a review nobody reads is worse than
+  no review, because it reads as work already done. `CLAUDE.md` points at it,
+  which is the part that fires unconditionally.
+
 - **A cross-guild broadcast that the queue gave up on was silently ignored.** AceCommQueue MINOR 6 adds a fifth terminal verdict, `reason = "lost"` — the callback never arrived, ChatThrottleLib had no record of the send, and the retry budget is spent. It arrives with `delivered == nil`, the same shape as a deliberate suppression, so the MINOR 5 test this addon shipped (`delivered == false`, or `"rejected"`, or `"error"`) walked straight past it. That made the **most** serious verdict the only one nobody logged: a send reported `"lost"` has already been released and re-sent once under the retry budget and failed again, so unlike a refusal it will *not* heal itself on the next periodic pass — an allied-guild link can be genuinely down with nothing in the Sync Log to say so. Both broadcasts now treat it as the failure it is, and `"suppressed"` is still deliberately not one. Location: `TOGProfessionMaster.lua`.
 - **`/togpm commtest` reported a lost send as "no delivery verdict".** Same root cause, opposite consequence: a `"lost"` probe *did* get a verdict, and it said the queue had given up — but with `delivered == nil` it fell into the "accepted, still waiting" branch and pointed the reader at `/acq status` to hunt a queue that had already moved on. It now prints `LOST — queue gave up after retries` as its own outcome, and the still-waiting message is reworded, because since MINOR 6 a genuinely silent send is usually ChatThrottleLib holding it — which is normal, not broken. Location: `Modules/CommTest.lua`.
 - **The two cross-guild broadcasts now take the delivery verdict, so failing federation traffic is visible.** `BroadcastSisterConfig` and `BroadcastSisterRosters` are the only sends TOGPM makes itself — everything else rides DeltaSync, which has its own delivery accounting behind `/togpm dsstatus`. These two passed no callback, which meant AceCommQueue reported a refusal through `geterrorhandler()` itself: correct behaviour by the library, but it lands in the player's bug catcher attributed to the comm layer, and the addon learned nothing about its own allied-guild propagation failing. Both now pass a callback and record a refusal to the **Sync Log** and the debug stream, naming what did not arrive (and, for a roster, **which** allied guild's). This is about visibility, not recovery: both broadcasts are periodic, so a refusal heals itself on the next pass — what was missing was any way to see it happening. A `"suppressed"` verdict is deliberately not treated as a failure, since that is one of our own wrappers dropping a send on purpose. Location: `TOGProfessionMaster.lua`.
 
 - **`/togpm commtest` no longer blames the server for a send the client refused.** The probe exists to answer one question — does this server core relay guild addon traffic? — and its AceComm probe reported a refused send as `NO REPLY`, which is the exact signature of a broken core. It now reads the delivery verdict: a send the client refused prints `NOT SENT — client refused it (reason)`, and the verdict block says plainly that this tells you nothing about the core and points at `/acq status`. A probe that was accepted but produced neither a receipt nor a verdict inside the listen window is now called out too, because that is what a blocked send queue looks like from the outside. Location: `Modules/CommTest.lua`.
 
-- **The offline suite can now test the GUI, and does — 1,087 specs, and coverage went from 43% to 71%.** Three fixtures did most of that: one that draws a tab into a real AceGUI container, one that fakes a live trade-skill session (the state that on Classic can only be reached by casting a profession, and without which none of the Crafting tab runs), and driving `/togpm` through its real dispatcher — **every one of its twenty-four commands, none of which had ever been executed outside the game**. Most of them are diagnostics a user is told to run when something is already broken, which is the worst possible moment for one to throw. The shared test harness gained a widget layer (`env/frames.lua`), so a spec can build a **real** AceGUI widget tree offline: factories return real objects, `SetParent` really re-parents, `GetScript` returns what was set, and an absent method answers `nil` rather than a truthy no-op — which is what makes a multi-flavour `if frame.SetResizeBounds then` feature test pick a real branch offline instead of always taking the retail one. Twelve new specs in `Tests/gui_pool_spec.lua` cover the two helpers written to survive AceGUI's account-wide widget recycling — `GUI.DetachPool` (pooled scroll rows must end up orphaned onto `UIParent`, hidden and unanchored, but still in the pool for the next attach) and `AceGUIFrameScripts` — which is what found the leak above. Nine more in `Tests/gui_scroll_spec.lua` cover `PersistentScroll.Acquire`, the one function five tabs get their scroll frame from and route their pooled-row cleanup through: that releasing the scroll really runs the tab's cleanup, that one tab's cleanup never fires for the next owner of the recycled widget, that a `LayoutFinished` a previous owner overrode **or nilled** is repaired (the v0.3.x regression that cost a tab its scrollbar after a few tab switches), and that a saved scroll position survives a rebuild per key. Eleven more in `Tests/minimap_spec.lua` take `GUI/MinimapButton.lua` from **0% to 91%**, against the real vendored LibDataBroker-1.1 and LibDBIcon-1.0: the click routing (plain left, shift+left, right, and a button with no binding), the tooltip documenting all three, and — the one with history — that LibDBIcon is handed the table that **persists**, seeded from the pre-v0.7.1 field, since LibDBIcon writes the new angle into it when the user drags the button and a throwaway table lost the position on every `/reload`. Eighteen more in `Tests/guildtab_spec.lua` take `GUI/GuildTab.lua` from **0% to 58%**, covering the two functions the Guild tab's claims about your guild rest on: that "who has this profession" is the **union** of recorded skills and known crafters (neither signal alone is complete — most crafters never open their window with the addon watching, and gathering professions have no recipes at all), that a cross-guild alt cannot inflate the headcount an officer recruits on, that a specialisation is inferred from the spec-gated recipes a crafter knows and that a sub-spec beats its parent, and that a skill reading can never render the impossible `375/300` the v1.0.1 fix removed. The whole suite runs on the widget layer rather than a per-spec opt-in, because every AceGUI widget file captures `CreateFrame` as a file-scope local at load, so the model has to be in place before Ace3 loads or no widget is testable at all. Every pre-existing spec passed the switch unchanged.
+- **The offline suite can now test the GUI, and does** — that work took it to 1,087 specs and coverage from 43% to 71%, on the way to the 1,225 this release ships. Three fixtures did most of that: one that draws a tab into a real AceGUI container, one that fakes a live trade-skill session (the state that on Classic can only be reached by casting a profession, and without which none of the Crafting tab runs), and driving `/togpm` through its real dispatcher — **every one of its twenty-four commands, none of which had ever been executed outside the game**. Most of them are diagnostics a user is told to run when something is already broken, which is the worst possible moment for one to throw. The shared test harness gained a widget layer (`env/frames.lua`), so a spec can build a **real** AceGUI widget tree offline: factories return real objects, `SetParent` really re-parents, `GetScript` returns what was set, and an absent method answers `nil` rather than a truthy no-op — which is what makes a multi-flavour `if frame.SetResizeBounds then` feature test pick a real branch offline instead of always taking the retail one. Twelve new specs in `Tests/gui_pool_spec.lua` cover the two helpers written to survive AceGUI's account-wide widget recycling — `GUI.DetachPool` (pooled scroll rows must end up orphaned onto `UIParent`, hidden and unanchored, but still in the pool for the next attach) and `AceGUIFrameScripts` — which is what found the leak above. Nine more in `Tests/gui_scroll_spec.lua` cover `PersistentScroll.Acquire`, the one function five tabs get their scroll frame from and route their pooled-row cleanup through: that releasing the scroll really runs the tab's cleanup, that one tab's cleanup never fires for the next owner of the recycled widget, that a `LayoutFinished` a previous owner overrode **or nilled** is repaired (the v0.3.x regression that cost a tab its scrollbar after a few tab switches), and that a saved scroll position survives a rebuild per key. Eleven more in `Tests/minimap_spec.lua` take `GUI/MinimapButton.lua` from **0% to 91%**, against the real vendored LibDataBroker-1.1 and LibDBIcon-1.0: the click routing (plain left, shift+left, right, and a button with no binding), the tooltip documenting all three, and — the one with history — that LibDBIcon is handed the table that **persists**, seeded from the pre-v0.7.1 field, since LibDBIcon writes the new angle into it when the user drags the button and a throwaway table lost the position on every `/reload`. Eighteen more in `Tests/guildtab_spec.lua` take `GUI/GuildTab.lua` from **0% to 58%**, covering the two functions the Guild tab's claims about your guild rest on: that "who has this profession" is the **union** of recorded skills and known crafters (neither signal alone is complete — most crafters never open their window with the addon watching, and gathering professions have no recipes at all), that a cross-guild alt cannot inflate the headcount an officer recruits on, that a specialisation is inferred from the spec-gated recipes a crafter knows and that a sub-spec beats its parent, and that a skill reading can never render the impossible `375/300` the v1.0.1 fix removed. The whole suite runs on the widget layer rather than a per-spec opt-in, because every AceGUI widget file captures `CreateFrame` as a file-scope local at load, so the model has to be in place before Ace3 loads or no widget is testable at all. Every pre-existing spec passed the switch unchanged.
 
   Thirteen more in `Tests/shoppinglist_spec.lua` cover the reagent arithmetic behind "what do I still need to buy" — the quantity multiplier, summing a reagent shared by two queued crafts into one line, what the bags already hold across several stacks, and that the shortfall is never negative, because "buy -6 Thorium Bars" is not a shopping list. `BuildReagentList` was made a method to make it reachable; everything around it is rendering.
 
@@ -236,181 +472,4 @@ AceCommQueue-1.0 MINOR 5 turned sending from fire-and-forget into a two-way cont
 
 ---
 
-## [v0.10.10] (2026-06-30) - Live-refresh fixes, leaner recipe sync & a live Sync Log
-
-Follow-up to v0.10.9's guild-mode work. With sync finally flowing on private servers, testing surfaced that incoming guild data was being ingested into the database but the **Professions tab didn't show it** until a `/reload` — switching tabs didn't help either. The data was live in memory the whole time; the bugs were all in the Browser's recipe-list cache (a performance snapshot the Professions tab renders from, separate from the live data the Cooldowns/Missing Recipes tabs read directly). Sync itself was never the problem. This release also makes recipe sync **much leaner** with an optional per-player drill-down, turns the Sync Log into a live, copyable diagnostic, and adds pickers for the crafter-alert sound and on-screen visual.
-
-### New Features
-
-- **Sync Log is live, persistent, and copyable.** *Settings → General → Sync Log.* The window now updates in real time as sync events happen — no more clicking to refresh — remembers its position and size across `/reload`, and its contents are selectable and copyable (read-only) for pasting into bug reports. Entries are also far more informative: **sends now show what actually went out** — a crafter transfer names its **profession** (`crafters:165 (Leatherworking)`) instead of a bare id, and a per-player transfer names the exact player — instead of a meaningless "0 B"; the hash-offer and sub-hash sends are logged for the first time; and a dedicated **size column** reports the real byte size of **every** message — sends included (which previously reported nothing) — beside the payload type, all under a **column-header row** (Time / Event / Size / Peer / Detail) above the live box. The **send**-size figures specifically require **DeltaSync v3.2.1+** (which now returns the serialized size to the host) — that dependency is *only* for those send numbers in the Sync Log; on an older DeltaSync they show "—" and everything else in the addon behaves identically. Location: `Modules/SyncLog.lua`, `GUI/Settings.lua`, `Scanner.lua`.
-
-- **Choose your crafter-alert sound and visual.** *Settings → Alerts.* Two new dropdowns let you pick which **sound** (Chime, Ready Check, Raid Warning, Auction Bell, Whisper, Map Ping) and which **on-screen visual** (full-screen flash in gold / red / blue, a raid-warning banner, top-center error text, or a taskbar flash for when you're alt-tabbed) fire when a guild crafter comes online. Selecting an option **previews it**, and each dropdown greys out while its matching suppress toggle is on. The old "Suppress screen flash" toggle is renamed "Suppress alert visual" to match. Localized. Location: `GUI/Settings.lua`, `TOGProfessionMaster.lua`.
-
-- **Jump from the Profit Planner straight to the Crafting tab.** Clicking a row in the Profit Planner now opens that recipe directly in the Crafting tab, ready to craft (shift-click still links the item in chat — the tooltip spells out both). If you've hidden the Crafting tab (*Settings → Crafting*), it tells you how to bring it back instead of silently doing nothing. Location: `GUI/AHProfitTab.lua`, `GUI/CraftingTab.lua`.
-
-### Bug Fixes
-
-- **Professions tab now updates live as guild data arrives.** Two root causes, both fixed: (1) the background cache rewarm rebuilt the recipe list but never re-rendered the open tab, so freshly-synced recipes sat in the cache unseen; the rewarm now redraws the visible tab the instant the viewed profession's list is rebuilt — and does so **without losing your scroll position**. (2) The rewarm's debounce timer was **starved on actively-syncing realms**: every data update reset a 10s timer, so when updates arrived faster than that (a busy guild, or a private server catching up), the rebuild *never fired at all* — which is why even switching tabs showed nothing and only a `/reload` worked. The debounce is now capped so a rebuild always lands within ~10s, even under continuous traffic. Location: `GUI/BrowserTab.lua`.
-- **Purge buttons now clear the Professions display immediately.** "Purge all guild data" and "Purge my character data" did clear the database (Cooldowns and Missing Recipes emptied instantly), but the Professions tab re-rendered stale rows because its recipe cache isn't keyed on the database and wasn't being invalidated. The cache is now wiped on purge before the refresh, so the tab reflects the empty state at once. Location: `GUI/BrowserTab.lua`, `GUI/Settings.lua`.
-- **"All Professions" view now reflects your own freshly-scanned professions.** Scanning a profession locally (opening its window) committed the recipes to the database but raised no UI-refresh signal — only *received* sync did — so the cached "All Professions" list stayed stale. Most visible right after a purge: the All Professions filter showed "no data yet" while selecting a specific profession showed the recipes (that filter rebuilt fresh on a cache miss). Now a local scan that actually changes your recipe set refreshes the UI on the same path a peer update uses, gated on a real change so crafting's repeated scan events don't churn the open tab. Location: `Scanner.lua`.
-- **Professions tab now reflects members going online and offline.** Each crafter's online status is baked into the recipe-list cache when it's built, so a roster change alone didn't update the tab — someone logging off kept showing as online until the next data change or `/reload`. Roster online/offline transitions now invalidate and refresh the tab (debounced, and only while it's on screen so login/logout bursts don't thrash the pre-warm), so status reflects within ~2s. Location: `GUI/BrowserTab.lua`.
-- **Cooldown supply-mail now finds your reagents on older TBC / Classic clients.** On builds without `C_Container` (older TBC and some private servers), the legacy `GetContainerItemInfo` returns only 7 values — **no item ID** — so the mail helper's bag scan matched nothing and reported *"you have no &lt;reagent&gt; in your bags"* even when you had it. (The reagent count shown on the row uses `GetItemCount` and was correct all along, which is why it looked contradictory.) The compat shim now derives the item ID from the item link when the API omits it, so `.itemID` is always populated — fixing the mail scan on every supported client (and any other bag lookup that keys on item ID). Location: `Compat.lua`. Thanks to Bzum for the report.
-
-### Improvements
-
-- **Leaner recipe sync — per-player drill-down.** Previously, when *anyone* in the guild changed a recipe, peers re-fetched that entire profession's crafter set — on a large guild a single transfer of ~90 KB. Recipe sync now negotiates a **per-player hash list** under each profession and pulls **only the players whose recipes actually differ**, newest-scanned first and each as its own small message — so a one-person, one-recipe change ships just that player's recipes instead of the whole profession, the data populates incrementally, and traffic interleaves far better on congested or slow servers. It's **fully additive and backward-compatible**: feature-detected, so it engages only between updated clients and falls back to the existing whole-profession path for anyone else — no coordinated guild-wide update required, no wire-format break, no namespace bump. Location: `Scanner.lua`, `Modules/HashManager.lua`.
-- **Consistent TSM setting labels.** The two TradeSkillMaster pricing toggles now both read "TSM" — *"Use TSM pricing"* and *"Use TSM App Helper pricing"* — instead of one spelling out "TradeSkillMaster" and the other abbreviating. Location: `GUI/Settings.lua`.
-- **Crafter column fills the available width.** The Professions tab's crafter summary used to show a fixed "2 names + N more"; it now fits **as many crafter names as the column's current width allows**, with a greyed "+N" for the rest, and re-fits live when you drag the window wider or narrower. Location: `GUI/BrowserTab.lua`.
-
----
-
-## [v0.10.9] (2026-06-29) - Guild-only sync mode for private servers
-
-Resolves the "nothing syncs on Whitemane" investigation. Diagnostics confirmed that Whitemane (and similar emulated **Cataclysm** servers) **deliver addon messages over GUILD fine but silently drop them over WHISPER** — and TOGPM's sync is hash-then-fetch, where the fetch request rides WHISPER. Hash offers went out on guild chat and arrived, but the follow-up data request never landed, so members kept broadcasting while nothing ever came back. This release adds an opt-in toggle that reroutes the whisper-based sync traffic onto the guild channel.
-
-### New Features
-
-- **Guild-only sync mode** — *Settings → General → Sync.* For private/emulated servers that don't deliver addon whispers (e.g. Whitemane "Maelstrom"). When enabled, DeltaSync's directed channels (QUERY / RESPONSE / DELTA / OFFER / HANDSHAKE) are rerouted from WHISPER to GUILD, with each message stamped for its intended recipient so other members ignore it — directed delivery over a broadcast transport. **Opt-in and OFF by default**, so nothing changes on retail/Classic Era or any server where whispers work. The setting is **realm-scoped** (enable it once, all your alts on that realm inherit it) and **feature-detected** — the toggle is hidden unless the installed DeltaSync supports guild-mode (**requires DeltaSync v3.2.0+**). Cross-guild sharing auto-disables while it's on (it can't work on a whisper-dead server anyway). Coordinate per guild: on an affected realm, **everyone should enable it** — directed traffic only reaches members who also have it on. Localized in all shipped languages. Location: `Scanner.lua`, `GUI/Settings.lua`, `TOGProfessionMaster.lua`.
-
-### Notes
-
-- **Diagnosing this used `/togpm commtest`** (from v0.10.7/0.10.8) plus raw two-player tests, which is how we isolated WHISPER-drop-but-GUILD-works. If guild sync ever looks dead on a server, that command remains the fastest way to see which addon-message channels the server actually relays.
-
----
-
-## [v0.10.8] (2026-06-28) - Fix: commtest missing from per-flavor TOCs
-
-Follow-up to v0.10.7. The new diagnostic shipped in only one of the addon's five TOC files, so it never loaded on the very clients it was built for. This release wires it into all of them.
-
-### Bug Fixes
-
-- **`/togpm commtest` now loads on TBC / Wrath / Cata / MoP clients.** v0.10.7 added `Modules/CommTest.lua` to only the base `TOGProfessionMaster.toc`. WoW loads the *flavor-specific* TOC when one exists, so on TBC/Wrath/Cata/Mists clients — including privately-hosted Cataclysm servers like **Whitemane "Maelstrom"** — the file was never in the load list, `RunCommTest` stayed undefined, and `/togpm commtest` silently fell through to the help menu (the command's help line still showed because that lives in the always-loaded main file, which is what made it look present). Added the line to all four flavor TOCs (`_TBC`, `_Wrath`, `_Cata`, `_Mists`) so the diagnostic is available on every supported version. Location: `TOGProfessionMaster_TBC.toc`, `TOGProfessionMaster_Wrath.toc`, `TOGProfessionMaster_Cata.toc`, `TOGProfessionMaster_Mists.toc`.
-
-### Notes
-
-- **Whitemane runs a modern Classic-engine client, not the original 4.3.4 client.** Diagnostics surfaced that its addon-message API is `C_ChatInfo.SendAddonMessage` (the bare global `SendAddonMessage` is `nil`), and `C_ChatInfo.SendAddonMessage` returns a `SendAddonMessageResult` code. The `commtest` probe already handles this via its `C_ChatInfo` shim; this corrects the v0.10.7 note that assumed the original 4.3.4 client.
-
----
-
-## [v0.10.7] (2026-06-27) - Private-server addon-comm diagnostics
-
-Groundwork for running TOGPM on privately-hosted **Cataclysm 4.3.4 (build 15595)** servers such as **Whitemane "Maelstrom"**, where some emulation cores leave the Cataclysm per-channel addon opcodes (`CMSG_MESSAGECHAT_ADDON_GUILD`, …) unhandled and silently drop guild addon traffic — which makes the sync stack look dead even though the addon loads fine. This release adds a diagnostic to pinpoint exactly which addon-message channels a given server relays. **No change to existing behavior** — it's a new, opt-in command; nothing in the live sync path was touched.
-
-### New Features
-
-- **`/togpm commtest [name]` — addon-channel diagnostic probe.** Fires a tagged addon message on every distribution (GUILD, WHISPER→self, a temporary CHANNEL, and PARTY/RAID when grouped), listens briefly for which ones echo back, then prints a copy-pasteable verdict including the client build number. The **GUILD self-echo is the decisive test** and works solo — on a healthy core you receive your own guild addon message; if the server drops guild addon traffic you get nothing. It probes **both** the raw `SendAddonMessage` path and your actual AceComm + AceCommQueue send path, so a server-side drop is distinguishable from a wrapper/chunking issue. Pass a player name to add a real two-player WHISPER probe. Run it on your home realm (control) and on the private server (test); the diff identifies the broken channel and which fallback (WHISPER/CHANNEL) is viable. Cross-version safe — uses `C_ChatInfo` where present, bare globals on 4.3.4, registers prefixes only where that API exists, and deliberately uses an `OnUpdate` timer instead of `C_Timer` (which the original 4.3.4 client lacks). Location: `Modules/CommTest.lua`.
-
----
-
-## [v0.10.6] (2026-06-12) - Cross-guild profession sharing & crafting hands-off
-
-First stable release of cross-guild profession sharing (matured across the v0.10.x beta line) plus new crafting-window controls. **Fully backward-compatible** — single-guild use is unchanged, and cross-guild sharing stays completely dormant until you configure an allied guild. Cross-guild requires DeltaSync **v3.1.0+** and GuildRoster **v6+** (both install/update automatically).
-
-### New Features
-
-- **Cross-guild profession sharing.** Share recipe and crafter data between two socially-linked guilds that can't reach each other over the normal guild addon channel. An **officer or the guild leader** sets the allied guild under **Settings → Cross-Guild** (the list is guild-wide and members see it read-only); once **both** guilds list each other (it's bilateral — a one-sided config does nothing, and a guild you don't list can't pull or inject anything), their crafters become visible to each other. The allied-guild list propagates across your guild automatically, allied rosters are shared so **every** member sees the crafters (not just whoever pulled them), and a live **Diagnostics** panel plus `/togpm xgdiag` show exactly what's synced. With no allied guild configured, the addon does nothing cross-guild — purely local. Location: `Scanner.lua`, `TOGProfessionMaster.lua`, `GUI/Settings.lua`.
-- **Crafting hands-off mode** — *Settings → Crafting, on by default.* TOGPM no longer opens or forces a crafting window when you open a profession; Blizzard's window (or another addon such as TSM / Skillet) owns it, so no second window appears beside it. The TOGPM toggle button still rides on the Blizzard window when it's shown, and the Crafting tab stays available from the main window. **If you previously enabled "Open the TOGPM Crafting tab automatically," untick this to keep that behavior.** Requires `/reload`. Location: `Modules/Crafting/CraftingEngine.lua`.
-- **Hide the Crafting tab** — *Settings → Crafting.* Removes the Crafting tab from the main window entirely, for those who craft with another addon. Requires `/reload`. Location: `GUI/MainWindow.lua`.
-
-### Bug Fixes
-
-- **Browser performance overhaul — instant tab open and instant search.** The recipe list (the expensive part: DB lookups, the per-crafter visibility gate, item tooltip text) is now built **once** and cached, and pre-warmed in the background after login — sliced across frames so it's invisible — so opening the Professions tab and switching professions are instant instead of taking a second or more. Searching just filters the cache (no rebuild, no per-keystroke freeze). This removes the multi-second tab-load and search stutter that had grown as cross-guild sharing enlarged the crafter sets. Location: `GUI/BrowserTab.lua`, `TOGProfessionMaster.lua`.
-
-### Improvements
-
-- **Settings window is tabbed** (General / Cross-Guild) and remembers its position, size, and selected tab across `/reload`.
-- **Roster engine** runs on the standalone LibGuildRoster-1.0 (GuildRoster addon), an auto-installed dependency — the foundation for cross-guild support.
-
----
-
-## [v0.10.5-beta] (2026-06-09) - Roster propagation & Browser search fix (beta)
-
-> **Beta build.** Completes the cross-guild "anyone is a transfer point" model. Backward-compatible; single-guild operation is unchanged. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+**.
-
-### New Features
-
-- **Sister-roster propagation (Part B).** The visibility gate keeps an allied crafter only if their character is in a sister roster you hold — so a member who configured an allied guild but never *pulled* its roster would purge every relayed crafter. Now a member who holds a sister roster broadcasts it on the guild channel and everyone applies it, so the whole guild sees allied crafters, not just the puller. A "recently-seen by hash" suppression keeps it to ~one broadcaster per interval (duty rotates if that member logs off), fresh pulls propagate within ~10s, and receipt is gated by the allied-guild list (an unlisted guild's roster is never accepted). This is the piece that makes federated members churn-free without each pulling. Location: `TOGProfessionMaster.lua`, `Scanner.lua`.
-
-### Bug Fixes
-
-- **Browser (recipe) search no longer freezes on each keystroke.** Two causes: the search box rebuilt the whole list synchronously on every character (no debounce — the fix that was already in Missing Recipes had never been applied here), and the per-recipe crafter list was built *before* the search filter ran, so every keystroke walked every recipe's crafter set — which grew heavier as cross-guild sharing added crafters. The search now debounces (~200ms) and applies the cheap client-version + name/effect filters before the expensive crafter-list build, so excluded recipes are skipped. Location: `GUI/BrowserTab.lua`.
-
----
-
-## [v0.10.4-beta] (2026-06-09) - Cross-guild bilateral federation gate (beta)
-
-> **Beta build.** Security model for cross-guild sharing. Backward-compatible; single-guild operation is unchanged. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+**.
-
-### New Features
-
-- **Bilateral federation — both guilds must list each other.** Cross-guild data now only flows when **both** sides have configured each other as allied guilds. A one-sided config does nothing; a stranger, an accidental config, or a malicious puller from a guild you don't list gets nothing. Enforced by gating every direction:
-  - **Serve gate:** we hand over our data only if we list the requester's guild **and** the request proves they list us (it carries their guild key + sister-guild set). Plus an anti-spoof check — once we hold the requester's guild roster, the requester must actually be a member of it.
-  - **Accept gate:** we ingest cross-guild data only from a guild on our list.
-  - **Merge gate:** every crafter is kept only if its guild tag is our home, our own alts, or a *listed* sister — so data for an unlisted guild is dropped even when it arrives relayed inside a home-guild broadcast, and is never re-relayed.
-  - **Roster gate:** we persist/re-feed a sister roster only for a guild we list; a de-configured guild can't be resurrected on login.
-  - **De-configure cleanup:** removing a guild from the list (or receiving a federated removal) tears down its roster and stops its data from displaying.
-- **No allied guilds configured → purely local operation.** With an empty list the permitted-tag set collapses to home + your own alts, so the addon does nothing cross-guild at all. Location: `Scanner.lua`, `TOGProfessionMaster.lua`.
-
----
-
-## [v0.10.3-beta] (2026-06-09) - Cross-guild config propagation & churn fix (beta)
-
-> **Beta build.** Continues the cross-guild work. Backward-compatible and dormant until an allied guild is configured. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+**. For the relay/anti-churn behavior, **all participating beta players need this build** — a peer on an older build re-broadcasts relayed crafters with the guild tag stripped.
-
-### New Features
-
-- **Allied-guild config now propagates across your guild.** The allied-guild list you set under Settings → Cross-Guild is broadcast to the rest of your guild (on change, every ~12 minutes, and via a new **Sync now** button), so every member participates — essential once editing becomes officer-only. Conflict resolution is last-writer-wins by the timestamp captured when the list was set; members re-broadcast what they hold without clobbering a newer edit. A member holding no config never broadcasts. Location: `TOGProfessionMaster.lua`, `GUI/Settings.lua`.
-
-### Bug Fixes
-
-- **Relayed cross-guild crafters no longer churn under mixed addon versions.** Because guild sync is gossip, a single guildmate on an older build (no per-crafter tags) re-broadcasts relayed sister crafters with the tag stripped; the receiver then re-stamped them as the home guild, the visibility gate purged them (not in the home roster), the relay re-added them, and the cycle repeated — counts visibly oscillating with no membership change. The merge now treats an explicit shipped tag as authoritative and **never lets a tagless (older-build) broadcast overwrite an attribution it already holds**, so a known cross-guild crafter stops flipping. The roster gate still decides visibility, so genuine leavers are still purged. Location: `Scanner.lua` (`MergeCraftersIntoGdb`).
-
-### Improvements
-
-- **Diagnostics: orphan breakdown.** The Cross-Guild diagnostics now show, per allied guild, how many crafters match the roster vs. are orphaned (with a few example keys), making it easy to tell roster-matching issues from genuine non-members. Location: `GUI/Settings.lua`.
-
----
-
-## [v0.10.2-beta] (2026-06-09) - Cross-guild relay attribution & diagnostics (beta)
-
-> **Beta build.** Continues the cross-guild work from v0.10.1-beta. Backward-compatible and dormant until an allied guild is configured. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+** (both install/update automatically). For cross-guild relay to work, **all** participating players need this build.
-
-### New Features
-
-- **Cross-guild diagnostics panel.** A live, read-only status section on **Settings → Cross-Guild** showing dependency status (DeltaSync/RosterSync, LibGuildRoster/multi-roster), known rosters (home + each sister) with member counts, configured allied guilds, crafter counts per guild, and persisted allied rosters with feed timestamps. Plus a "Pull from player" field to trigger a pull without the slash command. Location: `GUI/Settings.lua`.
-- **`/togpm xgdiag` command.** Dumps the same cross-guild diagnostics to chat as plain lines for easy copy-paste when troubleshooting. Location: `GUI/Settings.lua`, `TOGProfessionMaster.lua`.
-
-### Bug Fixes
-
-- **Cross-guild attribution now survives relays.** The crafters sync leaf previously shipped bare character keys with no guild tag, on the assumption that every crafter in a payload belonged to the receiver's guild. In a confederation that assumption breaks: when a member who holds sister-guild data rebroadcasts it into their home guild, those sister crafters were re-stamped as the home guild and then hidden/purged by the visibility gate (not in the home roster). The leaf now ships each crafter's **origin guild tag** (already stored locally), so a relaying "bridge" member can propagate allied-guild crafters into their home guild with attribution intact. The leaf **hash is unchanged** (it already normalized values before hashing), so old and new clients stay in sync — but both ends of a relay must run this build for tags to be preserved. Location: `Scanner.lua` (`BuildLeafPayload`, `MergeCraftersIntoGdb`).
-
----
-
-## [v0.10.1-beta] (2026-06-09) - Cross-guild profession sharing (beta)
-
-> **Beta build.** This is the first testable cut of cross-guild sharing. It is fully backward-compatible — single-guild users are unaffected and the feature stays dormant until an allied guild is configured — but the cross-guild round-trip has not yet been validated with live players. Please report issues. Requires DeltaSync **v3.1.0+** and GuildRoster **v6+** (both install/update automatically).
-
-### New Features
-
-- **Cross-guild profession sharing (beta).** TOGPM can now share recipe/crafter data between two socially-linked guilds that can't reach each other over the normal guild addon channel. Configure an allied guild under **Settings → Cross-Guild**, and your crafters become discoverable to them (and theirs to you). Built on directed peer-to-peer whispers — no extra chat channel required. Location: `GUI/Settings.lua`, `Scanner.lua`, `TOGProfessionMaster.lua`.
-- **Sister-guild roster tracking.** Allied-guild rosters are pulled, persisted across `/reload`, and kept live via LibGuildRoster-1.0's multi-roster store, so allied crafters survive a session restart and stay correctly attributed to their own guild. Location: `Scanner.lua` (`PersistSisterRoster`, `RefeedSisterRosters`, `OnSisterRosterUpdated`).
-- **`/togpm pullroster <player>` command.** Manually pull an online allied-guild member's roster **and** crafter data on demand — the testing/bootstrap path before automatic discovery lands. Location: `TOGProfessionMaster.lua`.
-
-### Improvements
-
-- **Settings window is now tabbed.** Options are organized into General and Cross-Guild tabs (with room for officer/GM-only settings as features grow). Location: `GUI/Settings.lua`.
-- **Each guild stays authoritative for its own membership.** Cross-guild data exchange shares only a guild's *own* crafters and is opt-in (nothing is served until you configure an allied guild), so attribution can never bleed between guilds in a multi-guild confederation. Location: `Scanner.lua` (`BuildFullGuildPayload`).
-
-### Bug Fixes
-
-- **Settings window position, size, and selected tab now persist across `/reload`.** The standalone options window kept its geometry in a runtime-only table; it's now backed by SavedVariables (`.char.frames.settings`), matching the main window. Location: `GUI/Settings.lua`.
-
-### Known Limitations (beta)
-
-- Allied-guild crafters currently display as **offline** — live presence arrives with automatic `/who` discovery in a later beta.
-- Cooldown sharing is **not** yet cross-guild (crafter data only this build).
-- Allied data must be bootstrapped with `/togpm pullroster <name>`; automatic discovery is not in this build.
-
----
-
-> Older releases (v0.10.0 and earlier) are archived in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
+> Older releases (v0.10.10 and earlier) are archived in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).

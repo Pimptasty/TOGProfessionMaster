@@ -19,7 +19,18 @@
       "Bash(COVERAGE_SUMMARY=1 COVERAGE_MIN=0 lua Tests/wowapi/coverage.lua GUI/AHProfitTab.lua)",
       "Bash(lua Tests/wowapi/run.lua Tests/cooldownfilter_spec.lua)",
       "Bash(lua Tests/wowapi/run.lua Tests/browservirtual_spec.lua)",
-      "Bash(COVERAGE_SUMMARY=1 COVERAGE_MIN=0 lua Tests/wowapi/coverage.lua GUI/BrowserTab.lua GUI/CooldownsTab.lua GUI/AHProfitTab.lua GUI/CraftingTab.lua)"
+      "Bash(COVERAGE_SUMMARY=1 COVERAGE_MIN=0 lua Tests/wowapi/coverage.lua GUI/BrowserTab.lua GUI/CooldownsTab.lua GUI/AHProfitTab.lua GUI/CraftingTab.lua)",
+      "Bash(lua Tests/wowapi/run.lua Tests/settingsbleed_spec.lua)",
+      "Bash(lua Tests/wowapi/run.lua Tests/bottomrow_spec.lua)",
+      "Bash(git -C Tests/wowapi show origin/main:docs/contracts/TOGProfessionMaster.md)",
+      "Bash(git -C Tests/wowapi log -1 --format=\"%B\" origin/main)",
+      "Bash(python -c ' *)",
+      "Bash(markdownlint CHANGELOG.md README.md Tests/HARNESS_CONTRACT.md)",
+      "Bash(perl -0pi -e 's/\\\\t\\\\tlocal e = \\\\{ id = id, profId = 165, name = \"Barbaric Shoulders\",\\\\n\\\\t\\\\t            profName = \"Leatherworking\",\\\\n\\\\t\\\\t            reagents = \\\\{ \\\\{ name = \"Heavy Leather\", count = 2 \\\\} \\\\} \\\\}/\\\\t\\\\tlocal e = { id = id, profId = 165, name = \"Barbaric Shoulders\", icon = 1,\\\\n\\\\t\\\\t            profName = \"Leatherworking\", crafters = {},\\\\n\\\\t\\\\t            reagents = { { name = \"Heavy Leather\", count = 2 } } }/' Tests/browservirtual_spec.lua)",
+      "Bash(lua Tests/wowapi/tools/verify-addons.lua \"c:/Program Files \\(x86\\)/World of Warcraft/_classic_era_/Interface/AddOns\" TOGProfessionMaster)",
+      "Bash(markdownlint docs/DEPENDENCY_CONTRACTS.md)",
+      "Bash(COVERAGE_MIN=0 lua Tests/wowapi/coverage.lua GUI/SharedWidgets.lua Tooltip.lua GUI/BrowserTab.lua GUI/MissingRecipesTab.lua)",
+      "Bash(COVERAGE_MIN=0 lua Tests/wowapi/coverage.lua Tooltip.lua)"
     ],
     "additionalDirectories": [
       "f:\\game development\\wowapitesting\\docs\\contracts"

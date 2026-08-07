@@ -226,8 +226,13 @@ function ShoppingListTab:FillShoppingList(container)
                 bankBtn:SetWidth(60)
                 local itemId = reagent.id
                 bankBtn:SetCallback("OnClick", function()
-                    if TOGBankClassic and TOGBankClassic.RequestItem then
-                        TOGBankClassic.RequestItem(itemId)
+                    -- Routed through addon.Bank, which we own. The old call
+                    -- went to a field on `_G.TOGBankClassic` -- that addon's UI
+                    -- controller FRAME (Modules/UI.lua), which has never
+                    -- carried one -- so the guard was never true and this
+                    -- button did nothing, silently, for its whole life.
+                    if addon.Bank and addon.Bank.ShowRequestDialog then
+                        addon.Bank.ShowRequestDialog(itemId, reagent.name, reagent.link, bankBtn.frame)
                     end
                 end)
                 row:AddChild(bankBtn)
@@ -314,8 +319,10 @@ function ShoppingListTab:FillMissingReagents(container)
             bankBtn:SetText(L["BankBtn"])
             bankBtn:SetWidth(60)
             bankBtn:SetCallback("OnClick", function()
-                if TOGBankClassic and TOGBankClassic.RequestItem then
-                    TOGBankClassic.RequestItem(itemId)
+                -- See the note on the other [Bank] button above: the old guard
+                -- keyed on another addon's global and could never be true.
+                if addon.Bank and addon.Bank.ShowRequestDialog then
+                    addon.Bank.ShowRequestDialog(itemId, entry.name, entry.link, bankBtn.frame)
                 end
             end)
             row:AddChild(bankBtn)

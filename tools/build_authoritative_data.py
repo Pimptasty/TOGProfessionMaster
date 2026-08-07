@@ -639,6 +639,8 @@ def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool =
             continue
 
     items_by_spell: dict[int, set[int]] = {}
+    item_teach_pairs: list[tuple[int, int]] = []
+    learns_by_spell: dict[int, set[int]] = {}
     n_skipped_obsolete = 0
     for row in item_effects:
         try:
@@ -651,66 +653,16 @@ def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool =
                     n_skipped_obsolete += 1
                     continue
                 items_by_spell.setdefault(sid, set()).add(iid)
+                # Keep the raw pair too. Many scrolls list a GENERIC teaching
+                # spell here rather than the craft itself, and the chain below
+                # resolves those.
+                item_teach_pairs.append((iid, sid))
         except (TypeError, ValueError, KeyError):
             continue
 
-    # Recipe-scroll name-match supplemental linker.
-    #
-    # ItemEffect only contains direct spell-teach mappings — but many WoW
-    # recipe scrolls implement their teaching via a generic "Learning" spell
-    # (spell 483) whose effect is then chained server-side to grant the
-    # specific craft spell. ItemEffect captures the item→Learning link, not
-    # the item→specific-craft link. As a result our items_by_spell map
-    # misses ~80-100 recipes per profession whose scrolls exist but aren't
-    # directly linked in DBC.
-    #
-    # Workaround: WoW's recipe scroll items follow a predictable naming
-    # convention — "Pattern: <CraftName>" for Tailoring/LW, "Plans: ..."
-    # for BS, "Recipe: ..." for Alchemy/Cooking/FA, "Formula: ..." for
-    # Enchanting, "Schematic: ..." for Engineering, "Design: ..." for JC,
-    # "Manual: ..." for some FA, "Technique: ..." for Inscription. Strip
-    # the prefix and the remainder exactly matches the craft spell's name
-    # in SpellName. Cross-validated at 97% hit rate on Vanilla data
-    # (1,047 of 1,082 recipe scrolls match a spell by stripped name).
-    #
-    # When the same spell name appears multiple times (e.g. rank variants
-    # of an enchant), we associate the scroll with the first matching
-    # spell — same convention as items[0] downstream. Misses (35 in
-    # Vanilla) are mostly singular/plural mismatches, legacy "Imbue X"
-    # naming, and skill-rank books which aren't recipes.
-    spell_by_name: dict[str, list[int]] = {}
-    for sid, sname in name_by_spell.items():
-        if sname:
-            spell_by_name.setdefault(sname, []).append(sid)
+    # (The recipe-scroll name-match supplemental linker used to live here. It is
+    # retired -- see the teach-spell chain further down, which supersedes it.)
 
-    SCROLL_PREFIXES = (
-        "Pattern: ", "Plans: ", "Recipe: ", "Formula: ",
-        "Schematic: ", "Design: ", "Manual: ", "Technique: ",
-    )
-    n_name_match = 0
-    n_name_match_new = 0
-    n_name_unmatched = 0
-    for iid, iname in name_by_item.items():
-        if is_obsolete_item_name(iname):
-            continue
-        for pfx in SCROLL_PREFIXES:
-            if iname.startswith(pfx):
-                craft_name = iname[len(pfx):]
-                matched_spells = spell_by_name.get(craft_name)
-                if matched_spells:
-                    n_name_match += 1
-                    for sp in matched_spells:
-                        bucket = items_by_spell.setdefault(sp, set())
-                        if iid not in bucket:
-                            bucket.add(iid)
-                            n_name_match_new += 1
-                else:
-                    n_name_unmatched += 1
-                break
-    print(f"  recipe-scroll name-match: {n_name_match:,} scrolls matched "
-          f"({n_name_match_new:,} new spell-scroll links), "
-          f"{n_name_unmatched:,} unmatched (edge cases / non-recipe books)",
-          file=sys.stderr)
     if n_skipped_obsolete:
         print(f"  skipped {n_skipped_obsolete} obsolete item-teach rows "
               f"(ZZOLD/TEST/DEPRECATED variants)", file=sys.stderr)
@@ -791,12 +743,39 @@ def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool =
                 if iid and sid not in created_item_by_spell:
                     if not is_obsolete_item_name(name_by_item.get(iid, "")):
                         created_item_by_spell[sid] = iid
+            elif effect == 36:  # LEARN_SPELL
+                # The missing hop. A recipe scroll's ItemEffect often points at a
+                # generic teaching spell rather than the craft; that spell's
+                # Effect=36 row names the craft it actually grants.
+                trig = int(row.get("EffectTriggerSpell") or 0)
+                if trig:
+                    learns_by_spell.setdefault(sid, set()).add(trig)
             elif effect == 53:  # ENCHANT_ITEM (permanent)
                 ench = int(row.get("EffectMiscValue_0") or 0)
                 if ench and sid not in enchant_id_by_spell:
                     enchant_id_by_spell[sid] = ench
         except (TypeError, ValueError, KeyError):
             continue
+
+    # Resolve item -> generic teaching spell -> craft spell.
+    #
+    # This replaces the recipe-scroll NAME-MATCH linker that used to sit in the
+    # ItemEffect block above. That linker stripped "Pattern: " / "Plans: " etc.
+    # from an item name and matched the remainder against SpellName -- which was
+    # English-only, and wrong in a way that shipped: item 228118 displays as
+    # "Plans: Stronger-hold Gauntlets" but teaches Stronghold Gauntlets, so the
+    # matcher bound it to the seasonal spell while the original lost its scroll.
+    # ItemDB's DBC comparison put numbers on it: the join finds every link the
+    # matcher found, plus 35 it missed, and is locale-independent.
+    n_chained = 0
+    for iid, item_spell in item_teach_pairs:
+        for craft in learns_by_spell.get(item_spell, ()):  # noqa: B007
+            bucket = items_by_spell.setdefault(craft, set())
+            if iid not in bucket:
+                bucket.add(iid)
+                n_chained += 1
+    print(f"  teach-spell chain: {n_chained:,} item->craft links via "
+          f"SpellEffect[Effect=36] (name-match linker retired)", file=sys.stderr)
 
     # SpellItemEnchantment id -> display name (e.g. 1897 -> "Weapon Damage +5").
     # Localized re-resolution (per-locale string passes) reuses this via the
@@ -937,7 +916,18 @@ def extract_recipes_for_build(build: str, spec_map: dict = None, refresh: bool =
                 "enchantSlot":    ench_slot,
                 "stats":          ench_stats or None,
                 "reagents":       reagents_by_spell.get(spell_id, {}),
-                "items":          sorted(items_by_spell.get(spell_id, set())),
+                # Only items that EXIST in this build. ItemEffect can point at
+                # an id with no ItemSparse row -- a stripped or never-shipped
+                # entry -- and because those ids are often lower than the real
+                # scroll's, a plain sorted()[0] picks the ghost. Two shipped
+                # recipes were wrong this way: 7443 chose 6221 over 6342
+                # "Formula: Enchant Chest - Minor Mana", and 25124 chose 20751
+                # over 20758 "Formula: Minor Wizard Oil". Found by diffing
+                # against ItemDB's independent join, which filtered on existence.
+                "items":          sorted(
+                    i for i in items_by_spell.get(spell_id, set())
+                    if name_by_item.get(i)
+                ),
                 "craftedItemId":  created_item_by_spell.get(spell_id),
                 "expansion":      build,
             }

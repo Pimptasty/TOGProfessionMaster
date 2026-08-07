@@ -262,6 +262,7 @@
         "rawset",
         "rawget",
         "xpcall",
+        "loadfile",
         "loadstring",
         "collectgarbage",
         "describe",

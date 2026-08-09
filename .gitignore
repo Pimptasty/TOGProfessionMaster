@@ -11,6 +11,13 @@ docs/FEATURE_IMPROVEMENTS.md
 libs/CallbackHandler-1.0.lua
 libs/LibStub.lua
 
+# Machine-written session logs from the laws plugin. They land in the working
+# tree, are per-session and enormous, and record nothing the repo needs — the
+# durable half of a session goes in CHANGELOG.md, docs/AUDIT.md and the code
+# comments. Already listed in .markdownlintignore for the same reason.
+conversation.md
+docs/conversation.md
+
 # Python tooling caches and bulky emulator SQL dumps (dev-only inputs to
 # the v0.5.0 data builders in tools/, regenerable on demand from
 # wago.tools + TrinityCore/AzerothCore releases).

@@ -42,11 +42,11 @@ local SPEC_PARENT = {
 }
 
 -- Count entries in a set-style table (charKey → true).
-local function countSet(t)
-    local n = 0
-    for _ in pairs(t) do n = n + 1 end
-    return n
-end
+-- Shared, not a private copy: this one raised on nil where the other two
+-- copies of the same function returned 0. addon.UI.Count takes the safe form.
+-- Resolved at call time, not captured at file scope — audit finding 6; see the
+-- note in CraftingTab.lua.
+local function countSet(t) return addon.UI.Count(t) end
 
 -- EVERY profession available on this client is shown even at 0 — the Guild tab is
 -- a COMPLETE, guild-wide "who has what", not a "what do I have" list, so a

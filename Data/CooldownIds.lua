@@ -129,27 +129,70 @@ local MOP_TRANSMUTES = {
 }
 
 -- ---------------------------------------------------------------------------
--- Primary reagent for non-transmute cooldowns
--- { [spellId or itemId] = { id = itemId, qty = N } }
--- Salt Shaker uses item ID 15846 as the key (scanned via GetItemCooldown).
+-- Reagents — DERIVED from ProfessionDB, not transcribed here.
+--
+-- These three tables (REAGENTS / MULTI_REAGENTS / TRANSMUTE_REAGENTS) used to be
+-- ~90 lines of hand-written { id = itemId, qty = N }. NINE OF THE 49 ENTRIES
+-- WERE WRONG, and every one of them had a correct comment beside it:
+--
+--   17187 Transmute: Arcanite   -> 12364 "Huge Emerald"     (Arcane Crystal is 12363)
+--   11480 Mithril to Truesilver -> 3859  "Steel Bar"        (Mithril Bar is 3860)
+--   17559/60/61/62 elemental    -> 7067-7070 "Elemental X"  (the recipes take "Essence of X",
+--                                                            7076/7078/7080/7082 — different items)
+--   28569/28581 Primal Water    -> 22454                    (does not exist as an item AT ALL)
+--   28584 Primal Life           -> 22455                    (likewise)
+--
+-- The consequence was silent and user-visible: the Cooldowns tab's reagent
+-- count, its [AH] price lookup, its [Bank] withdrawal button and its
+-- shopping-list add all pointed at the wrong item — or, for the three
+-- nonexistent ids, at nothing that could ever resolve.
+--
+-- Nothing detected it because the numbers were only ever compared to the
+-- comment next to them. ProfessionDB has carried the authoritative reagent list
+-- from Blizzard's own SpellReagents the entire time; this file was a second,
+-- hand-maintained copy of data we already had, which is exactly the shape that
+-- rots. Tests/cooldownreagents_spec.lua now cross-checks what remains.
+--
+-- WHAT IS STILL HAND-MAINTAINED, and why it has to be: which single reagent to
+-- FEATURE on a collapsed row when the recipe takes several. That is a display
+-- choice — Titansteel Bar takes 4 reagents and the one worth showing is the 3x
+-- Titanium Bar — and no DBC field expresses it. Ids only; the QUANTITY always
+-- comes from ProfessionDB, so the pair can no longer disagree.
 -- ---------------------------------------------------------------------------
 
-local REAGENTS = {
+local FEATURED_REAGENT = {
+    [55208] = 41163,  -- Titansteel Bar   -> Titanium Bar (3x), not the 3 eternals
+    [62242] = 43102,  -- Icy Prism        -> Frozen Orb, not the 3 uncommon gems
+    [56005] = 41594,  -- Glacial Bag      -> Moonshroud
+}
+
+-- Cooldowns keyed by ITEM id rather than craft spell, so ProfessionDB has no
+-- recipe to look up. Salt Shaker is a tool whose Use effect has the cooldown;
+-- it is scanned via GetItemCooldown, not GetSpellCooldown.
+local ITEM_REAGENTS = {
+    [15846] = { id = 8150, qty = 1 },  -- Salt Shaker -> Deeprock Salt
+}
+
+-- Retained ONLY as the fallback for a client where ProfessionDB is absent or
+-- has no entry for a cooldown spell. Kept deliberately small; anything here is
+-- unverified against DBC by definition, so prefer letting the row show no
+-- reagent over inventing one.
+-- Every entry below was cross-checked against ProfessionDB's SpellReagents data
+-- and agrees with it. They are kept ONLY so a client without ProfessionDB still
+-- shows something; the live path derives from the library. Entries that
+-- DISAGREED with DBC were deleted rather than corrected — a fallback nobody can
+-- verify is how this went wrong in the first place.
+local REAGENT_FALLBACK = {
     -- Vanilla
     [18560] = { id = 14256, qty = 2  },  -- Mooncloth → 2x Felcloth
-    [15846] = { id = 8150,  qty = 1  },  -- Salt Shaker → Deeprock Salt
-    -- TBC — Primal Mooncloth / Spellcloth / Shadowcloth take THREE reagents
-    -- each and live in MULTI_REAGENTS below (they render as expand rows so all
-    -- three reagents show). Prismatic Sphere and Void Sphere are single-reagent.
+    -- TBC — Primal Mooncloth / Spellcloth / Shadowcloth take three reagents each
+    -- and render as expand rows, so they have no single-reagent entry.
     [28027] = { id = 22449, qty = 4  },  -- Prismatic Sphere → 4x Large Prismatic Shard
     [28028] = { id = 22450, qty = 2  },  -- Void Sphere → 2x Void Crystal
     -- Wrath
-    [62242] = { id = 43102, qty = 1  },  -- Icy Prism → Frozen Orb
     [56001] = { id = 41511, qty = 1  },  -- Moonshroud → Bolt of Imbued Frostweave
     [56002] = { id = 41511, qty = 1  },  -- Ebonweave → Bolt of Imbued Frostweave
     [56003] = { id = 41511, qty = 1  },  -- Spellweave → Bolt of Imbued Frostweave
-    [56005] = { id = 41594, qty = 4  },  -- Glacial Bag → 4x Moonshroud
-    [55208] = { id = 41163, qty = 3  },  -- Titansteel Bar → 3x Titanium Bar
     -- Cata
     [75141] = { id = 53643, qty = 8  },  -- Dream of Azshara → Bolt of Embersilk Cloth
     [75142] = { id = 53643, qty = 8  },  -- Dream of Deepholm → Bolt of Embersilk Cloth
@@ -161,82 +204,7 @@ local REAGENTS = {
     [138646] = { id = 72096,  qty = 10 }, -- Lightning Steel Ingot → Ghost Iron Bar
 }
 
--- Multi-reagent NON-transmute cooldowns.
--- { [spellId] = { {id, qty}, {id, qty}, ... } }
--- Unlike REAGENTS (a single primary reagent), these cooldowns consume several
--- distinct reagents. They render as a click-to-expand group row (the same popup
--- transmutes use), so every reagent gets its own [AH] / [Bank] / mail controls.
--- Order the list the way it should read top-to-bottom in the popup.
-local MULTI_REAGENTS = {
-    -- Brilliant Glass (Jewelcrafting daily, TBC) → 3x each of the six TBC
-    -- uncommon gems. Reagents verified against ProfessionDB TBC data (47280).
-    [47280] = {
-        { id = 23117, qty = 3 },  -- Azure Moonstone
-        { id = 23077, qty = 3 },  -- Blood Garnet
-        { id = 23079, qty = 3 },  -- Deep Peridot
-        { id = 21929, qty = 3 },  -- Flame Spessarite
-        { id = 23112, qty = 3 },  -- Golden Draenite
-        { id = 23107, qty = 3 },  -- Shadow Draenite
-    },
-    -- TBC tailoring specialty cloths — a Bolt of Imbued Netherweave plus two
-    -- primals each. Reagents/order verified against ProfessionDB TBC data.
-    [26751] = {  -- Primal Mooncloth
-        { id = 21842, qty = 1 },  -- Bolt of Imbued Netherweave
-        { id = 21886, qty = 1 },  -- Primal Life
-        { id = 21885, qty = 1 },  -- Primal Water
-    },
-    [31373] = {  -- Spellcloth
-        { id = 21842, qty = 1 },  -- Bolt of Imbued Netherweave
-        { id = 21884, qty = 1 },  -- Primal Fire
-        { id = 22457, qty = 1 },  -- Primal Mana
-    },
-    [36686] = {  -- Shadowcloth
-        { id = 21842, qty = 1 },  -- Bolt of Imbued Netherweave
-        { id = 21884, qty = 1 },  -- Primal Fire
-        { id = 22456, qty = 1 },  -- Primal Shadow
-    },
-}
 
--- Primary reagent for transmute spells
-local TRANSMUTE_REAGENTS = {
-    -- Vanilla
-    [17187] = { id = 12364, qty = 1 },  -- Arcanite → Arcane Crystal
-    [17559] = { id = 7069,  qty = 1 },  -- Air to Fire → Elemental Air
-    [17560] = { id = 7068,  qty = 1 },  -- Fire to Earth → Elemental Fire
-    [17561] = { id = 7067,  qty = 1 },  -- Earth to Water → Elemental Earth
-    [17562] = { id = 7070,  qty = 1 },  -- Water to Air → Elemental Water
-    [11479] = { id = 3575,  qty = 1 },  -- Iron to Gold → Iron Bar
-    [11480] = { id = 3859,  qty = 1 },  -- Mithril to Truesilver → Mithril Bar
-    -- TBC
-    [28566] = { id = 22451, qty = 1 },  -- Primal Air to Fire → Primal Air
-    [28567] = { id = 22452, qty = 1 },  -- Primal Earth to Water → Primal Earth
-    [28568] = { id = 21884, qty = 1 },  -- Primal Fire to Earth → Primal Fire
-    [28569] = { id = 22454, qty = 1 },  -- Primal Water to Air → Primal Water
-    [28580] = { id = 22456, qty = 1 },  -- Primal Shadow to Water → Primal Shadow
-    [28581] = { id = 22454, qty = 1 },  -- Primal Water to Shadow → Primal Water
-    [28582] = { id = 22457, qty = 1 },  -- Primal Mana to Fire → Primal Mana
-    [28583] = { id = 21884, qty = 1 },  -- Primal Fire to Mana → Primal Fire
-    [28584] = { id = 22455, qty = 1 },  -- Primal Life to Earth → Primal Life
-    [28585] = { id = 22452, qty = 1 },  -- Primal Earth to Life → Primal Earth
-    -- Wrath eternal transmutes
-    [53771] = { id = 35625, qty = 1 },  -- Eternal Life to Shadow → Eternal Life
-    [53773] = { id = 35625, qty = 1 },  -- Eternal Life to Fire → Eternal Life
-    [53774] = { id = 36860, qty = 1 },  -- Eternal Fire to Water → Eternal Fire
-    [53775] = { id = 36860, qty = 1 },  -- Eternal Fire to Life → Eternal Fire
-    [53776] = { id = 35623, qty = 1 },  -- Eternal Air to Water → Eternal Air
-    [53777] = { id = 35623, qty = 1 },  -- Eternal Air to Earth → Eternal Air
-    [53779] = { id = 35627, qty = 1 },  -- Eternal Shadow to Earth → Eternal Shadow
-    [53780] = { id = 35627, qty = 1 },  -- Eternal Shadow to Life → Eternal Shadow
-    [53781] = { id = 35624, qty = 1 },  -- Eternal Earth to Air → Eternal Earth
-    [53782] = { id = 35624, qty = 1 },  -- Eternal Earth to Shadow → Eternal Earth
-    [53783] = { id = 35622, qty = 1 },  -- Eternal Water to Air → Eternal Water
-    [53784] = { id = 35622, qty = 1 },  -- Eternal Water to Fire → Eternal Water
-    -- Cata
-    [78866] = { id = 52329, qty = 15 }, -- Living Elements → Volatile Life
-    [80243] = { id = 51950, qty = 3  }, -- Truegold → Pyrium Bar
-    -- MoP
-    [114780] = { id = 72095, qty = 6 }, -- Living Steel → Trillium Bar
-}
 
 -- Output item name overrides — for cooldowns where the spell/item name is NOT the
 -- produced item (e.g. Salt Shaker produces Refined Deeprock Salt, not "Salt Shaker").
@@ -456,13 +424,73 @@ local function Build()
     for id in pairs(transmutes) do professionOf[id] = 171 end
     for id, profId in pairs(PROFESSION_OF) do professionOf[id] = profId end
 
+    -- ---- Reagents, derived from ProfessionDB -------------------------------
+    -- Read from addon.recipeDB (which Data/RecipeDB.lua points at the library)
+    -- rather than transcribed here. See the note above FEATURED_REAGENT: the
+    -- hand-written tables this replaces had nine wrong entries out of 49,
+    -- including three item ids that do not exist.
+    --
+    -- Keyed by profession because that is how recipeDB is keyed, and
+    -- professionOf already answers it for every cooldown we track.
+    local reagents, multiReagents = {}, {}
+
+    local function reagentsFor(spellId)
+        local profId = professionOf[spellId]
+        if not profId then return nil end
+        local profMeta = a.recipeDB and a.recipeDB[profId]
+        local meta     = profMeta and profMeta[spellId]
+        local list     = meta and meta.reagents
+        if type(list) ~= "table" or next(list) == nil then return nil end
+        return list
+    end
+
+    for _, set in ipairs({ cooldowns, transmutes }) do
+        for spellId in pairs(set) do
+            local list = reagentsFor(spellId)
+            if list then
+                -- Count first: one reagent is a plain row, several is an
+                -- expand row unless a featured reagent says otherwise.
+                local only, n = nil, 0
+                for itemId, qty in pairs(list) do
+                    n = n + 1
+                    only = { id = itemId, qty = qty }
+                end
+                local featured = FEATURED_REAGENT[spellId]
+                if n == 1 then
+                    reagents[spellId] = only
+                elseif featured and list[featured] then
+                    reagents[spellId] = { id = featured, qty = list[featured] }
+                else
+                    -- Sorted by item id so the popup's order is stable across
+                    -- sessions; pairs() order is not.
+                    local rows = {}
+                    for itemId, qty in pairs(list) do
+                        rows[#rows + 1] = { id = itemId, qty = qty }
+                    end
+                    table.sort(rows, function(x, y) return x.id < y.id end)
+                    multiReagents[spellId] = rows
+                end
+            elseif REAGENT_FALLBACK[spellId] then
+                -- No library, or a cooldown the shipped data has no recipe for.
+                reagents[spellId] = REAGENT_FALLBACK[spellId]
+            end
+        end
+    end
+
+    -- Item-keyed cooldowns (Salt Shaker) have no craft spell to look up.
+    for itemId, rg in pairs(ITEM_REAGENTS) do reagents[itemId] = rg end
+
     return {
         cooldowns      = cooldowns,
         transmutes     = transmutes,
         professionOf   = professionOf,
-        reagents       = REAGENTS,
-        multiReagents  = MULTI_REAGENTS,
-        transReagents  = TRANSMUTE_REAGENTS,
+        reagents       = reagents,
+        multiReagents  = multiReagents,
+        -- Transmutes now resolve through the same `reagents` table as
+        -- everything else; kept as an alias because GUI/CooldownsTab.lua and
+        -- Modules/ReagentWatch.lua both read `data.reagents[id] or
+        -- data.transReagents[id]` and neither should have to care.
+        transReagents  = reagents,
         iconOverrides  = ICON_OVERRIDES,
         outputOverrides = OUTPUT_OVERRIDES,
         groups         = COOLDOWN_GROUPS,

@@ -301,6 +301,35 @@ L["TooltipSources"]             = "Sources"
 -- the other two, and the block is meant to read the same whichever addon drew it.
 L["TooltipUnlearned"]           = "Unlearned:"
 L["TooltipSkill"]               = "Skill %d"
+--- What a vendor PAYS YOU for the recipe scroll — GetItemInfo's `sellPrice`.
+--- Worded to match TradeSkillMaster's line exactly, because this exists to give
+--- players without TSM the same number in the same words. NOT the cost to buy
+--- it, which is roughly 4x larger and answered by Modules/Price.lua tier 2c.
+L["TooltipVendorPrice"]         = "Vendor Sell Price"
+
+--- The vendor block on EVERY item tooltip, not just recipes.
+---
+--- TWO INDEPENDENT HEADINGS, not one heading with two sub-rows. Each is a fact
+--- in its own right and either can be absent — a drop has a sell price and no
+--- buy price, a vendor-only item may have both — so they read as siblings of
+--- Difficulty and Sources rather than as a nested pair:
+---
+---     Vendor Buy Price
+---       1g 20s
+---     Vendor Sell Price
+---       40s
+---
+--- `TooltipVendorPrice` above is REUSED as the sell heading rather than
+--- duplicated. It is already worded to match TradeSkillMaster's line verbatim,
+--- which is the whole point of that string, and having two translations of
+--- "Vendor Sell Price" would be the same fact maintained twice.
+L["TooltipVendorBuyPrice"]      = "Vendor Buy Price"
+
+-- `SettingsTooltipMaxWidth` / `…Desc` were added here for a width slider that
+-- was removed the same evening: the cap is not a preference, it is the width WoW
+-- itself gave the tooltip, measured per item. Both strings are deleted rather
+-- than left in place — an unused locale string is work for every translator and
+-- a false signal to the next reader that a setting exists. Audit finding 12.
 
 -- Settings: global item tooltip lines
 L["SettingsTooltipHeader"]          = "Item tooltip"

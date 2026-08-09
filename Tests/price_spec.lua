@@ -41,8 +41,39 @@ before_each(function()
 	p.useAuctioneer, p.useAuctioneerCached = nil, nil
 	p.useTSM, p.useTSMAppHelper = nil, nil
 	p.useTOGPMAH = nil
-	ns.VendorPrices = {}
+	-- Tier 2c is LibItemDB as of 2026-08-07; TOGPM's own Data/VendorPrices.lua
+	-- is deleted. `_itemDB` is cached on the addon for the session, so it has to
+	-- be cleared per test or a stub leaks into later files.
+	ns._itemDB = nil
 end)
+
+--- Make tier 2c answer through the REAL LibItemDB — the harness manifest
+--- carries it, so `env.libs.load` gives us the code that ships.
+---
+--- NOT A HAND-WRITTEN STUB, deliberately. A stub of a library encodes the
+--- author's ASSUMPTION about that library, so a test using one can only ever
+--- confirm the assumption. That is not hypothetical here: the sibling
+--- LibProfessionDB shim was specced against a stub returning the shape its
+--- author expected, both agreed, both were wrong, and the seam raised
+--- `bad argument #1 to 'next'` 112 times on one in-game draw.
+---
+--- Loaded through the library's own `LoadVendorPrices`, so this exercises its
+--- real validation too (it rejects 0, negatives and non-numerics).
+local function realVendorPrices(prices)
+	-- forget-then-load: `libs.load` is a no-op once anything has loaded the
+	-- library, and other specs swap fakes into LibStub, so a bare load() can
+	-- hand back someone else's stub. Asserted rather than assumed, because a
+	-- silent fallback to a stub is the failure this whole approach exists to
+	-- stop.
+	env.libs.forget("LibItemDB-1.0")
+	env.libs.load("LibItemDB-1.0")
+	local lib = assert(LibStub("LibItemDB-1.0", true),
+		"the real LibItemDB did not load; refusing to test against a stub")
+	lib.vendorPrice = {}
+	lib:LoadVendorPrices(prices or {})
+	ns._itemDB = lib
+	return lib
+end
 
 -- Mark an item Bind-on-Pickup through the real GetItemInfo contract (bindType
 -- is the 14th return).
@@ -135,23 +166,26 @@ describe("Price.Get", function()
 		assert.equal(500, (Price.Get(ORE)))
 	end)
 
-	it("prefers a captured vendor price over the shipped static table", function()
-		ns.VendorPrices = { [THREAD] = 999 }
+	it("prefers a captured vendor price over the library's base price", function()
+		-- The correctness argument for the tier order: LibItemDB ships the
+		-- Neutral BASE price, while our MERCHANT_SHOW capture recorded what this
+		-- character was actually charged, discount included.
+		realVendorPrices({ [THREAD] = 999 })
 		Price.StoreVendorPrice(THREAD, 100)
 		local price, source = Price.Get(THREAD)
 		assert.equal(100, price)
 		assert.equal("togpm-vendor", source)
 	end)
 
-	it("falls back to the shipped vendor table last", function()
-		ns.VendorPrices = { [THREAD] = 999 }
+	it("falls back to the library's base price last", function()
+		realVendorPrices({ [THREAD] = 999 })
 		local price, source = Price.Get(THREAD)
 		assert.equal(999, price)
 		assert.equal("vendor-static", source)
 	end)
 
 	it("prefers the auction house over any vendor price", function()
-		ns.VendorPrices = { [THREAD] = 999 }
+		realVendorPrices({ [THREAD] = 999 })
 		Price.StoreVendorPrice(THREAD, 100)
 		Price.StoreAHPrice(THREAD, 50)
 		assert.equal("togpm-ah", select(2, Price.Get(THREAD)))
@@ -396,7 +430,7 @@ describe("sale prices", function()
 	end)
 
 	it("GetSaleLive never falls back to a vendor price", function()
-		ns.VendorPrices = { [THREAD] = 999 }
+		realVendorPrices({ [THREAD] = 999 })
 		assert.is_nil(Price.GetSaleLive(THREAD))
 	end)
 
@@ -554,5 +588,92 @@ describe("AH scan results", function()
 		ns.callbacks:Fire("AH_SCAN_COMPLETE", "nope")
 		ns.callbacks:Fire("AH_SCAN_COMPLETE", { [ORE] = {} })
 		assert.is_nil(Ace.db.factionrealm.ahPrices[ORE])
+	end)
+end)
+
+describe("vendor base price from LibItemDB", function()
+	-- Tier 2c IS LibItemDB now. TOGPM's own Data/VendorPrices.lua was deleted on
+	-- 2026-08-07 when `GetVendorBasePrice` landed at MINOR 21 (ItemDB's
+	-- docs/DEPENDENCY_CONTRACTS.md §7), so there is no local table behind this
+	-- any more and no fallthrough to test — that was the point of the move.
+	local VIAL = 3371
+
+	--- A hand-made object, used ONLY where the real library cannot be made to
+	--- do the thing under test — a method that raises, or a build old enough to
+	--- lack the API. Those cases test OUR defensive wrapper, not the
+	--- integration, and that distinction is why they are allowed a fake while
+	--- every shape/behaviour case above uses the real library.
+	local function brokenItemDB(stub)
+		ns._itemDB = stub or false
+	end
+
+	before_each(function() ns._itemDB = nil end)
+	after_each(function() ns._itemDB = nil end)
+
+	it("uses the library's price when it answers", function()
+		realVendorPrices({ [VIAL] = 25 })
+		local price, source = ns.Price.Get(VIAL)
+		assert.equal(25, price)
+		assert.equal("vendor-static", source)
+	end)
+
+	it("keeps the source key, so no new label is needed downstream", function()
+		-- "vendor-static" has a display name, a colour and a CraftingTab
+		-- abbreviation. Introducing a fourth vendor key would need all three and
+		-- would tell the player nothing extra.
+		realVendorPrices({ [VIAL] = 999 })
+		assert.equal("vendor-static", select(2, ns.Price.Get(VIAL)))
+	end)
+
+	it("answers nothing for an item with no vendor record", function()
+		-- `nil` means "no vendor RECORD", not "no vendor sells this" — ItemDB
+		-- retracted the stronger claim on 2026-08-07 (their
+		-- docs/DEPENDENCY_CONTRACTS.md §7), because the vendor gate comes from
+		-- Wrath/Cata dumps that cannot see a Vanilla-only vendor. Omitting the
+		-- price is right; asserting "no vendor sells this" from it would not be.
+		realVendorPrices({})
+		assert.is_nil(ns.Price.Get(VIAL))
+	end)
+
+	it("ignores a zero price, because the library refuses to store one", function()
+		-- Driven through the real LoadVendorPrices, which rejects 0 and
+		-- negatives outright — so this asserts the two layers agree rather than
+		-- asserting our guard against an imagined input.
+		realVendorPrices({ [VIAL] = 0, [4306] = -5 })
+		assert.is_nil(ns.Price.Get(VIAL))
+		assert.is_nil(ns.Price.Get(4306))
+	end)
+
+	it("still ranks BELOW the live vendor sources, which know the player's discount", function()
+		-- The tier order is the correctness argument: the library ships the
+		-- Neutral BASE price, while TOGPM's own MERCHANT_SHOW capture recorded
+		-- what this player was actually charged. Promoting 2c above 2b would
+		-- quietly overwrite a real observed price with a worse estimate.
+		realVendorPrices({ [VIAL] = 25 })
+		ns.Price.StoreVendorPrice(VIAL, 20)
+		local price, source = ns.Price.Get(VIAL)
+		assert.equal(20, price)
+		assert.equal("togpm-vendor", source)
+	end)
+
+	it("degrades quietly against a LibItemDB that predates the API", function()
+		-- The whole tier goes silent rather than erroring. Correct for a
+		-- last-resort source, and the reason the detection is on the METHOD
+		-- rather than on a MINOR. The installed library HAS the method, so this
+		-- is one of the cases that genuinely needs a stand-in.
+		brokenItemDB({ GetLink = function() end })
+		assert.is_nil(ns.Price.Get(VIAL))
+	end)
+
+	it("degrades quietly when ItemDB is not installed at all", function()
+		brokenItemDB(nil)
+		assert.is_nil(ns.Price.Get(VIAL))
+	end)
+
+	it("survives the library raising, rather than taking the tooltip down", function()
+		-- A cross-addon call on a surface this addon does not own. The real
+		-- library cannot be made to throw here, so this one is a stand-in too.
+		brokenItemDB({ GetVendorBasePrice = function() error("boom") end })
+		assert.is_nil(ns.Price.Get(VIAL))
 	end)
 end)

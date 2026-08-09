@@ -42,6 +42,9 @@ setup(function()
 	-- Settings.lua looks AceConfig up silently, so without this the whole
 	-- registration is skipped and the table never exists to be tested.
 	ace.load("AceConfig-3.0", "AceConfigDialog-3.0")
+	-- SharedWidgets before Settings, mirroring the TOC — Settings binds
+	-- addon.UI.Brand / addon.UI.Count at file scope.
+	env.loadModule("GUI/SharedWidgets.lua")
 	env.loadModule("GUI/Settings.lua")
 
 	-- Registration is hooked onto OnInitialize, which initDb has already run —

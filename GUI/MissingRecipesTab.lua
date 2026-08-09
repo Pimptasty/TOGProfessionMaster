@@ -57,30 +57,35 @@ MissingRecipesTab._sortCol         = "skill"
 MissingRecipesTab._sortAsc         = true
 MissingRecipesTab._container       = nil
 MissingRecipesTab._listSection     = nil
-MissingRecipesTab._customTip       = nil  -- lazy-init via GetCustomTip
-
--- v0.7.5: Private GameTooltip instance owned by this tab. RecipeMaster
--- and similar addons hook OnTooltipSetItem / OnTooltipSetSpell on the
--- GLOBAL _G.GameTooltip via GameTooltip:HookScript — those handlers
--- belong to that specific frame instance. A separate GameTooltip frame
--- inheriting from the same "GameTooltipTemplate" virtual template (the
--- one _G.GameTooltip itself is built from — see
--- Blizzard_GameTooltip/Mainline/GameTooltip.xml lines 4 and 249) gets
--- the full Blizzard API, full appearance, but a separate script handler
--- registry. RecipeMaster's broken cachedRecipes nil-index at
--- RecipeHandler.lua:43 never runs because OnTooltipSetItem doesn't fire
--- on this frame.
+-- v1.0.7: THE PRIVATE TOOLTIP FRAME IS GONE. This tab draws on `_G.GameTooltip`
+-- like every other tab.
 --
--- Lazy because CreateFrame requires UIParent to exist, which isn't
--- guaranteed at file-load time on Vanilla (the AddOn loader can run
--- before the UI is fully constructed in some load orders).
-function MissingRecipesTab:GetCustomTip()
-    if not self._customTip then
-        self._customTip = CreateFrame("GameTooltip", "TOGPMMissingRecipeTip",
-                                      UIParent, "GameTooltipTemplate")
-    end
-    return self._customTip
-end
+-- What it was: v0.7.5 gave this tab its own `TOGPMMissingRecipeTip` built from
+-- `GameTooltipTemplate`, so that third-party `OnTooltipSetItem` handlers — hooked
+-- to the global frame instance — would not run on our rows. It was aimed at one
+-- addon: RecipeMaster nil-indexed its own `cachedRecipes` on recipe-scroll
+-- tooltips, and `pcall` (v0.6.1) and `seterrorhandler` (v0.7.5) had both failed
+-- to contain it, because a raise inside a script handler is dispatched by the C
+-- layer and never reaches the caller's stack.
+--
+-- Why it went, and none of these is "the crash is definitely fixed":
+--
+--   * WE DO NOT USE RECIPEMASTER FOR ANYTHING. Shaping our architecture around a
+--     third-party addon we never read from is a cost with no matching benefit.
+--   * The crash was cited against `RecipeHandler.lua:43`. In RM 2.14.1 that line
+--     is blank, the code has been rewritten, and the surviving unguarded indexes
+--     are not reachable: `Cacher.lua:10` populates `cachedRecipes` for EVERY id
+--     in `L.professions` at ADDON_LOADED, and every id those functions can reach
+--     is in that table. It could not be reproduced from the source.
+--   * The frame had stopped doing its job anyway. `AppendRecipeBlocks` replays
+--     third-party hook chains onto whatever tooltip it is handed, deliberately —
+--     that is how ATT and TSM reach a tooltip we assembled — so other addons'
+--     handlers were already executing on the "private" frame.
+--   * It cost a second frame that had to be kept visually identical to the
+--     game's, and could silently diverge from it.
+--
+-- If a third-party hook does blow up on a recipe scroll again, the fix is an
+-- error report against that addon, not a second tooltip frame here.
 
 -- ---------------------------------------------------------------------------
 -- Pure helpers
@@ -122,9 +127,11 @@ local function FormatSources(srcEntry, includeTrainer)
     return table.concat(parts, ", ")
 end
 
-local function CharShortName(charKey)
-    return charKey:match("^([^%-]+)") or charKey
-end
+-- Shared, not a private copy: this one raised on a nil charKey where
+-- AHProfitTab's equivalent returned "?". addon.UI.ShortName takes the safe form.
+-- Resolved at call time, not captured at file scope — audit finding 6; see the
+-- note in CraftingTab.lua.
+local function CharShortName(charKey) return addon.UI.ShortName(charKey) end
 
 -- ---------------------------------------------------------------------------
 -- Data helpers
@@ -370,19 +377,9 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
 
     local out = {}
 
-    -- On TBC clients, also hide recipes from later TBC phases than the user
-    -- has set in Settings. The recipe DB ships a `phase` field on Phase 2+
-    -- TBC recipes (Sunwell jewelcrafting, Black Temple drops, Shattered Sun
-    -- quartermaster patterns, etc.) sourced at build time from ATT. A user
-    -- on Phase 2 (current Anniversary live state) shouldn't see Phase 3/4
-    -- recipes in the Missing list because the content gating them isn't open
-    -- yet. Recipes WITHOUT a phase field show on every phase (safe default —
-    -- they're launch/early content). Other expansions don't ship phase tags
-    -- yet, so the filter is gated on isTBC.
-    local tbcPhaseLimit
-    if addon.isTBC and Ace and Ace.db and Ace.db.profile then
-        tbcPhaseLimit = Ace.db.profile.tbcAnniversaryPhase or 2
-    end
+    -- (The TBC content-phase ceiling this tab used to compute here now lives in
+    -- addon.RecipeGate, which reads the same Settings value and applies it to
+    -- every recipe list rather than only this one.)
 
     -- Per-client expansion index. The shipped recipeDB tags each recipe
     -- with `minExpansion` = the earliest build (1=Vanilla, 2=TBC, 3=Wrath,
@@ -398,84 +395,28 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
     -- Also keep the requiredSkill > clientMaxSkill filter as belt-and-
     -- suspenders — minExpansion is the primary gate but a misclassified
     -- recipe still gets caught if its required-skill exceeds the cap.
-    local clientExp, clientMaxSkill
-    if     addon.isVanilla then clientExp, clientMaxSkill = 1, 300
-    elseif addon.isTBC     then clientExp, clientMaxSkill = 2, 375
-    elseif addon.isWrath   then clientExp, clientMaxSkill = 3, 450
-    elseif addon.isCata    then clientExp, clientMaxSkill = 4, 525
-    elseif addon.isMoP     then clientExp, clientMaxSkill = 5, 600
-    else                        clientExp, clientMaxSkill = 5, 600
-    end
-
     -- Even with lib-backed recipe data, keep defensive client-validity gates
     -- enabled: Season-of-Discovery and Anniversary content can still leak into
-    -- Era/HC clients through shared 1.15 data tables.
-    local libData = addon.recipeDBFromLib
-
-    -- SoD/Anniversary recipes leak into the Vanilla LibProfessionDB set (the 1.15
-    -- client's tables carry them), and they're not learnable on regular Era / HC.
-    -- Their spell IDs sit far above any real Vanilla recipe (<~30k) — every SoD
-    -- formula observed is 400k+ — so on a Vanilla client that ISN'T running
-    -- Season of Discovery, hide that ID range. This runs even on lib-sourced data
-    -- (the cross-expansion gates below are skipped for it; this one is not).
-    local SOD_RECIPE_ID_MIN = 200000
-    local hideSoD = (clientExp == 1) and not addon:IsSoD()
-    -- TBC cooking recipe IDs that contaminated Vanilla ProfessionDB data
-    -- (exist in 1.15 client spell tables but can't be learned on Era).
-    local TBC_COOKING_BLACKLIST = {
-        [30047] = true,  -- Crystal Throat Lozenge
-    }
+    -- Era/HC clients through shared 1.15 data tables. (There is no "trust the
+    -- library, skip the gates" branch — an older comment here claimed one, but
+    -- the local it read was never consulted.)
 
     for spellId, data in pairs(recipes) do
-        local skip = false
-        if hideSoD and spellId >= SOD_RECIPE_ID_MIN then
-            skip = true
-        end
-        -- Non-SoD Vanilla: require spell presence for all recipes.
-        if hideSoD and GetSpellInfo and not GetSpellInfo(spellId) then
-            skip = true
-        end
-        -- Non-SoD Vanilla cooking: blacklist known TBC recipes that leaked
-        -- into ProfessionDB Vanilla data (exist in 1.15 client but aren't
-        -- obtainable on Era/Anniversary).
-        if hideSoD and profId == 185 and TBC_COOKING_BLACKLIST[spellId] then
-            skip = true
-        end
-        if data.minExpansion and data.minExpansion > clientExp then
-            -- Recipe was first introduced in a later expansion than this
-            -- client supports. Wrath transmute on TBC, Cata recipe on
-            -- Wrath, etc. — never learnable here regardless of phase or
-            -- skill cap. PRIMARY cross-expansion gate.
-            skip = true
-        elseif (not data.minExpansion) and clientExp == 1 and spellId > 25000 then
-            -- Defensive gate for Classic Era against untagged post-Vanilla
-            -- recipes. Most Vanilla recipe spell IDs are in the 2000-25000
-            -- range, so untagged spellId > 25000 is USUALLY post-Vanilla.
-            -- Require BOTH spell presence AND item presence to pass —
-            -- TBC recipes like Crystal Throat Lozenge (spell 30047) have
-            -- items in shared 1.15 tables but no spell on Era clients.
-            local spellExists = GetSpellInfo and GetSpellInfo(spellId) ~= nil
-            local itemExists = GetItemInfoInstant and (
-                (data.itemId        and GetItemInfoInstant(data.itemId)) or
-                (data.craftedItemId and GetItemInfoInstant(data.craftedItemId)))
-            if not (spellExists and itemExists) then
-                skip = true
-            end
-        elseif data.requiredSkill and data.requiredSkill > clientMaxSkill then
-            -- Recipe is from a future expansion the current client can't
-            -- support. Hide it; the player will see it once they're on a
-            -- later TOC variant.
-            skip = true
-        elseif tbcPhaseLimit and data.phase and data.phase > tbcPhaseLimit then
-            -- TBC client: recipe is gated by a content phase that hasn't
-            -- gone live yet (e.g. Sunwell content while Anniversary is on
-            -- Phase 2). User bumps Settings → TBC Anniversary phase when
-            -- Blizzard advances. Recipes without a `phase` field are
-            -- always shown (launch / unidentified content).
-            skip = true
-        elseif data.season then
-            skip = true
-        elseif type(data.teaches) == "string" and RANK_CAPS[data.teaches] then
+        -- Client-validity gates — the SoD ID range, minExpansion, spell
+        -- presence, the Era blacklists, the untagged high-ID rule, the skill
+        -- cap, the TBC phase limit and season. All of it lives in
+        -- addon.RecipeGate (Modules/RecipeGate.lua) and is shared with
+        -- BrowserTab; this tab used to carry its own copy, which drifted (it
+        -- never got the First Aid blacklist, so both Netherweave bandages
+        -- showed as missing on Era). Do not re-inline any of it.
+        --
+        -- It is also deliberately NOT part of the elseif chain below. The old
+        -- copy was a chain whose untagged-high-ID branch could evaluate true
+        -- without setting `skip`, which short-circuited every branch after it
+        -- and silently disabled the season, skill-cap and phase gates.
+        local skip = not addon.RecipeGate:IsValidOnClient(profId, spellId, data)
+
+        if not skip and type(data.teaches) == "string" and RANK_CAPS[data.teaches] then
             -- Rank-up book (e.g. "Expert First Aid" raises max from 150
             -- to 225, "Artisan First Aid" from 225 to 300). The character's
             -- skillMax is the only proxy we have for "did they consume
@@ -570,6 +511,12 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
             else
                 table.insert(out, {
                     spellId       = spellId,
+                    -- The profession this row belongs to. Unambiguous here in a
+                    -- way it is not in the browser: BuildMissingList takes ONE
+                    -- profId and returns {} for 0, so every row in a build is
+                    -- that profession's. Needed by the recipe-detail tooltip
+                    -- block, which looks the recipe up by (profId, spellId).
+                    profId        = profId,
                     itemId        = data.itemId,  -- recipe-scroll item id (nil for trainer-only)
                     craftedItemId = data.craftedItemId,  -- crafted (produced) item id; used for icon
                     teaches       = data.teaches,
@@ -1091,7 +1038,7 @@ function MissingRecipesTab:BuildPool(parent)
         bankBtn:Hide()
         bankBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(bankBtn)
-            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1)
+            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
             GameTooltip:AddLine(L["TooltipBankDescScroll"], nil, nil, nil, true)
             GameTooltip:Show()
         end)
@@ -1113,7 +1060,7 @@ function MissingRecipesTab:BuildPool(parent)
         ahBtn:Hide()
         ahBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(ahBtn)
-            GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1)
+            GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1, 1, true)
             GameTooltip:AddLine(L["TooltipAHDescScroll"], nil, nil, nil, true)
             GameTooltip:Show()
         end)
@@ -1129,31 +1076,11 @@ function MissingRecipesTab:BuildPool(parent)
         -- addons that hook SetItemByID such as LoonBestInSlot then crash
         -- on the empty state).
         --
-        -- v0.7.5: route the tooltip through a private GameTooltip instance
-        -- (MissingRecipesTab:GetCustomTip below) instead of the global
-        -- _G.GameTooltip. Third-party addons that crash on recipe-scroll
-        -- tooltips — RecipeMaster on Vanilla (RecipeHandler.lua:43 nil-
-        -- indexes recipe.teaches when its cachedRecipes table is empty),
-        -- LoonBestInSlot, etc. — hook their OnTooltipSetItem /
-        -- OnTooltipSetSpell handlers onto the GLOBAL GameTooltip instance
-        -- via GameTooltip:HookScript. Those handlers don't run when the
-        -- tooltip lives on a different frame instance, even if both
-        -- frames inherit from "GameTooltipTemplate" (same look and feel,
-        -- same SetX API, but separate script handler registries). So we
-        -- get the rich Blizzard item tooltip — reagents, required skill,
-        -- quality colouring — without ever triggering RecipeMaster's
-        -- broken hook chain. v0.6.1's pcall wrap and v0.7.5's
-        -- seterrorhandler swap both failed because the hook crashes were
-        -- dispatched via WoW's internal script-error path which BugGrabber
-        -- captures before either guard reaches the error.
         f:SetScript("OnEnter", function()
             if not (f._itemId or f._spellId) then return end
-            -- ItemLink.Tooltip picks the frame — our private one whenever this
-            -- tab supplies it, so the third-party OnTooltipSetItem hooks that
-            -- crash on recipe scrolls never run. Routed through the helper
-            -- rather than used directly so there is one place that decision
-            -- lives if it ever needs to change again.
-            local tip = addon.ItemLink.Tooltip(MissingRecipesTab:GetCustomTip())
+            -- The one shared frame, same as every other tab. See the note at the
+            -- top of this file for why the private instance was removed.
+            local tip = GameTooltip
             -- Anchor next to the row using the same screen-half logic as
             -- addon.Tooltip.Owner — popup appears just below the row when
             -- the row is in the upper half of the screen, just above
@@ -1201,6 +1128,22 @@ function MissingRecipesTab:BuildPool(parent)
                                 1, 1, 1, true)
                 end
             end
+            -- The same blocks the Professions tab puts on its own tooltips.
+            -- Called explicitly rather than left to the global hook: that hook
+            -- only fires for a tooltip carrying an ITEM, and these rows fall back
+            -- to SetSpellByID or plain text whenever the scroll is uncached or
+            -- the recipe is trainer-taught with no scroll at all.
+            --
+            -- NO MANUAL `_togpmRecipeBlock = nil` RESET HERE ANY MORE. It used to
+            -- be required because the private frame was not one of the frames
+            -- Tooltip.lua hooks `OnTooltipCleared` on, so the dedup flag was
+            -- never cleared and the block rendered once per session. On
+            -- GameTooltip the client fires OnTooltipCleared from SetOwner at the
+            -- start of every hover, which clears it. Re-adding the manual reset
+            -- would now DOUBLE-render: it would defeat the guard that stops this
+            -- explicit call and the global hook both drawing a block.
+            addon.ItemLink.AppendRecipeBlocks(tip, f._profId, f._spellId, f._craftedItemId)
+
             tip:AddLine(" ")
             tip:AddLine(L["MissingRowTooltipShift"], 0.7, 0.7, 0.7, true)
             tip:Show()
@@ -1211,9 +1154,6 @@ function MissingRecipesTab:BuildPool(parent)
         end)
         f:SetScript("OnLeave", function()
             addon.ItemLink.EndHover(GameTooltip)
-            if MissingRecipesTab._customTip then
-                MissingRecipesTab._customTip:Hide()
-            end
             GameTooltip:Hide()
         end)
         -- Was a raw editBox:Insert, which ignores the player's modified-click
@@ -1286,6 +1226,11 @@ function MissingRecipesTab:UpdateVirtualRows()
             local itemId = entry.itemId
             f._itemId = itemId
             f._spellId = entry.spellId
+            -- For the recipe-detail and integrations blocks below. Kept on the
+            -- frame rather than looked up at hover time because the pooled row
+            -- is what OnEnter has, and the entry it was built from is gone.
+            f._profId        = entry.profId
+            f._craftedItemId = entry.craftedItemId
 
             local displayName, itemName, itemLink
             if itemId then
@@ -1332,7 +1277,8 @@ function MissingRecipesTab:UpdateVirtualRows()
                 --
                 --   1. entry.craftedItemId — the item the spell PRODUCES,
                 --      shipped in addon.recipeDB from SpellEffect[Effect=24]
-                --      data (see tools/build_authoritative_data.py). This
+                --      data (see ProfessionDB's
+                --      tools/build_authoritative_data.py). This
                 --      is the authoritative source for trainer-taught
                 --      craft icons (Heavy Weightstone → item 3241, Coarse
                 --      Sharpening Stone → item 2863, etc.) and works for
@@ -1441,7 +1387,10 @@ function MissingRecipesTab:UpdateVirtualRows()
             f:SetPoint("TOPRIGHT", scroll.content, "TOPRIGHT", 0, y)
             f:Show()
         else
-            f._itemId = nil
+            f._itemId         = nil
+            f._spellId        = nil
+            f._profId         = nil
+            f._craftedItemId  = nil
             f:Hide()
         end
     end

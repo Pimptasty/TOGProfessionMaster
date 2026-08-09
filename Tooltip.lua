@@ -347,6 +347,18 @@ local function AppendCraftersNow(tooltip, itemID)
     -- Has its own toggle and its own gate, so it must not sit behind the
     -- crafters/IDs early-return: a player with both of those off still gets it.
     AppendRecipeDetailsForItem(tooltip, itemID)
+    -- Vendor buy/sell, LAST and unconditional on item type. Every other block
+    -- here answers a question about a RECIPE and renders nothing on the vast
+    -- majority of items; this one answers a question about the ITEM, so it is
+    -- the only part of the TOGPM block that appears on ordinary loot. It has its
+    -- own toggle and its own dedup, hence its own call rather than folding into
+    -- either of the two above.
+    if addon.ItemLink and addon.ItemLink.AppendVendorPrices then
+        addon.ItemLink.AppendVendorPrices(tooltip, itemID)
+    end
+    -- No width capping here. Width is handled by passing the `wrap` flag on
+    -- every line we append, which opts into the engine's own preset -- see the
+    -- note in GUI/SharedWidgets.lua.
 end
 
 -- Dedup wrapper: a single tooltip Show can trigger multiple hook paths
@@ -413,6 +425,10 @@ local function OnTooltipCleared(tooltip)
     -- frame -- GameTooltip is reused for every hover in the game, so the flag
     -- would outlive the item it was set for.
     tooltip._togpmRecipeBlock = nil
+    -- Same reasoning, and it matters MORE for this one: the vendor block renders
+    -- on nearly every item in the game rather than only on recipes, so a flag
+    -- left set would suppress it on every subsequent hover of the session.
+    tooltip._togpmVendorBlock = nil
 end
 addon.Tooltip._OnTooltipCleared = OnTooltipCleared   -- exposed for specs
 
@@ -488,6 +504,14 @@ Ace:RegisterEvent("PLAYER_LOGIN", function()
         for _, tt in ipairs(fallbackFrames) do
             if tt and tt.Show then
                 hooksecurefunc(tt, "Show", function(self)
+                    -- PER-FRAME re-entry guard, on the frame itself. Audit
+                    -- finding 11: this was one shared upvalue while the hook is
+                    -- installed on FIVE frames, so while GameTooltip was
+                    -- re-showing the guard was true for the shopping tooltips
+                    -- too and a genuine Show on one of them was dropped. The
+                    -- comparison tooltips are exactly the case where two of these
+                    -- frames are visible at once.
+                    if self._togpmReshowing then return end
                     local _, link = self:GetItem()
                     if not link then return end
                     local itemID = ItemIdFromLink(link)
@@ -500,6 +524,24 @@ Ace:RegisterEvent("PLAYER_LOGIN", function()
                     if self._togpmAppended == itemID then return end
                     addon:DebugPrint("Tooltip: fallback Show-hook fired for itemID =", itemID)
                     AppendCrafters(self, itemID)
+                    -- RE-SHOW, OR THE LINES ARE INVISIBLE.
+                    --
+                    -- This is a `hooksecurefunc` on Show, so it runs AFTER the
+                    -- tooltip has already sized and laid itself out. AddLine
+                    -- appends to the tooltip's data but does not re-run layout,
+                    -- so on every path where this fallback is the ONLY hook that
+                    -- fires -- which on Classic Era 1.15.9 is every bag item --
+                    -- our lines were added and never drawn. The addon looked
+                    -- completely absent from game tooltips while the debug log
+                    -- cheerfully reported the hook firing five times per hover.
+                    --
+                    -- The comment above about `C_Timer.After(0, ...)` describes
+                    -- the identical failure and was written about a different
+                    -- call site; the same trap caught this one. Appending after
+                    -- layout requires an explicit re-layout, always.
+                    self._togpmReshowing = true
+                    self:Show()
+                    self._togpmReshowing = nil
                 end)
                 fallbackCount = fallbackCount + 1
             end

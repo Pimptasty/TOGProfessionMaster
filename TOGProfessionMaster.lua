@@ -54,10 +54,17 @@ addon.PriceSourceColors = {
 local _GetAddOnMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
 addon.Version = _GetAddOnMetadata(addonName, "Version") or "dev"
 
--- Static recipe-universe tables populated by Data/Recipes/*.lua and
--- Data/Sources/*.lua at load time. Used by GUI/MissingRecipesTab.lua to
--- compute the set of recipes a character is missing for each profession.
--- Keyed by [professionSpellId][recipeSpellId].
+-- Static recipe-universe tables. Both are now VIEWS onto LibProfessionDB-1.0
+-- rather than data this addon ships — Data/RecipeDB.lua and Data/SourceDB.lua
+-- populate them at load time, and the library carries the point-in-time set for
+-- this exact client version instead of an all-expansion merge.
+--
+-- They are created here, empty, so that a missing or too-old ProfessionDB
+-- degrades to empty lists rather than a nil index: every consumer's
+-- `addon.sourceDB and addon.sourceDB[profId]` guard keeps behaving.
+--
+-- Used by GUI/MissingRecipesTab.lua to compute the set of recipes a character
+-- is missing for each profession. Keyed by [professionSpellId][recipeSpellId].
 addon.recipeDB = addon.recipeDB or {}
 addon.sourceDB = addon.sourceDB or {}
 
@@ -315,25 +322,58 @@ local SETTINGS_DEFAULTS = {
         useTSM = false,
         useTSMAppHelper = false,
 
-        -- Global item tooltip lines. Both OFF by default — opt-in via
-        -- Settings to keep the addon's tooltip footprint minimal until the
-        -- user explicitly wants either signal. Independent toggles so users
-        -- can keep just the crafters list, just the IDs (for troubleshooting),
-        -- both, or neither. Read in Tooltip.lua's AppendCrafters.
-        tooltipShowCrafters = false,
+        -- Global item tooltip lines. Independent toggles so users can keep just
+        -- the crafters list, just the IDs (for troubleshooting), both, or
+        -- neither. Read in Tooltip.lua's AppendCraftersAndIds.
+        --
+        -- CRAFTERS IS ON BY DEFAULT as of v1.0.7. It shipped off, with the
+        -- reasoning "keep the addon's tooltip footprint minimal until the user
+        -- opts in" — and the effect was that the addon's single most useful
+        -- surface was invisible on a stock install. Hovering a crafted item in
+        -- your bags and being told who in the guild can make it is the feature;
+        -- an off-by-default feature that nobody switches on is a feature nobody
+        -- has. ATT and TSM are on that tooltip because they ship on.
+        --
+        -- IDs STAYS OFF: it is a diagnostic footer (itemId=, spellId=, plus why
+        -- no crafters line appeared), for pasting into Wowhead or a bug report.
+        -- Useful when you need it, noise on every tooltip when you do not.
+        tooltipShowCrafters = true,
         tooltipShowIds      = false,
+
+        -- `tooltipMaxWidth` was here and is GONE, along with the whole
+        -- width-capping mechanism it configured. There is no maximum width to
+        -- set: WoW has an engine-side preset that a line opts into by passing
+        -- the `wrap` flag to AddLine/SetText. Audit findings 12 and 14.
+
+        -- Vendor BUY and SELL price on every item tooltip. ON by default: it is
+        -- the one thing this addon puts on a tooltip that no other addon does at
+        -- all. TSM shows sell and not buy, ATT shows neither, and the game shows
+        -- neither on a bag tooltip. Two rows, unit prices, nil rows omitted.
+        tooltipVendorPrices = true,
 
         -- Recipe-detail block (difficulty tiers + where the recipe comes from)
         -- on tooltips the GAME built. "auto" | "always" | "never".
         --
-        -- Defaults to "auto": render it unless RecipeMaster is loaded, since RM
-        -- already draws this on every tooltip it can see. "always" exists
-        -- because loaded is not the same as contributing -- RM's own display
-        -- switches are addon-private and unreadable, so a player who has RM
-        -- installed with those switched off would otherwise get the block from
-        -- neither addon. Our OWN tooltips ignore this gate entirely (RM cannot
+        -- DEFAULTS TO "always" as of v1.0.7. It defaulted to "auto" — stand down
+        -- whenever RecipeMaster is loaded — and that was the wrong default for
+        -- two reasons.
+        --
+        -- The first is that "auto" cannot tell LOADED from CONTRIBUTING. RM's
+        -- display switches are addon-private (`local addonName, rm = ...`, zero
+        -- _G writes), so nothing can read them; a player with RM installed and
+        -- its tooltip options off got the block from neither addon. That was
+        -- already known and is why "always" exists at all.
+        --
+        -- The second is what actually decided it: our block is NOT a duplicate
+        -- of RM's. RM has difficulty and sources; only we have which of YOUR
+        -- OWN characters could still learn the recipe, and which guildmates can
+        -- craft it. Standing down entirely to avoid overlapping two rows also
+        -- withheld the rows nothing else in the game provides.
+        --
+        -- "auto" is kept as a setting for anyone who prefers RM to own the
+        -- game's tooltips. Our OWN tooltips ignore this gate entirely (RM cannot
         -- see them) but do respect "never".
-        tooltipRecipeDetails = "auto",
+        tooltipRecipeDetails = "always",
 
         -- TBC Anniversary content phase. The recipe DB ships with `phase`
         -- field on TBC raid / Shattered-Sun / BT / Hyjal / Sunwell recipes
@@ -595,6 +635,11 @@ end
 function Ace:OnEnable()
     -- Slash command: /togpm [subcommand]
     self:RegisterChatCommand("togpm", "OnSlashCommand")
+
+    -- Debug persists across sessions, so a player who left it on gets the
+    -- tooltip-width reporting without having to toggle it off and on again.
+    -- `ToggleDebug` installs this on the way on; this is the login path.
+    if addon.debug then addon:EnsureTooltipWidthHook() end
 
     -- Core events.
     self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
@@ -1253,6 +1298,141 @@ function addon:ForceBroadcast()
 end
 
 --- /togpm spellcache — dump the spellbook name→id cache to chat for debugging.
+-- ---------------------------------------------------------------------------
+-- Tooltip width reporting — part of `/togpm debug`, not a command of its own
+-- ---------------------------------------------------------------------------
+--
+-- A DIAGNOSTIC, not a feature. It exists because tooltip width is the one class
+-- of question this addon's offline suite structurally cannot answer: the test
+-- harness pins its text metrics as deliberately unfaithful, with a spec whose job
+-- is to stop anyone "improving" them into something a layout test would trust. So
+-- a width claim can only come from the client, and every attempt to infer one
+-- from source or from screenshots was wrong.
+--
+-- WHY IT RIDES DEBUG RATHER THAN A `/togpm ttwidth` COMMAND. The first version was
+-- a one-shot: type the command, hover one item, get one report. That is the wrong
+-- shape for the question. A single number cannot distinguish "this item is wide"
+-- from "our tooltips are wide" — that needs a sweep across a dozen items, and
+-- re-typing a command between each hover made it unusable. Worse, typing the
+-- command moves the mouse off the item, so it had to ARM and then measure the
+-- next tooltip, which in practice caught whatever the cursor crossed on the way:
+-- the chat frame's "Chat Options" three times and a campfire's "Bonfire" twice.
+--
+-- Under debug it reports every item tooltip, so hovering ten things produces ten
+-- comparable data points and nothing has to be aimed.
+--
+-- Measurement is deferred one frame with C_Timer.After(0). The Show hook runs
+-- before other addons that also hook Show have appended, and before the client
+-- has laid the frame out -- reading widths there would report a half-built
+-- tooltip, which is a subtler version of the very bug that made TOGPM's own lines
+-- invisible.
+local ttWidthLastItem = nil
+
+local function ttWidthReport()
+    if not addon.debug then return end
+    local tip = _G.GameTooltip
+    if not tip or not tip.IsShown or not tip:IsShown() then return end
+
+    -- ONLY MEASURE A TOOLTIP CARRYING AN ITEM. World objects, unit frames,
+    -- buttons and the chat tabs all answer nil here, and reporting one of those
+    -- is worse than reporting nothing: the numbers look authoritative and
+    -- describe something else entirely.
+    local okItem, _, itemLink = pcall(tip.GetItem, tip)
+    if not okItem or type(itemLink) ~= "string" or itemLink == "" then return end
+
+    -- ONE REPORT PER HOVER, not per item. The Show hook fires repeatedly for a
+    -- single hover -- measured at five times on a bag slot -- and a forty-line
+    -- report five times over is unreadable.
+    --
+    -- KEYED PER HOVER RATHER THAN PER ITEM, and that distinction is the whole
+    -- point of the tool. The first version remembered the last item link
+    -- forever, so hovering an item in the bags and then the SAME item in TOGPM's
+    -- recipe list reported once and silently swallowed the second -- which is
+    -- precisely the A/B this exists to produce. `Hide` clears it below, so each
+    -- fresh hover reports once wherever it happens.
+    if ttWidthLastItem == itemLink then return end
+    ttWidthLastItem = itemLink
+
+    local name = tip:GetName()
+    if not name then return end
+
+    Ace:Print(("|cffFF8000ttwidth|r frame=%.1f  lines=%d"):format(
+        tip:GetWidth() or 0, tip:NumLines() or 0))
+
+    -- Per-line widths, and WHICH LINE SETS THE FRAME -- which is not simply the
+    -- largest number here, and reporting it as such was misleading the first time
+    -- this ran.
+    --
+    -- `GetStringWidth()` returns the width the string WOULD need on one line. For
+    -- a wrapping line that is its unwrapped natural width, which can exceed the
+    -- frame and constrains nothing: the line just breaks. Measured on Advanced
+    -- Target Dummy, the crafted item's green "Use:" text reported 677.1 against a
+    -- 603.6 frame, and the line actually setting the width was ATT's 583.1
+    -- breadcrumb -- 583.1 plus the tooltip's own padding IS 603.6.
+    --
+    -- So a line wider than the frame is, by definition, wrapping. Flag those and
+    -- take the widest of the rest.
+    -- A DOUBLE LINE COSTS left + gap + right, NOT max(left, right).
+    --
+    -- The first version compared the two halves separately and so understated
+    -- every double line. It reported Gnomish Alarm-O-Bot as "273.0 (+padding =
+    -- 397.4)", which is not arithmetic anybody should believe — the real driver
+    -- was line 1, the item name at 228.0 alongside ATT's "Not Collected" at
+    -- 110.6, which together need 338.6 plus the gap between them. Blizzard
+    -- right-aligns the second half against the frame edge, so both halves plus a
+    -- minimum separation set the floor.
+    local frameW = tip:GetWidth() or 0
+    local widest, widestText = 0, "(none)"
+    for i = 1, (tip:NumLines() or 0) do
+        local lfs = _G[name .. "TextLeft" .. i]
+        local rfs = _G[name .. "TextRight" .. i]
+        local lw  = (lfs and lfs.GetStringWidth and lfs:IsShown() and lfs:GetStringWidth()) or 0
+        local rw  = (rfs and rfs.GetStringWidth and rfs:IsShown() and rfs:GetStringWidth()) or 0
+        local lt  = lfs and lfs:GetText() or nil
+        local rt  = rfs and rfs:GetText() or nil
+        if rt == "" then rt, rw = nil, 0 end
+
+        -- A wrapping line's GetStringWidth is its UNWRAPPED natural width, which
+        -- can exceed the frame and constrains nothing.
+        local cost  = lw + rw
+        local wraps = cost > frameW
+
+        if lt and lt ~= "" then
+            if not wraps and cost > widest then
+                widest = cost
+                widestText = rt and (lt .. "  ⟷  " .. rt) or lt
+            end
+            if rt then
+                Ace:Print(("  %2d %6.1f+%-6.1f %s %s | %s"):format(
+                    i, lw, rw, wraps and "|cff808080wraps|r" or "     ", lt, rt))
+            else
+                Ace:Print(("  %2d %6.1f        %s %s"):format(
+                    i, lw, wraps and "|cff808080wraps|r" or "     ", lt))
+            end
+        end
+    end
+    Ace:Print(("|cffFF8000SETS THE WIDTH|r %.1f of %.1f frame (rest is padding/gap)  %s"):format(
+        widest, frameW, widestText))
+end
+
+--- Install the Show hook that drives the report above. Called when debug is
+--- switched on, and at login when it was already on.
+---
+--- Hooked once and lazily: installing at load would cost every player a Show hook
+--- for a developer diagnostic none of them will ever run. `hooksecurefunc` cannot
+--- be undone, so the handler checks `addon.debug` itself rather than relying on
+--- being removed when debug goes off.
+function addon:EnsureTooltipWidthHook()
+    if addon._ttWidthHooked then return end
+    if not (_G.GameTooltip and hooksecurefunc) then return end
+    addon._ttWidthHooked = true
+    hooksecurefunc(_G.GameTooltip, "Show", function()
+        if addon.debug and C_Timer and C_Timer.After then
+            C_Timer.After(0, ttWidthReport)
+        end
+    end)
+end
+
 function addon:DumpSpellCache()
     local cache = addon.Scanner:BuildSpellNameCache()
     local count = 0
@@ -1386,6 +1566,15 @@ function addon:ToggleDebug(args)
     end
     Ace.db.profile.debug = addon.debug
     Ace:Print(string.format(L["SlashDebugToggleFormat"], addon.debug and L["SlashDebugEnabled"] or L["SlashDebugDisabled"]))
+    -- Tooltip width reporting rides debug rather than having its own command:
+    -- the question it answers needs a SWEEP across many items, and a one-shot
+    -- command re-typed between every hover was unusable. See the block above
+    -- `EnsureTooltipWidthHook`. Installed on the way on and never removed —
+    -- `hooksecurefunc` cannot be undone, so the handler re-checks `addon.debug`.
+    if addon.debug then
+        addon:EnsureTooltipWidthHook()
+        Ace:Print("Tooltip widths will be reported on hover (one report per item).")
+    end
 end
 
 --- /togpm craft [on|off] — toggle the Crafting-tab takeover of the native

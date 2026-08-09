@@ -278,20 +278,56 @@ describe("hold-to-compare", function()
 	end)
 end)
 
-describe("Tooltip — which frame a curated surface draws into", function()
-	local private = { name = "private" }
+describe("one tooltip frame, everywhere", function()
+	-- `IL.Tooltip(privateTip)` used to pick between a caller's private tooltip
+	-- frame and the global one, and the two cases here asserted both branches.
+	-- v1.0.7 deleted the private frame Missing Recipes owned, which left the
+	-- function with one caller passing nothing and a body reading
+	-- `return GameTooltip`. Both are gone.
+	--
+	-- These replace them with the invariant that actually matters now: every
+	-- surface draws on `_G.GameTooltip`, so no tab's tooltip can drift from the
+	-- game's in width or appearance. A second frame is exactly how that drift
+	-- happened, and a whitelist is the only thing that stops a third one
+	-- appearing quietly.
 
-	it("always uses the caller's private frame when it has one", function()
-		-- No longer conditional. The `useStockItemTooltips` setting this used to
-		-- consult was deleted: it promised "the game's standard tooltip" for a
-		-- recipe, and the game has no such thing — a trade-skill recipe is a
-		-- spell, and the only stock recipe tooltips are index-based and valid
-		-- only while the profession window is open.
-		assert.equal(private, IL.Tooltip(private))
+	it("has no frame-picking seam left to get wrong", function()
+		assert.is_nil(IL.Tooltip)
 	end)
 
-	it("uses the stock tooltip for a caller with no private frame", function()
-		assert.equal(_G.GameTooltip, IL.Tooltip(nil))
+	it("creates no DISPLAYED tooltip frame of its own", function()
+		-- The three permitted frames are invisible TEXT SCRAPERS: they are never
+		-- shown, they exist to read tooltip text the API will not hand over
+		-- directly. Anything else named here is a second visible tooltip and
+		-- needs a much better reason than the last one had.
+		local ALLOWED = {
+			TOGPMSearchScraper  = true,   -- TOGProfessionMaster.lua
+			TOGPMReagentScraper = true,   -- Scanner.lua
+			TOGPMItemScraper    = true,   -- GUI/BrowserTab.lua
+		}
+		local offenders, scanned = {}, 0
+		for _, path in ipairs({
+			"TOGProfessionMaster.lua", "Scanner.lua", "Tooltip.lua",
+			"GUI/SharedWidgets.lua", "GUI/MissingRecipesTab.lua", "GUI/BrowserTab.lua",
+			"GUI/CooldownsTab.lua", "GUI/CraftingTab.lua", "GUI/AHProfitTab.lua",
+			"GUI/ShoppingListTab.lua", "GUI/GuildTab.lua", "GUI/MainWindow.lua",
+		}) do
+			local fh = assert(io.open(path, "r"), "missing source file: " .. path)
+			local body = fh:read("*a")
+			fh:close()
+			scanned = scanned + 1
+			for name in body:gmatch('CreateFrame%s*%(%s*"GameTooltip"%s*,%s*"([%w_]+)"') do
+				if not ALLOWED[name] then
+					offenders[#offenders + 1] = path .. " -> " .. name
+				end
+			end
+		end
+		-- Guards the guard: an empty file list would pass vacuously.
+		assert.equal(12, scanned)
+		table.sort(offenders)
+		assert.equal("", table.concat(offenders, " | "),
+			"a second displayed tooltip frame can diverge from the game's — that is "
+			.. "the bug v1.0.7 removed")
 	end)
 end)
 

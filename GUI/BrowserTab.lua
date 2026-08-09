@@ -455,51 +455,16 @@ local function BuildFullList(profId, viewMode, opts)
     --                        the exclusion gates above, never to enable SoD
     --                        behaviour. (This line used to read "hide on non-SoD
     --                        clients", which the code below has never done.)
-    local clientExp, clientMaxSkill
-    if     addon.isVanilla then clientExp, clientMaxSkill = 1, 300
-    elseif addon.isTBC     then clientExp, clientMaxSkill = 2, 375
-    elseif addon.isWrath   then clientExp, clientMaxSkill = 3, 450
-    elseif addon.isCata    then clientExp, clientMaxSkill = 4, 525
-    elseif addon.isMoP     then clientExp, clientMaxSkill = 5, 600
-    else                        clientExp, clientMaxSkill = 5, 600
-    end
+    --
+    -- All of the above now lives in ONE place — addon.RecipeGate
+    -- (Modules/RecipeGate.lua) — and is shared with MissingRecipesTab. It used
+    -- to be written out here as a second copy of that tab's chain, and the two
+    -- drifted: this copy had the First Aid blacklist and no phase gate, that one
+    -- had the phase gate and no First Aid blacklist. Do not re-inline any of it.
     local function passesClientGate(thisProfId, recipeId)
         local meta = addon.recipeDB and addon.recipeDB[thisProfId]
                                     and addon.recipeDB[thisProfId][recipeId]
-        if not meta then return false end
-        -- SoD/Anniversary recipes leak into the Vanilla lib set (the 1.15 client's
-        -- tables carry them); their IDs are 400k+ while real Vanilla recipes are
-        -- under ~30k. Hide that range on a Vanilla client that isn't running
-        -- Season of Discovery.
-        if clientExp == 1 and recipeId >= 200000 and not addon:IsSoD() then return false end
-        if meta.minExpansion and meta.minExpansion > clientExp then return false end
-        -- Non-SoD Vanilla: require spell presence for all recipes.
-        if clientExp == 1 and not addon:IsSoD() and GetSpellInfo and not GetSpellInfo(recipeId) then return false end
-        -- Non-SoD Vanilla cooking: blacklist known TBC recipes that leaked
-        -- into ProfessionDB Vanilla data (exist in 1.15 client but aren't
-        -- obtainable on Era/Anniversary).
-        local TBC_COOKING_BLACKLIST = { [30047] = true }  -- Crystal Throat Lozenge
-        if clientExp == 1 and not addon:IsSoD() and thisProfId == 185 and TBC_COOKING_BLACKLIST[recipeId] then
-            return false
-        end
-        -- Non-SoD Vanilla First Aid: blacklist TBC Netherweave bandage recipes.
-        local TBC_FIRSTAID_BLACKLIST = { [27032] = true, [27033] = true }  -- Netherweave Bandage, Heavy Netherweave Bandage
-        if clientExp == 1 and not addon:IsSoD() and thisProfId == 129 and TBC_FIRSTAID_BLACKLIST[recipeId] then
-            return false
-        end
-        if (not meta.minExpansion) and clientExp == 1 and recipeId > 25000 then
-            -- Vanilla client, untagged high-ID recipe: require BOTH spell
-            -- and item presence. TBC recipes like Crystal Throat Lozenge
-            -- have items in shared tables but no spell on Era clients.
-            local spellExists = GetSpellInfo and GetSpellInfo(recipeId) ~= nil
-            local itemExists = GetItemInfoInstant and (
-                (meta.itemId and GetItemInfoInstant(meta.itemId)) or
-                (meta.craftedItemId and GetItemInfoInstant(meta.craftedItemId)))
-            if not (spellExists and itemExists) then return false end
-        end
-        if meta.requiredSkill and meta.requiredSkill > clientMaxSkill then return false end
-        if meta.season then return false end
-        return true
+        return (addon.RecipeGate:IsValidOnClient(thisProfId, recipeId, meta))
     end
 
     local function buildCrafterList(profRecipeData, thisViewMode)
@@ -744,12 +709,12 @@ function BrowserTab:Draw(container)
 
     self._slSection = nil
     local slData = Ace.db.char.shoppingList
-    local hasSL  = false
-    for _ in pairs(slData) do hasSL = true; break end
+    -- One pass. The count already answers "is it non-empty?", so the previous
+    -- probe-then-count walked the table twice and the probe was a `for … break`
+    -- that never loops.
     local slCount = 0
-    if hasSL then
-        for _ in pairs(slData) do slCount = slCount + 1 end
-    end
+    for _ in pairs(slData) do slCount = slCount + 1 end
+    local hasSL = slCount > 0
 
     -- ---- Toolbar -----------------------------------------------------------
     local toolbar = AceGUI:Create("SimpleGroup")
@@ -803,12 +768,10 @@ function BrowserTab:Draw(container)
     -- toggle rows. Only tiers reachable on this client version are offered.
     -- The filter runs post-cache (in FillList → FilterTiers) so changing it is a
     -- cheap re-filter, never a rebuild.
-    local clientMaxSkill
-    if     addon.isVanilla then clientMaxSkill = 300
-    elseif addon.isTBC     then clientMaxSkill = 375
-    elseif addon.isWrath   then clientMaxSkill = 450
-    elseif addon.isCata    then clientMaxSkill = 525
-    else                        clientMaxSkill = 600 end
+    -- Skill cap comes from addon.RecipeGate:Client() — the same table the recipe
+    -- gate uses. This was a third hand-written copy of the expansion ladder and
+    -- had already drifted (it folded MoP into the else branch).
+    local _, clientMaxSkill = addon.RecipeGate:Client()
 
     -- Hydrate the saved tier selection once per session (state resets on reload).
     -- { __none = true } is the Clear All marker → an empty enabled set; any other
@@ -933,11 +896,22 @@ function BrowserTab:Draw(container)
     -- _showAllRecipes is on). Items are listed in a deterministic order via
     -- the sorting array; AceConfig-style sorting isn't supported on raw
     -- AceGUI Dropdowns so we just SetList with the order we want.
-    local viewItems = { guild = L["ViewGuild"], mine = L["ViewMine"] }
-    if self._showAllRecipes then
-        viewItems.missing = L["ViewMissing"] or "Show Missing"
-    end
-    viewDD:SetList(viewItems, { "guild", "mine", "missing" })
+    --
+    -- The base guild/mine pair and the order array both come from
+    -- `UI.ScopeList` — shared with the Cooldowns tab, which carries the same
+    -- scope filter. This tab's third mode is what `docs/AUDIT.md` finding 2
+    -- predicted would drift, and it is passed in as an extra rather than
+    -- pushed into the shared set because it is genuinely Browser-only.
+    --
+    -- It also cannot re-grow the blank-row bug: a hardcoded
+    -- { "guild", "mine", "missing" } order against items that only gained
+    -- `missing` when the checkbox was ticked put an empty, clickable third
+    -- entry in this dropdown, and clicking it set _viewMode to a mode the list
+    -- was no longer offering. `ScopeList` never lets the two disagree.
+    local viewItems, viewOrder = addon.UI.ScopeList(self._showAllRecipes and {
+        { key = "missing", label = L["ViewMissing"] or "Show Missing" },
+    } or nil)
+    viewDD:SetList(viewItems, viewOrder)
     -- If the user previously selected "missing" then toggled the checkbox off,
     -- fall back to "guild" so the dropdown value stays valid.
     if self._viewMode == "missing" and not self._showAllRecipes then
@@ -981,7 +955,10 @@ function BrowserTab:Draw(container)
         end)
     end)
     addon.GUI.AttachTooltip(showAllCB, L["BrowserShowAllRecipes"] or "Show all recipes",
-        L["BrowserShowAllRecipesDesc"] or "Include every recipe in the shipped database, even ones nobody in the guild knows. Missing recipes render greyed out so officers can spot which skills the guild still needs to cover.")
+        L["BrowserShowAllRecipesDesc"]
+            or ("Include every recipe in the shipped database, even ones nobody in the guild knows. "
+                .. "Missing recipes render greyed out so officers can spot which skills the guild "
+                .. "still needs to cover."))
     toolbar:AddChild(showAllCB)
 
     local sp3b = AceGUI:Create("Label"); sp3b:SetWidth(8); toolbar:AddChild(sp3b)
@@ -1066,7 +1043,7 @@ function BrowserTab:Draw(container)
     recipeHdrHit:SetHeight(18)
     recipeHdrHit:SetScript("OnEnter", function(f)
         addon.Tooltip.Owner(f)
-        GameTooltip:SetText(L["TooltipRecipeTitle"], 1, 1, 1)
+        GameTooltip:SetText(L["TooltipRecipeTitle"], 1, 1, 1, 1, true)
         GameTooltip:AddLine(L["TooltipRecipeDesc"], nil, nil, nil, true)
         GameTooltip:Show()
     end)
@@ -1083,7 +1060,7 @@ function BrowserTab:Draw(container)
     craftersHdrHit:SetHeight(18)
     craftersHdrHit:SetScript("OnEnter", function(f)
         addon.Tooltip.Owner(f)
-        GameTooltip:SetText(L["TooltipCraftersTitle"], 1, 1, 1)
+        GameTooltip:SetText(L["TooltipCraftersTitle"], 1, 1, 1, 1, true)
         GameTooltip:AddLine(L["TooltipCraftersDesc"], nil, nil, nil, true)
         GameTooltip:Show()
     end)
@@ -1289,7 +1266,7 @@ function BrowserTab:FillShoppingListSection(container)
         alertBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(alertBtn)
             local enabled = alertBtn._sid and Ace.db.char.shoppingAlerts[alertBtn._sid]
-            GameTooltip:SetText(enabled and L["ShoppingAlertDisable"] or L["ShoppingAlertEnable"], 1, 1, 1)
+            GameTooltip:SetText(enabled and L["ShoppingAlertDisable"] or L["ShoppingAlertEnable"], 1, 1, 1, 1, true)
             GameTooltip:Show()
         end)
         alertBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1337,7 +1314,7 @@ function BrowserTab:FillShoppingListSection(container)
         bankBtn:Hide()
         bankBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(bankBtn)
-            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1)
+            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
             GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
             GameTooltip:Show()
         end)
@@ -1357,7 +1334,7 @@ function BrowserTab:FillShoppingListSection(container)
         ahBtn:Hide()
         ahBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(ahBtn)
-            GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1)
+            GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1, 1, true)
             GameTooltip:AddLine(L["TooltipAHDescReagent"], nil, nil, nil, true)
             GameTooltip:Show()
         end)
@@ -1424,7 +1401,7 @@ function BrowserTab:FillShoppingListSection(container)
             f.alertLbl:SetText(Ace.db.char.shoppingAlerts[sid] and "|cffFFD700!|r" or "|cff666666!|r")
         end)
 
-        f:SetScript("OnClick", function(btn)
+        f:SetScript("OnClick", function(_btn)
             if f.minusBtn:IsMouseOver() or f.plusBtn:IsMouseOver() or f.removeBtn:IsMouseOver()
             or f.alertBtn:IsMouseOver() then
                 return
@@ -1591,8 +1568,7 @@ function BrowserTab:RefreshShoppingList()
 
     if self._slSection then
         local bl    = Ace.db.char.shoppingList
-        local hasSL = false
-        for _ in pairs(bl) do hasSL = true; break end
+        local hasSL = next(bl) ~= nil
 
         if hasSL then
             self:FillShoppingListSection(self._slSection)
@@ -1875,7 +1851,7 @@ function BrowserTab:BuildPool(parent)
         bankBtn:Hide()
         bankBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(bankBtn)
-            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1)
+            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
             GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
             GameTooltip:Show()
         end)
@@ -1966,6 +1942,24 @@ function BrowserTab:BuildPool(parent)
                 local header, requires, useText, metReq = addon.ItemLink.ScrollHeader(
                     entry.profId, entry.id, entry.name, entry.profName)
                 GameTooltip:ClearLines()
+                -- ⚠ THE NAME IS DELIBERATELY *NOT* WRAPPED, and it is the only
+                -- line in this addon that isn't. It is the line the game lets
+                -- SET the frame width, exactly as Blizzard's own item tooltip
+                -- does -- an item's name is never wrapped there.
+                --
+                -- Wrapping it was a real, observed regression: with every line
+                -- opted into the preset, NOTHING claimed a natural width, so the
+                -- frame collapsed to the bare preset and came out NARROWER than
+                -- the game's own tooltip for the same item. "Schematic: Advanced
+                -- Target Dummy" broke onto two lines, which the game does not
+                -- do. The preset is a MINIMUM the long lines wrap to, not the
+                -- width every tooltip ends up at.
+                --
+                -- So the rule is: the title sizes the frame, everything else
+                -- wraps to the preset -- ours by passing the flag, third
+                -- parties' by `ItemLink.WithWrappedLines`. Enumerated in
+                -- `Tests/tooltipwrapflag_spec.lua`'s TITLE_EXEMPT so a second
+                -- unwrapped line still fails the sweep.
                 GameTooltip:AddLine("|cffffff00" .. (header or entry.name) .. "|r")
                 if requires then
                     -- Red when this character cannot meet it, exactly as the
@@ -1973,9 +1967,9 @@ function BrowserTab:BuildPool(parent)
                     -- reads as satisfied whether or not it is, which is the
                     -- one thing it exists to tell you.
                     if metReq == false then
-                        GameTooltip:AddLine(requires, 1, 0.13, 0.13)
+                        GameTooltip:AddLine(requires, 1, 0.13, 0.13, true)
                     else
-                        GameTooltip:AddLine(requires, 1, 1, 1)
+                        GameTooltip:AddLine(requires, 1, 1, 1, true)
                     end
                 end
                 -- "Already known", red, between the requirement and the Use
@@ -1989,7 +1983,7 @@ function BrowserTab:BuildPool(parent)
                     if crafter.isYou then knownByMe = true break end
                 end
                 if knownByMe then
-                    GameTooltip:AddLine(_G.ITEM_SPELL_KNOWN or "Already known", 1, 0.13, 0.13)
+                    GameTooltip:AddLine(_G.ITEM_SPELL_KNOWN or "Already known", 1, 0.13, 0.13, true)
                 end
                 -- "Use: Teaches you how to craft X." — ordered directly under
                 -- the requirement, which is where the game's scroll puts it.
@@ -2031,12 +2025,34 @@ function BrowserTab:BuildPool(parent)
                                 if lt then lr, lg, lb = lt:GetTextColor() end
                                 if rt then rr, rg, rb = rt:GetTextColor() end
                                 if rStr ~= "" then
+                                    -- ⚠ THIS BRANCH CANNOT WRAP. `AddDoubleLine`
+                                    -- has no wrap parameter -- its eight arguments
+                                    -- are two strings and six colour components --
+                                    -- so a scraped line with both halves is
+                                    -- exempt from the preset by construction, and
+                                    -- a long left half here WILL widen the
+                                    -- tooltip. Enumerated in
+                                    -- `Tests/tooltipwrapflag_spec.lua`'s
+                                    -- DOUBLELINE_EXEMPT so a fourth site fails.
+                                    -- Audit finding 18.
+                                    --
+                                    -- The branch is chosen on whether right-hand
+                                    -- text EXISTS, not on whether the line is
+                                    -- short, so this is not a "short lines only"
+                                    -- path.
                                     GameTooltip:AddDoubleLine(lStr, rStr, lr, lg, lb, rr, rg, rb)
                                 else
                                     -- wrapText=true so long item lines (e.g. a flask's verbose
                                     -- "Use:" text) wrap instead of stretching the tooltip across
-                                    -- the screen. With no unwrapped long line left, the tooltip
-                                    -- sizes to the header/stat lines.
+                                    -- the screen.
+                                    --
+                                    -- The claim that used to end this comment --
+                                    -- "with no unwrapped long line left, the
+                                    -- tooltip sizes to the header/stat lines" --
+                                    -- was FALSE and is removed. It described the
+                                    -- whole block while sitting on one branch, and
+                                    -- the other branch is exactly the unwrapped
+                                    -- long line it said was not left.
                                     GameTooltip:AddLine(lStr, lr, lg, lb, true)
                                 end
                             end
@@ -2077,7 +2093,18 @@ function BrowserTab:BuildPool(parent)
                 -- No link, no spell id: name-only so the hover still says
                 -- something. Never "item:<entry.id>" — entry.id is a spell id
                 -- and that lookup lands on an unrelated item.
-                GameTooltip:SetText(entry.name or "", 1, 1, 1, 1, false)
+                -- wrap = TRUE. The sixth argument is `wrap` and it defaults to
+                -- false (FrameAPITooltipDocumentation.lua:72). Passing the flag
+                -- opts the line into the client's own PRESET wrap width -- the
+                -- engine-side figure Blizzard sizes ability tooltips to. It is
+                -- not exposed as a number and does not need to be: the preset
+                -- scales with each player's client, so the flag gives every user
+                -- the right width with nothing calculated.
+                --
+                -- This line passed `false` while AHProfitTab:1039 passed `true`,
+                -- so some of our lines opted into the preset and some did not.
+                -- Every line that does not is free to stretch the frame.
+                GameTooltip:SetText(entry.name or "", 1, 1, 1, 1, true)
             end
             -- For SetHyperlink branches the global tooltip hook will fire on
             -- Show() and add its own brand crafters+IDs (the hook dedups via
@@ -2327,7 +2354,7 @@ function BrowserTab:GetDetailReagRow(idx)
     bankBtn:Hide()
     bankBtn:SetScript("OnEnter", function()
         addon.Tooltip.Owner(bankBtn)
-        GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1)
+        GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
         GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
         GameTooltip:Show()
     end)
@@ -2343,7 +2370,7 @@ function BrowserTab:GetDetailReagRow(idx)
     ahBtn:Hide()
     ahBtn:SetScript("OnEnter", function()
         addon.Tooltip.Owner(ahBtn)
-        GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1)
+        GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1, 1, true)
         GameTooltip:AddLine(L["TooltipAHDescReagent"], nil, nil, nil, true)
         GameTooltip:Show()
     end)
@@ -2407,7 +2434,9 @@ function BrowserTab:DrawDetail(entry)
         if link and link:find("|Hitem:") then
             GameTooltip:SetHyperlink(link)
         elseif not SetSpellTooltip(GameTooltip, sid or entry.spellId or entry.id) then
-            GameTooltip:SetText(entry.name or "", 1, 1, 1, 1, false)
+            -- wrap = true, same reason as the other name-only fallback in this
+            -- file: the flag opts the line into the client's preset wrap width.
+            GameTooltip:SetText(entry.name or "", 1, 1, 1, 1, true)
         end
         -- Brand crafters + IDs lines at the bottom — same helper used by
         -- the recipe row tooltip and the global item tooltip hook, so
@@ -2601,18 +2630,8 @@ function BrowserTab:DrawDetail(entry)
 
     local crafters = entry.crafters or {}
 
-    local function openWhisper(target)
-        if ChatEdit_GetActiveWindow then
-            local box = ChatEdit_GetActiveWindow()
-            if box then
-                box:SetText("/w " .. target .. " ")
-                box:SetFocus()
-                box:SetCursorPosition(#box:GetText())
-                return
-            end
-        end
-        ChatFrame_OpenChat("/w " .. target .. " ", DEFAULT_CHAT_FRAME)
-    end
+    -- Shared with CooldownsTab, which carried a byte-identical copy.
+    local openWhisper = addon.UI.OpenWhisper
 
     if #crafters > 0 then
         for i, c in ipairs(crafters) do
@@ -2630,8 +2649,8 @@ function BrowserTab:DrawDetail(entry)
                 local shortName = c.name
                 cf:SetScript("OnEnter", function()
                     addon.Tooltip.Owner(cf)
-                    GameTooltip:SetText(shortName, 1, 1, 1)
-                    GameTooltip:AddLine(L["TooltipWhisperRightClick"], 0.7, 0.7, 0.7)
+                    GameTooltip:SetText(shortName, 1, 1, 1, 1, true)
+                    GameTooltip:AddLine(L["TooltipWhisperRightClick"], 0.7, 0.7, 0.7, true)
                     GameTooltip:Show()
                 end)
                 cf:SetScript("OnLeave", function() GameTooltip:Hide() end)

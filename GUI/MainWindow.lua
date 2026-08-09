@@ -369,7 +369,36 @@ function MainWindow:Open(tabKey)
         -- ANCHOR_TOP (centered above) is intentional here; the helper's
         -- TOPLEFT/BOTTOMLEFT picks look worse for this fixed-position icon.
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetMinimumWidth(480)
+        -- 280 keeps the help text readable as paragraphs without forcing a
+        -- tooltip far wider than the game's own. It MUST be put back in
+        -- OnLeave — see below.
+        --
+        -- NOTHING RESETS A MINIMUM WIDTH AUTOMATICALLY. Hiding is not a reset:
+        -- `GameTooltip_OnHide` (Blizzard_GameTooltip/Classic/GameTooltip.lua:413)
+        -- clears money frames, status bars, inserted frames and the backdrop
+        -- style, and sets `needsReset` — which is only read at :541 for the
+        -- secondary compare item. Minimum width is untouched by all of it. So
+        -- setting it here and only calling Hide() pinned the SHARED GameTooltip
+        -- to a 480px floor for the rest of the session — every tooltip in the
+        -- game, ours and every other addon's, from one hover of our help icon.
+        --
+        -- Blizzard DOES lower it; it just always does so explicitly. Its own
+        -- idiom is `SetMinimumWidth(N, true)` on show paired with
+        -- `SetMinimumWidth(0, false)` on hide (Blizzard_AchievementUI.xml:724,
+        -- Mists/InspectTalentFrame.lua:189, Mists/Blizzard_TalentUI.lua:1133).
+        -- We restore instead of zeroing, for the reason in OnLeave.
+        --
+        -- Both return values are captured: `GetMinimumWidth` returns
+        -- `width, forced` (FrameAPITooltipDocumentation.lua:24-35) and `force`
+        -- is a real second argument (:52-59, Default = false), so restoring the
+        -- width alone would silently clear another addon's forced flag.
+        if GameTooltip.GetMinimumWidth then
+            MainWindow._helpTipMinWidth,
+            MainWindow._helpTipMinForced = GameTooltip:GetMinimumWidth()
+        end
+        MainWindow._helpTipMinWidth  = MainWindow._helpTipMinWidth or 0
+        MainWindow._helpTipMinForced = MainWindow._helpTipMinForced or false
+        GameTooltip:SetMinimumWidth(280)
         GameTooltip:ClearLines()
         GameTooltip:AddLine(help.title, 1, 0.82, 0, true)
         for _, line in ipairs(help.lines) do
@@ -378,6 +407,15 @@ function MainWindow:Open(tabKey)
         GameTooltip:Show()
     end)
     helpIcon:SetScript("OnLeave", function()
+        -- Restore what was there rather than assuming a default: another addon
+        -- may legitimately have raised it, and clobbering that to 0 would be
+        -- the same bug pointed the other way.
+        if GameTooltip.SetMinimumWidth and MainWindow._helpTipMinWidth then
+            GameTooltip:SetMinimumWidth(MainWindow._helpTipMinWidth,
+                                        MainWindow._helpTipMinForced)
+            MainWindow._helpTipMinWidth  = nil
+            MainWindow._helpTipMinForced = nil
+        end
         GameTooltip:Hide()
     end)
 
@@ -405,7 +443,7 @@ function MainWindow:Open(tabKey)
     gearIcon:SetScript("OnEnter", function(self_)
         addon.Tooltip.Owner(self_)
         local brandColor = addon.BrandColor or "ffFF8000"
-        GameTooltip:SetText("|c" .. brandColor .. L["TooltipSettingsTitle"] .. "|r", 1, 1, 1)
+        GameTooltip:SetText("|c" .. brandColor .. L["TooltipSettingsTitle"] .. "|r", 1, 1, 1, 1, true)
         GameTooltip:AddLine(L["TooltipSettingsDesc"], nil, nil, nil, true)
         GameTooltip:Show()
     end)

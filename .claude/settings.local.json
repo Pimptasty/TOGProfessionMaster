@@ -8,7 +8,9 @@
       "Bash(lua -e ' *)",
       "Bash(markdownlint README.md CHANGELOG.md Tests/HARNESS_CONTRACT.md docs/DEPENDENCY_CONTRACTS.md)",
       "Bash(echo \"md=$?\")",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(git -C \"../ProfessionDB\" status --porcelain=v1)",
+      "Bash(git -C \"../ProfessionDB\" log --oneline -1)"
     ]
   }
 }

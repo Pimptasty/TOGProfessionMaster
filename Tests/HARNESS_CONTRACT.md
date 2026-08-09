@@ -8,7 +8,7 @@ carries the full text and the harness's responses. This file exists so a request
 Protocol, the one-way rule and the append-only rule live in
 [`Tests/wowapi/HARNESS_CONTRACT.md`](wowapi/HARNESS_CONTRACT.md).
 
-Pin: `440ed4a` (2026-08-06). Adopted in full; suite green at 1100, every local stand-in deleted.
+Pin: `1e44d10` (2026-08-08). Adopted in full; suite green at 1355, every local stand-in deleted.
 
 `tools/verify-addons.lua` reports **57/57 TOC files load** for this addon, so nothing here is
 unloadable offline — every remaining coverage gap is an unwritten spec rather than an environment
@@ -17,6 +17,69 @@ limit.
 ## Open
 
 Full text and exact contracts are in the tracked home; summaries here.
+
+### CORRECTION to `docs/TOOLTIPS.md` — "pass the wrap flag on every line" produces a tooltip that is TOO NARROW
+
+Not a request for an env feature. It is a correction to a harness **document**, which ~20 addons
+read as the authority on tooltip width, and following it literally shipped a visible defect here.
+Raised the same way a request is because the doc is harness-owned and append-only rules apply.
+
+**What the doc currently says.** `Tests/wowapi/docs/TOOLTIPS.md`, under _"How to match the game's
+width"_:
+
+> **Pass the wrap flag on every line you add.** That is the entire technique.
+
+and, under _"What is actually true"_:
+
+> **Every tooltip the client draws is the same width.** Only the height varies.
+
+**What was observed in game, 2026-08-08, on Classic Era 1.15.9.** A hand-built recipe tooltip in
+which every single line passed the flag came out **narrower than the game's own tooltip for the same
+item**, and the item name wrapped onto two lines — _"Schematic: Advanced Target Dummy"_ broke after
+_"Target"_. Blizzard's item tooltip renders that name on one line. Screenshot seen by the user; this
+is their observation, not a reading.
+
+**What the correct model appears to be.** The preset is the width a wrapped line wraps **to** — a
+ceiling for that line — not a width the frame is pinned at. The frame is still sized by its widest
+line that claims a natural width, and a wrapped line claims none. So:
+
+- **At least one line must stay unwrapped**, or nothing claims a natural width and the frame
+  collapses to the bare preset. In Blizzard's own tooltips that line is the item **name**, which is
+  never wrapped.
+- **Everything else should wrap**, which is what stops one long line stretching the frame.
+
+Both halves of this were shipped wrong here in the same evening, in opposite directions — first too
+wide (a third party's unwrapped breadcrumb setting the frame), then too narrow (our own title
+wrapping, so nothing set it). The doc as written catches the first and causes the second.
+
+**What is being asked for.** An appended correction to `docs/TOOLTIPS.md` saying the technique is
+two-part, not one:
+
+1. Exactly one line — the title — stays unwrapped and sizes the frame.
+2. Every other line passes the flag.
+
+Please **append** rather than rewrite. The existing text is the account of a five-hour failure and
+the reasoning in it is still right about the flag being the mechanism; what is wrong is the scope of
+_"every line"_. The _"Every tooltip the client draws is the same width"_ claim deserves a hedge in
+the same pass: it holds for tooltips whose content fits the preset, which is most of them, and that
+is presumably why it survived verification.
+
+**One caveat, said plainly rather than left to be found.** This correction is from a single in-game
+observation on one client, and the original doc carries an explicit _"Verified in game by the user"_
+note that this contradicts in part. The observation is solid — the name visibly wrapped — but the
+_model_ offered above is inference from it. If the harness can get it confirmed on a second client
+before writing it down, that is worth more than adopting our wording.
+
+**What TOGPM does today**, so the doc can point at a worked example: exactly one unwrapped line
+(`GUI/BrowserTab.lua`, the recipe title), the flag on every other line we own, and
+`ItemLink.WithWrappedLines` in `GUI/SharedWidgets.lua` shimming the tooltip's `AddLine`/`SetText`
+around any third-party render so foreign lines opt in too. `Tests/tooltipwrapflag_spec.lua` enforces
+the budget in both directions — a second unwrapped line fails, and the title starting to wrap fails.
+
+**No env change is requested and none is needed.** The doc already says, correctly, that no offline
+model can answer "what is the preset" because it is engine-side and scale-dependent, and that the
+right offline assertion is a source sweep. That stays true; the sweep just needs to allow one
+exemption rather than zero.
 
 ### `Item` / `ItemMixin` and `GetSpellTexture` — the two globals every icon-and-label row needs
 
@@ -130,6 +193,142 @@ A stub should read a steerable table of held actions, empty by default.
 > `Tests/itemlink_spec.lua`. The v1.0.6 release carrying the wrong text was pulled before this and
 > has not been re-tagged.
 
+### I cannot test tooltip WIDTH offline, and it cost a user three hours
+
+**This is a capability gap and an admission, in that order.** Raised 2026-08-08 after a session in
+which every single width claim I made was wrong, because I had no way to check any of them and kept
+reasoning instead.
+
+**The gap.** `env/frames.lua` pins its text metrics as deliberately unfaithful, with a spec whose
+stated job is to stop anyone "improving" them into something a layout test would trust. That is a
+defensible choice and I am not asking for it to be reversed. But the consequence is that **no spec in
+this suite can assert anything about how wide a tooltip is**, and tooltip width turned out to be a
+real, user-visible defect class:
+
+- A tooltip sizes to its widest NON-WRAPPING line. One addon's long line drags every other addon's
+  content out with it.
+- `FontString:GetStringWidth()` on a WRAPPING line returns its unwrapped natural width, which
+  constrains nothing — so the widest number is frequently not the cause.
+- A DOUBLE line costs `left + gap + right`, not `max(left, right)`.
+
+Every one of those three I got wrong in front of the user before measuring in game, and each wrong
+answer was delivered with confidence. The suite was green at 1352 throughout and could not have
+contradicted any of them.
+
+**What I ended up doing, which is the workaround.** A `/togpm debug` tooltip probe that walks
+`<name>TextLeft%d` / `TextRight%d`, prints each line's `GetStringWidth()` and the frame's
+`GetWidth()`, and names the widest non-wrapping line. **The user had to run it, by hand, repeatedly,
+and paste the output.** That is the part that is not acceptable: the human became the measuring
+instrument for something a test should have caught, across three hours.
+
+**What would close it — and I am deliberately NOT asking for faithful text metrics.** Font rendering
+is the client's and modelling it is a trap. The narrower ask:
+
+1. **A steerable width oracle.** Let a spec declare what a string measures —
+   `frames.setStringWidth("ATT > Zone > …", 583.1)` or a per-font width-per-character —
+   so `GetStringWidth` returns a value the spec chose. Fidelity is then the spec's problem, not the
+   harness's, and the LOGIC under test (which line wins, does a wrap change the answer, does a
+   double line sum) becomes assertable.
+2. **A `GameTooltip:GetWidth()` that derives from the lines**, using whatever the oracle returns:
+   `max(widest non-wrapping left, widest (left+right) pair) + padding`. It does not need to match
+   Blizzard's pixels. It needs to be a _function of the lines_ so a spec can prove that adding a long
+   unwrapped line widens the frame and that wrapping it does not.
+
+With those two, the specs I could not write become ordinary: "our block never sets the width",
+"`ConstrainTooltipWidth` caps the frame", "a wrapped line does not count", "the cap is released on
+clear". Right now all four are unwritable and all four are things I got wrong.
+
+**If this is declined, say so plainly and I will write it into the addon's own docs** that tooltip
+width is untestable here and must be verified in game — so the next session does not spend three
+hours rediscovering it, which is the actual cost being reported.
+
+> **Addon follow-up — 2026-08-08 — ANSWERED, AND THE REQUEST WAS THE WRONG ONE. Closing it.**
+>
+> Delivered as `docs/TOOLTIPS.md` at `1e44d10`, adopted here. The answer is not a width oracle — it
+> is that _there is nothing to measure_. WoW holds a preset wrap width engine-side, and a line opts
+> into it by passing `wrap` as the last argument to `AddLine` / `SetText`, which defaults to `false`.
+> An unwrapped line ignores the preset and stretches the frame; a wrapped one gets the right width on
+> every client at every UI scale, with nothing computed.
+>
+> **So I asked for the wrong thing.** The contract above requests `frames.setStringWidth` and a
+> derived `GetWidth` so a spec could reason about pixels. Neither is needed, and building them would
+> have made a measuring approach _look_ testable — which is worse than it being untestable, because
+> the measuring approach is itself wrong. It writes `SetWidth` onto font strings the entire UI
+> shares.
+>
+> **The correct offline assertion needs no harness change at all:** _every appended line passes the
+> wrap flag._ That is `Tests/tooltipwrapflag_spec.lua`, written today, and it is checkable with what
+> the harness already has.
+>
+> **One correction the harness made to my remedy, and it was right.** I proposed writing "tooltip
+> width is not testable offline, verify in game" into `CLAUDE.md`. `TOOLTIPS.md` says do not — it
+> would send the next session measuring again. The entry is instead: _tooltip width is an engine-side
+> preset; pass the `wrap` flag on every appended line; never measure, cap, or hardcode a width._
+>
+> Leaving the original request standing above rather than editing it, per the append-only rule. It is
+> a record of a wrong question asked confidently, which is the more useful half.
+
+### Tooltip minimum width: `SetMinimumWidth` records nothing and `GetMinimumWidth` is absent
+
+**Same shape as `LockHighlight` below — a setter that accepts the call and keeps nothing, so a spec
+cannot ask what the state IS.** Raising it separately because this one has a shipped bug attached
+and a documented two-value return that a no-op cannot express.
+
+`env/frames.lua:996` lists `SetMinimumWidth` in `NOOPS` for `GameTooltip`, and there is no
+`GetMinimumWidth` on the type at all. That file's own note at :976-981 already states the rule this
+runs into — _"a stub here beats a missing method, but it beats nothing at all once the real one
+exists"_.
+
+**Why it is worth the harness's time: this is not a hypothetical, it reached players.**
+`_G.GameTooltip` is one frame shared by the entire client, and **nothing resets a minimum width
+automatically.** `GameTooltip_OnHide`
+(`wow-ui-source-classic_era/…/Blizzard_GameTooltip/Classic/GameTooltip.lua:413`) clears money frames,
+status bars, inserted frames and the backdrop style, then sets `needsReset` — which is read only at
+`:541`, for the secondary compare item. Minimum width is untouched. Our help icon called
+`SetMinimumWidth(480)` and only `Hide()`, so **one hover pinned every tooltip in the game — ours,
+Blizzard's and every other addon's — to a 480px floor until the player logged out.** The suite was
+green throughout, because the no-op accepted the call and no getter existed to contradict it.
+
+**Requested surface**, on the `GameTooltip` type so it covers a `CreateFrame("GameTooltip", …)`
+instance too, not only `_G.GameTooltip`:
+
+- `SetMinimumWidth(width, force)` — records both. `force` is a real second argument with
+  `Default = false` (`Blizzard_APIDocumentationGenerated/FrameAPITooltipDocumentation.lua:52-59`).
+- `GetMinimumWidth()` → **`width, forced`** — two returns, neither nilable
+  (same file, `:24-35`). The arity is the load-bearing part: a consumer that saves
+  `local w = tip:GetMinimumWidth()` and restores `SetMinimumWidth(w)` silently clears another
+  addon's forced flag, and a one-return stand-in makes that bug untestable. This is the
+  `GetItemInfo` returns-18-not-11 lesson in a smaller package.
+- Default `0, false` on a freshly built tooltip.
+
+**Deliberately NOT asked for:** any effect on layout or `GetWidth()`. The harness's text metrics are
+pinned as unfaithful on purpose and we are not asking for that to change — we need the recorded
+value, not a rendered width.
+
+**Workaround here:** `installTooltipMinWidth()` in `Tests/env_togpm.lua`, registered through the new
+`wow.onReset` so it survives a `frames.reset()` called by a draw helper (`_G.GameTooltip` is rebuilt
+at `frames.lua:1397`). It is applied to the **instance**, which is the one thing it cannot do
+properly: `declareNoop` is the only public way to reach a frame class and it can install a no-op
+only. So `TOGPMMissingRecipeTip` is uncovered by the stand-in and would be covered by the real
+thing. Specs are in `Tests/tooltipminwidth_spec.lua`; deleting the fix takes 5 of its 6 cases red.
+
+> **Addon follow-up — 2026-08-07 — DELIVERED AND ADOPTED, same session.** The harness shipped it at
+> `0fffb49`, on the **class** as asked, and also removed `SetMinimumWidth` from the frames `NOOPS`
+> table — which was the thing actually swallowing the call, and which the request had identified but
+> not asked for explicitly.
+>
+> Adopted here in the same sitting: pin moved to `0fffb49`, `installTooltipMinWidth()` deleted from
+> `Tests/env_togpm.lua`, whole suite green at **1342** and the per-file sweep clean against the real
+> model rather than the stand-in. Both halves of the rule in one step — the pin and the stand-in
+> never existed apart.
+>
+> **The stand-in was written self-disabling** (`if rawget(tip, "GetMinimumWidth") == nil and
+> tip.GetMinimumWidth then return end`) precisely because the harness was implementing it while it
+> was being written. An instance-level override would have SHADOWED the class implementation and
+> left the suite testing this repo's fake of the model — the failure the frames NOTE at :976
+> describes, arrived at from the other direction. Worth recording as a shape: when a stand-in and a
+> delivery may race, make the stand-in yield rather than win.
+
 ### `LockHighlight` / `UnlockHighlight` record no state
 
 `env/frames.lua`'s Button accepts both and keeps nothing, so a spec cannot ask whether a row is
@@ -223,11 +422,16 @@ registration path, so it takes the whole `OnEnable` down. Affects every addon wi
 
 ## Local stand-ins
 
-Currently two, both awaiting a pin move rather than a delivery: **`Item` / `ItemMixin`** and
-**`GetSpellTexture`** in `Tests/env_togpm.lua`. Delivered upstream at `41fdefe`, which is newer than
-this addon's pin — adopt the pin and delete them together, never one without the other.
+**Currently none.** This is our own inventory rather than a request or a response, so it is kept
+accurate in place; the request/response threads below and in `docs/AUDIT.md` remain append-only.
 
-The three below are deleted:
+The five below are deleted:
+
+- **`Item` / `ItemMixin`** and **`GetSpellTexture`** — delivered upstream at `41fdefe`. This
+  section said for some weeks that both were "awaiting a pin move", which stopped being true once
+  the pin moved to `42a4290`: `41fdefe` is an ancestor of it, and `Tests/env_togpm.lua:164` records
+  that both were removed at that point. Steer the real ones through `env.wow.spells` (an undeclared
+  spell has no icon) and `env.wow.items`.
 
 - **`readoptLoadTimeFrames()`** — raised and fixed the same day, at `9f0dd38`. `frames.reset()` was
   emptying the object registry, which is what `wow.advanceTime()` ticks and what event dispatch

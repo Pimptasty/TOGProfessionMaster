@@ -62,7 +62,15 @@ CraftingTab._qty      = 1
 CraftingTab._sortCol  = nil    -- nil = native category tree; "name"|"skill"|"craft"
 CraftingTab._sortAsc  = true
 
-local function Brand(text) return "|c" .. (addon.BrandColor or "ffFF8000") .. text .. "|r" end
+-- Shared, not a private copy: this file used to carry its own Brand() without
+-- the nil guard addon.UI.Brand has.
+--
+-- RESOLVED AT CALL TIME, not captured at file scope. `local Brand = addon.UI.Brand`
+-- reads the value once as this file loads, which made SharedWidgets.lua's TOC
+-- position load-bearing for seven aliases: move it below any consumer and the alias
+-- is nil at capture, then raises on first use. Audit finding 6. One extra call
+-- frame removes the class of bug instead of asserting against it.
+local function Brand(text) return addon.UI.Brand(text) end
 local function Color(hex, text) return "|c" .. hex .. text .. "|r" end
 local function PriceSourceTag(src)
     if not (src and addon.Price and addon.Price.GetSourceColor) then return "" end
@@ -415,7 +423,7 @@ function CraftingTab:BuildHeaders(parent)
         b:SetScript("OnEnter", function()
             if b._glow then b._glow:Show() end
             addon.Tooltip.Owner(b)
-            GameTooltip:SetText(base, 1, 1, 1)
+            GameTooltip:SetText(base, 1, 1, 1, 1, true)
             GameTooltip:AddLine(L["CraftSortHint"], nil, nil, nil, true)
             GameTooltip:Show()
         end)
@@ -508,7 +516,7 @@ end
 -- Full in-game item tooltip, anchored to the given frame. Prefers the crafted
 -- item's hyperlink (the plain item tooltip); falls back to the trade-skill /
 -- craft tooltip when no link is available.
-function CraftingTab:ShowItemTooltip(anchorFrame, index, link)
+function CraftingTab:ShowItemTooltip(anchorFrame, index, link, recipeId)
     addon.Tooltip.Owner(anchorFrame)
     local Engine = addon.CraftingEngine
     local info = Engine and Engine:GetOpenInfo()
@@ -519,6 +527,11 @@ function CraftingTab:ShowItemTooltip(anchorFrame, index, link)
     elseif GameTooltip.SetTradeSkillItem then
         GameTooltip:SetTradeSkillItem(index)
     end
+    -- The same recipe block the other tabs show. Only the first branch above
+    -- carries a real item, so only that one inherits anything from the global
+    -- OnTooltipSetItem hook -- the index-based trade-skill and craft tooltips
+    -- are exactly the enchant/no-link recipes that got nothing.
+    addon.ItemLink.AppendRecipeBlocks(GameTooltip, info and info.profId, recipeId)
     GameTooltip:Show()
 end
 
@@ -787,7 +800,7 @@ local DREAG_COST_W = 132   -- per-reagent cost/source width (coin string + sourc
 local function rawTip(frame, getTitle, getDesc)
     frame:SetScript("OnEnter", function()
         addon.Tooltip.Owner(frame)
-        GameTooltip:SetText(getTitle(), 1, 1, 1)
+        GameTooltip:SetText(getTitle(), 1, 1, 1, 1, true)
         local d = getDesc and getDesc()
         if d then GameTooltip:AddLine(d, nil, nil, nil, true) end
         GameTooltip:Show()
@@ -806,7 +819,7 @@ local function headerTip(fs, right, width, title, desc)
     hit:EnableMouse(true)
     hit:SetScript("OnEnter", function()
         addon.Tooltip.Owner(hit)
-        GameTooltip:SetText(title, 1, 1, 1)
+        GameTooltip:SetText(title, 1, 1, 1, 1, true)
         if desc then GameTooltip:AddLine(desc, nil, nil, nil, true) end
         GameTooltip:Show()
     end)
@@ -853,7 +866,7 @@ function CraftingTab:BuildDetailPanel(parent)
     nameBtn._fs = nameFS
     nameBtn:SetScript("OnEnter", function()
         local sel = CraftingTab._dpSel
-        if sel then CraftingTab:ShowItemTooltip(nameBtn, sel.index, sel.link) end
+        if sel then CraftingTab:ShowItemTooltip(nameBtn, sel.index, sel.link, sel.recipeId) end
     end)
     nameBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     self._dpNameBtn = nameBtn
@@ -928,7 +941,7 @@ function CraftingTab:BuildDetailPanel(parent)
         ahBtn:Hide()
         ahBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(ahBtn)
-            GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1)
+            GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1, 1, true)
             GameTooltip:AddLine(L["CraftAHReagentDesc"], nil, nil, nil, true)
             GameTooltip:Show()
         end)
@@ -943,7 +956,7 @@ function CraftingTab:BuildDetailPanel(parent)
         bankBtn:Hide()
         bankBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(bankBtn)
-            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1)
+            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
             GameTooltip:AddLine(L["CraftBankReagentDesc"], nil, nil, nil, true)
             GameTooltip:Show()
         end)

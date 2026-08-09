@@ -26,7 +26,11 @@ end
 -- every render — the Refresh button just forces a re-render via NotifyChange.
 -- ---------------------------------------------------------------------------
 
-local function og(s) return "|c" .. (addon.BrandColor or "ffFF8000") .. s .. "|r" end
+-- Shared, not a private copy — same function as addon.UI.Brand, which also
+-- guards nil. Kept under the short local name this file's 6 call sites use.
+-- Resolved at call time, not captured at file scope — audit finding 6; see the
+-- note in CraftingTab.lua.
+local function og(s) return addon.UI.Brand(s) end
 
 -- ---------------------------------------------------------------------------
 -- Crafter-alert sound / visual options — the two dropdowns in the Alerts section.
@@ -60,11 +64,7 @@ local ALERT_VISUALS = {
 }
 local ALERT_VISUAL_SORTING = { "flashGold", "flashRed", "flashBlue", "raidWarning", "errorText", "taskbar" }
 
-local function countPairs(t)
-    local n = 0
-    if type(t) == "table" then for _ in pairs(t) do n = n + 1 end end
-    return n
-end
+local function countPairs(t) return addon.UI.Count(t) end
 
 local function BuildCrossGuildDiagnostics()
     local lines = {}
@@ -739,8 +739,13 @@ local OPTIONS = {
         -- vendor, etc.) and appends up to two TOGPM lines: a crafters list
         -- (who in your guild can make this) and an IDs line (itemId /
         -- spellId — useful for troubleshooting icon or link issues).
-        -- Both default ON; each is independently togglable so users can
-        -- pick crafters-only, IDs-only, both, or none.
+        -- Crafters and IDs both default OFF (opt-in — see the AceDB defaults in
+        -- TOGProfessionMaster.lua, which keep the addon's footprint on OTHER
+        -- addons' tooltips minimal). The recipe-detail block below is the
+        -- opposite and defaults ON. Each is independently togglable, so a user
+        -- can pick crafters-only, IDs-only, both, or none.
+        -- (This comment used to read "Both default ON", which the defaults
+        -- table has never done.)
         tooltipHeader = {
             name  = L["SettingsTooltipHeader"],
             type  = "header",
@@ -764,6 +769,10 @@ local OPTIONS = {
             get   = function() return Ace.db.profile.tooltipShowIds ~= false end,
             set   = function(_, val) Ace.db.profile.tooltipShowIds = val and true or false end,
         },
+        -- No width slider here, and there will not be one. Tooltip width is an
+        -- engine-side preset: a line opts into it by passing the `wrap` flag to
+        -- AddLine/SetText, and there is nothing to configure. See the note at the
+        -- top of GUI/SharedWidgets.lua.
         tooltipRecipeDetails = {
             name   = L["SettingsTooltipRecipeDetails"],
             desc   = L["SettingsTooltipRecipeDetailsDesc"],

@@ -25,22 +25,10 @@ addon.ReagentWatch = RW
 -- ---------------------------------------------------------------------------
 
 --- Scan bags only, return { [itemId] = count }.  Cheap, runs every BAG_UPDATE.
+--- The implementation is addon:ScanBagCounts in Compat.lua, shared with
+--- GUI/ShoppingListTab.lua, which used to carry a byte-identical copy.
 local function ScanBagsOnly()
-    local counts = {}
-    local numBags = addon:GetNumBagSlots()
-    for bag = 0, numBags do
-        local slots = addon:GetContainerNumSlots(bag)
-        for slot = 1, slots do
-            local info = addon:GetContainerItemInfo(bag, slot)
-            if info then
-                local itemId = info.itemID or info.itemId
-                if itemId then
-                    counts[itemId] = (counts[itemId] or 0) + (info.stackCount or 1)
-                end
-            end
-        end
-    end
-    return counts
+    return addon:ScanBagCounts()
 end
 
 -- Personal bank container IDs.  -1 is the main 28-slot bank; 5..11 are the

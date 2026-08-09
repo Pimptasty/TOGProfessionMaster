@@ -293,6 +293,42 @@ describe("TOGBankClassic integration", function()
 		assert.equal("Zed", out[2].name)
 	end)
 
+	it("sums every stack a banker holds, not just the first", function()
+		-- A bank stores one entry per STACK, so a reagent held in bulk is
+		-- always several entries. Reporting the first one under-counted the
+		-- tooltip AND capped ShowRequestDialog's maxRequestable at one stack.
+		installBank({
+			Abe = { items = {
+				{ ID = 2589, Count = 20 },
+				{ ID = 999,  Count = 5 },
+				{ ID = 2589, Count = 20 },
+				{ ID = 2589, Count = 20 },
+			} },
+		}, { "Abe" })
+		local out = ns.Bank.GetBanksWithItem(2589)
+		assert.equal(1, #out)
+		assert.equal(60, out[1].count)
+	end)
+
+	it("agrees with GetStock when every alt is a banker", function()
+		-- The two walk different tables; nothing else asserts they compose.
+		installBank({
+			Abe = { items = { { ID = 2589, Count = 20 }, { ID = 2589, Count = 7 } } },
+			Zed = { items = { { ID = 2589, Count = 12 } } },
+		}, { "Abe", "Zed" })
+		local total = 0
+		for _, b in ipairs(ns.Bank.GetBanksWithItem(2589)) do total = total + b.count end
+		assert.equal(ns.Bank.GetStock(2589), total)
+		assert.equal(39, total)
+	end)
+
+	it("omits a banker whose stacks all total zero", function()
+		installBank({
+			Abe = { items = { { ID = 2589, Count = 0 }, { ID = 2589, Count = 0 } } },
+		}, { "Abe" })
+		assert.same({}, ns.Bank.GetBanksWithItem(2589))
+	end)
+
 	it("returns an empty list when there are no bankers at all", function()
 		installBank({}, {})
 		assert.same({}, ns.Bank.GetBanksWithItem(2589))

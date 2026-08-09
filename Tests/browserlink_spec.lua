@@ -59,6 +59,11 @@ end
 setup(function()
 	installGlobals()
 	ns = env.initDb()
+	-- SharedWidgets before the tab, mirroring the TOC. BrowserTab reads
+	-- addon.ItemLink at file scope (GUI/BrowserTab.lua:142), so this ordering is
+	-- required; without it the tab errors on load. A whole-suite run hid that,
+	-- because another spec had already populated ItemLink on the shared namespace.
+	env.loadModule("GUI/SharedWidgets.lua")
 	BrowserTab = env.loadModule("GUI/BrowserTab.lua").BrowserTab
 end)
 

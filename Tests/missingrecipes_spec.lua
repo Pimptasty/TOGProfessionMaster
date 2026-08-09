@@ -24,6 +24,12 @@ setup(function()
 	env.loadModule("Data/CooldownIds.lua")
 	env.loadModule("Modules/HashManager.lua")
 	env.loadModule("Scanner.lua")
+	-- SharedWidgets before the tab, mirroring the TOC. MissingRecipesTab reads
+	-- addon.ItemLink.SOURCE_LABELS at FILE scope, so loading it first is not
+	-- optional — without this the file errors on load. It passed for a while
+	-- anyway, because in a whole-suite run an earlier spec had already put
+	-- ItemLink on the shared namespace; only a single-file run showed it.
+	env.loadModule("GUI/SharedWidgets.lua")
 	M = env.loadModule("GUI/MissingRecipesTab.lua").MissingRecipesTab
 	-- The locale table is a file-local in every addon file; fetch our own the
 	-- same way they do rather than reaching for a namespace field that isn't there.

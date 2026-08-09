@@ -26,22 +26,11 @@ addon.ShoppingListTab = ShoppingListTab
 -- ---------------------------------------------------------------------------
 
 --- Scan bags and return { [itemId] = count } for all items in the player's bags.
+--- Shared with Modules/ReagentWatch.lua via Compat.lua — a GUI tab carrying its
+--- own copy of a Module's bag scan gave the rule two owners across a layer
+--- boundary. Do not re-inline it.
 local function ScanBags()
-    local counts = {}
-    local numBags = addon:GetNumBagSlots()
-    for bag = 0, numBags do
-        local slots = addon:GetContainerNumSlots(bag)
-        for slot = 1, slots do
-            local info = addon:GetContainerItemInfo(bag, slot)
-            if info then
-                local itemId = info.itemID or info.itemId
-                if itemId then
-                    counts[itemId] = (counts[itemId] or 0) + (info.stackCount or 1)
-                end
-            end
-        end
-    end
-    return counts
+    return addon:ScanBagCounts()
 end
 
 --- Aggregate reagent requirements across the shopping list.
@@ -61,6 +50,20 @@ function ShoppingListTab:BuildReagentList()
         if reagent then
             local id = reagent.id
             need[id] = (need[id] or 0) + (reagent.qty * qty)
+        else
+            -- Multi-reagent cooldowns need EVERY reagent, not a featured one.
+            -- This branch was missing entirely: queueing Brilliant Glass,
+            -- Primal Mooncloth, Spellcloth or Shadowcloth added nothing to the
+            -- shopping list and said nothing about it, because those four live
+            -- in multiReagents and the loop only ever read `reagents`. A
+            -- shopping list that silently omits what you have to buy is worse
+            -- than one that is empty.
+            local multi = data.multiReagents and data.multiReagents[spellId]
+            if multi then
+                for _, rg in ipairs(multi) do
+                    need[rg.id] = (need[rg.id] or 0) + (rg.qty * qty)
+                end
+            end
         end
     end
 
@@ -183,6 +186,10 @@ function ShoppingListTab:FillShoppingList(container)
         lbl:SetCallback("OnEnter", function(_widget)
             addon.Tooltip.Owner(_widget.frame)
             GameTooltip:SetSpellByID(sid)
+            -- A spell tooltip carries no item, so the global OnTooltipSetItem
+            -- hook never fires -- these rows ARE recipes and showed none of the
+            -- detail the Professions tab gives them.
+            addon.ItemLink.AppendRecipeBlocks(GameTooltip, nil, sid)
             GameTooltip:Show()
         end)
         lbl:SetCallback("OnLeave", function() GameTooltip:Hide() end)

@@ -84,6 +84,13 @@ local function installIdentity()
 end
 M.installIdentity = installIdentity
 
+-- Tooltip minimum width was a stand-in here for about an hour on 2026-08-07 and
+-- is now the harness's, delivered at 0fffb49 on the GameTooltip CLASS — so it
+-- covers `TOGPMMissingRecipeTip` too, which the instance-level stand-in could
+-- not. `SetMinimumWidth` also came out of the frames NOOPS table, which is what
+-- had been swallowing the call. Steer it through `_G.GameTooltip` directly;
+-- `Tests/tooltipminwidth_spec.lua` is the consumer.
+
 function M.install()
 	for k, v in pairs(M.DEFAULTS) do M[k] = v end
 	-- The base env first: it owns C_ChatInfo, Enum, geterrorhandler, GetTime,
@@ -159,6 +166,7 @@ function M.install()
 	-- through `env.wow.spells` (an undeclared spell has no icon) and
 	-- `env.wow.items` + the harness's own item-load fixture.
 
+
 	-- ADD to C_AddOns, never assign it: env.wow owns C_AddOns.GetAddOnMetadata,
 	-- and a wholesale `_G.C_AddOns = { … }` would drop it. That is the same
 	-- hazard as the wholesale C_ChatInfo assignment in the Adoption log — it
@@ -216,6 +224,7 @@ M.CORE = {
 	"Locale/enUS.lua",
 	"TOGProfessionMaster.lua",
 	"Compat.lua",
+	"Modules/RecipeGate.lua",
 }
 
 --- Load the real libraries + addon core once and return the addon namespace.
@@ -548,6 +557,8 @@ function M.setRecipeDB(db)
 	-- the session (in game recipeDB is built once at load). A spec swapping
 	-- recipeDB must drop it too, or every later case reads the first one's data.
 	ns._recipeItemIndex  = nil
+	-- Same reasoning for ItemLink.ProfessionForRecipe's spell -> profession map.
+	ns._recipeProfIndex  = nil
 	ns._itemStatText   = nil
 	ns._itemTTText     = nil
 	return ns.recipeDB

@@ -57,6 +57,13 @@ local function populate()
 			             craftedItemId = 929, requiredSkill = 60 },
 			[ELIXIR] = { name = "Elixir of Fortitude", icon = 1, reagents = {},
 			             craftedItemId = 3825, requiredSkill = 120 },
+			-- Transmute: Arcanite, the shopping-list fixture below. Reagents are
+			-- the REAL ones from ProfessionDB (1 Thorium Bar + 1 Arcane Crystal)
+			-- because Data/CooldownIds.lua now derives reagents from recipeDB
+			-- rather than carrying its own copy — a fixture with no reagents
+			-- would leave the cooldown with none and is what this spec caught.
+			[17187] = { name = "Transmute: Arcanite", icon = 1, requiredSkill = 275,
+			            reagents = { [12359] = 1, [12363] = 1 }, craftedItemId = 12360 },
 		},
 		[TAILORING] = {
 			[BOLT] = { name = "Bolt of Linen", icon = 1, reagents = {},

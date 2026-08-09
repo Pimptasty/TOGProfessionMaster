@@ -128,6 +128,94 @@ describe("StartScan — when it refuses", function()
 	end)
 end)
 
+describe("StartFullScan — every way it refuses", function()
+	-- This function had NO test of any kind, so none of its four refusals had
+	-- ever executed. Found by applying the harness's review check "which of this
+	-- function's early returns has a test ever taken?" — coverage cannot answer
+	-- it, because a refusal line is evaluated on every run whichever way it goes.
+	--
+	-- It matters more than the count suggests: the throttle refusals are the ones
+	-- standing between this addon and firing `getAll` more than once per 15
+	-- minutes, which is a server-side rate limit, not a local nicety.
+
+	before_each(function()
+		AH._fullScanning   = false
+		AH._isScanning     = false
+		AH._lastFullScanAt = nil
+	end)
+
+	it("refuses while a full scan is already running", function()
+		AH._fullScanning = true
+		local ok, why = AH.StartFullScan()
+		assert.is_false(ok)
+		assert.equal("busy", why)
+	end)
+
+	it("refuses while a TARGETED scan is running", function()
+		-- Same reason, different flag. Both are checked on one line, so a test
+		-- taking only the first leaves the second unproven.
+		AH._isScanning = true
+		local ok, why = AH.StartFullScan()
+		assert.is_false(ok)
+		assert.equal("busy", why)
+	end)
+
+	it("refuses with the auction house closed", function()
+		AH.IsOpen = function() return false end
+		local ok, why = AH.StartFullScan()
+		assert.is_false(ok)
+		assert.equal("ah-closed", why)
+	end)
+
+	it("refuses on a modern client with no ReplicateItems", function()
+		AH._isModernAH = true
+		local savedAH = _G.C_AuctionHouse
+		_G.C_AuctionHouse = nil
+		local ok, why = AH.StartFullScan()
+		_G.C_AuctionHouse = savedAH
+		AH._isModernAH = false
+		assert.is_false(ok)
+		assert.equal("no-api", why)
+	end)
+
+	it("throttles a modern rescan inside the 15-minute window", function()
+		AH._isModernAH = true
+		local fired = false
+		local savedAH = _G.C_AuctionHouse
+		_G.C_AuctionHouse = { ReplicateItems = function() fired = true end }
+		AH._lastFullScanAt = ((_G.GetServerTime and _G.GetServerTime()) or os.time()) - 60
+
+		local ok, why = AH.StartFullScan(true)
+
+		_G.C_AuctionHouse = savedAH
+		AH._isModernAH = false
+		assert.is_false(ok)
+		assert.equal("throttled", why)
+		-- The point of the refusal: it must not reach the API.
+		assert.is_false(fired)
+	end)
+
+	it("throttles the legacy path when the server says getAll is on cooldown", function()
+		-- `CanSendAuctionQuery`'s SECOND return is "can do a getAll right now".
+		-- Reading the first by mistake would send a getAll the server refuses.
+		local savedCanSend = _G.CanSendAuctionQuery
+		_G.CanSendAuctionQuery = function() return true, false end
+		local queried = false
+		local savedQuery = _G.QueryAuctionItems
+		_G.QueryAuctionItems = function() queried = true end
+
+		local ok, why = AH.StartFullScan(true)
+
+		_G.CanSendAuctionQuery = savedCanSend
+		_G.QueryAuctionItems   = savedQuery
+		assert.is_false(ok)
+		assert.equal("throttled", why)
+		assert.is_false(queried)
+		-- and it did not leave the addon believing a scan is in flight
+		assert.is_false(AH.IsFullScanning())
+	end)
+end)
+
 describe("StartScan — building the queue", function()
 	local function queueAfter(items)
 		AH.StartScan(items)

@@ -37,11 +37,17 @@ local dataObj = LDB:NewDataObject("TOGProfessionMaster", {
     end,
 
     OnTooltipShow = function(tt)
-        tt:AddLine("|cffda8cffTOG Profession Master|r")
+        -- `nil, nil, nil, true` is Blizzard's own idiom for "default colour, but
+        -- opt into the engine's wrap preset" -- PaperDollFrame.lua:880 in the
+        -- Vanilla tree does exactly this. The flag has to sit fifth, so the three
+        -- colour slots must be filled even when we do not want to set a colour.
+        -- Audit finding 20: this file was outside the wrap sweep entirely, and
+        -- these lines are localised, so their length is not ours to bound.
+        tt:AddLine("|cffda8cffTOG Profession Master|r", nil, nil, nil, true)
         tt:AddLine(" ")
-        tt:AddLine(L["MinimapTooltipLeftClick"])
-        tt:AddLine(L["MinimapTooltipRightClick"])
-        tt:AddLine(L["MinimapTooltipShiftLeft"])
+        tt:AddLine(L["MinimapTooltipLeftClick"], nil, nil, nil, true)
+        tt:AddLine(L["MinimapTooltipRightClick"], nil, nil, nil, true)
+        tt:AddLine(L["MinimapTooltipShiftLeft"], nil, nil, nil, true)
     end,
 })
 
@@ -90,7 +96,7 @@ function addon:ShowMinimapButton()
     if icon then
         icon:Show("TOGProfessionMaster")
     end
-    addon:Print(L["MinimapButtonShown"])
+    self:Print(L["MinimapButtonShown"])
 end
 
 -- ---------------------------------------------------------------------------

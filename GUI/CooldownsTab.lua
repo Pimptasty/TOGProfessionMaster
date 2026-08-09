@@ -11,7 +11,6 @@
 --   • Right-click row → whisper character
 
 local _, addon = ...
-local Ace    = addon.lib
 local AceGUI = LibStub("AceGUI-3.0")
 local L      = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 
@@ -93,7 +92,8 @@ local COOLDOWN_BY_PROFESSION = {
         { id = "specialty_cloth", labelKey = "FilterSpecialtyCloth",
           isAvailable = fromTBC,
           match = spellIdMatcher(
-              26751, 31373, 36686,                                           -- TBC: Primal Mooncloth, Spellcloth, Shadowcloth
+              -- TBC: Primal Mooncloth, Spellcloth, Shadowcloth
+              26751, 31373, 36686,
               56001, 56002, 56003                                            -- Wrath: Moonshroud, Ebonweave, Spellweave
           ) },
         { id = "glacial_bag",     labelKey = "FilterGlacialBag",
@@ -145,7 +145,8 @@ local COOLDOWN_BY_PROFESSION = {
           match = spellIdMatcher(55208) },
         { id = "bs_ingot",        labelKey = "FilterBsIngot",
           isAvailable = fromMoP,
-          match = groupKeyMatcher("bs_ingot") },                             -- Balanced Trillium + Lightning Steel group
+          -- Balanced Trillium + Lightning Steel group
+          match = groupKeyMatcher("bs_ingot") },
     },
     [165] = {  -- Leatherworking
         -- Salt Shaker is an item-based cooldown (no profession requirement to
@@ -265,16 +266,15 @@ end
 --- Disable word-wrap on an AceGUI Label / InteractiveLabel widget — text
 --- that's slightly too wide for the cell truncates instead of wrapping
 --- to a second line and inflating the row height. AceGUI's internal
---- fontstring lives at widget.label; SetWordWrap(false) was added to
---- WoW FontString in patch 3.0 so we guard for older clients.
---- Module-level so DrawHeaders, DrawRow, and the group popup all share
---- the same helper — applied to every Label-style widget the cooldowns
---- table renders so wrap is impossible anywhere.
-local function nowrap(w)
-    if w and w.label and w.label.SetWordWrap then
-        w.label:SetWordWrap(false)
-    end
-end
+-- `nowrap(w)` lived here and is DELETED. Its own comment claimed "DrawHeaders,
+-- DrawRow, and the group popup all share the same helper — applied to every
+-- Label-style widget the cooldowns table renders so wrap is impossible
+-- anywhere", and NOTHING IN THE ADDON EVER CALLED IT. The comment described an
+-- intention that was never wired up, which is worse than no comment: it read as
+-- a guarantee that no-wrap was handled here, so nobody looked again.
+--
+-- If wrapping does need suppressing on this tab's labels, wire it at the sites
+-- rather than restoring a helper with no caller.
 
 -- Leak-safe wrapper for `widget.frame:SetScript(...)` on AceGUI widgets.
 -- Used here only for the rowGroup right-click handler — SimpleGroup has
@@ -483,7 +483,8 @@ local function BuildRows(readyOnly, viewMode)
                         if spellId == data.saltShakerItem then
                             cdName = GetItemInfo(spellId) or "Salt Shaker"
                         else
-                            cdName = data.cooldowns[spellId] or GetSpellInfo(spellId) or GetItemInfo(spellId) or tostring(spellId)
+                            cdName = data.cooldowns[spellId] or GetSpellInfo(spellId)
+                                     or GetItemInfo(spellId) or tostring(spellId)
                         end
                         local iconItemId    = data.iconOverrides and data.iconOverrides[spellId]
                         local outputName    = (data.outputOverrides and data.outputOverrides[spellId]) or cdName
@@ -722,6 +723,41 @@ local function CdMail_CountItemInBags(itemId)
     return total, stacks
 end
 
+--- Reagent labels whose RESTING colour tracks bag stock, so acquiring the
+--- reagent recolours the column without a tab switch.
+---
+--- ⚠ WEAK KEYS, and that is load-bearing rather than tidiness. `NewText` calls
+--- `parentFrame:CreateFontString` on every `DrawRow`, so unlike the row FRAMES —
+--- which `track()` pools — the fontstrings are NEW on each refresh. A strong
+--- table would therefore gain one entry per reagent row per refresh and never
+--- lose one, keeping every discarded fontstring alive and recolouring all of
+--- them on every `BAG_UPDATE` for the rest of the session. `__mode = "k"` lets a
+--- fontstring nobody else holds be collected and takes its closure with it.
+---
+--- Keyed BY THE FONTSTRING rather than appended to a list for the same reason in
+--- the other direction: if the fontstrings ever do become pooled, a redraw hands
+--- one to a different reagent, and an append would leave the previous item's
+--- closure recolouring it. Keying replaces the entry either way, so this is
+--- correct whichever way that changes.
+---
+--- The subscription is made once, on first use, because this file has no
+--- teardown hook of its own — between the weak keys and the keying it does not
+--- need one. `REAGENT_WATCH_UPDATED` fires on every `BAG_UPDATE`
+--- (`Modules/ReagentWatch.lua`) regardless of whether any watch is configured.
+local reagentTints = setmetatable({}, { __mode = "k" })
+local reagentTintsHooked = false
+
+local function registerReagentTint(fontString, colorFn)
+    reagentTints[fontString] = colorFn
+    if reagentTintsHooked then return end
+    reagentTintsHooked = true
+    addon:RegisterCallback("REAGENT_WATCH_UPDATED", function()
+        for fs, fn in pairs(reagentTints) do
+            fs:SetTextColor(fn())
+        end
+    end)
+end
+
 --- Greedy fulfillment plan — returns { canFulfill, reason, stacksToAttach, splitStack, totalAttachable }.
 local function CdMail_CalculateFulfillmentPlan(items, qtyNeeded, totalInBags)
     if not items or #items == 0 then
@@ -737,7 +773,8 @@ local function CdMail_CalculateFulfillmentPlan(items, qtyNeeded, totalInBags)
         local remaining = qtyNeeded - accumulated
         if item.count <= remaining then
             accumulated = accumulated + item.count
-            table.insert(attachList, { bag = item.bag, slot = item.slot, count = item.count, originalIndex = item.originalIndex })
+            table.insert(attachList, { bag = item.bag, slot = item.slot,
+                                       count = item.count, originalIndex = item.originalIndex })
         end
     end
     if accumulated == qtyNeeded then
@@ -752,7 +789,8 @@ local function CdMail_CalculateFulfillmentPlan(items, qtyNeeded, totalInBags)
                     local rem = qtyNeeded - testAcc
                     if item.count <= rem then
                         testAcc = testAcc + item.count
-                        table.insert(testList, { bag = item.bag, slot = item.slot, count = item.count, originalIndex = item.originalIndex })
+                        table.insert(testList, { bag = item.bag, slot = item.slot,
+                                                 count = item.count, originalIndex = item.originalIndex })
                     end
                 end
             end
@@ -815,7 +853,7 @@ if not StaticPopupDialogs["TOGPM_SPLIT_STACK"] then
         text = "%s",
         button1 = "Split",
         button2 = "Cancel",
-        OnAccept = function(self, data)
+        OnAccept = function(_, data)
             if not data then return end
             ClearCursor()
             local emptyBag, emptySlot
@@ -867,12 +905,14 @@ local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, re
     local reagentName = GetItemInfo(reagentId) or ("item:" .. reagentId)
     local totalInBags, stacks = CdMail_CountItemInBags(reagentId)
     if totalInBags == 0 then
-        DEFAULT_CHAT_FRAME:AddMessage(string.format("|cFFFF4444TOG Profession Master:|r You have no %s in your bags.", reagentName))
+        DEFAULT_CHAT_FRAME:AddMessage(string.format(
+            "|cFFFF4444TOG Profession Master:|r You have no %s in your bags.", reagentName))
         return
     end
     local plan = CdMail_CalculateFulfillmentPlan(stacks, reagentQty, totalInBags)
     if not plan.canFulfill then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. (plan.reason or L["MailMsgCannotFulfill"]))
+        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r "
+            .. (plan.reason or L["MailMsgCannotFulfill"]))
         return
     end
     if plan.splitStack then
@@ -904,7 +944,9 @@ local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, re
     end
     local baseName = playerName:match("^([^%-]+)") or playerName
     if SendMailNameEditBox then SendMailNameEditBox:SetText(baseName) end
-    if SendMailSubjectEditBox then SendMailSubjectEditBox:SetText(string.format(L["MailSubjectFormat"], cooldownName)) end
+    if SendMailSubjectEditBox then
+        SendMailSubjectEditBox:SetText(string.format(L["MailSubjectFormat"], cooldownName))
+    end
     local bodyBox = MailEditBox or SendMailBodyEditBox
     if bodyBox then
         bodyBox:SetText(string.format(L["MailBodyFormat"], baseName, outputName, outputName))
@@ -940,18 +982,19 @@ function CooldownsTab:Draw(container)
     local readyBtn = AceGUI:Create("Button")
     readyBtn:SetText(self._readyOnly and L["ShowAll"] or L["ReadyOnly"])
     readyBtn:SetWidth(110)
-    readyBtn:SetCallback("OnClick", function(_widget)
+    readyBtn:SetCallback("OnClick", function(widget)
         self._readyOnly = not self._readyOnly
-        _widget:SetText(self._readyOnly and L["ShowAll"] or L["ReadyOnly"])
+        widget:SetText(self._readyOnly and L["ShowAll"] or L["ReadyOnly"])
         self:RedrawTable(container)
     end)
-    readyBtn:SetCallback("OnEnter", function(_widget)
-        addon.Tooltip.Owner(_widget.frame)
+    readyBtn:SetCallback("OnEnter", function(widget)
+        addon.Tooltip.Owner(widget.frame)
         -- rawget avoids AceLocale's missing-key metatable (which fires a "Missing
         -- entry" error on ACCESS, before our `or` fallback can run). Returns the
         -- localized string when registered, nil otherwise → literal fallback.
         GameTooltip:AddLine(rawget(L, "ReadyOnlyTooltip")
-            or "Toggle: show only cooldowns that are Ready, or show every cooldown.", 1, 1, 1)
+            or "Toggle: show only cooldowns that are Ready, or show every cooldown.",
+            1, 1, 1, true)
         GameTooltip:Show()
     end)
     readyBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
@@ -1068,9 +1111,11 @@ function CooldownsTab:Draw(container)
     local viewDD = AceGUI:Create("Dropdown")
     viewDD:SetLabel("|c" .. brand .. L["FilterColView"] .. "|r")
     viewDD:SetWidth(115)
-    viewDD:SetList({ guild = L["ViewGuild"], mine = L["ViewMine"] },
-                   { "guild", "mine" })
-    viewDD:SetValue(self._viewMode or "guild")
+    -- Shared with the Browser tab via `UI.ScopeList` rather than re-listed
+    -- here. This tab passes no extras: guild/mine is the whole of its scope
+    -- filter, and the Browser's third mode is Browser-only.
+    viewDD:SetList(addon.UI.ScopeList())
+    viewDD:SetValue(self._viewMode or addon.UI.SCOPE_DEFAULT)
     addon.GUI.OffsetInputLabel(viewDD)
     viewDD:SetCallback("OnValueChanged", function(_w, _e, value)
         self._viewMode = value
@@ -1223,7 +1268,8 @@ function CooldownsTab:DrawHeaders(parent, container)
     local cw = self._colWidths or { char = 190, col2 = 456, time = 80 }
     local cols = {
         { key = "char", label = L["ColCharacter"], width = cw.char,
-          tip = "Character", tipDesc = "The guild member who has this cooldown. Right-click a row to whisper them.", justify = "LEFT" },
+          tip = "Character", justify = "LEFT",
+          tipDesc = "The guild member who has this cooldown. Right-click a row to whisper them." },
         { key = "cd",   label = L["ColCooldown"],  width = cw.col2,
           tip = "Cooldown", tipDesc = "The name of the profession cooldown spell.", justify = "LEFT" },
         { key = "time", label = L["ColTimeLeft"],  width = cw.time,
@@ -1252,7 +1298,7 @@ function CooldownsTab:DrawHeaders(parent, container)
             end,
         })
         addon.GUI.Sort.ConfigureCenteredHeaderIcon(w, self._sortCol == key, self._sortAsc, col.width)
-        
+
         -- Clean up sort icon when widget is released back to AceGUI pool
         local prevOnRelease = w.events and w.events.OnRelease
         w:SetCallback("OnRelease", function(widget)
@@ -1264,7 +1310,7 @@ function CooldownsTab:DrawHeaders(parent, container)
             end
             if prevOnRelease then prevOnRelease(widget) end
         end)
-        
+
         self._headerWidgets[key] = w
     end
 end
@@ -1407,19 +1453,10 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         return frame
     end
 
-    -- Shared whisper helper (right-click on char label OR anywhere on the row)
-    local function openWhisper(target)
-        if ChatEdit_GetActiveWindow then
-            local box = ChatEdit_GetActiveWindow()
-            if box then
-                box:SetText("/w " .. target .. " ")
-                box:SetFocus()
-                box:SetCursorPosition(#box:GetText())
-                return
-            end
-        end
-        ChatFrame_OpenChat("/w " .. target .. " ", DEFAULT_CHAT_FRAME)
-    end
+    -- Shared whisper helper (right-click on char label OR anywhere on the row).
+    -- This comment said "shared" while the function was a private copy also
+    -- present in BrowserTab; now it actually is, from GUI/SharedWidgets.lua.
+    local openWhisper = addon.UI.OpenWhisper
     local function doWhisper(anchorFrame)
         local shortName = row.shortName
         local fullKey   = row.charKey
@@ -1444,7 +1481,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         if prevOnRelease then prevOnRelease(widget) end
     end)
 
-    local function NewText(name, parentFrame, width, justify)
+    local function NewText(_name, parentFrame, width, justify)
         local fs = parentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         fs:SetHeight(ROW_HEIGHT)
         fs:SetWidth(width)
@@ -1478,7 +1515,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
                 specHit:SetScript("OnEnter", function()
                     addon.Tooltip.Owner(specHit)
                     local specName = GetSpellInfo(specSpellId) or ""
-                    GameTooltip:SetText(specName, 1, 1, 1)
+                    GameTooltip:SetText(specName, 1, 1, 1, 1, true)
                     local bonusLine = (specBonusType == "guaranteed")
                         and L["SpecBonusGuaranteedDouble"]
                         or  L["SpecBonusProcChance"]
@@ -1532,8 +1569,8 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
     end)
     charHit:SetScript("OnEnter", function()
         addon.Tooltip.Owner(charHit)
-        GameTooltip:SetText(row.shortName, 1, 1, 1)
-        GameTooltip:AddLine(L["TooltipWhisperRightClick"], 0.7, 0.7, 0.7)
+        GameTooltip:SetText(row.shortName, 1, 1, 1, 1, true)
+        GameTooltip:AddLine(L["TooltipWhisperRightClick"], 0.7, 0.7, 0.7, true)
         GameTooltip:Show()
     end)
     charHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1638,9 +1675,12 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         cdHit:SetScript("OnEnter", function()
             addon.Tooltip.Owner(cdHit)
             if row.isTransmuteGroup then
-                GameTooltip:AddLine(L["TooltipClickTransmutes"], 1, 1, 1)
+                GameTooltip:AddLine(L["TooltipClickTransmutes"], 1, 1, 1, true)
             else
-                GameTooltip:AddLine(string.format(L["TooltipClickDetailsFormat"], row.cdName or L["TooltipClickDetailsFallback"]), 1, 1, 1)
+                GameTooltip:AddLine(
+                    string.format(L["TooltipClickDetailsFormat"],
+                        row.cdName or L["TooltipClickDetailsFallback"]),
+                    1, 1, 1, true)
             end
             GameTooltip:Show()
         end)
@@ -1657,6 +1697,11 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
                 else
                     GameTooltip:SetHyperlink("item:" .. row.spellId)
                 end
+                -- Same block the Professions tab shows. The `spell:` branch is
+                -- why this is explicit: the global tooltip hook is
+                -- OnTooltipSetItem, so a spell tooltip inherits nothing, and
+                -- cooldown rows are recipes (transmutes, Mooncloth, salts).
+                addon.ItemLink.AppendRecipeBlocks(GameTooltip, nil, row.spellId)
                 GameTooltip:Show()
             end
         end)
@@ -1673,15 +1718,38 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         reagentHit:RegisterForClicks("AnyUp")
         local reagentLbl = NewText(nil, reagentHit, reagentW, "LEFT")
         reagentLbl:SetPoint("LEFT", reagentHit, "LEFT", 0, 0)
+        -- Resting colour reflects BAG STOCK, the same rule the group popup
+        -- already used: WHITE when this character holds enough of the reagent
+        -- to fulfil the mail (>= reagentQty), GREY otherwise, so a glance down
+        -- the column shows which cooldowns you can actually feed.
+        --
+        -- This row used to hard-code `|cffaaaaaa`, so it was grey whether you
+        -- held the reagent or not — the popup and the row it expands from
+        -- disagreed about the same fact. The colour is set with SetTextColor
+        -- rather than an inline escape precisely so the stock check has
+        -- somewhere to write; an escape in the text wins over SetTextColor and
+        -- would have made this look like a broken stock check instead.
+        local reagentQty = row.reagentQty or 1
+        local function reagentRestColor()
+            if (CdMail_CountItemInBags(itemId)) >= reagentQty then return 1, 1, 1, 1 end
+            return 0.65, 0.65, 0.65, 1
+        end
+        reagentLbl:SetTextColor(reagentRestColor())
+        -- Live, because acquiring the reagent while the tab is open is the
+        -- normal case. REAGENT_WATCH_UPDATED fires on every BAG_UPDATE
+        -- (Modules/ReagentWatch.lua) whether or not any watch is configured,
+        -- so it is the signal already in the addon for exactly this.
+        registerReagentTint(reagentLbl, reagentRestColor)
+
         local reagentName = GetItemInfo(itemId)
         if reagentName then
-            reagentLbl:SetText("|cffaaaaaa" .. reagentName .. "|r")
+            reagentLbl:SetText(reagentName)
         else
             reagentLbl:SetText("")
             local rItem = Item:CreateFromItemID(itemId)
             rItem:ContinueOnItemLoad(function()
                 local name = rItem:GetItemName()
-                if name then reagentLbl:SetText("|cffaaaaaa" .. name .. "|r") end
+                if name then reagentLbl:SetText(name) end
             end)
         end
         reagentHit:SetScript("OnEnter", function()
@@ -1719,7 +1787,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
             end)
             ahBtn:SetScript("OnEnter", function()
                 addon.Tooltip.Owner(ahBtn)
-                GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1)
+                GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1, 1, true)
                 GameTooltip:AddLine(L["TooltipAHDescReagent"], nil, nil, nil, true)
                 GameTooltip:Show()
             end)
@@ -1742,7 +1810,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
             end)
             bankBtn:SetScript("OnEnter", function()
                 addon.Tooltip.Owner(bankBtn)
-                GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1)
+                GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
                 GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
                 GameTooltip:Show()
             end)
@@ -1766,8 +1834,9 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         end)
         mailBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(mailBtn)
-            GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1)
-            GameTooltip:AddLine(L["MailBtnTooltipDesc"] or "Open a mailbox, then click to attach reagents.", nil, nil, nil, true)
+            GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1, 1, true)
+            GameTooltip:AddLine(L["MailBtnTooltipDesc"]
+                or "Open a mailbox, then click to attach reagents.", nil, nil, nil, true)
             GameTooltip:Show()
         end)
         mailBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1795,7 +1864,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         alertBtn:SetPoint("LEFT", rf, "LEFT", cw.char + cw.col2 + cw.time, 0)
         local alertLbl = NewText(nil, alertBtn, 18, "CENTER")
         alertLbl:SetPoint("CENTER", alertBtn, "CENTER", 0, 0)
-        local function paint(btn, armed)
+        local function paint(_btn, armed)
             alertLbl:SetText(armed and "|cff00ffff!|r" or "|cff666666!|r")
         end
         paint(alertBtn, CA:IsArmed(row))
@@ -1806,7 +1875,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         alertBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(alertBtn)
             local enabled = CA:IsArmed(row)
-            GameTooltip:SetText(enabled and L["CooldownAlertDisable"] or L["CooldownAlertEnable"], 1, 1, 1)
+            GameTooltip:SetText(enabled and L["CooldownAlertDisable"] or L["CooldownAlertEnable"], 1, 1, 1, 1, true)
             GameTooltip:Show()
         end)
         alertBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1981,6 +2050,9 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
             if spellId then
                 addon.Tooltip.Owner(nameZone)
                 GameTooltip:SetHyperlink("spell:" .. spellId)
+                -- Explicit: a `spell:` tooltip carries no item, so the global
+                -- OnTooltipSetItem hook never fires on it.
+                addon.ItemLink.AppendRecipeBlocks(GameTooltip, nil, spellId)
                 showAbovePopup()
             elseif recipeId then
                 addon.Tooltip.Owner(nameZone)
@@ -2078,7 +2150,7 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
                 end)
                 ahBtn:SetScript("OnEnter", function()
                     addon.Tooltip.Owner(ahBtn)
-                    GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1)
+                    GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1, 1, true)
                     GameTooltip:AddLine(L["TooltipAHDescReagent"], nil, nil, nil, true)
                     showAbovePopup()
                 end)
@@ -2111,7 +2183,7 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
                 end)
                 bankBtn:SetScript("OnEnter", function()
                     addon.Tooltip.Owner(bankBtn)
-                    GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1)
+                    GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
                     GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
                     showAbovePopup()
                 end)
@@ -2157,8 +2229,9 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
             end)
             mailBtn:SetScript("OnEnter", function()
                 addon.Tooltip.Owner(mailBtn)
-                GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1)
-                GameTooltip:AddLine(L["MailBtnTooltipDesc"] or "Open a mailbox, then click to mail reagents to this player.", nil, nil, nil, true)
+                GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1, 1, true)
+                GameTooltip:AddLine(L["MailBtnTooltipDesc"]
+                    or "Open a mailbox, then click to mail reagents to this player.", nil, nil, nil, true)
                 showAbovePopup()
             end)
             mailBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)

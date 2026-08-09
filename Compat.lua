@@ -114,6 +114,31 @@ else
     end
 end
 
+--- Every item in the player's bags as { [itemId] = count }.
+---
+--- Lives here, next to the container shims it is built from, because it was
+--- previously written out twice — `ScanBags` in GUI/ShoppingListTab.lua and
+--- `ScanBagsOnly` in Modules/ReagentWatch.lua — with byte-identical bodies on
+--- opposite sides of the GUI/Modules layer boundary. Two owners for one rule,
+--- and in particular two places to remember the `info.itemID or info.itemId`
+--- shim, which exists because the two GetContainerItemInfo branches above
+--- spell the field differently.
+function addon:ScanBagCounts()
+    local counts = {}
+    for bag = 0, self:GetNumBagSlots() do
+        for slot = 1, self:GetContainerNumSlots(bag) do
+            local info = self:GetContainerItemInfo(bag, slot)
+            if info then
+                local itemId = info.itemID or info.itemId
+                if itemId then
+                    counts[itemId] = (counts[itemId] or 0) + (info.stackCount or 1)
+                end
+            end
+        end
+    end
+    return counts
+end
+
 -- ---------------------------------------------------------------------------
 -- AddOn loaded check
 -- The C_AddOns branch is the one that runs, on every flavour this addon
@@ -211,6 +236,14 @@ function addon.Bank.GetStock(itemId)
 end
 
 --- Returns sorted array of { name, count } for bankers that hold itemId.
+-- The per-banker count SUMS every matching entry, because a bank holds an item
+-- as one entry per stack -- 60 Copper Bars in a 20-stack bank is three entries,
+-- not one. Taking the first match and breaking (what this did until v1.0.7)
+-- under-reported every multi-stack reagent, which is most of them. It was wrong
+-- in two visible places: the tooltip's "Bankers:" count, and `ShowRequestDialog`,
+-- which sums these counts into `totalStock` and caps `maxRequestable` from it --
+-- so a player could not request more than the first stack. `GetStock` above and
+-- TOGBankClassic's own renderer both sum; this is the one that disagreed.
 function addon.Bank.GetBanksWithItem(itemId)
     local TOG = _G["TOGBankClassic_Guild"]
     if not TOG then return {} end
@@ -221,11 +254,14 @@ function addon.Bank.GetBanksWithItem(itemId)
     for _, bankName in ipairs(banks) do
         local alt = alts[bankName]
         if alt and alt.items then
+            local total = 0
             for _, entry in ipairs(alt.items) do
-                if entry.ID == itemId and (entry.Count or 0) > 0 then
-                    table.insert(result, { name = bankName, count = entry.Count })
-                    break
+                if entry.ID == itemId then
+                    total = total + (entry.Count or 0)
                 end
+            end
+            if total > 0 then
+                table.insert(result, { name = bankName, count = total })
             end
         end
     end

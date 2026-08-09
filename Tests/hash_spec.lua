@@ -271,10 +271,28 @@ describe("roll-ups", function()
 		HashManager:InvalidateAccountChars(DS, gdb, "Alice-Realm")
 		HashManager:InvalidateCharSkills(DS, gdb, "Alice-Realm")
 		HashManager:InvalidateCharProfessions(DS, gdb, "Alice-Realm")
-		assert.equal(HashManager:ComputeGuildCooldownsHash(DS, gdb), gdb.hashes["guild:cooldowns"].hash)
-		assert.equal(HashManager:ComputeGuildAccountCharsHash(DS, gdb), gdb.hashes["guild:accountchars"].hash)
-		assert.equal(HashManager:ComputeGuildSkillsHash(DS, gdb), gdb.hashes["guild:skills"].hash)
-		assert.equal(HashManager:ComputeGuildProfessionsHash(DS, gdb), gdb.hashes["guild:professions"].hash)
+		-- Driven from the addon's OWN prefix→key map rather than a copy of it, so
+		-- adding a fifth leaf family cannot leave this assertion behind. Audit
+		-- finding 5: the four hardcoded prefixes that used to live in
+		-- HashManager were a second copy of exactly this list.
+		local families = HashManager:RollupFamilies()
+		local checked  = 0
+		for prefix, rollupKey in pairs(families) do
+			assert.equal(HashManager:ComposeRollup(DS, gdb, prefix),
+				gdb.hashes[rollupKey].hash,
+				"stored roll-up differs from a fresh composition for " .. prefix)
+			checked = checked + 1
+		end
+		-- A loop over an empty table is a test that asserts nothing.
+		assert.equal(4, checked)
+	end)
+
+	it("rejects a prefix that is not a known leaf family", function()
+		-- The typo case. Four hardcoded wrappers could not have caught this;
+		-- one function driven by the map returns an error instead of nil.
+		assert.has_error(function()
+			HashManager:ComposeRollup(DS, populated(), "cooldowns:")
+		end)
 	end)
 
 	it("do not confuse one prefix with another", function()
@@ -284,7 +302,7 @@ describe("roll-ups", function()
 		gdb.hashes["accountchars:A"] = { hash = 2, updatedAt = 20 }
 		gdb.hashes["skills:A"]       = { hash = 3, updatedAt = 30 }
 		gdb.hashes["professions:A"]  = { hash = 4, updatedAt = 40 }
-		local cd = HashManager:ComputeGuildCooldownsHash(DS, gdb)
+		local cd = HashManager:ComposeRollup(DS, gdb, "cooldown:")
 		assert.equal(DS:ComputeStructuredHash({ ["cooldown:A"] = 1 }), cd)
 	end)
 end)

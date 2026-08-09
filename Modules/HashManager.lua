@@ -285,22 +285,6 @@ local function rollupTime(hashes, prefix)
     return maxT
 end
 
-function HashManager:ComputeGuildCooldownsHash(DS, gdb)
-    return rollupOver(ensureHashes(gdb), "cooldown:", DS)
-end
-
-function HashManager:ComputeGuildAccountCharsHash(DS, gdb)
-    return rollupOver(ensureHashes(gdb), "accountchars:", DS)
-end
-
-function HashManager:ComputeGuildSkillsHash(DS, gdb)
-    return rollupOver(ensureHashes(gdb), "skills:", DS)
-end
-
-function HashManager:ComputeGuildProfessionsHash(DS, gdb)
-    return rollupOver(ensureHashes(gdb), "professions:", DS)
-end
-
 --- Recompose a roll-up from the STORED child tokens — never by re-hashing data.
 --- That is the rule the whole owner-authoritative model rests on: an adopted
 --- token must reach the roll-up exactly as its owner minted it, or two clients
@@ -312,6 +296,37 @@ local ROLLUP_OF = {
     ["skills:"]       = "guild:skills",
     ["professions:"]  = "guild:professions",
 }
+
+--- Compose the roll-up for one prefix WITHOUT STORING IT. Verification only.
+---
+--- Audit finding 5. This replaced four one-line functions —
+--- `ComputeGuildCooldownsHash`, `…AccountCharsHash`, `…SkillsHash`,
+--- `…ProfessionsHash` — each of which hardcoded one prefix. That made the four
+--- prefixes a second list, four lines above the `ROLLUP_OF` table that exists so
+--- "the prefix and roll-up key can't drift apart"; the file stated the invariant
+--- and then broke it immediately above itself. Now there is one list, and an
+--- unknown prefix is an error rather than a silent nil.
+---
+--- ⚠ THIS DOES NOT STORE, AND NOTHING IN PRODUCTION CALLS IT. Every live path
+--- goes through `refreshRollup` below, which composes *and* writes the entry via
+--- `setEntry`. That asymmetry is the hazard the finding named: a plausible name
+--- invites a caller who then gets a value the rest of the addon never sees. If
+--- you are reaching for this in production code, you want `refreshRollup`.
+---
+--- It is kept, rather than deleted, because it is what lets `hash_spec` assert
+--- that the STORED roll-up equals a freshly-composed one — the check that would
+--- catch `refreshRollup` storing a stale or wrong value. `rollupOver` is a local,
+--- so deleting this would take that assertion with it.
+function HashManager:ComposeRollup(DS, gdb, prefix)
+    assert(ROLLUP_OF[prefix], "ComposeRollup: unknown leaf prefix " .. tostring(prefix))
+    return rollupOver(ensureHashes(gdb), prefix, DS)
+end
+
+--- The prefix → roll-up-key map, for specs that need to iterate every family
+--- without writing the list down a third time.
+function HashManager:RollupFamilies()
+    return ROLLUP_OF
+end
 local function refreshRollup(hashes, prefix, DS)
     setEntry(hashes, ROLLUP_OF[prefix],
         rollupOver(hashes, prefix, DS),

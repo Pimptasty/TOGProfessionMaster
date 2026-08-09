@@ -30,7 +30,15 @@
       "Bash(lua Tests/wowapi/tools/verify-addons.lua \"c:/Program Files \\(x86\\)/World of Warcraft/_classic_era_/Interface/AddOns\" TOGProfessionMaster)",
       "Bash(markdownlint docs/DEPENDENCY_CONTRACTS.md)",
       "Bash(COVERAGE_MIN=0 lua Tests/wowapi/coverage.lua GUI/SharedWidgets.lua Tooltip.lua GUI/BrowserTab.lua GUI/MissingRecipesTab.lua)",
-      "Bash(COVERAGE_MIN=0 lua Tests/wowapi/coverage.lua Tooltip.lua)"
+      "Bash(COVERAGE_MIN=0 lua Tests/wowapi/coverage.lua Tooltip.lua)",
+      "ToolSearch",
+      "Monitor(A=\"c:/Program Files (x86)/World of Warcraft/_classic_era_/Interface/AddOns\"\nD=\"f:/Game Development/WoWAPITesting\"\nsnap() {\n  find \"$A\" -maxdepth 3 \\( -name HARNESS_CONTRACT.md -o -name AUDIT.md -o -name DEPENDENCY_CONTRACTS.md \\) -printf '%T@ %p\\n' 2>/dev/null\n  find \"$D/docs/contracts\" \"$D/README.md\" -maxdepth 1 -name '*.md' -printf '%T@ %p\\n' 2>/dev/null\n  find \"$D/env\" -maxdepth 2 -name '*.lua' -printf '%T@ %p\\n' 2>/dev/null\n}\nprev=$(snap)\nwhile true; do\n  sleep 20\n  cur=$(snap) || continue\n  [ \"$cur\" = \"$prev\" ] && continue\n  comm -13 <(printf '%s\\n' \"$prev\" | sort) <(printf '%s\\n' \"$cur\" | sort) 2>/dev/null \\\n    | sed -e \"s#^[0-9.]* ##\" -e \"s#$A/##\" -e \"s#$D/##\" -e 's#/Tests/HARNESS_CONTRACT.md##' \\\n    | while read -r f; do [ -n \"$f\" ] && echo \"CHANGED: $f\"; done\n  prev=$cur\ndone)",
+      "mcp__checks__run_tests",
+      "Edit(//c/Program Files (x86)/World of Warcraft/_classic_era_/Interface/AddOns/TOGProfessionMaster/**)",
+      "mcp__checks__lint_file",
+      "mcp__checks__lint_markdown",
+      "mcp__bank__bank_write",
+      "Monitor"
     ],
     "additionalDirectories": [
       "f:\\game development\\wowapitesting\\docs\\contracts"

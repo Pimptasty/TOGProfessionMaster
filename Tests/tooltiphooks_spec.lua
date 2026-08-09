@@ -66,6 +66,10 @@ end
 
 setup(function()
 	ns = env.initDb()
+	-- SharedWidgets before Tooltip, mirroring the TOC — Tooltip.lua reaches
+	-- addon.ItemLink (Tooltip.lua:334) and errors without it. A whole-suite run
+	-- hid this: another spec had already populated it on the shared namespace.
+	env.loadModule("GUI/SharedWidgets.lua")
 	env.loadModule("Tooltip.lua")
 	Ace = ns.lib
 end)

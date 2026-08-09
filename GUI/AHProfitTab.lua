@@ -157,11 +157,9 @@ local function enabledSourcesForMode(mode)
     return out
 end
 
-local function countKeys(t)
-    local n = 0
-    for _ in pairs(t or {}) do n = n + 1 end
-    return n
-end
+-- Resolved at call time, not captured at file scope — audit finding 6; see the
+-- note in CraftingTab.lua.
+local function countKeys(t) return addon.UI.Count(t) end
 
 function ProfitTab:GetFilter(mode)
     mode = mode == "history" and "history" or "live"
@@ -473,9 +471,7 @@ function ProfitTab:RefreshRowsInPlace(resetToTop)
     self:SetCountText(BRAND .. ("Rows: %d"):format(#self._rows) .. RESET)
 end
 
-local function charShort(charKey)
-    return (charKey and charKey:match("^([^%-]+)")) or charKey or "?"
-end
+local function charShort(charKey) return addon.UI.ShortName(charKey) end
 
 local function moneyText(copper)
     if not addon.Price or type(copper) ~= "number" then return "" end
@@ -1031,28 +1027,39 @@ function ProfitTab:BuildPool(parent)
                 GameTooltip:SetItemByID(row.itemId)
             else
                 -- Fallback if no item info available
-                GameTooltip:SetText(row.recipe, 1, 1, 1)
+                GameTooltip:SetText(row.recipe, 1, 1, 1, 1, true)
             end
             
             -- Add profit planner details
             GameTooltip:AddLine(" ")  -- Blank line separator
-            GameTooltip:AddLine("Profit Planner:", 1, 0.82, 0)
-            GameTooltip:AddLine("Profession: " .. row.profession, 0.9, 0.9, 0.9)
-            GameTooltip:AddLine("Crafters: " .. row.crafters, 0.9, 0.9, 0.9)
+            GameTooltip:AddLine("Profit Planner:", 1, 0.82, 0, true)
+            -- wrap = true on both. `row.crafters` is a comma-joined list of every
+            -- guildmate who can make the item, so on a popular recipe it is the
+            -- longest line on the tooltip by a wide margin — and without the flag
+            -- it cannot break, so it sets the width of the whole frame. The line
+            -- two below already passed `true`; these did not.
+            GameTooltip:AddLine("Profession: " .. row.profession, 0.9, 0.9, 0.9, true)
+            GameTooltip:AddLine("Crafters: " .. row.crafters, 0.9, 0.9, 0.9, true)
             if row.source then
                 GameTooltip:AddLine("Price Source: " .. (addon.Price and addon.Price.ColorizeSource(row.source) or row.source), 1, 1, 1, true)
             else
                 GameTooltip:AddLine("Price Source: |cff888888No price|r", 1, 1, 1, true)
             end
             if row.source and row.age and row.age > 14 * 24 * 60 * 60 then
-                GameTooltip:AddLine("Price is stale (>14 days old)", 1, 0.82, 0)
+                GameTooltip:AddLine("Price is stale (>14 days old)", 1, 0.82, 0, true)
             end
+
+            -- The same recipe block every other tab shows. Explicit rather than
+            -- inherited: the global hook is OnTooltipSetItem, so the SetText
+            -- fallback above (a recipe with no resolvable item) carried nothing
+            -- at all, and the block renders once per tooltip either way.
+            addon.ItemLink.AppendRecipeBlocks(GameTooltip, row.profId, row.recipeId, row.itemId)
 
             -- Click hints (the whole tooltip in this tab is intentionally plain
             -- English, matching the lines above).
             GameTooltip:AddLine(" ")
-            GameTooltip:AddLine("Click to open in the Crafting tab", 0.4, 0.8, 1)
-            GameTooltip:AddLine("Shift-click to link in chat", 0.6, 0.6, 0.6)
+            GameTooltip:AddLine("Click to open in the Crafting tab", 0.4, 0.8, 1, true)
+            GameTooltip:AddLine("Shift-click to link in chat", 0.6, 0.6, 0.6, true)
 
             GameTooltip:Show()
         end)

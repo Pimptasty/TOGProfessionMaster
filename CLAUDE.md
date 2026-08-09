@@ -169,6 +169,14 @@ All tabs follow the same structure:
 2. Wait for their answer before writing the changelog entry or running `git commit`.
 3. Stage **all** modified and untracked addon files — never cherry-pick only the files you worked on. Run `git status` first and add everything relevant.
 
+**⚠ WHEN to ask, because getting the timing wrong is worse than not asking.** Steps 1-2 belong to **commit time** and to writing **release documentation** — patch notes, the CurseForge description, a tag message. That is the whole of their scope.
+
+**Never ask about the version in a reply to a bug report, mid-diagnosis, in a "here's what I found" message, or in a status summary.** When the user has just said something is broken, an unrelated procedural question reads as changing the subject to dodge being told you got it wrong — that is how it lands whatever you intended. It happened twice in one session on 2026-08-07 and was the single thing that made the user angriest.
+
+Finish the diagnosis, fix the defect, *then* ask when you actually reach the commit. If a version number has to appear in a code comment while you are still working, pick the obvious next one, say so in a clause, and confirm it at commit time rather than blocking.
+
+Context for why it can wait: the user develops against an **unpackaged working copy**. The TOC's `@project-version@` is only substituted by the packager at release, so a dev install renders the placeholder literally and nothing being tested depends on the number.
+
 **Release tagging (Always Follow):**
 
 - Release tags MUST use the template **`TOGProfessionMaster-vX.Y.Z`** (e.g. `TOGProfessionMaster-v0.9.1`) — **never** a bare `vX.Y.Z`. Every release tag in this repo follows this format; the BigWigs packager + CurseForge release rely on it.

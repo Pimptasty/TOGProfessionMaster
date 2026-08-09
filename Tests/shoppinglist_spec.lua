@@ -224,3 +224,88 @@ describe("BuildReagentList — presentation", function()
 		assert.same({}, tab:BuildReagentList())
 	end)
 end)
+
+describe("BuildReagentList — multi-reagent cooldowns", function()
+	-- The bug this covers shipped and was silent. BuildReagentList only ever
+	-- read `reagents` / `transReagents`, so a cooldown whose recipe takes
+	-- SEVERAL reagents — Brilliant Glass, Primal Mooncloth, Spellcloth,
+	-- Shadowcloth — contributed NOTHING to the list. You queued it, the tab
+	-- said nothing was missing, and you went to the auction house empty-handed.
+	--
+	-- It matters more now than it did: reagents are derived from ProfessionDB
+	-- rather than a hand-written primary-only table, so any cooldown whose real
+	-- recipe has more than one reagent lands in `multiReagents`.
+	local BRILLIANT_GLASS = 47280
+	local GEM_A, GEM_B = 23117, 23077
+
+	before_each(function()
+		ns.GetCooldownData = function()
+			return {
+				reagents = {}, transReagents = {},
+				multiReagents = {
+					[BRILLIANT_GLASS] = {
+						{ id = GEM_A, qty = 3 },
+						{ id = GEM_B, qty = 3 },
+					},
+				},
+			}
+		end
+	end)
+
+	it("counts EVERY reagent, not just one of them", function()
+		queue(BRILLIANT_GLASS, 1)
+		assert.equal(3, rowFor(GEM_A).needed)
+		assert.equal(3, rowFor(GEM_B).needed)
+	end)
+
+	it("multiplies each reagent by the queued quantity", function()
+		queue(BRILLIANT_GLASS, 4)
+		assert.equal(12, rowFor(GEM_A).needed)
+		assert.equal(12, rowFor(GEM_B).needed)
+	end)
+
+	it("adds a multi-reagent craft's needs to a single-reagent craft's", function()
+		-- The aggregation path: two queued crafts sharing nothing still both
+		-- have to appear, and one must not shadow the other.
+		ns.GetCooldownData = function()
+			return {
+				reagents = { [TRANSMUTE_ARCANITE] = { id = THORIUM, qty = 1 } },
+				transReagents = {},
+				multiReagents = { [BRILLIANT_GLASS] = { { id = GEM_A, qty = 3 } } },
+			}
+		end
+		queue(TRANSMUTE_ARCANITE, 2)
+		queue(BRILLIANT_GLASS, 1)
+		assert.equal(2, rowFor(THORIUM).needed)
+		assert.equal(3, rowFor(GEM_A).needed)
+	end)
+
+	it("sums a reagent shared between a single- and a multi-reagent craft", function()
+		ns.GetCooldownData = function()
+			return {
+				reagents = { [TRANSMUTE_ARCANITE] = { id = GEM_A, qty = 1 } },
+				transReagents = {},
+				multiReagents = { [BRILLIANT_GLASS] = { { id = GEM_A, qty = 3 } } },
+			}
+		end
+		queue(TRANSMUTE_ARCANITE, 2)
+		queue(BRILLIANT_GLASS, 1)
+		assert.equal(5, rowFor(GEM_A).needed)   -- 2x1 + 1x3
+	end)
+
+	it("prefers the featured single reagent when a cooldown has both", function()
+		-- Build() puts a cooldown in one table or the other, never both. If that
+		-- ever changes, the single entry wins and the multi list must not be
+		-- double-counted on top of it.
+		ns.GetCooldownData = function()
+			return {
+				reagents = { [BRILLIANT_GLASS] = { id = GEM_A, qty = 1 } },
+				transReagents = {},
+				multiReagents = { [BRILLIANT_GLASS] = { { id = GEM_B, qty = 3 } } },
+			}
+		end
+		queue(BRILLIANT_GLASS, 1)
+		assert.equal(1, rowFor(GEM_A).needed)
+		assert.is_nil(rowFor(GEM_B))
+	end)
+end)

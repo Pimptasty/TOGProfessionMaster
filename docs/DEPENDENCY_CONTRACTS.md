@@ -1336,3 +1336,224 @@ custom tooltip is the better option — you keep full control of layout *and* ge
 > (`:166`, `:177`). With both off, RecipeMaster adds nothing to *any* tooltip, including the game's
 > own — so confirm its lines are visible on a normal tooltip in the same session, which you already
 > did last round and which was exactly the right control.
+
+---
+
+## 10. ItemDB — vendor BUY price, so `Data/VendorPrices.lua` can leave this repo
+
+**Status:** open request. Raised 2026-08-07. **The full text lives in
+[`ItemDB/docs/DEPENDENCY_CONTRACTS.md` §7](../../ItemDB/docs/DEPENDENCY_CONTRACTS.md)** —
+written there at the user's direction, and ItemDB is implementing it now.
+
+Deliberately **not** duplicated here. A contract copied into two files is the same drift
+problem this section exists to solve, one level up; ItemDB's copy is the one with the
+responses appended to it. What follows is only what TOGProfessionMaster owes.
+
+### The ask, in one line
+
+`LibItemDB-1.0:GetVendorBasePrice(itemID)` → copper or nil, plus the shipped data behind it
+(3,023 items, ~41 KB).
+
+### Why it left this repo
+
+`Data/VendorPrices.lua` is **item** data — what a vendor charges — sitting in a profession
+addon. It holds 93 rows only because it is filtered to reagents that appear in recipes,
+which is an artifact of where it lives rather than anything about the data. It was also the
+last generated file TOGPM still stored after the 2026-08-07 migration moved everything else
+into ProfessionDB, and it is the reason ProfessionDB's builder still writes across a repo
+boundary.
+
+**The client cannot answer this.** `GetItemInfo` returns `sellPrice` (what a vendor pays
+you) and there is no `buyPrice` field anywhere in `ItemDocumentation.lua`. The only client
+route is `GetMerchantItemInfo`, which needs an open merchant window.
+
+### What is already done on this side
+
+`Modules/Price.lua` tier 2c **already calls it**, feature-detected on the method rather than
+a MINOR, so it is inert against today's LibItemDB and starts working the moment the API
+ships — no further change here. Seven specs in `Tests/price_spec.lua` pin the behaviour
+before the API exists, including the fallbacks and the tier order.
+
+### What is left, and the trigger
+
+**Delete `Data/VendorPrices.lua` and its five TOC lines — but only on ItemDB's word that the
+API is live**, never on a timer or on this file being marked delivered. §1 of ItemDB's own
+contract file records why: it was told "delete your copies, nothing points at them", which
+was true of the *call sites* and false of the *implementations*, and a capability nearly
+evaporated between two repos each believing the other had it. Verify
+`LibItemDB-1.0.GetVendorBasePrice` exists and answers before deleting anything.
+
+ProfessionDB then drops `emit_vendor_prices` and its cross-repo write.
+
+### The cost of the workaround, while it stands
+
+2,930 vendor-sold items that could be priced are not; only those that happen to be crafting
+reagents are covered. **Nothing is broken** — tier 2c answers today for the cases TOGPM
+actually reaches. This is a boundary fix and a coverage win, not a bug report.
+
+### The trap to carry into any UI that shows it
+
+It is the **base** price — what a Neutral player pays. Reputation discounts are applied
+server-side at purchase, so tiers 2a and 2b (Auctionator's vendor cache, and our own
+`MERCHANT_SHOW` capture of what this character was actually charged) are **more accurate for
+a player with standing**. That is why 2c is last in the chain and must stay last.
+
+> **Correction — 2026-08-07. This section describes the CRAFTING-COST path only. It is not
+> what the tooltip's Vendor Sell Price row uses, and an earlier version of this file implied
+> it was.**
+>
+> `GetVendorBasePrice` answers "what does this cost to BUY", and `Modules/Price.lua` tier 2c
+> uses it correctly for cost-to-craft. Everything above stands for that consumer.
+>
+> **The tooltip row is a different number and a different source.** It shows what a vendor
+> **pays you** — `GetItemInfo`'s eleventh return, `sellPrice` — deliberately matching
+> TradeSkillMaster's "Vendor Sell Price" line so players without TSM get the same figure. It
+> uses no library at all.
+>
+> The two differ by roughly 4x (Schematic: Accurate Scope: 500 to sell, 2000 to buy), so
+> conflating them puts a number on screen wrong by a factor of four. I did conflate them:
+> the row was built on `GetVendorBasePrice` first, and ItemDB's own §4 —
+> *"Vendor price needs no addon, `GetItemInfo` returns `sellPrice` natively"* — had already
+> said what was needed before this contract was raised. Recorded in ItemDB's §7 as well.
+
+---
+
+## 11. ItemDB — `AttachExternalRecipeInfo` makes the host tooltip wider than the game's
+
+**Status:** open request. Raised 2026-08-08. TOGPM ships a local reference implementation
+(v1.0.7).
+
+### The defect, as a player sees it
+
+A user hovered *Schematic: Advanced Target Dummy* in TOGPM's recipe browser and reported the
+tooltip as visibly wider than a stock WoW one. The line setting the width is ATT's source
+breadcrumb:
+
+```text
+ATT > Zone > Kalimdor > Tanaris > Professions > Engineering > Buzzek Bracketswing > Miscellaneous
+```
+
+It is not a guess which line does it. TOGPM's own `/togpm` width probe measured this exact item:
+**ATT's breadcrumb at 583.1px against a 603.6px frame** — the difference being the tooltip
+template's 10px inset per side. Recorded at `TOGProfessionMaster.lua:1370`.
+
+### The cause, traced
+
+`lib:AttachExternalRecipeInfo` hands the caller's tooltip to ATT's own renderer. That renderer
+only passes the `wrap` argument when the entry it is drawing carries `entry.wrap`:
+
+```lua
+-- AllTheThings/src/Modules/Tooltip.lua:665-678
+elseif left then
+    if entry.r then
+        if entry.wrap then tooltip:AddLine(left, entry.r, entry.g, entry.b, 1);
+        else               tooltip:AddLine(left, entry.r, entry.g, entry.b);  end   -- <- no wrap
+    else
+        if entry.wrap then tooltip:AddLine(left, nil, nil, nil, 1);
+        else               tooltip:AddLine(left);                            end   -- <- no wrap
+    end
+end
+```
+
+Breadcrumb entries do not set `wrap`. The `wrap` parameter's documented default is **false**
+(`FrameAPITooltipDocumentation.lua:72`), and an unwrapped line does not merely fail to wrap — it
+**ignores the engine's preset width and stretches the whole frame**, dragging every other addon's
+content out with it. The full write-up is in the shared harness at `Tests/wowapi/docs/TOOLTIPS.md`.
+
+**This is not ATT misbehaving.** ATT does the same on its own hooks; a player running ATT sees wide
+tooltips everywhere and that is ATT's styling choice on its own surface. It becomes ItemDB's problem
+because the bridge lets a *consumer's* tooltip inherit it — a consumer that has otherwise put the
+wrap flag on every line it owns.
+
+### What is being asked for
+
+An opt-in that keeps ATT's content and drops its width behaviour:
+
+```lua
+lib:AttachExternalRecipeInfo(tooltip, spellID, { wrap = true })
+--> identical return contract (true only when lines actually landed)
+--> `wrap = true` forces the tooltip's preset width on every single-column line ATT contributes
+--> omitted / false behaves exactly as today, so no consumer changes on upgrade
+```
+
+### The mechanism, verified rather than assumed
+
+Two implementations are possible and the second is what TOGPM ships, because the first is a
+per-integration patch:
+
+1. **Re-render ATT's data yourself.** ATT's data path is reachable without its renderer, and both
+   hops are on the ATT root rather than the semi-public module table:
+   `app.GetCachedSearchResults(method, …)` → the group (`src/Modules/Tooltip.lua:792`),
+   `app.ProcessInformationTypesForExternalTooltips(info, group)`
+   (`src/Settings/Pages/Interface - Information.lua:1493`), with `group.tooltipInfo` checked first
+   because Classic generates some inline (`src/Modules/Tooltip.lua:763-767`). Entries are
+   `{ left, right, r, g, b, color, wrap }` and `app.Modules.Color.HexToARGB` unpacks the packed form
+   (`src/Modules/Tooltip.lua:649-678`). Draw that array passing `true` as the fifth argument.
+
+   **This works and was built first, then discarded.** It fixes ATT and nothing else, it
+   re-implements one addon's renderer against internals we do not own, and it cannot cover the
+   addons reached through `ApplyExternalTooltipHooks` — that chain has no list of members.
+
+2. **Force the flag at the tooltip, for the duration of the foreign call.** Frame methods resolve
+   through a metatable, so assigning `tooltip.AddLine` shadows the real one and assigning `nil`
+   uncovers it again. Install a shim that appends the flag in its fixed slot, call the third party,
+   restore. Any renderer opts into the preset whether its author knew the flag existed or not.
+
+Either is a valid shape for the library. **If ItemDB implements (2), the option can cover
+`ApplyExternalTooltipHooks` as well as `AttachExternalRecipeInfo`**, which is the more useful
+contract and the reason it is the shape suggested here.
+
+Two-column entries are exempt either way: `AddDoubleLine` has **no** wrap parameter (eight
+arguments, two strings and six colour components). In practice those are ATT's progress counters
+and collection states, which are short; the breadcrumb is single-column.
+
+### The half of this that is NOT the library's problem, recorded so it is not re-derived
+
+Forcing the flag onto *every* line — including the caller's own title — makes the tooltip come out
+**narrower** than the game's, and that also shipped and was seen in game before being fixed here.
+The preset is the width long lines wrap **to**, not the width every tooltip ends up at: with nothing
+claiming a natural width the frame collapses to the bare preset, and an item name that Blizzard
+renders on one line breaks onto two.
+
+So a consumer needs exactly one unwrapped line — the title — to size the frame. That is the
+consumer's call to make about its own content, not something the option should do, which is why
+this request is scoped strictly to lines a THIRD PARTY adds.
+
+### What must NOT be done, because it was tried here and deleted
+
+Do not measure the tooltip and cap it. TOGPM built exactly that (`ConstrainTooltipWidth`, a
+`DEFAULT_TOOLTIP_MAX_WIDTH = 390`) and removed it — the trace is in `docs/AUDIT.md` findings 8-11
+and 14. Two reasons, both of which apply to a library far more than to an addon:
+
+- It writes `SetWidth` / `SetWordWrap` to `GameTooltipTextLeft%d`, which are **shared by every
+  tooltip in the game**. One missed release and Blizzard's, ATT's and TSM's tooltips all wrap at
+  your number for the rest of the session.
+- The number is one client's, at one UI scale, with one font. The preset is engine-side and scales
+  itself; the flag is how you ask for it and there is no number to get wrong.
+
+### How to tell a real answer from a plausible one
+
+Hover a recipe whose ATT breadcrumb is long — an Engineering schematic sold by a named vendor in a
+zone is the reliable shape, *Schematic: Advanced Target Dummy* being the reported one — with
+`{ wrap = true }` and without. The breadcrumb should wrap onto two or three lines and the frame
+should be the same width as a bag item's. A test using a recipe with a short ATT block proves
+nothing, because that case was never wide.
+
+### What TOGPM ships in the meantime
+
+`ItemLink.WithWrappedLines(tooltip, fn)` in `GUI/SharedWidgets.lua` — approach (2) above. Every
+foreign render goes through it: `AttachExternalRecipeInfo`, `ApplyExternalTooltipHooks`, and
+TOGBankClassic's `AppendTo`. The restore runs after a `pcall`, so a third party raising mid-render
+cannot leave the shim installed. It is deleted the day the `wrap` option lands.
+
+What the workaround costs, and why the contract is still wanted:
+
+- **Every other consumer of `AttachExternalRecipeInfo` still has the wide tooltip.** That is the
+  whole argument — this is one line of behaviour that belongs in the shared bridge, exactly as §7
+  argued for the bridge itself.
+- **It shims a shared frame's methods**, which is safe because it is scoped to one synchronous call,
+  but is a technique that should exist in one place rather than in every consumer that needs it.
+
+Pinned by `Tests/integrations_spec.lua` (eight cases, including that the methods are restored after
+a raise) and by `Tests/tooltipwrapflag_spec.lua`, which now also enforces a `TITLE_EXEMPT` budget so
+neither failure mode — a second unwrapped line, or the title starting to wrap — can return quietly.

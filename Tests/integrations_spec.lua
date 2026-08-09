@@ -26,7 +26,12 @@ local ns, IL, tip
 --- A tooltip that records what was added, in order.
 local function fakeTooltip()
 	local t = { lines = {} }
-	function t:AddLine(text, r, g, b) self.lines[#self.lines + 1] = { text = text, r = r } end
+	-- `wrap` is captured because it is the whole subject of the ATT block below:
+	-- it is the LAST parameter, it defaults to false, and a line that omits it
+	-- ignores the engine's preset and stretches the frame.
+	function t:AddLine(text, r, _g, _b, wrap)
+		self.lines[#self.lines + 1] = { text = text, r = r, wrap = wrap }
+	end
 	function t:AddDoubleLine(l, rt) self.lines[#self.lines + 1] = { text = l, right = rt } end
 	function t:NumLines() return #self.lines end
 	function t:texts()
@@ -95,12 +100,119 @@ describe("AllTheThings", function()
 	end)
 end)
 
-describe("TOGBankClassic", function()
+describe("the wrap-flag shim — the RULE, not a per-integration patch", function()
+	-- The regression this exists for: LibItemDB's bridge hands the tooltip to
+	-- ATT's renderer, which passes `wrap` only when the entry sets `entry.wrap`
+	-- (AllTheThings/src/Modules/Tooltip.lua:665-678). Source breadcrumbs do not,
+	-- so they land unwrapped — and an unwrapped line ignores the engine's preset
+	-- and stretches the frame. Measured on Advanced Target Dummy: ATT's 583.1px
+	-- breadcrumb against a 603.6px frame.
+	--
+	-- Reimplementing ATT's renderer would fix ATT and nothing else, and would
+	-- silently miss every addon reached through ApplyExternalTooltipHooks —
+	-- which is a chain we cannot enumerate. So the flag is forced at the tooltip
+	-- instead, for the duration of the foreign call. DEPENDENCY_CONTRACTS.md §11.
+
+	local BREADCRUMB =
+		"ATT > Zone > Kalimdor > Tanaris > Professions > Engineering > Buzzek Bracketswing"
+
+	it("forces the flag on a line a third party added without it", function()
+		ns.GetItemDB = function()
+			return { AttachExternalRecipeInfo = function(_, tt)
+				tt:AddLine(BREADCRUMB)          -- exactly what ATT emits
+				return true
+			end }
+		end
+		IL.AppendIntegrations(tip, SPELL_ID, CRAFTED_ID)
+		local _, line = tip:find("Kalimdor")
+		assert.is_true(line.wrap)
+	end)
+
+	it("covers the hook-replay chain too, not just the ATT bridge", function()
+		-- The path that reaches addons with no API at all. It is the one a
+		-- per-integration fix cannot cover, because there is no list.
+		ns.GetItemDB = function()
+			return { ApplyExternalTooltipHooks = function(_, tt)
+				tt:AddLine("RecipeMaster: known by Alt")
+				return true
+			end }
+		end
+		IL.AppendIntegrations(tip, SPELL_ID, CRAFTED_ID)
+		local _, line = tip:find("RecipeMaster")
+		assert.is_true(line.wrap)
+	end)
+
+	it("covers TOGBankClassic's own renderer", function()
+		_G.TOGBankClassic_TooltipBankerInfo = {
+			AppendTo = function(_, tt) tt:AddLine("Bankers: Toglowlthrcp") end,
+		}
+		IL.AppendIntegrations(tip, SPELL_ID, CRAFTED_ID)
+		local _, line = tip:find("Bankers")
+		assert.is_true(line.wrap)
+		_G.TOGBankClassic_TooltipBankerInfo = nil
+	end)
+
+	it("keeps the caller's colours — it forces the flag and nothing else", function()
+		ns.GetItemDB = function()
+			return { AttachExternalRecipeInfo = function(_, tt)
+				tt:AddLine("coloured", 0.4, 0.8, 1)
+				return true
+			end }
+		end
+		IL.AppendIntegrations(tip, SPELL_ID, CRAFTED_ID)
+		local _, line = tip:find("coloured")
+		assert.equal(0.4, line.r)
+	end)
+
+	it("puts the tooltip's own methods back afterwards", function()
+		-- The whole safety argument. GameTooltip is shared; a shim left installed
+		-- would force the flag on Blizzard's, ATT's and TSM's own tooltips for
+		-- the rest of the session.
+		local before = tip.AddLine
+		ns.GetItemDB = function()
+			return { AttachExternalRecipeInfo = function(_, tt) tt:AddLine("x") end }
+		end
+		IL.AppendIntegrations(tip, SPELL_ID, CRAFTED_ID)
+		assert.equal(before, tip.AddLine)
+	end)
+
+	it("puts them back even when the third party RAISES mid-render", function()
+		local before = tip.AddLine
+		ns.GetItemDB = function()
+			return { AttachExternalRecipeInfo = function(_, tt)
+				tt:AddLine("first")
+				error("ATT blew up")
+			end }
+		end
+		assert.has_no.errors(function() IL.AppendIntegrations(tip, SPELL_ID, CRAFTED_ID) end)
+		assert.equal(before, tip.AddLine)
+		-- and what did land before the raise still wrapped
+		local _, line = tip:find("first")
+		assert.is_true(line.wrap)
+	end)
+
+	it("reports whether the call completed", function()
+		assert.is_true(IL.WithWrappedLines(tip, function() end))
+		assert.is_false(IL.WithWrappedLines(tip, function() error("nope") end))
+	end)
+
+	it("answers false rather than raising on bad arguments", function()
+		assert.is_false(IL.WithWrappedLines(nil, function() end))
+		assert.is_false(IL.WithWrappedLines(tip, "not a function"))
+	end)
+end)
+
+describe("TOGBankClassic — the fallback, for a build older than the AppendTo contract", function()
 	before_each(function()
+		-- Pin these to the fallback. Without this the preferred path could satisfy
+		-- them from a global some earlier spec left behind, and the branch these
+		-- assertions are named for would never run.
+		_G.TOGBankClassic_TooltipBankerInfo = nil
 		ns.Bank = { GetBanksWithItem = function()
 			return { { name = "Toglowlthrcp", count = 6 }, { name = "Zzz", count = 2 } }
 		end }
 	end)
+	after_each(function() _G.TOGBankClassic_TooltipBankerInfo = nil end)
 
 	it("renders the banker block in TOGBankClassic's own shape", function()
 		IL.AppendIntegrations(tip, nil, CRAFTED_ID)
@@ -129,6 +241,77 @@ describe("TOGBankClassic", function()
 		ns.Bank = nil
 		assert.has_no.errors(function() IL.AppendIntegrations(tip, nil, CRAFTED_ID) end)
 		assert.same({}, tip:texts())
+	end)
+end)
+
+describe("TOGBankClassic — the renderer it now exposes", function()
+	-- DEPENDENCY_CONTRACTS.md §1. TOGBank owns the layout; we call it rather than
+	-- keeping a copy, because the copy's DATA had already drifted from theirs in
+	-- four ways while the layout still matched.
+	local calls
+
+	before_each(function()
+		calls = {}
+		ns.Bank = { GetBanksWithItem = function()
+			error("the fallback must not run when the real renderer is available")
+		end }
+		_G.TOGBankClassic_TooltipBankerInfo = {
+			AppendTo = function(self, t, itemId)
+				calls[#calls + 1] = { self = self, tooltip = t, itemId = itemId }
+				t:AddLine("Bankers:", 0.4, 0.8, 1, true)
+				return true
+			end,
+		}
+	end)
+
+	after_each(function() _G.TOGBankClassic_TooltipBankerInfo = nil end)
+
+	it("calls AppendTo with the crafted item id, as a method", function()
+		IL.AppendIntegrations(tip, nil, CRAFTED_ID)
+		assert.equal(1, #calls)
+		assert.equal(CRAFTED_ID, calls[1].itemId)
+		assert.equal(tip, calls[1].tooltip)
+		-- Passed as `self`, not dropped: AppendTo is declared with a colon and
+		-- indexes `self` for nothing today, but a pcall'd dot-call would break
+		-- silently the day it does.
+		assert.equal(_G.TOGBankClassic_TooltipBankerInfo, calls[1].self)
+		assert.is_truthy(tip:find("Bankers:"))
+	end)
+
+	it("does not also run our copy of the block", function()
+		-- The fallback errors if reached; a second "Bankers:" would mean both ran.
+		assert.has_no.errors(function() IL.AppendIntegrations(tip, nil, CRAFTED_ID) end)
+		local n = 0
+		for _, line in ipairs(tip.lines) do
+			if line.text == "Bankers:" then n = n + 1 end
+		end
+		assert.equal(1, n)
+	end)
+
+	it("survives AppendTo raising, and still renders what comes after it", function()
+		-- Another addon's code inside our render. Without the pcall a raise here
+		-- aborts the rest of the block — the v1.0.7 failure shape.
+		_G.TOGBankClassic_TooltipBankerInfo.AppendTo = function() error("boom") end
+		local priced
+		ns.GetItemDB = function()
+			return {
+				GetLink = function() return "|Hitem:1234:|h[Thing]|h" end,
+				GetExternalPrices = function() priced = true; return nil end,
+			}
+		end
+		assert.has_no.errors(function() IL.AppendIntegrations(tip, nil, CRAFTED_ID) end)
+		assert.is_true(priced)
+	end)
+
+	it("falls back to our copy when the installed TOGBank predates the contract", function()
+		_G.TOGBankClassic_TooltipBankerInfo = {}  -- loaded, but no AppendTo
+		ns.Bank = { GetBanksWithItem = function()
+			return { { name = "Toglowlthrcp", count = 6 } }
+		end }
+		IL.AppendIntegrations(tip, nil, CRAFTED_ID)
+		assert.is_truthy(tip:find("TOGBankClassic"))
+		local _, row = tip:find("Toglowlthrcp")
+		assert.equal("6", row.right)
 	end)
 end)
 

@@ -18,6 +18,90 @@ function UI.Brand(text)
     return "|c" .. (addon.BrandColor or "ffFF8000") .. tostring(text or "") .. "|r"
 end
 
+--- Number of entries in a set/map. Tolerates nil, because two of the three
+--- private copies this replaced already did and the third (GuildTab's
+--- `countSet`) raised — the divergence recorded a concern that had been had
+--- twice and not propagated, so the safe behaviour is the one that wins.
+function UI.Count(t)
+    local n = 0
+    if type(t) == "table" then for _ in pairs(t) do n = n + 1 end end
+    return n
+end
+
+--- "Name-Realm" → "Name". Falls back to the input, then to "?", so a nil or
+--- realmless key renders rather than raising: the AHProfitTab copy guarded and
+--- the MissingRecipesTab copy did not.
+function UI.ShortName(charKey)
+    return (charKey and charKey:match("^([^%-]+)")) or charKey or "?"
+end
+
+--- THE SCOPE FILTER — "whose data am I looking at" — as one definition.
+---
+--- The Professions and Cooldowns tabs each own a `_viewMode` field and each
+--- build a View dropdown from it. `CooldownsTab`'s comment said *"Mirrors the
+--- Browser tab's `_viewMode` dropdown"*, which is a maintenance contract with
+--- nothing enforcing it, and `docs/AUDIT.md` finding 2 predicted the exact way
+--- it would break: **one of them gaining a third mode.** That happened — the
+--- Browser grew `missing` — and nothing failed, which is the point of the
+--- finding. The two are now one base set, one default and one construction.
+---
+--- `SCOPE_DEFAULT` is deliberately a value rather than a per-tab literal: the
+--- prediction was "different default" as well, and a shared constant is what
+--- makes both tabs open on the same view by construction instead of by
+--- coincidence.
+UI.SCOPE_DEFAULT = "guild"
+
+--- Build the `(items, order)` pair an AceGUI Dropdown's `SetList` takes, from
+--- the shared base plus whatever extra modes this tab supports.
+---
+--- BOTH HALVES ARE BUILT TOGETHER, AND THAT IS THE WHOLE POINT. AceGUI walks
+--- the ORDER array and calls `AddListItem(key, list[key])` with no existence
+--- check (`AceGUIWidget-DropDown.lua:609-611`), and the item's `SetText` does
+--- `SetText(text or "")` (`AceGUIWidget-DropDown-Items.lua:101`) — so a key
+--- present in the order but missing from the items renders a BLANK, CLICKABLE
+--- row rather than erroring. The Browser tab shipped exactly that: a hardcoded
+--- `{ "guild", "mine", "missing" }` order against an item table that only gained
+--- `missing` when "Show All Recipes" was ticked. A caller of this function
+--- cannot reproduce that, because it never writes an order at all.
+---
+--- @param extra table|nil array of `{ key = "...", label = "..." }`, appended in order
+--- @return table items  key → label, for `SetList`'s first argument
+--- @return table order  array of keys, for `SetList`'s second argument
+function UI.ScopeList(extra)
+    local items = { guild = L["ViewGuild"], mine = L["ViewMine"] }
+    local order = { "guild", "mine" }
+    for _, mode in ipairs(extra or {}) do
+        -- Skipped rather than added blank if a caller passes a label-less mode:
+        -- the failure this function exists to prevent is precisely a keyed row
+        -- with no text, and re-introducing it here would be the worst place for
+        -- it — every tab would inherit it at once.
+        if mode.key and mode.label then
+            items[mode.key] = mode.label
+            order[#order + 1] = mode.key
+        end
+    end
+    return items, order
+end
+
+--- Put "/w <target> " in the chat box, ready to type.
+---
+--- Prefers the already-open edit box and falls back to ChatFrame_OpenChat.
+--- Shared because BrowserTab and CooldownsTab carried byte-identical copies
+--- nested inside their row handlers — chat plumbing with a real fallback path,
+--- which is exactly the kind of thing that gets fixed in one copy only.
+function UI.OpenWhisper(target)
+    if ChatEdit_GetActiveWindow then
+        local box = ChatEdit_GetActiveWindow()
+        if box then
+            box:SetText("/w " .. target .. " ")
+            box:SetFocus()
+            box:SetCursorPosition(#box:GetText())
+            return
+        end
+    end
+    ChatFrame_OpenChat("/w " .. target .. " ", DEFAULT_CHAT_FRAME)
+end
+
 -- ---------------------------------------------------------------------------
 -- Shared sort helpers
 -- ---------------------------------------------------------------------------
@@ -50,7 +134,7 @@ end
 -- Standard click behavior: same column toggles asc/desc, new column resets to asc.
 function addon.GUI.Sort.Next(currentCol, currentAsc, clickedCol)
     if currentCol == clickedCol then
-        return clickedCol, not (currentAsc == true)
+        return clickedCol, currentAsc ~= true
     end
     return clickedCol, true
 end
@@ -102,6 +186,33 @@ end
 -- ---------------------------------------------------------------------------
 addon.ItemLink = addon.ItemLink or {}
 local ItemLink = addon.ItemLink
+
+-- TOOLTIP WIDTH IS NOT OURS TO SET. Two constants and two functions lived here
+-- and are deleted:
+--
+--   TOOLTIP_FRAME_PADDING, DEFAULT_TOOLTIP_MAX_WIDTH,
+--   ItemLink.ConstrainTooltipWidth, ItemLink.ReleaseTooltipWidth
+--
+-- They measured a tooltip's width and forced over-long lines to wrap at it, by
+-- writing `SetWidth`/`SetWordWrap` onto `GameTooltipTextLeft%d`. That was the
+-- wrong solution to a real problem, and dangerous besides: those fontstrings are
+-- shared by every tooltip in the game, so a missed release would have made
+-- Blizzard's tooltips and every addon's wrap at OUR number for the session --
+-- strictly worse than the `SetMinimumWidth(480)` leak fixed earlier in the same
+-- release, because a floor is recoverable and a forced width is not.
+--
+-- THE ACTUAL MECHANISM: WoW has an engine-side PRESET wrap width, and a line
+-- opts into it by passing the `wrap` flag. `AddLine`/`SetText` take it last and
+-- it defaults to FALSE (FrameAPITooltipDocumentation.lua:72) -- an unwrapped
+-- line ignores the preset and stretches the frame. Pass it on every line we
+-- append and the engine applies the right width on every player's machine, at
+-- every UI scale, with nothing measured, nothing cached and nothing to release.
+--
+-- Full write-up, including the misdiagnosis chain, in the harness's
+-- `docs/TOOLTIPS.md` (`1e44d10`).
+--
+-- THE RULE, and there is a spec for it: every line this addon appends passes
+-- the wrap flag. Never measure, cap, or hardcode a tooltip width.
 
 --- Route a modified click on an item link exactly as Blizzard's own item
 --- buttons do. Returns true when the click was consumed.
@@ -155,24 +266,20 @@ function ItemLink.SyncCompare(tip)
     return false
 end
 
---- Which tooltip frame a curated surface should draw into.
----
---- Always the caller's own private frame when it has one. Missing Recipes owns
---- one deliberately: third-party addons hook OnTooltipSetItem onto the GLOBAL
---- GameTooltip instance, and RecipeMaster's handler nil-indexes `recipe.teaches`
---- on a recipe scroll and takes the tooltip down with it. A private frame
---- inheriting the same template never runs those hooks.
----
---- This used to consult a `useStockItemTooltips` setting. That setting was built
---- on a premise that did not survive checking -- that the game has a stock
---- tooltip for a RECIPE. It does not: a trade-skill recipe is a spell, and the
---- only stock recipe tooltips (`SetTradeSkillItem` / `SetCraftItem`) are
---- index-based and valid only while the profession window is open. What the
---- game does have a tooltip for is the recipe's teaching ITEM, which is what
---- RecipeTooltipSource below resolves.
-function ItemLink.Tooltip(privateTip)
-    return privateTip or GameTooltip
-end
+-- `ItemLink.Tooltip(privateTip)` lived here until v1.0.7. It picked between a
+-- caller's private tooltip frame and the global one, and existed solely because
+-- Missing Recipes had a private frame. That frame is gone, so the function had
+-- one caller passing nothing and a body that read `return GameTooltip`. Every
+-- surface uses `_G.GameTooltip` directly now — there is no choice left to make,
+-- and a named seam over a single global is a decision point pretending to exist.
+--
+-- Worth keeping the note it carried, because the reasoning still applies: an
+-- earlier `useStockItemTooltips` setting was built on the premise that the game
+-- has a stock tooltip for a RECIPE. It does not. A trade-skill recipe is a
+-- spell, and the only stock recipe tooltips (`SetTradeSkillItem` /
+-- `SetCraftItem`) are index-based and valid only while the profession window is
+-- open. What the game does have a tooltip for is the recipe's teaching ITEM,
+-- which is what `RecipeTooltipSource` below resolves.
 
 --- What a recipe's hover should be built from. Returns one of:
 ---
@@ -450,6 +557,32 @@ function ItemLink.UnlearnedBy(profId, recipeId)
     return out
 end
 
+-- `ItemLink.VendorSellPrice(profId, recipeId)` lived here and is DELETED in
+-- v1.0.7, along with the recipe-block row it fed. It answered "what does a vendor
+-- pay for this recipe's teaching SCROLL", which was the wrong question twice
+-- over: it only ever fired on recipes, and it priced the scroll rather than the
+-- item under the cursor.
+--
+-- `ItemLink.AppendVendorPrices` replaces it and is strictly larger: buy AND sell,
+-- for ANY item, on any tooltip. Keeping both printed the same number twice on
+-- every recipe-scroll tooltip, which is how it was caught — in game, not here.
+--
+-- The two facts it recorded are still true and still load-bearing, so they move
+-- rather than disappear:
+--
+--   * SELL and BUY differ by roughly 4x (Schematic: Accurate Scope is 500 to
+--     sell, 2000 to buy). Printing one where the other is meant is wrong by a
+--     factor of four, not by a rounding error.
+--   * `GetItemInfo` returns nil for a cache-cold item, so the sell row went
+--     missing exactly when a player met an item for the first time. Reading it
+--     starts the client's async fetch, so a second hover lands warm — a
+--     mitigation, not a fix. FIXED as of v1.0.7: `LibItemDB:GetVendorSellPrice`
+--     IS implemented (LibItemDB-1.0.lua:793, MINOR 22) and is now the second
+--     tier of `Price.GetVendorSell`. Three earlier revisions of this comment
+--     said it was "designed but not implemented" and told the next reader not
+--     to wire it — that claim was repeated for weeks without anyone opening
+--     ItemDB's source, which is the actual lesson worth keeping here.
+
 --- Render the recipe-detail block onto a tooltip, in RecipeMaster's shape:
 ---
 ---     TOGPM
@@ -465,6 +598,29 @@ end
 --- Adds nothing at all when there is nothing to say, so a caller can invoke it
 --- unconditionally without having to pre-check.
 ---
+--- EVERY line in the block goes through here, so the wrap decision is made in
+--- ONE place instead of at fourteen call sites.
+---
+--- `AddLine`'s fifth argument is `wrapText`, and OMITTING IT MEANS FALSE. A
+--- non-wrapping line cannot break, so the tooltip frame grows to fit it — which
+--- is how an addon silently makes its tooltip wider than the game's.
+---
+--- BE HONEST ABOUT THE SIZE OF THIS: most of the block is short and was never
+--- going to widen anything. Difficulty is four numbers, the vendor price is a
+--- coin string, and a source label is a single localized WORD — "Vendor",
+--- "Trainer" — because `RecipeDetails` renders the source KIND and never the NPC
+--- names, even though the shipped data has them. The one line that can genuinely
+--- run long is an unlearned character: name, realm, skill and specialisation
+--- concatenated, one per alt.
+---
+--- So this is a latent-bug fix, not the answer to a wide tooltip. Wrapping never
+--- makes a tooltip narrower — it only stops US being the cause. When the widest
+--- line belongs to another addon, this changes nothing, and it was measured
+--- doing exactly that.
+local function BlockLine(tooltip, text, r, g, b)
+    tooltip:AddLine(text, r, g, b, true)
+end
+
 --- @param tooltip table the tooltip being built
 --- @param profId number|nil the profession that owns the recipe
 --- @param recipeId number|nil the recipe's craft SPELL id
@@ -497,25 +653,51 @@ function ItemLink.AppendRecipeDetails(tooltip, profId, recipeId)
 
     local difficulty, sources = ItemLink.RecipeDetails(profId, recipeId)
     local unlearned = ItemLink.UnlearnedBy(profId, recipeId)
-    if not difficulty and not sources and not unlearned then return false end
+    -- `vendorPrice` was a fourth term here. It has to come OUT of this test as
+    -- well as out of the render below: leaving it in would let a recipe whose
+    -- only fact is a vendor price get past the guard, write the "TOGPM" header,
+    -- and then render nothing under it — a heading over an empty section, which
+    -- is exactly the failure the sources branch avoids by omitting itself.
+    if not difficulty and not sources and not unlearned then
+        return false
+    end
     tooltip._togpmRecipeBlock = recipeId
 
     local brand = addon.BrandColor or "ffFF8000"
-    tooltip:AddLine("|n|c" .. brand .. "TOGPM|r")
+    BlockLine(tooltip, "|n|c" .. brand .. "TOGPM|r")
 
     if difficulty then
-        tooltip:AddLine(L["TooltipDifficulty"])
+        BlockLine(tooltip, L["TooltipDifficulty"])
         -- Already colour-coded per tier by FormatSkillTiers, so the line's own
         -- r/g/b must be white or it would tint the escape sequences' fallback.
-        tooltip:AddLine("  " .. difficulty, 1, 1, 1)
+        BlockLine(tooltip, "  " .. difficulty, 1, 1, 1)
     end
 
     if sources then
-        tooltip:AddLine(L["TooltipSources"])
+        BlockLine(tooltip, L["TooltipSources"])
         for _, label in ipairs(sources) do
-            tooltip:AddLine("  " .. label, 1, 1, 1)
+            -- A single localized kind word — see RecipeDetails. Short, and
+            -- wrapped only so every line in the block goes through one helper.
+            BlockLine(tooltip, "  " .. label, 1, 1, 1)
         end
     end
+
+    -- Directly under Sources on purpose: "Vendor" as a source and "what the
+    -- vendor charges" are halves of one answer, and splitting them across the
+    -- block would make a reader hunt for the second half.
+    -- The scroll-specific "Vendor Sell Price" row that used to sit here is GONE
+    -- as of v1.0.7. `AppendVendorPrices` renders Buy and Sell for the item the
+    -- player is actually hovering, on EVERY item rather than only on recipes, so
+    -- keeping this printed the same number twice on any recipe-scroll tooltip:
+    --
+    --     Vendor Sell Price        <- this row, the scroll's sellPrice
+    --       17s 50c
+    --     Vendor                   <- AppendVendorPrices, the same item
+    --       Sell  17s 50c
+    --
+    -- Observed in game, not reasoned about. The surviving one is strictly better:
+    -- it answers for the hovered item rather than for the teaching scroll, and it
+    -- carries the buy price too.
 
     if unlearned then
         -- The trailing colon is RecipeMaster's, on this heading only -- its own
@@ -527,16 +709,285 @@ function ItemLink.AppendRecipeDetails(tooltip, profId, recipeId)
         -- RED_FONT_COLOR, 1/0.13/0.13) rather than a second hand-picked one.
         -- The two lines are opposites -- known here, not known there -- so a
         -- player reading both should see one palette, not two.
-        tooltip:AddLine(L["TooltipUnlearned"], 1, 0.13, 0.13)
+        BlockLine(tooltip, L["TooltipUnlearned"], 1, 0.13, 0.13)
         for _, c in ipairs(unlearned) do
             local detail = c.skill and L["TooltipSkill"]:format(c.skill) or nil
             if detail and c.spec then detail = detail .. ", " .. c.spec
             elseif c.spec         then detail = c.spec end
-            tooltip:AddLine("  " .. c.name .. (detail and (" (" .. detail .. ")") or ""), 1, 1, 1)
+            -- Name + realm + skill + specialisation: the ONLY line in this block
+            -- long enough to widen a tooltip on its own, and the reason the wrap
+            -- flag is worth having at all.
+            BlockLine(tooltip, "  " .. c.name .. (detail and (" (" .. detail .. ")") or ""), 1, 1, 1)
         end
     end
 
     return true
+end
+
+
+--- Vendor BUY and SELL price for ANY item, on any tooltip.
+---
+--- Not part of the recipe block, and that is the point. `AppendRecipeDetails`
+--- answers a question about a RECIPE and renders nothing for the other 99% of
+--- items in the game; this answers a question about an ITEM, so it fires on
+--- Roasted Quail and grey trash and a sword, wherever the tooltip came from.
+---
+--- WHY THIS IS WORTH SHIPPING: no other addon shows both halves.
+---   * TradeSkillMaster shows `Vendor Sell Price` and no buy price.
+---   * AllTheThings shows neither.
+---   * The game itself shows neither on a bag tooltip.
+--- Buy and sell together is the pair a player actually reasons with — "can I
+--- buy this cheaper than making it" needs buy, "is this worth bag space" needs
+--- sell — and we already hold both.
+---
+--- THE TWO NUMBERS COME FROM DIFFERENT PLACES AND ARE NOT INTERCHANGEABLE:
+---   * SELL is `Price.GetVendorSell`, two tiers: `GetItemInfo`'s eleventh
+---     return, then LibItemDB's static `GetVendorSellPrice`. The client value
+---     is nil on a cache-cold item — the hole that used to blank this row on
+---     first acquaintance with an item — and the static table has no such
+---     state, so the row now renders on the first hover. Nil only for an item
+---     with no sell value at all (a quest item, a token).
+---   * BUY is `Price.GetVendorBuy`, a three-tier ladder: Auctionator's vendor
+---     cache, then our own live MERCHANT_SHOW capture, then LibItemDB's static
+---     base price. The first two reflect what THIS player is actually charged
+---     including reputation discount; the static tier is the Neutral base and
+---     is deliberately last. Nil for anything no vendor sells, which is most
+---     drops and quest rewards — and nil is the correct answer there, not zero.
+---
+--- Deliberately NOT stack-multiplied. TSM prints `Vendor Sell Price x20` by
+--- reading the hovered bag slot's stack count; a tooltip hook is handed an item
+--- id and no slot, so the count is not available here without hooking the bag
+--- frames as well. Unit price is honest; a wrong multiplier would not be.
+---
+--- @return boolean whether any line was added
+function ItemLink.AppendVendorPrices(tooltip, itemId)
+    if not tooltip or not tooltip.AddLine or type(itemId) ~= "number" then return false end
+
+    local show = Ace and Ace.db and Ace.db.profile and Ace.db.profile.tooltipVendorPrices
+    if show == false then return false end
+
+    -- One block per tooltip. Several paths reach a single hover (the modern
+    -- post-call, the legacy OnTooltipSetItem, the Show fallback), and the same
+    -- dedup reasoning as the recipe block applies: two price blocks is a bug.
+    if tooltip._togpmVendorBlock then return false end
+
+    local money = addon.Price and addon.Price.Money
+    if not money then return false end
+
+    local buy  = addon.Price.GetVendorBuy and addon.Price.GetVendorBuy(itemId)
+    -- Both halves now go through `Price`, which is the point: the sell number
+    -- used to be read straight off `GetItemInfo` HERE, so a cache-cold item
+    -- rendered no sell row at all. `Price.GetVendorSell` tries the same client
+    -- value first and falls through to LibItemDB's static table, which is
+    -- always populated. Feature-detected, so this is nil-safe against an older
+    -- Price module the same way `GetVendorBuy` already was.
+    local sell = addon.Price.GetVendorSell and addon.Price.GetVendorSell(itemId)
+    -- 0 is a real answer for an item a vendor will not buy and must not render
+    -- as a price, hence a type check rather than a truthiness test. Both
+    -- accessors already screen it; this is the belt to their braces, and cheap.
+    if type(sell) ~= "number" or sell <= 0 then sell = nil end
+    if type(buy)  ~= "number" or buy  <= 0 then buy  = nil end
+    if not buy and not sell then return false end
+
+    tooltip._togpmVendorBlock = itemId
+
+    local brand = addon.BrandColor or "ffFF8000"
+    -- ATTRIBUTION, and it is conditional on purpose. On a recipe the block sits
+    -- under the "TOGPM" header `AppendRecipeDetails` already wrote, and a second
+    -- one would read as two separate addons. On ordinary loot -- Roasted Quail, a
+    -- sword, grey trash -- the recipe block renders NOTHING, so this section is
+    -- the whole of our contribution and would otherwise appear as an unattributed
+    -- "Vendor" heading from nowhere. `_togpmRecipeBlock` is set by that function
+    -- and is exactly the "did we already brand this tooltip" signal.
+    if not tooltip._togpmRecipeBlock then
+        BlockLine(tooltip, "|n|c" .. brand .. "TOGPM|r")
+    end
+
+    -- TWO INDEPENDENT HEADINGS, each with its value indented beneath — the same
+    -- shape as Difficulty and Sources, because these are siblings of those
+    -- rather than a nested pair. Either can be absent on its own: a drop has a
+    -- sell price and no buy price, and a cache-cold item has the reverse.
+    --
+    -- Deliberately NOT `AddDoubleLine`, matching the rest of the block: a double
+    -- line right-aligns its value against the tooltip's widest line, so the
+    -- numbers would jump around depending on what ATT or TSM put above them.
+    if buy then
+        BlockLine(tooltip, L["TooltipVendorBuyPrice"])
+        BlockLine(tooltip, "  " .. money(buy), 1, 1, 1)
+    end
+    if sell then
+        BlockLine(tooltip, L["TooltipVendorPrice"])
+        BlockLine(tooltip, "  " .. money(sell), 1, 1, 1)
+    end
+    return true
+end
+
+--- The full TOGPM block for a recipe tooltip, wherever that tooltip was built.
+---
+--- One entry point so every tab renders the same thing in the same order. The
+--- tabs disagreed for a structural reason rather than an oversight: the global
+--- `OnTooltipSetItem` hook fires only on `GameTooltip` and only when it carries
+--- an ITEM, so a recipe shown as a **spell** (`SetSpellByID`, `spell:` link), as
+--- plain **text**, or on a tab's own **private** tooltip frame inherited nothing.
+--- That is four of the seven tabs.
+---
+--- Safe to call on `GameTooltip` even though the hook also fires there:
+--- `AppendRecipeDetails` renders at most one block per tooltip. It does NOT
+--- reset that guard -- a caller drawing into a private frame must clear
+--- `tooltip._togpmRecipeBlock` itself, because nothing else will (the reset
+--- lives on the `OnTooltipCleared` hook, which private frames deliberately
+--- do not have).
+---
+--- `profId` and `craftedItemId` are both OPTIONAL and resolved from the recipe
+--- when omitted, so a caller holding only a spell id -- which is all the
+--- Cooldowns, Shopping List, Crafting and Profit Planner rows carry -- can call
+--- this without plumbing a profession through four tabs' row builders. Pass them
+--- when you have them; it skips the lookup.
+---
+--- @param tooltip table the tooltip being built
+--- @param profId number|nil profession that owns the recipe (resolved if nil)
+--- @param recipeId number|nil the recipe's craft SPELL id
+--- @param craftedItemId number|nil what it produces (resolved if nil)
+function ItemLink.AppendRecipeBlocks(tooltip, profId, recipeId, craftedItemId)
+    if not tooltip or not tooltip.AddLine or not recipeId then return end
+
+    profId = profId or ItemLink.ProfessionForRecipe(recipeId)
+    if not craftedItemId then
+        local meta = addon.GetRecipeMeta and profId and addon:GetRecipeMeta(profId, recipeId)
+        craftedItemId = meta and meta.craftedItemId
+    end
+
+    -- INTEGRATIONS FIRST, OUR BLOCK LAST. That is the order a normal game
+    -- tooltip produces and the whole point of this function is that ours looks
+    -- the same: on GameTooltip the third parties attach during SetItemByID and
+    -- our OnTooltipSetItem hook fires after them, so TOGPM lands at the bottom.
+    -- Calling ours first here inverted that on every tab that routes through
+    -- this function, putting our block above ATT / TSM / RecipeMaster.
+    --
+    -- Also load-bearing for FAILURE containment, which is how this was found: a
+    -- raise inside our block used to abort before the integrations ran, so one
+    -- bug in our code silently deleted every other addon's contribution from
+    -- the tooltip. With ours last, the third-party content is already on screen
+    -- before we can break anything.
+    ItemLink.AppendIntegrations(tooltip, recipeId, craftedItemId)
+    ItemLink.AppendRecipeDetails(tooltip, profId, recipeId)
+end
+
+--- Which profession owns a recipe, given only its craft spell id.
+---
+--- Built once and cached on the addon table, the same way Tooltip.lua's
+--- item -> recipe index is, and invalidated the same way when `recipeDB` is
+--- replaced. In game that happens once at load; the test env clears it per spec.
+---
+--- Returns nil for a spell no shipped recipe uses, which is the normal answer on
+--- a cooldown row for something that is not a craft.
+function ItemLink.ProfessionForRecipe(recipeId)
+    if not recipeId then return nil end
+    if not addon._recipeProfIndex then
+        local index = {}
+        addon._recipeProfIndex = index
+        for profId, recipes in pairs(addon.recipeDB or {}) do
+            for spellId in pairs(recipes) do
+                -- First writer wins. A spell in two professions is real (Smelt
+                -- Gold is Mining, Transmute Iron to Gold is Alchemy -- different
+                -- spells) but a genuinely shared id would be arbitrary either
+                -- way, and the block describes one recipe.
+                if index[spellId] == nil then index[spellId] = profId end
+            end
+        end
+    end
+    return addon._recipeProfIndex[recipeId]
+end
+
+--- Run `fn` with the wrap flag FORCED ON for every line added to `tooltip`,
+--- whoever adds it, then put the tooltip's methods back exactly as they were.
+---
+--- THE RULE THIS ENFORCES: a tooltip's width is an engine-side preset that
+--- already accounts for the player's resolution, UI scale and font, and the wrap
+--- flag is how a line asks for it. Its documented default is FALSE
+--- (`FrameAPITooltipDocumentation.lua:72`), so an unwrapped line does not merely
+--- fail to wrap -- it ignores the preset and stretches the frame, dragging every
+--- other addon's content out with it. Full write-up in the shared harness at
+--- `Tests/wowapi/docs/TOOLTIPS.md`.
+---
+--- Our own lines all pass the flag and a spec sweeps our source for it
+--- (`Tests/tooltipwrapflag_spec.lua`). That spec can only ever read OUR files,
+--- and it is structurally blind to the case that actually shipped wide: a THIRD
+--- PARTY rendering into a tooltip we own. AllTheThings' row renderer passes the
+--- flag only when the entry it is drawing sets `entry.wrap`
+--- (`AllTheThings/src/Modules/Tooltip.lua:665-678`), and source breadcrumbs do
+--- not set it, so they land as a bare `tooltip:AddLine(left)`. Measured on
+--- Advanced Target Dummy by this addon's own width probe and already written
+--- down at `TOGProfessionMaster.lua:1370`: ATT's breadcrumb at 583.1px against a
+--- 603.6px frame, the difference being the template's 10px inset per side.
+---
+--- Doing this per integration would mean re-implementing each addon's renderer
+--- against internals we do not own, once per addon, forever -- and it silently
+--- misses the ones we never enumerate, which is precisely what
+--- `ApplyExternalTooltipHooks` replays. A shim on the tooltip is the rule
+--- instead: anything that draws while we are inside our block opts into the
+--- preset whether it knows the flag exists or not.
+---
+--- Why this is safe on the SHARED GameTooltip, given that writing to the shared
+--- `GameTooltipTextLeft%d` fontstrings is exactly the mistake `docs/AUDIT.md`
+--- findings 8-11 deleted:
+---
+---  * It replaces METHODS ON ONE TOOLTIP TABLE, not properties on fontstrings
+---    every tooltip in the game shares. Frame methods resolve through a
+---    metatable, so assigning `tooltip.AddLine` shadows it and assigning nil
+---    restores the real one -- there is no saved-state to get wrong and nothing
+---    to leak into the next tooltip.
+---  * It is installed and removed AROUND ONE SYNCHRONOUS CALL. Nothing can
+---    observe the shim except the code we invoked, which is the code we want it
+---    to apply to.
+---  * The restore is in a `pcall` epilogue, so a third party raising mid-render
+---    cannot leave the shim installed.
+---  * No width is measured, computed or stored. There is no number here at all.
+---
+--- `AddDoubleLine` is deliberately untouched: it has no wrap parameter (eight
+--- arguments, two strings and six colour components -- audit finding 18), so
+--- forcing a ninth would be passing a boolean into nothing.
+---
+--- @param tooltip table the tooltip being built
+--- @param fn function called with `tooltip`; may raise, may be third-party code
+--- @return boolean ok false when `fn` raised (its error is swallowed, as before)
+function ItemLink.WithWrappedLines(tooltip, fn)
+    if type(tooltip) ~= "table" or type(fn) ~= "function" then return false end
+
+    local hadAddLine = rawget(tooltip, "AddLine")
+    local hadSetText = rawget(tooltip, "SetText")
+    local realAddLine = tooltip.AddLine
+    local realSetText = tooltip.SetText
+
+    -- The flag is the LAST parameter of each method and its slot is fixed:
+    -- `AddLine(text, r, g, b, wrap)` and `SetText(text, r, g, b, a, wrap)`.
+    -- Forcing it by position is why a caller passing four colour components to
+    -- AddLine cannot push it past the slot.
+    -- The `redundant-parameter` disables are the language server reading the
+    -- harness's 5-argument stub, not the client. `wrap` is a documented
+    -- parameter of both methods -- `FrameAPITooltipDocumentation.lua:72`.
+    if type(realAddLine) == "function" then
+        tooltip.AddLine = function(self, text, r, g, b)
+            ---@diagnostic disable-next-line: redundant-parameter
+            return realAddLine(self, text, r, g, b, true)
+        end
+    end
+    if type(realSetText) == "function" then
+        tooltip.SetText = function(self, text, r, g, b, a)
+            ---@diagnostic disable-next-line: redundant-parameter
+            return realSetText(self, text, r, g, b, a, true)
+        end
+    end
+
+    local ok = pcall(fn, tooltip)
+
+    -- Restore by assigning back what was there, which for a real frame is nil --
+    -- i.e. uncover the metatable method rather than pin a Lua copy of it in
+    -- front of it forever.
+    tooltip.AddLine = hadAddLine
+    tooltip.SetText = hadSetText
+
+    return ok
 end
 
 --- Everything OTHER addons would have contributed if this tooltip carried an item.
@@ -573,7 +1024,18 @@ function ItemLink.AppendIntegrations(tooltip, spellId, craftedItemId)
         if idb and idb.AttachExternalRecipeInfo then
             -- Returns whether it actually added lines; it pcalls into ATT
             -- internally, so a broken/updated ATT cannot take the tooltip down.
-            idb:AttachExternalRecipeInfo(tooltip, spellId)
+            -- Wrapped again here anyway: "the library pcalls internally" is a
+            -- guarantee about the library's CURRENT code, and this is the one
+            -- place a third-party addon's code runs inside our render.
+            --
+            -- ⚠ AND WRAPPED IN THE LINE SHIM, which is the actual width fix:
+            -- ATT's renderer omits the wrap flag on its breadcrumb lines, and
+            -- one unwrapped line stretches the whole frame. Doing that per
+            -- integration would mean re-implementing each addon's renderer;
+            -- the shim makes it a rule instead. See `WithWrappedLines`.
+            ItemLink.WithWrappedLines(tooltip, function(tt)
+                idb:AttachExternalRecipeInfo(tt, spellId)
+            end)
         end
     end
 
@@ -591,25 +1053,60 @@ function ItemLink.AppendIntegrations(tooltip, spellId, craftedItemId)
     --
     -- Returns false when no chain exists or a handler declined; that is not an
     -- error and there is nothing to do about it.
+    --
+    -- ⚠ THIS IS WHERE OTHER ADDONS' CODE RUNS INSIDE OUR RENDER, so it is
+    -- pcall'd. Replaying a hook chain means executing handlers we did not write,
+    -- against a tooltip they were not expecting — one built from AddLine calls,
+    -- carrying no item and no spell. A handler that assumes its own cache is
+    -- populated raises, and without the pcall that raise aborts OUR block and
+    -- everything after it. That is not hypothetical: it is the same failure
+    -- shape as the v1.0.7 bug where a raise inside our block silently deleted
+    -- ATT, TSM and RecipeMaster from the tooltip, and it is the reason the
+    -- Missing Recipes tab was given a private tooltip frame in v0.7.5.
+    --
+    -- Isolating the CALL rather than the FRAME is the better answer: it protects
+    -- every tab instead of one, it survives a third party changing its code, and
+    -- it does not cost a second tooltip frame that then has to be kept the same
+    -- width as the game's.
+    --
+    -- Same shim as the ATT call above, and this path needs it MORE: replaying a
+    -- hook chain runs handlers from addons we cannot enumerate, so there is no
+    -- list of renderers to fix one at a time. Whatever draws here opts into the
+    -- preset whether its author knew the flag existed or not.
     do
         local idb = addon.GetItemDB and addon:GetItemDB()
         if idb and idb.ApplyExternalTooltipHooks then
-            idb:ApplyExternalTooltipHooks(tooltip, "OnTooltipSetSpell")
+            ItemLink.WithWrappedLines(tooltip, function(tt)
+                idb:ApplyExternalTooltipHooks(tt, "OnTooltipSetSpell")
+            end)
         end
     end
 
     if type(craftedItemId) ~= "number" then return end
 
-    -- 2. TOGBankClassic. No callable renderer exists -- its OnTooltipSetItem
-    -- handler is a file-local closure -- so the block is rebuilt here from
-    -- addon.Bank, which reads the same TOGBankClassic_Guild data the real one
-    -- does. Deliberately mirrors its heading + AddDoubleLine shape.
-    if addon.Bank and addon.Bank.GetBanksWithItem then
+    -- 2. TOGBankClassic. It now exposes the renderer itself, so prefer it:
+    -- one implementation of the layout, and it cannot drift from what TOGBank
+    -- draws on an ordinary item tooltip. (DEPENDENCY_CONTRACTS.md §1, delivered
+    -- 2026-08-08.) It pcalls nothing internally, so wrap it here -- this is
+    -- another addon's code running inside our render, same rule as ATT above.
+    local tbi = _G["TOGBankClassic_TooltipBankerInfo"]
+    if tbi and tbi.AppendTo then
+        -- Shimmed for the same reason as the two above: it is another addon's
+        -- renderer drawing into a tooltip we own.
+        ItemLink.WithWrappedLines(tooltip, function(tt)
+            tbi:AppendTo(tt, craftedItemId)
+        end)
+
+    -- Fallback for a TOGBankClassic older than that contract: rebuild the block
+    -- from addon.Bank, which reads the same TOGBankClassic_Guild data. Mirrors
+    -- its heading + AddDoubleLine shape. Kept rather than dropped because the
+    -- two addons update independently and a player may have either installed.
+    elseif addon.Bank and addon.Bank.GetBanksWithItem then
         local banks = addon.Bank.GetBanksWithItem(craftedItemId)
         if banks and #banks > 0 then
             tooltip:AddLine(" ")
-            tooltip:AddLine("TOGBankClassic", 1, 0.82, 0)
-            tooltip:AddLine("Bankers:", 0.4, 0.8, 1)
+            tooltip:AddLine("TOGBankClassic", 1, 0.82, 0, true)
+            tooltip:AddLine("Bankers:", 0.4, 0.8, 1, true)
             for _, bank in ipairs(banks) do
                 tooltip:AddDoubleLine(bank.name, tostring(bank.count), 1, 1, 1, 1, 1, 1)
             end
@@ -641,7 +1138,7 @@ function ItemLink.AppendIntegrations(tooltip, spellId, craftedItemId)
     local money = _G.GetCoinTextureString
     for _, name in ipairs(providers) do
         tooltip:AddLine(" ")
-        tooltip:AddLine("|c" .. brand .. name .. "|r")
+        tooltip:AddLine("|c" .. brand .. name .. "|r", nil, nil, nil, true)
         for _, row in ipairs(byProvider[name]) do
             -- `formatted` only where the provider supplies its own money
             -- formatting (TSM does, Auctionator does not), so fall back to
@@ -649,7 +1146,30 @@ function ItemLink.AppendIntegrations(tooltip, spellId, craftedItemId)
             local shown = row.formatted
                 or (money and row.value and money(row.value))
                 or tostring(row.value)
-            tooltip:AddDoubleLine(row.label, shown, 0.4, 0.8, 1, 1, 1, 1)
+
+            -- `row.label` IS THE ONE STRING HERE WE DO NOT CONTROL. It arrives
+            -- from third-party price providers through ItemDB -- TSM and
+            -- Auctionator -- so unlike every other line in this file its length
+            -- cannot be bounded by reading our own source.
+            --
+            -- `AddDoubleLine` has no wrap parameter (eight arguments, two strings
+            -- and six colour components), so a long label cannot opt into the
+            -- engine's preset and would widen the whole tooltip. Audit finding 18.
+            --
+            -- Above the threshold we drop to the two-line `AddLine` form, which
+            -- CAN wrap. The label and value stop sharing a row, which is a small
+            -- cosmetic loss and strictly better than a provider we do not own
+            -- deciding how wide every tooltip in the game is. 40 characters is
+            -- comfortably longer than every label these providers ship today
+            -- ("Market Value", "Region Sale Avg", "DBRegionMarketAvg"), so the
+            -- branch is inert in practice and exists for the day it is not.
+            local label = tostring(row.label or "")
+            if #label > 40 then
+                tooltip:AddLine(label, 0.4, 0.8, 1, true)
+                tooltip:AddLine("  " .. shown, 1, 1, 1, true)
+            else
+                tooltip:AddDoubleLine(label, shown, 0.4, 0.8, 1, 1, 1, 1)
+            end
         end
     end
 end
@@ -1439,13 +1959,17 @@ function addon.GUI.AttachTooltip(widget, title, desc)
 
     local function show(anchor)
         addon.Tooltip.Owner(anchor or widget.frame)
-        if title then GameTooltip:SetText(title, 1, 1, 1) end
+        -- wrap = true. `SetText` takes (text, r, g, b, alpha, wrap) and `wrap`
+        -- defaults to FALSE, so a caller passing a long `title` would set the
+        -- width of the whole tooltip. This is the shared helper every tab's
+        -- button tooltips go through, so the title is arbitrary caller text.
+        if title then GameTooltip:SetText(title, 1, 1, 1, 1, true) end
         if desc  then GameTooltip:AddLine(desc, nil, nil, nil, true) end
         GameTooltip:Show()
     end
     local function hide() GameTooltip:Hide() end
 
-    widget:SetCallback("OnEnter", function(_w) show(_w.frame) end)
+    widget:SetCallback("OnEnter", function(w) show(w.frame) end)
     widget:SetCallback("OnLeave", hide)
 
     -- Dropdown and EditBox put their SetLabel("...") fontstring at the

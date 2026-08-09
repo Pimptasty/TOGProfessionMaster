@@ -16,8 +16,10 @@
 --      a. Auctionator vendor cache (when present).
 --      b. TOGPM live merchant capture — buy prices cached as the user opens
 --         vendors (MERCHANT_SHOW), realm+faction scoped.
---      c. Static fallback — addon.VendorPrices[itemId], a shipped table the
---         build pipeline generates from ItemSparse for vendor-sold reagents.
+--      c. Static fallback — LibItemDB-1.0:GetVendorBasePrice(itemId). The BASE
+--         (Neutral) price; reputation discounts are server-side, which is why
+--         this ranks below both live sources above. TOGPM shipped its own
+--         Data/VendorPrices.lua for this until 2026-08-07.
 --   3. nil — the cost shows "—" and a "missing price" marker.
 --
 -- Prices are money in copper. Storage is Ace.db.factionrealm (AH prices are
@@ -483,6 +485,31 @@ function Price.Get(itemId)
         return entry.p, "togpm-ah", age
     end
 
+    -- Tiers 2a-2c live in Price.GetVendorBuy below. Split out so the tooltip can
+    -- ask "what does a vendor CHARGE for this" without getting an auction price
+    -- back -- Price.Get answers "what is this worth", which is a different
+    -- question and prefers the AH. One implementation, two callers.
+    return Price.GetVendorBuy(itemId)
+end
+
+--- What a VENDOR CHARGES for this item, in copper, or nil.
+---
+--- Tiers 2a-2c of the ladder documented at the top of this file, extracted so
+--- there is exactly one implementation. `Price.Get` calls this as its last
+--- resort; the item tooltip calls it directly, because on a tooltip "vendor buy
+--- price" is a fact in its own right rather than a fallback for a missing
+--- auction price.
+---
+--- Three returns, matching `Price.Get`'s shape so a caller can swap between them.
+--- The third is always nil here -- a vendor price does not go stale the way a
+--- scanned auction price does -- but it is returned so the arity is identical.
+--- @return number|nil copper
+--- @return string|nil source  one of "auctionator-vendor" | "togpm-vendor" | "vendor-static"
+--- @return number|nil ageSeconds  always nil; present for arity parity with Price.Get
+function Price.GetVendorBuy(itemId)
+    if type(itemId) ~= "number" then return nil end
+    local db = store()
+
     -- 2a. Auctionator vendor
     local av = auctionatorVendor(itemId)
     if av then return av, "auctionator-vendor", nil end
@@ -492,10 +519,97 @@ function Price.Get(itemId)
         return db.vendorPrices[itemId], "togpm-vendor", nil
     end
 
-    -- 2c. Static shipped vendor table (generated from ItemSparse for vendor-sold
-    -- reagents; nil until that data file ships).
-    if addon.VendorPrices and addon.VendorPrices[itemId] then
-        return addon.VendorPrices[itemId], "vendor-static", nil
+    -- 2c. Static vendor buy price, from LibItemDB.
+    --
+    -- TOGPM used to ship its own Data/VendorPrices.lua for this. That table is
+    -- GONE — vendor buy price is an ITEM fact, and ours covered only 93 items
+    -- because it was filtered to reagents appearing in recipes, an artifact of
+    -- living in a profession addon. `LibItemDB-1.0:GetVendorBasePrice` (MINOR 21,
+    -- ItemDB's docs/DEPENDENCY_CONTRACTS.md §7) carries 862 on Vanilla and 1,708
+    -- on TBC, version-scoped rather than merged across expansions. All 59
+    -- overlapping values agreed with ours before the switch.
+    --
+    -- FEATURE-DETECTED ON THE METHOD, not on a MINOR. Against an older ItemDB
+    -- this tier simply answers nothing, which is the correct degradation for a
+    -- last-resort source — there is no local table to fall back to any more, and
+    -- deliberately so: two copies of one fact is what this move removed.
+    --
+    -- WRAPPED IN pcall because this is a cross-addon call whose failure must not
+    -- take a tooltip down with it.
+    --
+    -- THIS IS THE BASE PRICE — what a Neutral player pays. Reputation discounts
+    -- are applied server-side at purchase and the client only sees the final
+    -- number from GetMerchantItemInfo with a merchant open, so tiers 2a/2b
+    -- (Auctionator's cache and our own MERCHANT_SHOW capture) are BOTH more
+    -- accurate for a player with standing. That is why this tier is last, and
+    -- why it must stay last.
+    --
+    -- A CAVEAT INHERITED, NOT INTRODUCED, and worth knowing before trusting a
+    -- number: the vendor-sold gate behind this data comes from Wrath- and
+    -- Cata-era emulator dumps, so a Vanilla figure is gated on Wrath vendor
+    -- inventories. An item a Wrath vendor stocks may not have been vendor-sold
+    -- in 1.12. Our own table had the identical property; ItemDB flagged it.
+    local itemDB = addon.GetItemDB and addon:GetItemDB()
+    if itemDB and itemDB.GetVendorBasePrice then
+        local ok, price = pcall(itemDB.GetVendorBasePrice, itemDB, itemId)
+        if ok and type(price) == "number" and price > 0 then
+            return price, "vendor-static", nil
+        end
+    end
+
+    return nil
+end
+
+--- What a VENDOR pays the player for an item, in copper. The mirror of
+--- `GetVendorBuy`, and roughly 4x smaller — never substitute one for the other
+--- (Schematic: Accurate Scope sells for 500 and buys for 2000).
+---
+--- TWO TIERS, and the order is deliberate:
+---
+---   1. `GetItemInfo`'s eleventh return. The client's own number for the item,
+---      and therefore the most authoritative thing available — but only for an
+---      item the client has CACHED. Nil otherwise, which is precisely the hole
+---      this function exists to close: the sell row went missing exactly when a
+---      player met an item for the first time. Reading it starts the async
+---      fetch, so a second hover lands warm — a mitigation, never a fix.
+---   2. `LibItemDB-1.0:GetVendorSellPrice` (MINOR 22, ItemDB's
+---      docs/DEPENDENCY_CONTRACTS.md §7). Static, shipped, version-scoped, and
+---      ALWAYS populated — no cache, no retry loop.
+---
+--- The client tier is first because it cannot regress a number that already
+--- renders correctly; the static tier only ever adds an answer where there was
+--- none. Both derive from the same DBC field, so where both answer they agree.
+---
+--- FEATURE-DETECTED ON THE METHOD, not on a MINOR, and pcall-wrapped — same
+--- reasoning as tier 2c of `GetVendorBuy`. A player's installed ItemDB may
+--- predate the API (ItemDB's own contract response warns their CurseForge build
+--- lags the repo), and against one that does this simply falls back to tier 1,
+--- i.e. exactly the behaviour that shipped before.
+---
+--- NO REPUTATION DISCOUNT is applied, and ItemDB is explicit that whether one
+--- even exists on the sell side is unverified — the mechanic is entirely
+--- server-side and no client carries the arithmetic. This is the Neutral number.
+---
+--- `nil` means "no sell value" (a quest item, a token), which is a clean answer
+--- rather than an absence — unlike the buy side, there is no vendor-stocking
+--- gate behind it to muddy the meaning.
+---
+--- @return number|nil copper
+--- @return string|nil source  "vendor-sell-client" | "vendor-sell-static"
+function Price.GetVendorSell(itemId)
+    if type(itemId) ~= "number" then return nil end
+
+    -- A type check rather than a truthiness test: 0 is a real answer for an item
+    -- no vendor will buy, and must not render as a price.
+    local sell = select(11, GetItemInfo(itemId))
+    if type(sell) == "number" and sell > 0 then return sell, "vendor-sell-client" end
+
+    local itemDB = addon.GetItemDB and addon:GetItemDB()
+    if itemDB and itemDB.GetVendorSellPrice then
+        local ok, price = pcall(itemDB.GetVendorSellPrice, itemDB, itemId)
+        if ok and type(price) == "number" and price > 0 then
+            return price, "vendor-sell-static"
+        end
     end
 
     return nil
@@ -582,7 +696,7 @@ function Price.CraftCost(profId, recipeId, qty)
         if countable then
             count = count + 1
         end
-        local p, _src, age = Price.Get(itemId)
+        local p, _, age = Price.Get(itemId)
         if p then
             if countable then
                 priced = priced + 1
@@ -608,7 +722,7 @@ function Price.CraftCostForReagents(reagents, qty)
             if countable then
                 count = count + 1
             end
-            local p, _src, age = Price.Get(r.itemId)
+            local p, _, age = Price.Get(r.itemId)
             if p then
                 if countable then
                     priced = priced + 1

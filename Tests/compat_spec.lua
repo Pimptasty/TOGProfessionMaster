@@ -179,9 +179,99 @@ describe("addon-info shims", function()
 	it("wraps the spell and item info calls", function()
 		local ns = compatAt(11508)
 		_G.GetSpellInfo = function(id) return "Spell" .. id end
-		_G.GetItemInfo  = function(id) return "Item" .. id end
+		-- The item half now goes through addon.Item.GetInfo, which prefers the
+		-- C_Item namespace -- so stubbing ONLY the bare name would assert
+		-- nothing. Both spellings are set to the same answer here; which one
+		-- wins is the subject of the "item API" block below.
+		_G.GetItemInfo = function(id) return "Item" .. id end
+		_G.C_Item = _G.C_Item or {}
+		_G.C_Item.GetItemInfo = _G.GetItemInfo
 		assert.equal("Spell7", ns:GetSpellInfo(7))
 		assert.equal("Item7", ns:GetItemInfo(7))
+	end)
+end)
+
+-- The item API resolver. Audit findings 26 and 27.
+--
+-- Every bare name it covers is a DEPRECATION FALLBACK that
+-- Blizzard_DeprecatedItemScript.lua assigns from C_Item only when the
+-- `loadDeprecationFallbacks` CVar is on -- so on a client with it off the bare
+-- global is nil, an unguarded call raises and a presence-guarded one silently
+-- skips. Both shapes shipped here.
+--
+-- Finding 27's point, and the reason each case sets the two spellings to
+-- DIFFERENT functions: the harness env installs both names as the SAME function
+-- object, so a spec that stubs one name and asserts the answer cannot tell which
+-- one was called. Different answers per spelling is the only shape that can.
+describe("item API resolver", function()
+	local ns
+
+	before_each(function()
+		ns = compatAt(11508)
+	end)
+
+	it("prefers the C_Item namespace over the bare deprecation fallback", function()
+		_G.C_Item = _G.C_Item or {}
+		_G.C_Item.GetItemInfo = function() return "namespaced" end
+		_G.GetItemInfo        = function() return "fallback" end
+		assert.equal("namespaced", ns.Item.GetInfo(1))
+	end)
+
+	it("falls back to the bare global when the namespace lacks the function", function()
+		_G.C_Item = {}
+		_G.GetItemInfo = function() return "fallback" end
+		assert.equal("fallback", ns.Item.GetInfo(1))
+	end)
+
+	it("answers nil when NEITHER spelling exists, instead of raising", function()
+		-- This is the CVar-off client. The old code either raised here or, worse,
+		-- skipped its whole branch behind `if GetItemInfo and ... then`.
+		_G.C_Item = {}
+		_G.GetItemInfo = nil
+		assert.is_nil(ns.Item.GetInfo(1))
+	end)
+
+	it("resolves at CALL time, so a later stub is honoured", function()
+		-- Early binding would capture whatever was installed when Compat loaded
+		-- and ignore every later assignment -- specs would pass while measuring
+		-- the env's function rather than their own.
+		_G.C_Item = {}
+		_G.GetItemInfo = function() return "first" end
+		assert.equal("first", ns.Item.GetInfo(1))
+		_G.GetItemInfo = function() return "second" end
+		assert.equal("second", ns.Item.GetInfo(1))
+	end)
+
+	it("maps GetItemIcon to GetItemIconByID, which is NOT the same name", function()
+		-- The bare-to-namespaced mapping is not one-to-one. A mechanical rename
+		-- to C_Item.GetItemIcon produces a nil that only shows up in game as a
+		-- missing texture.
+		_G.C_Item = { GetItemIconByID = function() return 4242 end,
+		              GetItemIcon     = function() return "WRONG" end }
+		assert.equal(4242, ns.Item.GetIcon(1))
+	end)
+
+	it("covers every fallback name this addon calls", function()
+		_G.C_Item = {
+			GetItemInfo         = function() return "info" end,
+			GetItemInfoInstant  = function() return "instant" end,
+			GetItemIconByID     = function() return "icon" end,
+			GetItemCount        = function() return "count" end,
+			GetItemQualityColor = function() return "quality" end,
+		}
+		assert.equal("info",    ns.Item.GetInfo(1))
+		assert.equal("instant", ns.Item.GetInfoInstant(1))
+		assert.equal("icon",    ns.Item.GetIcon(1))
+		assert.equal("count",   ns.Item.GetCount(1))
+		assert.equal("quality", ns.Item.GetQualityColor(1))
+	end)
+
+	it("passes every argument and return through untouched", function()
+		_G.C_Item = { GetItemCount = function(a, b, c) return a, b, c end }
+		local x, y, z = ns.Item.GetCount(1, true, "third")
+		assert.equal(1, x)
+		assert.is_true(y)
+		assert.equal("third", z)
 	end)
 end)
 

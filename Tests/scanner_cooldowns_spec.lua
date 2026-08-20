@@ -66,7 +66,8 @@ before_each(function()
 end)
 
 local function anyTransmute()
-	for spellId in pairs(data.transmutes) do return spellId end
+	-- `next` rather than a one-iteration `for`: "any key from this set".
+	return (next(data.transmutes))
 end
 
 local function plainCooldown()
@@ -91,6 +92,14 @@ describe("ScanCooldowns", function()
 	end)
 
 	it("does not invent cooldowns for spells the character doesn't know", function()
+		-- Say out loud that the bags hold no Salt Shaker. ScanCooldowns also
+		-- scans that ITEM, and it is gated on ownership rather than on knowing a
+		-- spell -- so with the count unstated this asserted an empty table only
+		-- because the bare `GetItemCount` global happened to be absent. Now that
+		-- the read goes through addon.Item.GetCount, the harness's C_Item answers
+		-- and the branch runs, which is what the client would do. State the
+		-- world instead of relying on a gap in it.
+		env.itemAPI("GetItemCount", function() return 0 end)
 		S:ScanCooldowns()
 		assert.same({}, gdb.cooldowns[ME])
 	end)
@@ -186,7 +195,7 @@ describe("ScanSaltShaker", function()
 	before_each(function()
 		_G.C_Container = nil
 		_G.GetItemCooldown = function() return 0, 0 end
-		_G.GetItemCount = function() return 0 end
+		env.itemAPI("GetItemCount", function() return 0 end)
 	end)
 
 	it("records the item's cooldown as an absolute expiry", function()
@@ -215,7 +224,7 @@ describe("ScanSaltShaker", function()
 	end)
 
 	it("seeds Ready when the item is owned but off cooldown", function()
-		_G.GetItemCount = function() return 1 end
+		env.itemAPI("GetItemCount", function() return 1 end)
 		local stored = {}
 		S:ScanSaltShaker(stored, NOW, SHAKER)
 		assert.equal(NOW - 1, stored[SHAKER])
@@ -239,27 +248,30 @@ describe("BackfillReagentItemIds", function()
 		gdb.recipes[171] = { [2330] = { reagents = {
 			{ name = "Peacebloom", itemLink = "|cffffffff|Hitem:2447|h[Peacebloom]|h|r" },
 		} } }
-		_G.GetItemInfoInstant = function() return nil end
+		env.itemAPI("GetItemInfoInstant", function() return nil end)
 		S:BackfillReagentItemIds()
 		assert.equal(2447, gdb.recipes[171][2330].reagents[1].itemId)
 	end)
 
 	it("falls back to a name lookup", function()
 		gdb.recipes[171] = { [2330] = { reagents = { { name = "Peacebloom" } } } }
-		_G.GetItemInfoInstant = function(name) return name == "Peacebloom" and 2447 or nil end
+		env.itemAPI("GetItemInfoInstant", function(name) return name == "Peacebloom" and 2447 or nil end)
 		S:BackfillReagentItemIds()
 		assert.equal(2447, gdb.recipes[171][2330].reagents[1].itemId)
 	end)
 
 	it("leaves an already-resolved reagent alone", function()
 		gdb.recipes[171] = { [2330] = { reagents = { { name = "x", itemId = 99 } } } }
-		_G.GetItemInfoInstant = function() return 2447 end
+		env.itemAPI("GetItemInfoInstant", function() return 2447 end)
 		S:BackfillReagentItemIds()
 		assert.equal(99, gdb.recipes[171][2330].reagents[1].itemId)
 	end)
 
 	it("does nothing without the instant lookup API", function()
-		_G.GetItemInfoInstant = nil
+		-- NEITHER spelling: this drives "the client has no instant lookup at
+		-- all", which is what the test is named for. Nilling only the bare
+		-- global left C_Item.GetItemInfoInstant answering and tested nothing.
+		env.itemAPI("GetItemInfoInstant", nil)
 		local ok, err = pcall(function() S:BackfillReagentItemIds() end)
 		assert.is_true(ok, tostring(err))
 	end)

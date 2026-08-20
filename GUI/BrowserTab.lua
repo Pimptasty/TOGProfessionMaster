@@ -53,8 +53,8 @@ local function ResolveRecipeLink(entry)
     if not entry then return nil end
     if type(entry.itemLink)   == "string" and entry.itemLink:find("|Hitem:")   then return entry.itemLink   end
     if type(entry.recipeLink) == "string" and entry.recipeLink:find("|Hitem:") then return entry.recipeLink end
-    if type(entry.craftedItemId) == "number" and GetItemInfo then
-        local _, link = GetItemInfo(entry.craftedItemId)
+    if type(entry.craftedItemId) == "number" then
+        local _, link = addon.Item.GetInfo(entry.craftedItemId)
         if link then return link end
     end
     -- entry.id is a recipeDB key, i.e. a spell id, with or without the isSpell
@@ -185,8 +185,8 @@ local function ResolveReagentItemId(r)
         local id = tonumber(r.itemLink:match("item:(%d+)"))
         if id then r.itemId = id; return id end
     end
-    if r.name and GetItemInfoInstant then
-        local id = GetItemInfoInstant(r.name)
+    if r.name then
+        local id = addon.Item.GetInfoInstant(r.name)
         if id then r.itemId = id; return id end
     end
     return nil
@@ -200,7 +200,7 @@ local function ResolveReagentItemLink(r)
     if type(r.itemLink) == "string" and r.itemLink ~= "" then return r.itemLink end
     local id = ResolveReagentItemId(r)
     if id then
-        local _, link = GetItemInfo(id)
+        local _, link = addon.Item.GetInfo(id)
         if link then r.itemLink = link; return link end
     end
     return nil
@@ -598,7 +598,7 @@ local function BuildFullList(profId, viewMode, opts)
                     for _, c in ipairs(crafters) do
                         if c.name then hay = hay .. " " .. c.name:lower() end
                     end
-                    local itemLink = craftedItemId and select(2, GetItemInfo(craftedItemId))
+                    local itemLink = craftedItemId and select(2, addon.Item.GetInfo(craftedItemId))
                     -- Learn skill for the tier filter: authoritative requiredSkill
                     -- when shipped, else the orange (difficulty[1]) breakpoint —
                     -- same fallback MissingRecipesTab uses. nil when neither is
@@ -1482,7 +1482,7 @@ function BrowserTab:FillShoppingListSection(container)
                 yOffset = yOffset + ROW_HEIGHT
 
                 if r.itemId and r.itemId > 0 then
-                    local _, _, _, _, _, _, _, _, _, itemTexture = GetItemInfo(r.itemId)
+                    local _, _, _, _, _, _, _, _, _, itemTexture = addon.Item.GetInfo(r.itemId)
                     rf.icon:SetTexture(itemTexture or nil)
                 else
                     rf.icon:SetTexture(nil)
@@ -2527,7 +2527,7 @@ function BrowserTab:DrawDetail(entry)
             local rItemId = ResolveReagentItemId(r)
             local rLink   = ResolveReagentItemLink(r)
             if rItemId and rItemId > 0 then
-                local _, _, _, _, _, _, _, _, _, tex = GetItemInfo(rItemId)
+                local _, _, _, _, _, _, _, _, _, tex = addon.Item.GetInfo(rItemId)
                 rf.icon:SetTexture(tex or nil)
             else
                 rf.icon:SetTexture(nil)

@@ -287,8 +287,20 @@ describe("every tooltip line this addon appends opts into the wrap preset", func
 			for _, call in ipairs(tooltipCalls(code(src.path))) do
 				if call.method ~= "AddDoubleLine" and not isBlankSpacer(call.args) then
 					local need = WRAP_ARITY[call.method]
-					local ok = call.args:find("true%s*%)$") ~= nil
-					           and argCount(call.args) == need
+					-- Round 15 asked for a deliberate decision here and two
+					-- earlier rounds passed over it. DECISION: both spellings
+					-- count as wrapping. The client takes any truthy value, and
+					-- Blizzard's own Blizzard_AchievementUI_Shared.lua:238 is
+					-- `AddLine(self.text, nil, nil, nil, 1)` -- so `1` is the
+					-- spelling someone copies in, and accepting only `true`
+					-- would report a genuinely-wrapping line as an offender.
+					-- Loud rather than silent, but still wrong. The arity check
+					-- below is what guards the POSITION (finding 17); the tail
+					-- match only identifies the flag. This addon writes `true`
+					-- everywhere today and nothing here pushes anyone off that.
+					local tail = call.args:find("true%s*%)$") ~= nil
+					             or call.args:find("[^%w_]1%s*%)$") ~= nil
+					local ok = tail and argCount(call.args) == need
 					if not ok then
 						local shown = call.args
 						if #shown > 80 then shown = shown:sub(1, 80) .. "…" end
@@ -336,8 +348,23 @@ describe("every tooltip line this addon appends opts into the wrap preset", func
 				end
 			end
 		end
+		-- Audit finding 23: walk the UNION of the two tables, not just `counts`.
+		-- `counts` only gains a key for a file where an AddDoubleLine was FOUND,
+		-- so iterating it alone checks the exemption list for growth and never
+		-- for shrinkage: delete the last AddDoubleLine from an exempt file and
+		-- its entry is never visited again, sitting there permanently claiming
+		-- cover for a call site that no longer exists. A fourth site failed as
+		-- designed; a deleted third did not. This is live rather than
+		-- hypothetical -- finding 18's own remedy proposes converting
+		-- SharedWidgets.lua's AddDoubleLine to a wrapped AddLine, which would
+		-- turn `= 2` into a lie nothing reports.
+		local paths = {}
+		for path in pairs(counts) do paths[path] = true end
+		for path in pairs(DOUBLELINE_EXEMPT) do paths[path] = true end
+
 		local unexpected = {}
-		for path, n in pairs(counts) do
+		for path in pairs(paths) do
+			local n       = counts[path] or 0
 			local allowed = DOUBLELINE_EXEMPT[path] or 0
 			if n ~= allowed then
 				unexpected[#unexpected + 1] = ("%s has %d AddDoubleLine, expected %d")
@@ -346,7 +373,9 @@ describe("every tooltip line this addon appends opts into the wrap preset", func
 		end
 		table.sort(unexpected)
 		assert.equal("", table.concat(unexpected, " | "),
-			"AddDoubleLine has no wrap parameter — a new one is a line that cannot "
-			.. "opt into the preset, and needs a reason recorded in DOUBLELINE_EXEMPT")
+			"AddDoubleLine has no wrap parameter -- a new one is a line that cannot "
+			.. "opt into the preset, and needs a reason recorded in DOUBLELINE_EXEMPT; "
+			.. "an entry whose count has DROPPED is a stale exemption and must be "
+			.. "removed or lowered")
 	end)
 end)

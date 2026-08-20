@@ -54,8 +54,10 @@ before_each(function()
 		},
 	})
 	-- Nothing here needs a real item; keep the tooltip scraper quiet.
-	_G.GetItemInfo = function() return nil end
-	_G.GetItemIcon = function() return nil end
+	-- Both spellings -- the code reads through addon.Item.*, which prefers
+	-- C_Item exactly as the client does. See env.itemAPI.
+	env.itemAPI("GetItemInfo", function() return nil end)
+	env.itemAPI("GetItemIcon", function() return nil end)
 	_G.GetSpellTexture = function() return nil end
 end)
 
@@ -388,27 +390,27 @@ describe("reagent id resolution", function()
 	end)
 
 	it("falls back to a name lookup", function()
-		_G.GetItemInfoInstant = function(name) return name == "Linen Cloth" and 2589 or nil end
+		env.itemAPI("GetItemInfoInstant", function(name) return name == "Linen Cloth" and 2589 or nil end)
 		assert.equal(2589, B._ResolveReagentItemId({ name = "Linen Cloth" }))
 	end)
 
 	it("gives up cleanly on nothing usable", function()
-		_G.GetItemInfoInstant = function() return nil end
+		env.itemAPI("GetItemInfoInstant", function() return nil end)
 		assert.is_nil(B._ResolveReagentItemId({}))
 		assert.is_nil(B._ResolveReagentItemId(nil))
 	end)
 
 	it("rebuilds a missing link from the id and caches it", function()
-		_G.GetItemInfo = function(id)
+		env.itemAPI("GetItemInfo", function(id)
 			if id == 2589 then return "Linen Cloth", "LINK" end
-		end
+		end)
 		local r = { itemId = 2589 }
 		assert.equal("LINK", B._ResolveReagentItemLink(r))
 		assert.equal("LINK", r.itemLink)
 	end)
 
 	it("returns nothing while the client has not cached the item", function()
-		_G.GetItemInfo = function() return nil end
+		env.itemAPI("GetItemInfo", function() return nil end)
 		assert.is_nil(B._ResolveReagentItemLink({ itemId = 2589 }))
 	end)
 end)

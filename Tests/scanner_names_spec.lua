@@ -29,7 +29,9 @@ before_each(function()
 	gdb = env.resetDb()
 	env.setRecipeDB({})
 	ns.Print = function() end
-	_G.GetItemInfo  = function() return nil end
+	-- Both spellings -- the code reads through addon.Item.*, which prefers
+	-- C_Item exactly as the client does. See env.itemAPI.
+	env.itemAPI("GetItemInfo", function() return nil end)
 	_G.GetSpellInfo = function() return nil end
 end)
 
@@ -183,9 +185,11 @@ describe("BackfillBogusRecipeNames", function()
 
 	it("uses the item lookup for an item-keyed recipe", function()
 		gdb.recipes[ALCHEMY] = { [118] = { name = "? 118", crafters = {} } }
-		_G.GetItemInfo = function(id)
-			if id == 118 then return "Minor Healing Potion", "LINK", nil, nil, nil, nil, nil, nil, nil, 55 end
-		end
+		env.itemAPI("GetItemInfo", function(id)
+			if id == 118 then
+				return "Minor Healing Potion", "LINK", nil, nil, nil, nil, nil, nil, nil, 55
+			end
+		end)
 		S:BackfillBogusRecipeNames()
 		local rd = gdb.recipes[ALCHEMY][118]
 		assert.equal("Minor Healing Potion", rd.name)
@@ -197,7 +201,7 @@ describe("BackfillBogusRecipeNames", function()
 		-- This is the whole point of the guard: without it the TEST string got
 		-- cached and rendered on every row.
 		gdb.recipes[ALCHEMY] = { [26926] = { name = "? 26926", crafters = {} } }
-		_G.GetItemInfo  = function() return "59 TEST Green Shaman Chest", "LINK" end
+		env.itemAPI("GetItemInfo", function() return "59 TEST Green Shaman Chest", "LINK" end)
 		_G.GetSpellInfo = function() return nil end
 		S:BackfillBogusRecipeNames()
 		assert.is_true(S._isBogusName(gdb.recipes[ALCHEMY][26926].name))
@@ -220,7 +224,7 @@ describe("BackfillBogusRecipeNames", function()
 
 	it("leaves a good name alone", function()
 		gdb.recipes[ALCHEMY] = { [2330] = { name = "Minor Healing Potion", crafters = {} } }
-		_G.GetItemInfo = function() return "Something Else" end
+		env.itemAPI("GetItemInfo", function() return "Something Else" end)
 		S:BackfillBogusRecipeNames()
 		assert.equal("Minor Healing Potion", gdb.recipes[ALCHEMY][2330].name)
 	end)

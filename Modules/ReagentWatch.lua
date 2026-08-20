@@ -148,7 +148,9 @@ function RW:GetWatchedItems()
     local bags = ScanBags()
     local list = {}
     for itemId in pairs(Ace.db.char.reagentWatch) do
-        local name = GetItemInfo(itemId) or "|cffaaaaaa(loading…)|r"
+        -- "..." not the single-glyph ellipsis: the client's fonts stop at
+        -- Latin-1 and U+2026 draws as a box or as nothing at all.
+        local name = addon.Item.GetInfo(itemId) or "|cffaaaaaa(loading...)|r"
         list[#list + 1] = {
             itemId   = itemId,
             itemName = name,
@@ -183,7 +185,7 @@ local function CheckAlerts(bags)
                 -- First time ready — alert
                 alrt[spellId] = true
                 local spellName = GetSpellInfo(spellId) or tostring(spellId)
-                local itemName  = GetItemInfo(reagent.id) or tostring(reagent.id)
+                local itemName  = addon.Item.GetInfo(reagent.id) or tostring(reagent.id)
                 addon:Print(string.format(
                     L["AlertReadyFormat"],
                     spellName, qty, itemName, have

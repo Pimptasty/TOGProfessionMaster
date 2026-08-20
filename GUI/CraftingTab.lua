@@ -156,7 +156,6 @@ function CraftingTab:Draw(container)
         -- The target profession isn't one this character has (the Profit row
         -- belonged to an alt) — drop the request and say so once.
         self._pendingSelect = nil
-        pend = nil
         if not self._pendingNotified then
             self._pendingNotified = true
             addon:Print(L["ProfitCraftNotKnownHere"])
@@ -794,7 +793,9 @@ local DREAG_POOL = 12      -- reagent rows (most recipes have ≤ 8)
 local DCTRL_W    = 230     -- right-hand controls column width
 local DREAG_H    = 13      -- reagent row height (tight, ~ font height)
 local DREAG_TOP  = 42      -- y-offset of the first reagent row from the panel top
-local DCTRL_BOT  = 114     -- controls block bottom offset (Craft Max button bottom: stepper -6, Craft -34, Queue -62, Craft Max -90..-114)
+-- controls block bottom offset (Craft Max button bottom:
+-- stepper -6, Craft -34, Queue -62, Craft Max -90..-114)
+local DCTRL_BOT  = 114
 local DREAG_COST_W = 132   -- per-reagent cost/source width (coin string + source tag, expands left)
 
 local function rawTip(frame, getTitle, getDesc)
@@ -1218,7 +1219,7 @@ function CraftingTab:RefreshDetail()
             -- the Missing-Materials flag) counts bags + bank together, so a
             -- reagent stashed in the bank doesn't read as missing.
             local need = r.need or 0
-            local bags = (r.itemId and GetItemCount and GetItemCount(r.itemId)) or r.have or 0
+            local bags = (r.itemId and addon.Item.GetCount(r.itemId)) or r.have or 0
             local bankq = (r.itemId and addon.ReagentWatch and addon.ReagentWatch:GetBankCount(r.itemId)) or 0
             local enough = (bags + bankq) >= need
             if not enough then missing = true end
@@ -1446,7 +1447,7 @@ function CraftingTab:QueueEntryDisplay(e)
               or (GetSpellInfo and GetSpellInfo(e.recipeId))
               or ("#" .. tostring(e.recipeId))
     local icon = (meta and meta.icon)
-              or (meta and meta.craftedItemId and GetItemIcon and GetItemIcon(meta.craftedItemId))
+              or (meta and meta.craftedItemId and addon.Item.GetIcon(meta.craftedItemId))
               or (GetSpellTexture and GetSpellTexture(e.recipeId))
     return name, icon
 end
@@ -1576,7 +1577,7 @@ function CraftingTab:DetachPool()
             end
         end
     end
-    
+
     addon.GUI.DetachPool(self._pool)
     addon.GUI.DetachPool(self._queuePanel)
     addon.GUI.DetachPool(self._headerFrame)

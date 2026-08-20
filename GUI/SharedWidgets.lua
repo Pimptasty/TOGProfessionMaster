@@ -425,10 +425,26 @@ function ItemLink.QualityHex(itemLink, itemId)
     end
 
     -- Last resort, and only useful for an item the client already has cached.
-    if _G.GetItemInfo and _G.GetItemQualityColor then
-        local _, _, quality = _G.GetItemInfo(itemId)
+    --
+    -- Audit finding 26. BOTH bare names here are DEPRECATION FALLBACKS, assigned
+    -- from their C_Item counterparts in Blizzard_DeprecatedItemScript.lua (`:9`
+    -- and `:42`) inside a block that returns early unless the
+    -- `loadDeprecationFallbacks` CVar is on. With it off both are nil, this
+    -- presence guard is false, and the branch is skipped -- so the function
+    -- quietly returns nil and a row renders with no quality colour. That is
+    -- worse than the raise this same defect caused in MissingRecipesTab,
+    -- because it is silent, and it defeats the docstring above: the last resort
+    -- never running is another way for the colour to depend on cache state.
+    --
+    -- Routed through Compat's single resolver rather than resolved again here,
+    -- so there is one place that knows which spelling is real. It dispatches at
+    -- CALL time and answers nil when neither spelling exists, which is what the
+    -- old presence guard was for.
+    local Item = addon.Item
+    if Item then
+        local _, _, quality = Item.GetInfo(itemId)
         if quality then
-            local _, _, _, hex = _G.GetItemQualityColor(quality)
+            local _, _, _, hex = Item.GetQualityColor(quality)
             -- The fourth return is already "ffRRGGBB" on Classic; guard anyway
             -- rather than trusting the shape.
             if type(hex) == "string" and hex:match("^ff%x%x%x%x%x%x$") then return hex end

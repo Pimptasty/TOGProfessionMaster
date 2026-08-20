@@ -156,7 +156,8 @@ local function BuildCrossGuildDiagnostics()
                         orphans[#orphans + 1] = ck
                     end
                 end
-                lines[#lines + 1] = string.format("  %s  \226\128\148  %d crafters (%d in roster, |cffff6060%d orphaned|r)",
+                lines[#lines + 1] = string.format(
+                    "  %s  \226\128\148  %d crafters (%d in roster, |cffff6060%d orphaned|r)",
                     nm, total, inRoster, total - inRoster)
                 if #orphans > 0 then
                     lines[#lines + 1] = "    e.g. " .. table.concat(orphans, ", ")
@@ -279,7 +280,9 @@ local OPTIONS = {
                 koKR  = "한국어",
                 zhCN  = "简体中文",
                 zhTW  = "繁體中文",
-                thTH  = "Thai",  -- WoW's default fonts don't ship Thai glyphs; native script "ไทย" would render as boxes
+                -- WoW's default fonts ship no Thai glyphs, so the native script
+                -- would render as boxes. English label on purpose.
+                thTH  = "Thai",
                 filPH = "Filipino",
             },
             sorting = { "auto", "enUS", "enGB", "deDE", "esES", "esMX", "frFR",
@@ -589,7 +592,8 @@ local OPTIONS = {
         },
 
         ahDataSourceNote = {
-            name  = "|cffFFD100Note:|r Changes to the data source checkboxes below require a |cffFF4040/reload|r to take effect.",
+            name  = "|cffFFD100Note:|r Changes to the data source checkboxes below"
+                .. " require a |cffFF4040/reload|r to take effect.",
             type  = "header",
             order = 19.705,
         },
@@ -674,7 +678,8 @@ local OPTIONS = {
 
         useTSM = {
             name  = "Use TSM pricing",
-            desc  = "When TradeSkillMaster is installed, allow TOGPM to use TSM live price sources for profit views. Off by default.",
+            desc  = "When TradeSkillMaster is installed, allow TOGPM to use TSM live"
+                .. " price sources for profit views. Off by default.",
             type  = "toggle",
             width = "full",
             order = 19.76,
@@ -684,7 +689,8 @@ local OPTIONS = {
 
         useTSMAppHelper = {
             name  = "Use TSM App Helper pricing",
-            desc  = "Requires TradeSkillMaster_AppHelper. Enables TSM historical-style price sources for profit views. Off by default.",
+            desc  = "Requires TradeSkillMaster_AppHelper. Enables TSM historical-style"
+                .. " price sources for profit views. Off by default.",
             type  = "toggle",
             width = "full",
             order = 19.77,
@@ -821,7 +827,11 @@ local OPTIONS = {
             -- put "Phase 2 (SSC / Tempest Keep)" before "Phase 1 (...)"
             -- depending on the localised label text).
             sorting = { 1, 2, 3, 4 },
-            get = function() return Ace.db.profile.tbcAnniversaryPhase or 2 end,
+            -- `or 4` matches the DB default and RecipeGate's fallback; see the
+            -- note on tbcAnniversaryPhase in TOGProfessionMaster.lua. A getter
+            -- that answered 2 here would show the user a filter they are not
+            -- actually running.
+            get = function() return Ace.db.profile.tbcAnniversaryPhase or 4 end,
             set = function(_, val)
                 Ace.db.profile.tbcAnniversaryPhase = val
                 -- Re-render Missing Recipes if it's the active tab so the

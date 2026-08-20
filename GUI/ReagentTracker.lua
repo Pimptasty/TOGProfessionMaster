@@ -161,7 +161,7 @@ function RT:Refresh()
         local need      = item.need
 
         -- Icon (may be nil if not cached yet — silently blank)
-        row.icon:SetTexture(select(10, GetItemInfo(item.id)))
+        row.icon:SetTexture(select(10, addon.Item.GetInfo(item.id)))
 
         -- Name coloured by item rarity
         local colorHex = item.itemLink and item.itemLink:match("|c(ff%x%x%x%x%x%x)|H") or "ffffffff"

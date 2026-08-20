@@ -28,7 +28,9 @@ before_each(function()
 	gdb = env.resetDb()
 	env.roster({ { name = "Testchar", isOnline = true }, { name = "Bob", isOnline = true } })
 	env.setRecipeDB({})
-	_G.GetItemInfo = function() return nil end
+	-- Both spellings -- the code reads through addon.Item.*, which prefers
+	-- C_Item exactly as the client does. See env.itemAPI.
+	env.itemAPI("GetItemInfo", function() return nil end)
 	_G.GetCoinTextureString = nil
 	local fr = Ace.db.factionrealm
 	fr.ahPrices, fr.vendorPrices = {}, {}

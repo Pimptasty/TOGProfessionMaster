@@ -1,4 +1,122 @@
+<!-- charset-ok: this file is never drawn by the WoW client. The BigWigs packager
+     publishes it verbatim as the GitHub release body and it is read on the
+     CurseForge listing -- both render UTF-8, and the em dashes in entries up to
+     v1.0.7 are already published under those release tags, so rewriting them
+     would make the repo disagree with what people have read. New entries from
+     v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # TOG Profession Master Changelog
+
+## [v1.0.8] (2026-08-19) - 206 TBC recipes come back, including every flask; the item API stops depending on a CVar; one offline gate instead of three
+
+### Bug Fixes
+
+- **Flask of Blinding Light, and every other TBC flask, was missing from the
+  addon entirely.** Reported in game: *"flask of blinding light is not showing up
+  on tbc"*.
+
+  The recipe gate rejected anything whose `requiredSkill` exceeded the client's
+  profession cap. TBC's cap is 375; the shipped data gives Flask of Blinding
+  Light 390, with difficulty tiers `{390, 393, 397, 405}`. 390 is greater than
+  375, so it was filtered out before any list could draw it.
+
+  That rule read like an expansion check -- *"nobody on this client could ever
+  need this much skill, so it must be from a later one"* -- and it is not one.
+  Measured across all five shipped datasets, every recipe it rejected was a
+  **real recipe of that expansion**: 12 on TBC (all Alchemy, being Super
+  Rejuvenation Potion and all five flasks), 14 on Vanilla of which 13 were
+  already rejected by the Season of Discovery id floor, and **zero** on Wrath,
+  Cata and MoP, where the rule had never once fired. The fourteenth Vanilla one
+  was Gurubashi Mojo Madness, an ordinary Zul'Gurub recipe hidden on Era for as
+  long as the rule existed.
+
+  So it caught nothing another gate had not already caught, and hid 13 real
+  recipes doing it. Removed. The premise was wrong twice over: the recipe data is
+  already scoped per flavour, so a skill number can never mean "wrong
+  expansion"; and the TBC bandages the Era blacklist exists for do not arrive
+  through the Vanilla dataset at all. Location: `Modules/RecipeGate.lua`.
+
+- **194 more TBC recipes were hidden by a setting nobody had touched.** Reported
+  in game as *"a lot of missing recipes"* on TBC, and a different cause from the
+  flask above.
+
+  The TBC content-phase filter defaulted to phase 2, described in the code as the
+  live state *"as of v0.5.4"* with a note that a new default would ship each time
+  a phase opened. That follow-up never happened. Measured against the shipped
+  data, the default hid **194 of 2170 TBC recipes** -- 109 tagged phase 3 and 85
+  tagged phase 4 -- across every profession: Jewelcrafting 69, Leatherworking 51,
+  Engineering 20, Blacksmithing 17, Tailoring 17, Enchanting 10, Alchemy 6,
+  Cooking 2, Fishing 1, Mining 1.
+
+  **The filter is now opt-in and defaults to showing everything.** A constant
+  that has to be chased forward by a release is wrong for most of every phase's
+  life, and wrong silently. The two failure directions are not equal: filtering
+  too little shows a few not-yet-live recipes in a list of things you do not
+  have, which is visible and self-correcting; filtering too much deletes real,
+  obtainable recipes with no sign anything was removed. The setting is still
+  there for anyone who wants to hide unreleased content deliberately.
+  Location: `TOGProfessionMaster.lua`, `Modules/RecipeGate.lua`, `GUI/Settings.lua`.
+
+- **Every item lookup in the addon depended on a setting the player controls.**
+  `GetItemInfo`, `GetItemInfoInstant`, `GetItemIcon`, `GetItemCount` and
+  `GetItemQualityColor` are all deprecation fallbacks on Classic Era: Blizzard
+  assigns them from their `C_Item` counterparts only when the
+  `loadDeprecationFallbacks` CVar is on. With it off they are nil, so an
+  unguarded call raises and a `if GetItemInfo then` guard silently skips the
+  branch instead.
+
+  Both shapes were live here. Taking the authoritative list of 47 such names from
+  the client source and matching it against every shipped file found **~60 call
+  sites across 14 files**. All of them now route through one resolver
+  (`addon.Item.*`) that prefers the namespaced form and falls back only where it
+  must. Locations: `Compat.lua` and the 14 files that call it.
+
+- **A recipe row could render with no quality colour at all.**
+  `ItemLink.QualityHex` guarded on two of those same fallback globals, so with
+  the CVar off it returned nil rather than raising, defeating the very thing the
+  function was written to guarantee: that an item's colour never depends on cache
+  state. Location: `GUI/SharedWidgets.lua`.
+
+- **Crafted-gear rows lost their colour on a client with deprecation fallbacks
+  off.** The same defect, one site over, and this one raised rather than
+  degrading. Location: `GUI/MissingRecipesTab.lua`.
+
+- **The "(loading...)" placeholder rendered as a box.** Both the shopping list
+  and the reagent watch used a single-glyph ellipsis; the client's fonts stop at
+  Latin-1. It is the most-seen string in either list, because it shows for every
+  item the client has not cached yet. Locations: `GUI/ShoppingListTab.lua`,
+  `Modules/ReagentWatch.lua`.
+
+### Improvements
+
+- **The peer-offline check is one function instead of three copies.** Every
+  outbound sync request is gated on whether the peer went offline between their
+  broadcast and our reply, and that rule was written out three times with only
+  one of them covered by a spec. It is now `Scanner:PeerIsOffline`, with its own
+  specs plus one per call site. It answers *false* when no roster library is
+  loaded, which is deliberate and load-bearing: knowing nothing about who is
+  online must not be read as "everyone is offline", or sync refuses every send
+  instead of protecting it. Location: `Scanner.lua`.
+
+- **Dead code removed.** A hidden tooltip frame built to scrape reagent links had
+  no caller anywhere in the addon. Location: `Scanner.lua`.
+
+- **The `.pkgmeta` reader now refuses what the packager mishandles.** The dev
+  replication script parsed trailing comments and unbalanced quotes that the
+  BigWigs packager does not, so a `.pkgmeta` that dry-ran perfectly clean could
+  still ship an empty zip. When two implementations of one rule disagree about a
+  malformed input, the modelling one has to be at least as strict as the real
+  one, or its green is worth less than no check at all. Verified firing against
+  three fixtures. Location: `wow-version-replication.ps1`.
+
+- **Test suite at 1433 passing.** The offline harness moved to its current
+  release, which turned two comm specs red for the right reason: the environment
+  now echoes guild addon messages back to the sender as a real server does, and
+  the addon's comm diagnostic decides whether a server relays guild traffic *from
+  that echo*. The old environment was a permanent simulation of the exact broken
+  server the tool exists to detect, so the spec was asserting a property of the
+  test harness and reporting it as a property of the addon.
+
+---
 
 ## [v1.0.7] (2026-08-08) - The tooltip finally works outside the addon; tooltips are the width the game makes them; vendor buy AND sell; nine wrong reagents; all data generation leaves this addon
 
@@ -873,55 +991,4 @@ diagnostic command. Both gaps are closed here, plus MINOR 6's fifth verdict.
 
 ---
 
-## [v1.0.3] (2026-07-15) - Cooldown-sync repair, switched-profession cleanup & cross-guild data-leak fixes
-
-### Bug Fixes
-
-- **Guild cooldown sync has been broken since v1.0.0 — now fixed.** The v1.0.0 "cooldown-sync overhaul" wrapped cooldown *serving* in a timestamp gate: a client would only hand over a cooldown when its own copy was strictly *newer* than the requester's. That comparison can't hold across a guild — it trusts each client's `updatedAt`, but the migration off the old relative-remaining format left every client stamping `updatedAt` at its local receive time (≈now), so an owner's real copy was never "newer" than anyone's stamp and **nobody ever served a cooldown to anybody**. Guild cooldown data silently froze at v1.0.0 and withered as cooldowns expired with nothing replacing them — most people saw only their own. TOGPM now serves cooldowns like every other leaf (prefer-newer, but it never stays silent), and the request advertises what you actually *hold* — real data, not a leftover hash — so a first fetch always resolves and orphaned hashes can't block it. The absolute-timestamp format that stops sync churn is kept; only the broken serve gate is gone. Cooldowns propagate again the moment two updated clients share a guild. Location: `Scanner.lua`, `Modules/HashManager.lua`, `TOGProfessionMaster.lua`, `GUI/Settings.lua`.
-- **Synced guild cooldowns no longer vanish because *your* character lacks the profession.** A cooldown that had genuinely synced (e.g. a guildmate's Salt Shaker) could be filtered out on your end if your copy of *their* profession snapshot hadn't caught up — so a bank alt or a fresh login saw an empty Cooldowns tab even though the data was sitting in the database. The dropped-profession hide now applies only to your **own** characters, where the profession read is authoritative and current; guild sync always displays what it received. The owner decides what to broadcast — a viewer shows everything it got. Location: `TOGProfessionMaster.lua`.
-- **Fixed a Lua error when hovering the Cooldowns tab's "Ready Only" button.** The button's new tooltip referenced a locale key (`ReadyOnlyTooltip`) that didn't exist, and AceLocale raises its "Missing entry" error on the *access* itself — before the code's own fallback string could run. Added the string and hardened the lookup (`rawget`) so it can never throw regardless of client locale. Location: `GUI/CooldownsTab.lua`, `Locale/enUS.lua`.
-- **Alt-group sync (`accountchars`) no longer churns forever.** The alt-group leaf still ran the original v0.7.0 model: a relay **union-added** incoming entries and then **recomputed** the hash on receipt, so every client hashed its *own accumulated view* instead of the owner's canonical one. The leaf therefore perpetually differed between clients and peers re-requested it every sync cycle — a constant background of `accountchars:*` re-sends and repeated full-list subhash broadcasts. It's now **owner-authoritative** like cooldowns and professions: the alt group is minted only by its own account and adopted **verbatim** everywhere else — no union, no recompute — so all clients converge on one hash. Two bonuses fall out of the verbatim *replace* (vs. the grow-only union): a **dropped alt now propagates** guild-wide (the old union could never remove one), and a peer can no longer union stray entries into your *own* alt list. The character purge was also completing this loop wrong — it dropped the alt-group *hash* but left the *data*, so the next cache rebuild re-minted the hash and a purged (left-the-guild) character reappeared; the purge now removes the data too, so a purge sticks. Same release-gated convergence as cooldowns — it settles fully once peers are on the new code. Location: `Scanner.lua`, `Modules/HashManager.lua`, `TOGProfessionMaster.lua`.
-- **Guildmates who drop or switch a profession no longer linger in the old profession's data.** When someone unlearned a profession, TOGPM kept listing them as a crafter of its recipes, kept counting them on the Guild tab, and kept showing their profession cooldowns — forever. A dropped profession has no trade-skill window to re-scan, and guild sync could only ever *add* data, never remove it, so the stale entries never cleared. TOGPM now keeps an **owner-authoritative snapshot of each character's current professions** and syncs it on a new `professions:` channel: on login your client reads the professions you *actually* have right now (window-less — it doesn't need you to open anything) and broadcasts the complete set, so a profession you dropped is removed for everyone. Your recipes disappear from the Professions browser, your headcount drops off the Guild tab, the recipes you no longer cover reappear in Missing Recipes, and (below) your profession cooldowns drop off the Cooldowns tab. Heavily guarded against false removals: it only acts on a **confident, complete** read (never a partial early-login scan — a profession must be absent from *two* consecutive reads before it's removed), so a profession you still have but simply haven't opened is never touched. Location: `Scanner.lua`, `Modules/HashManager.lua`, `GUI/GuildTab.lua`, `GUI/MissingRecipesTab.lua`, `TOGProfessionMaster.lua`.
-- **Dropping a profession now also clears its cooldowns.** Unlearn Alchemy and its transmute drops off the Cooldowns tab; the same applies to every profession cooldown — Tailoring's Mooncloth / specialty cloths / Dreamcloth, Enchanting spheres, JC prisms and daily cuts, Inscription research, Blacksmithing ingots, Leatherworking Magnificence, and the **Salt Shaker** (whose Use effect requires Leatherworking 250, so losing LW means you can't use it). Each cooldown is matched to its profession. For **your own** characters the row is hidden immediately (checked against your live, authoritative profession read); a **guildmate's** dropped cooldown clears once their client rescans and re-broadcasts without it — the viewer-side hide is deliberately limited to your own toons so a guildmate's genuinely-synced cooldown is never hidden just because your copy of their profession snapshot lagged. Location: `Data/CooldownIds.lua`, `GUI/CooldownsTab.lua`, `TOGProfessionMaster.lua`.
-- **On accounts with characters in more than one guild, each toon showed profession/cooldown data from the OTHER guild.** The "guild only" filter on the Professions tab (and the Cooldowns, Guild, and Missing Recipes tabs, plus item tooltips) failed to filter out data belonging to a different guild. Root cause: the database is a single account-wide table (all your toons write into it), and the display-time guild gate `IsVisibleCrafter` short-circuited with *"own alts are always visible, regardless of guild."* So when you were logged into a Guild A character, your Guild B alts — and any recipe or cooldown only they knew — leaked into Guild A's view. The Cooldowns "guild" view was worse still: it carries no guild tag and returned the *entire* account-wide cooldown table with no scoping at all, so even other-guild *members'* cooldowns (synced while you were on a Guild B toon) rendered under Guild A. Fixed with a single roster-truth scope test, `addon:IsInCurrentGuildScope` — a character counts only when LibGuildRoster confirms it's in your current guild (or a configured sister guild), your own alts included. It's applied to every guild-scoped view: the Professions **guild/missing** views (the **Mine** view still shows all your alts across every guild), item tooltips, the Cooldowns guild view, the Guild-tab profession headcounts, and the Missing Recipes "known by the guild" test. The check is read-only — a hidden cross-guild alt is never purged, so its data survives for when you log into that guild — and cold-start-safe (before the roster finishes its first build nothing is hidden; the tabs re-scope once it's ready). Note: because cooldowns/skills carry no guild tag, an own bank alt that is *guildless* (not in the guild) is also scoped out of the guild views — it remains in the **Mine** view. Location: `TOGProfessionMaster.lua`, `GUI/BrowserTab.lua`, `GUI/CooldownsTab.lua`, `GUI/GuildTab.lua`, `GUI/MissingRecipesTab.lua`, `Tooltip.lua`.
-
-### Improvements
-
-- **Fixed a 1–2 second freeze the first time you open the Professions tab.** The background cache-warmer builds one profession at a time, and after *each* one it forced a **full tab teardown-and-rebuild** (`ReleaseChildren` + redraw of every dropdown, the toolbar, and the scroll pool). With the tab open while the warm ran, that was ~one full rebuild *per profession* back-to-back — a dozen complete UI rebuilds in a row, which is the hitch (the list build itself is effectively instant). The warm now refreshes **only** when the profession it just built is the exact view you're looking at, collapsing that storm to a single redraw; the other professions still warm silently into the cache and appear instantly when you switch to them. Location: `GUI/BrowserTab.lua`.
-- **Recipe-browser build does fewer redundant roster lookups.** Each crafter's visibility/guild-scope checks (`IsMyCharacter`, `IsVisibleCrafter`, `IsInCurrentGuildScope`) are now memoized per character within a build, so a crafter known across many recipes is evaluated once instead of once per recipe. Location: `GUI/BrowserTab.lua`.
-- **Serve-side coalescing cuts redundant guild broadcasts.** Serving a leaf (or a roll-up's subhash list) is a guild-wide broadcast, but it's request-driven per peer — so when many clients ask for the same thing at once (common in a mixed-version guild, where the one client actually holding real cooldown data gets asked by everyone), it was re-broadcast to the *whole guild* once per requester. TOGPM now suppresses a repeat of the same leaf or roll-up subhash list within a short window — everyone already got the first copy — collapsing those request bursts to a single send. It targets burst amplification (e.g. a login storm); the steady per-cycle re-requests from un-converged old clients still settle only on release. Location: `Scanner.lua`.
-- **The new profession snapshot is owner-authoritative and fully backward-compatible.** Each character's profession set is minted only by that character's own client and adopted verbatim by everyone else — hashes are never recomputed on receipt, the same convergence-safe model the cooldown sync uses (recompute-on-receive is what caused past drift/redraw churn). It rides a **separate** `professions:` sync leaf, so un-updated guildmates are completely undisturbed — their existing sync is byte-identical to before and there's no cross-version churn. Un-updated clients simply don't get the switched-profession cleanup until they update. Location: `Scanner.lua`, `Modules/HashManager.lua`.
-
----
-
-## [v1.0.2] (2026-07-09) - Fix: Auctionator error when opening Enchanting with crafting takeover on
-
-### Bug Fixes
-
-- **Opening Enchanting with crafting takeover enabled threw an Auctionator error (`attempt to index global 'CraftReagent1'`).** On Vanilla/TBC the Enchanting "Craft" window's frames (`CraftReagent1..N`) are created by the load-on-demand `Blizzard_CraftUI` addon, and the *only* thing that lazy-loads it is UIParent's built-in `CRAFT_SHOW` handler. When crafting takeover is on, TOGPM unregisters that handler so Blizzard's window doesn't pop over its own tab — which also removed the loader, so any other addon that hooks `CRAFT_SHOW` (Auctionator's `CraftShown`) ran while those globals were still `nil` and errored. TOGPM now assumes UIParent's load responsibility: it loads `Blizzard_CraftUI` itself so the frames exist for co-installed listeners, then unregisters `CraftFrame`'s own `CRAFT_SHOW` so it still won't auto-pop a second window. Gated on Vanilla/TBC (`HAS_CRAFT_WINDOW`) and the takeover path only, so default hands-off users and Wrath+ clients are unaffected; the escape-to-Blizzard button still works (it summons the window via `UIParent_OnEvent`, which doesn't depend on that registration). Location: `Modules/Crafting/CraftingEngine.lua`.
-
----
-
-## [v1.0.1] (2026-07-05) - Specialization detection fixes, full guild coverage & crafter search
-
-### New Features
-
-- **Search the Professions tab by crafter name.** Typing a guild member's name into the recipe search box now lists every recipe that player can make — crafter names are folded into the same cached, per-keystroke filter, so there's no added cost, and it honours the current view/visibility. Set the Profession dropdown to **All** and type a name to audit "what can this character craft?" across every profession at once. Location: `GUI/BrowserTab.lua`, `Locale/enUS.lua`.
-
-### Bug Fixes
-
-- **Alchemy specializations were detected with the wrong spell IDs.** The spec scan checked `28682` / `28683` — which are actually **"Combustion"** and **"Leap"**, not alchemy specs — so Transmutation and Potion Masters were never detected and fell to Unspecialized (only Elixir Master, `28677`, happened to be correct). Corrected to the DBC-verified `28672` / `28675` / `28677` (Transmutation / Potion / Elixir Master) in the spec scan, the Guild tab's canonical spec list, **and** the transmute-proc cooldown table (which was keying the every-transmute proc on "Leap"). Location: `Scanner.lua`, `GUI/GuildTab.lua`, `Data/CooldownIds.lua`.
-- **Mooncloth Tailoring could never be detected.** The Tailoring spec list used `26802` — **"Detect Amore"**, a Love-is-in-the-Air holiday spell — where Mooncloth's real id `26798` belongs, so Mooncloth tailors were never categorised, and anyone who owned the holiday spell risked a bogus tag. Fixed to `26797` / `26798` / `26801` (Spellfire / Mooncloth / Shadoweave) in the spec scan, the Guild tab list, the recipe-tagging pipeline, and the cloth-cooldown table. Location: `Scanner.lua`, `GUI/GuildTab.lua`, `Data/CooldownIds.lua`, `tools/build_authoritative_data.py`.
-- **Cloth-cooldown "guaranteed 2×" bonus was mapped to the wrong specs.** Primal Mooncloth's bonus was keyed to Spellfire's spec id and Spellcloth's to the holiday spell, so Mooncloth tailors got no bonus indicator and Spellfire's never lit up. Each cloth cooldown now maps to its own spec — Mooncloth → Primal Mooncloth, Spellfire → Spellcloth, Shadoweave → Shadowcloth. Location: `Data/CooldownIds.lua`.
-- **Archaeology didn't appear on the Guild tab.** The skill-name → profession map was missing Archaeology (`794`), so the gathering scan never recorded it on Cata/MoP clients. Added. Location: `Scanner.lua`.
-- **Skill levels rendered an impossible cap like "375/300".** A missing or stale `skillMax` defaulted to the hard-coded Vanilla cap of 300, which then synced guild-wide and displayed *below* the actual rank on TBC/Wrath. The stored fallback is now the rank (a cap can't be below the current skill), and the Guild tab shows every skill against **this expansion's real cap** (`addon.SKILL_CAP`: 300/375/450/525/600 for Vanilla…MoP) instead of the per-character value. Location: `Scanner.lua`, `Compat.lua`, `GUI/GuildTab.lua`.
-- **Gathering skills were missed when a skill header was collapsed.** `GetSkillLineInfo` hides a collapsed header's children, so a character with "Professions" or "Secondary Skills" collapsed dropped Skinning / Herbalism / Fishing / Archaeology from the scan. It now expands all headers first (`ExpandSkillHeader`), guarded against the re-entrant `SKILL_LINES_CHANGED` that expansion fires. Location: `Scanner.lua`.
-
-### Improvements
-
-- **The Guild tab now lists EVERY profession, even at 0.** Previously only the gathering professions were force-shown; now every profession available on this client appears with a headcount (0 when nobody has it), so the guild-wide "who has what" view surfaces crafting-profession coverage gaps too. Location: `GUI/GuildTab.lua`.
-- **TBC/Wrath specialization recipes now attribute their crafters (requires ProfessionDB v1.2.2).** The recipe data only tagged Vanilla-era spec plans; TBC and Wrath moved the spec gate onto the *crafted item*, so ~65 TBC and ~72 Wrath spec recipes — Lionheart weapons, Dragonscale/Elemental/Tribal leatherworking, Gnomish/Goblin engineering, Mooncloth tailoring — shipped untagged and their crafters showed as Unspecialized. The ProfessionDB generator now reads the crafted item's requirement as well. **Update to ProfessionDB v1.2.2** to pick this up. Location: `tools/build_authoritative_data.py` (ProfessionDB).
-
----
-
-> Older releases (v1.0.0 and earlier) are archived in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
+> Releases v1.0.3 and earlier are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).

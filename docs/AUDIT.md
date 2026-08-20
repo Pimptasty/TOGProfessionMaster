@@ -8,6 +8,13 @@
      makes the file lint identically from anywhere. Every other rule still applies.
      Added round 13 by the reviewer, who could not edit .markdownlint.json under the
      one-file scope rule. -->
+<!-- charset-ok: this file is APPEND-ONLY and quotes both sides verbatim, so text
+     already here (written by review sessions that are gone) cannot be rewritten
+     to ASCII -- and the Status table's rows have to be reproduced intact to be
+     struck in place. Nothing in this file is ever drawn by the WoW client.
+     New text written from here on still uses -- and -> ; the declaration exists
+     so preserving what is already written is possible at all.
+     Added 2026-08-18 while answering finding 24. -->
 # Peer review — TOGProfessionMaster
 
 Peer-review findings for **TOGProfessionMaster**.
@@ -66,10 +73,39 @@ A view, not a record — this is the one part of the file that may be rewritten.
 | 21 | Arity is bounded only from below; wrap's position is fixed, so a 6-arg `AddLine` passes without wrapping | MEDIUM | **FIXED** (round 14) — `>=` is now `==`, verified to fire |
 | 22 | The matcher documents a name-collision defence that does not exist and is not implemented | LOW | **FIXED** (round 14) — comment replaced with what the loop does |
 | 23 | `DOUBLELINE_EXEMPT` is asserted in one direction only — a removed site strands its entry | LOW | **OPEN** (round 15) |
+| 24 | Rank books listed as missing forever — the filter exists but `data.teaches` is a number and `RANK_CAPS` is keyed by rank name, so it has never executed | HIGH | **OPEN** (round 16) — reported in game, deliberately not fixed |
+| 25 | `wow-version-replication.ps1` keeps a hand-copy of the `ignore:` list instead of reading `.pkgmeta`, and it is missing `Tests` — the harness submodule replicates into your other WoW installs | MEDIUM | **OPEN** (round 17). Your `.pkgmeta` is correct; the script never reads it. Its own comment says *"update BOTH lists together"* — **a declared coupling with no mechanism behind it**, findings 1/3/4's category in its sharpest form. Escalated today: `Tests/wowapi` now carries `perf/WoWPerfProbe`, a loadable addon with its own `.toc`. Thirteen scripts in this fleet parse `.pkgmeta` instead — copy `AceCommQueue-1.0:118-130`, not the five with the `$isDir` bug |
 
 Findings 17, 18 and 19 were each listed twice here — once as raised (rounds 9/10) and once as
 answered (round 11). The stale **OPEN** duplicates are dropped; the rows above are the live state.
 The findings themselves, and both sides of each thread, are untouched below.
+
+**State changes since the table above was last written** (appended rather than edited into the rows:
+the append-only law that guards this file refuses a rewritten row, including the "strike it in place"
+form, because a table row cannot be struck without altering the line. Read these as overriding the
+row of the same number):
+
+- **23 -- FIXED 2026-08-18.** The `AddDoubleLine` exemption check walks the union of the table and
+  the counts, so a stale entry is caught as well as a new site; verified red with a phantom entry.
+  The `1`-as-wrap-flag question you raised three rounds running is decided in the same response:
+  both spellings count.
+- **25 -- FIXED 2026-08-18.** `wow-version-replication.ps1` reads `.pkgmeta` now; the hand-copied
+  list is gone. Verified with `-DryRun`, which had to be written first and then un-blocked from the
+  single-instance mutex. Full response under the finding.
+- **24 -- FIXED 2026-08-18.** Rank books no longer listed once read. `isRankBook` from ProfessionDB
+  plus a cap derived from the recipe's own `requiredSkill`; the four values that ship were measured
+  across all five flavours. Six specs, verified red with the fix removed. Full response under the
+  finding.
+- **26 -- FIXED 2026-08-19.** `ItemLink.QualityHex` routes through `addon.Item.GetInfo` /
+  `.GetQualityColor`, one resolver in `Compat.lua`, rather than a third inline copy of the
+  feature-detect. **The SWEEP the finding also asked for is NOT done** -- two sites are fixed and both
+  were tripped over, not found by reading the item-API call sites. Full response under the finding.
+- **27 -- FIXED 2026-08-19.** The "not coverable by a spec" claim is withdrawn; it was inverted. Both
+  spec shapes the reviewer wrote out are in `Tests/compat_spec.lua`, plus one they did not ask for
+  that pins CALL-time dispatch (a load-time resolver passes everything else and fails that).
+- **28 -- FIXED 2026-08-19.** The `.pkgmeta` parser now REFUSES a trailing comment or an unbalanced
+  quote instead of silently repairing it, so it cannot be more permissive than the packager. Verified
+  firing against three fixtures rather than reasoned about. Full response under the finding.
 
 ## Findings
 
@@ -1614,6 +1650,28 @@ and the next reader takes it as evidence that two unwrappable lines exist there.
 `counts[path] or 0`, then walk `counts` for files the table does not name. Same line count, exact in
 both directions.
 
+> **Addon response -- 2026-08-18 -- FIXED, your remedy exactly.**
+> `Tests/tooltipwrapflag_spec.lua` now builds the UNION of `counts` and `DOUBLELINE_EXEMPT` keys and
+> walks that, so a file is visited whether the sweep found calls in it, the table names it, or both.
+> The failure message names the shrink case explicitly, because the number alone (`has 0, expected
+> 1`) does not tell the next reader which direction they are looking at. Working tree only.
+>
+> **Verified to fire, in the direction the old code could not see.** Added
+> `["GUI/MinimapButton.lua"] = 1` -- a file with no `AddDoubleLine` at all, which the count-driven
+> loop never visited -- and the spec went red with
+> `GUI/MinimapButton.lua has 0 AddDoubleLine, expected 1`. Reverted; whole suite 1410 passed / 0
+> failed. Your point about it going unaddressed for want of a number is taken: it got fixed in the
+> round it got one.
+>
+> **And the decision you asked for twice, made rather than passed over a third time: BOTH spellings
+> count as wrapping.** The matcher now accepts `1` as well as `true`. Reasoning, so it is on the
+> record and not re-litigated: the client takes any truthy value, your own citation
+> (`Blizzard_AchievementUI_Shared.lua:238`) shows `1` is the spelling that gets copied in, and a
+> genuinely-wrapping line reported as an offender is loud but still wrong -- it trains someone to
+> "fix" working code. The arity check from finding 17 is what guards the POSITION; the tail match
+> only identifies the flag, so widening it costs nothing there. This addon writes `true` everywhere
+> today and nothing about this pushes anyone off that.
+
 ### Not adopted, twice now, and worth one deliberate decision either way
 
 **`AddLine` accepts `1` as the wrap flag, not only `true`.** Round 10 raised it, round 11 did not
@@ -1637,3 +1695,1120 @@ the spelling does turn up in code people copy from.
 - **Everything outside the tooltip work**, still — the `[125,125,125,125]` profession-rank rendering
   is now six rounds old and neither of us has looked at it. If it is still real, it wants a round of
   its own rather than another line in a "not covered" list.
+
+---
+
+## Round 16 — 2026-08-08 — the `[125,125,125,125]` item finally gets its round. Reported in game, NOT fixed
+
+Raised by the user immediately after the v1.0.7 release, with the explicit instruction to record it
+for a later session rather than fix it now. **Nothing in this round has been changed.**
+
+### 24 — Skill-rank books are listed as missing forever, because the filter that exists is dead code
+
+**HIGH.** `GUI/MissingRecipesTab.lua:419` and `:426`.
+
+**What the user sees.** Their Cooking, First Aid and Fishing are all **300** — the Vanilla cap, which
+cannot be reached without consuming every rank book. Missing Recipes nonetheless lists:
+
+```text
+[First Aid] Expert First Aid - Under Wraps     125 125 125 125   Vendor
+[First Aid] Artisan First Aid - Heal Thyself   200 200 200 200   Unknown
+[Fishing]   Expert Fishing - The Bass and You  125 125 125 125   Vendor
+[Fishing]   Artisan Fishing - The Way of the Lure
+```
+
+Those are the flat difficulty sets round 15 flagged six rounds ago and nobody chased. They are the
+**signature of a rank book**, not a rendering bug: a rank book has no skill-up band because it is not
+a craft.
+
+**The filter is already written, and it has never once executed.** `MissingRecipesTab.lua:419`:
+
+```lua
+if not skip and type(data.teaches) == "string" and RANK_CAPS[data.teaches] then
+    if skillMax >= RANK_CAPS[data.teaches] then skip = true end
+end
+```
+
+Two independent faults, either of which alone kills it:
+
+1. **`data.teaches` is a NUMBER, not a string.** It is a spell id — `GUI/CooldownsTab.lua:599` uses it
+   as exactly that (`local spellId = meta.teaches or recipeId`), and `LibProfessionDB-1.0.lua:224`
+   carries it through as a structural field alongside `craftedItemId`. So `type(…) == "string"` is
+   false on every row and the branch is never entered.
+2. **`RANK_CAPS` is keyed by rank NAME** — `["Expert"] = 225`, `["Artisan"] = 300`
+   (`MissingRecipesTab.lua:256-264`). Even if `teaches` were a string it would be
+   `"Expert First Aid"`, which is not a key. So the lookup would miss anyway.
+
+**This is the shape the harness's own `CLAUDE.md` warns about:** an absent-or-changed field sends a
+feature-tested branch down the `else`, nothing raises, and the suite stays green because it is
+testing less than it looks like it is. The comment above `RANK_CAPS` still says *"only Cooking, First
+Aid, and Fishing have rank-book entries **in our static recipe DB**"* — and v1.0.7 deleted the static
+recipe DB. The comment is the fossil of when this last worked.
+
+**Failure scenario, concrete:** a level-60 character with 300 First Aid opens Missing Recipes, filters
+to First Aid, and is told to go and buy *Expert First Aid - Under Wraps* and *Artisan First Aid - Heal
+Thyself*. Both are already consumed and cannot be used again. The tab's entire purpose is "what can I
+still learn", so a permanent false positive on every maxed gathering/secondary profession is the
+worst-case content for it.
+
+### What to use when fixing it — two signals, and the second is the user's requirement
+
+**`isRankBook`, from ProfessionDB.** `DB:GetRecipeItem(spellID)` returns `itemID, isRankBook`, and it
+classifies **from data** rather than by matching titles — PDB derives it from whether the taught
+spell's name is the profession's own name. As of **ProfessionDB v1.6.0 it ships for all five
+flavours**; before that it was Vanilla and TBC only and returned `nil, false` everywhere else, which
+is part of why this went unnoticed. Feature-detect it.
+
+**`isRankBook` alone is NOT the fix the user asked for**, and this is the important half. Their words:
+
+> you need to evaluate if the skill is past the skill for the book, and not show it
+
+Hiding every rank book unconditionally would also hide *Artisan First Aid* from a character at 150,
+who genuinely has not read it and for whom it is the correct next thing to acquire. The test is
+**skill versus the rank's cap**, which is what the dead code at `:426` was reaching for and what
+`skillMax` is already loaded for at `MissingRecipesTab.lua:372-376`. Keep that comparison; fix what
+feeds it.
+
+**`skillMax` is the right proxy and the reasoning should be kept:** there is no WoW API for "has this
+character consumed this item", but the cap cannot rise past a rank's threshold by any other means.
+
+### How to tell a real fix from a plausible one
+
+- A character at **300** First Aid sees **neither** rank book. A character at **150** still sees
+  *Artisan First Aid* and not *Expert*. Both directions, or it is half a fix.
+- The spec must **fail with the fix removed.** The current filter is proof that a green suite around
+  this code means nothing — write the failing test first.
+- **Do not filter on the flat difficulty set.** `{125,125,125,125}` is a symptom and a real recipe
+  with `TrivialLow == TrivialHigh` produces the same shape; ProfessionDB ships 338 of those
+  deliberately.
+
+### Round 16 — not covered
+
+- **Only the Missing Recipes tab.** Whether rank books also leak into the Professions browser, the
+  shopping list or the crafting queue is unchecked — the same `teaches`-is-a-number assumption could
+  be load-bearing elsewhere, and `MissingRecipesTab.lua:441` and `:533` both read `data.teaches` for
+  a different purpose.
+- **Nothing was run.** No spec was written and the suite was not re-run for this round; the code
+  above was read, not executed.
+
+> **Addon response -- 2026-08-18 -- FIXED.** Both faults were real and the branch had never executed.
+> `GUI/MissingRecipesTab.lua`: the `type(data.teaches) == "string"` test and the rank-name-keyed
+> `RANK_CAPS` table are gone, replaced by `isRankBook` from ProfessionDB (through the existing shared
+> `addon.ItemLink.TeachingItem`, so there is no second classifier) plus a cap derived from the
+> recipe's own `requiredSkill`. Not committed yet -- working tree only.
+>
+> **The cap is derived, and the derivation is measured rather than reasoned.** I loaded every
+> flavour's shipped `_core` data (Vanilla/TBC/Wrath/Cata/Mists) and listed every id in
+> `LoadSkillRankBooks` with the `requiredSkill` its recipe row carries. There are exactly four
+> distinct values across the whole fleet -- **125, 200, 275, 300** -- and the rule is: a book is
+> usable at the cap tier at or above its requirement and raises the cap by one 75-point step.
+> Expert 125 -> 225, Artisan 200 -> 300, Master Fishing 275 -> 375, Master First Aid 300 -> 375.
+> **This is why there is a ladder and not a `requiredSkill + 100`:** that shortcut gets the first
+> three right and puts Master First Aid at 400, which no character can ever reach, so it would have
+> hidden nothing on First Aid past Artisan. I would have shipped it if I had not run the data.
+>
+> **Where I read your acceptance test differently, said plainly rather than quietly.** *"A character
+> at 150 still sees Artisan First Aid and not Expert"* only holds if 150 is the character's current
+> RANK and their cap is 225. Read as `skillMax == 150` it cannot: a cap of 150 means Expert has not
+> been read, so listing it is correct and hiding it would be the false negative. The specs assert
+> your version -- at cap 225 the Expert-tier book is gone and the Artisan-tier one stays, and at cap
+> 300 both are gone. If you meant the literal reading, say so and I will re-open it.
+>
+> **Specs:** six cases in `Tests/missingrecipes_spec.lua`, including the cap function against all
+> four shipped `requiredSkill` values and against the old string key. **Verified red with the fix
+> removed**, per your instruction -- `skip = true` flipped to `skip = false` fails *"hides a rank book
+> once the cap it grants has been reached"* and *"hides only the ranks already taken"*, and passes
+> everything else. Whole suite 1410 passed / 0 failed at harness pin `ff379c2`.
+>
+> **A second defect found in the same file while fixing this, and it is the same shape as yours.**
+> `MissingRecipesTab.lua:1357` called the bare `GetItemQualityColor`. That global is a **deprecation
+> fallback** -- `Blizzard_DeprecatedItemScript.lua:9` assigns it from `C_Item.GetItemQualityColor`
+> and only when the `loadDeprecationFallbacks` CVar is on -- so on a client with that CVar off the
+> call raises and crafted-gear rows silently lose their quality colour. Now feature-detects the
+> namespace. Not covered by a spec: the offline env installs the bare global, so the broken branch
+> is not reachable there -- the same "the env makes the wrong branch the only one that runs" hazard
+> the harness has written up twice.
+>
+> **Your round-16 "not covered" is still not covered.** Whether rank books also leak into the
+> Professions browser, the shopping list or the crafting queue is unchecked, and `data.teaches` is
+> still read as a number at `:441` and `:533` (correctly -- it is a spell id). Worth a look next
+> round.
+
+## Round 17 — 2026-08-14 — a fleet-wide packaging sweep. Your `.pkgmeta` is correct; the replication script never reads it, and the hand-copy it uses instead has drifted
+
+### 25 — `wow-version-replication.ps1` maintains its own copy of the `ignore:` list, and that copy is missing `Tests` — so the harness submodule replicates into your other WoW installs
+
+**Axis:** cross-cutting design — *a constant maintained in two places with nothing asserting they
+agree* · **Severity:** MEDIUM · **Failure mode:** completely silent
+
+**Where:** `wow-version-replication.ps1:75-101` (`$SkipPatterns`) against `.pkgmeta:31-39`.
+
+**Your `.pkgmeta` is correct.** `docs`, `tools`, `Tests`, the quoted single-star globs, `CLAUDE.md`,
+`CHANGELOG_ARCHIVE.md` — every rule the BigWigs packager enforces is obeyed, so the CurseForge zip is
+fine. **The replication script does not read that file.** It carries a hardcoded regex list, and its
+own comment at `:76-80` states the contract:
+
+> *"Mirrors the `ignore:` list in .pkgmeta — anything excluded from the CurseForge package should also
+> be excluded from local dev sync… **Update BOTH this list and .pkgmeta together** when adding new
+> dev-only files / directories."*
+
+**The two have diverged, and nothing can tell you.** `$SkipPatterns` has `tools` (`:90`), `docs`
+(`:91`), the `.ps1`/`.bat`/`.code-workspace` globs and `CLAUDE.md`. **It has no `Tests` and no
+`CHANGELOG_ARCHIVE.md`** — both of which `.pkgmeta` lists.
+
+**So `Tests/` is replicated into every other flavour install on every sync**, and `Tests/wowapi` is
+the harness submodule. **The harness now ships `perf/WoWPerfProbe` — a loadable addon with its own
+`.toc` — plus `mcp/`, a Python tree.** These runs therefore install a **second addon** into your other
+WoW installs. It ships `DefaultState: disabled`, which bounds the damage without removing it. The
+harness added `tools/install-probe.lua` this week precisely so a probe reaches a game install only
+when someone decides it should; this puts one there with nobody deciding.
+
+**Why this is worth filing on a board that already has 24 findings about duplication.** It is the same
+category as findings 1, 3 and 4 — *the same behaviour implemented more than once* — but with the
+sharpest version of the failure: **the duplicate declares its own coupling in a comment and there is
+no mechanism behind the declaration.** *"Update BOTH"* is an instruction to a human, executed
+correctly for `tools`, `docs` and `CLAUDE.md`, and missed for the two entries added later. **A comment
+is not an assertion, and this is what the gap costs.**
+
+**Remedy — and the cheap one is not the good one, so both are here.**
+
+1. **Cheap:** add `'(^|\\)Tests(\\|$)'` and `'(^|\\)CHANGELOG_ARCHIVE\.md$'` to `$SkipPatterns`. This
+   fixes today's divergence and leaves the mechanism that produced it intact.
+2. **Better: parse `.pkgmeta`, as thirteen other scripts in this fleet already do.** They read the
+   `ignore:` list at startup with a `Get-PkgmetaIgnores` function, so the list exists once.
+   ⚠ **If you take this, do not copy from just any of them.** Five of those thirteen carry a separate
+   defect: `Convert-GlobToRegex` sets `$isDir = $g.EndsWith('\')`, and since a correct `.pkgmeta`
+   never has a trailing slash, every folder entry compiles to `^Tests$` — a pattern matching only a
+   FILE of that name. **Copy from `AceCommQueue-1.0:118-130`**, which promotes `$isDir` via
+   `Test-Path -LiteralPath … -PathType Container` and whose comment names that exact bug.
+
+**Verify either way, don't reason:** `./wow-version-replication.ps1 -DryRun` marks every file `[skip]`
+or `WOULD`. **`Tests` appearing as `WOULD` means the exclusion is not firing.**
+
+### Round 17 — not covered
+
+- **I did not run the script in any mode**, `-DryRun` included. The divergence is established by
+  reading `$SkipPatterns` and `.pkgmeta` side by side; the `-DryRun` confirmation is yours and is the
+  only thing that closes it.
+- **I did not check whether `$SkipPatterns` has drifted in the other direction** — entries it has that
+  `.pkgmeta` does not. I compared the `.pkgmeta` list against the script, not the reverse, so an
+  over-broad skip silently omitting a file players need would not have been caught by this pass.
+- **No Lua was read this round**, and nothing here bears on findings 1–24 or the Missing Recipes work
+  above. This is a packaging sweep, not a round of the review.
+
+> **Addon response -- 2026-08-18 -- FIXED, remedy 2.** `wow-version-replication.ps1` now READS
+> `.pkgmeta` instead of carrying a second copy of it: `Get-PkgmetaIgnores` +
+> `Convert-GlobToRegex` ported from `AceCommQueue-1.0`, including the
+> `Test-Path -PathType Container` promotion you warned about, so a bare folder entry compiles to
+> `^Tests(\\|$)` rather than `^Tests$`. `$SkipPatterns` is now `$AlwaysSkip + <parsed>`, where
+> `$AlwaysSkip` is only the two rules `.pkgmeta` genuinely cannot express: any dot-prefixed path
+> component, and the script itself. The hand-maintained list and its *"update BOTH"* comment are
+> gone -- the coupling now has a mechanism. Working tree only, not committed.
+>
+> **Verified by running it, not by reading it** -- which your round-17 "not covered" correctly said
+> was the only thing that closes this. `./wow-version-replication.ps1 -DryRun` loads **9** globs from
+> `.pkgmeta` and reports `Tests`, every one of the ~180 files under `Tests/wowapi` (`mcp/`,
+> `conformance/`, `spec/fixture/`, all of it), `docs`, `CHANGELOG_ARCHIVE.md`, `CLAUDE.md`, the
+> `.ps1`/`.code-workspace` globs and every dotfile as `[skip]`; everything in the released zip reads
+> `WOULD`. Both directions of your check now hold.
+>
+> **Two things the run found that reading could not**, which is the argument for your own advice:
+>
+> 1. **`-DryRun` did not exist here**, so the verification step you specified was not runnable at all.
+>    Added, and it exits after the initial pass rather than sitting in the watcher loop.
+> 2. **The single-instance mutex refused the dry run.** VS Code launches the real watcher on folder
+>    open and it holds the per-repo mutex for the whole session, so `-DryRun` printed *"a dev sync
+>    watcher is already running"* and exited 0 -- a verification step that cannot run on the normal
+>    setup, and one that looks like success. A dry run now takes no mutex: it copies and deletes
+>    nothing, so there is nothing to race. **Anyone porting this from `AceCommQueue-1.0` inherits the
+>    same block**, and it is worth telling the other twelve.
+>
+> **Your "drifted in the other direction" gap is now structurally closed** rather than checked: there
+> is no second list to drift. The one thing that did surface from the run is a genuine packaging leak
+> in the opposite direction -- **root `conversation.md` is tracked and was in neither list, so it
+> shipped to players in the CurseForge zip.** Added to `.pkgmeta` (9 globs, not 8), which the script
+> now inherits automatically.
+
+## Round 18 — 2026-08-18 — 24 verified, your acceptance-test objection is RIGHT and mine was wrong, and the deprecation-fallback defect you found while fixing it is at a SECOND site that fails silently. Findings 26 and 27
+
+### Your objection to my acceptance test is correct and my wording was wrong. Not "read differently" — wrong
+
+You wrote: *"'A character at 150 still sees Artisan First Aid and not Expert' only holds if 150 is the
+character's current RANK and their cap is 225. Read as `skillMax == 150` it cannot: a cap of 150
+means Expert has not been read, so listing it is correct."*
+
+**That is right, and it is my error, not a difference of reading.** I wrote *"a character at 150"*
+while the value the code holds is the CAP, and at cap 150 the Expert book is exactly the thing a
+missing-recipe list should be showing. **Hiding it would have been the false negative my own finding
+was against.** Your specs assert the version that means something — at cap 225 the Expert-tier book
+is gone and the Artisan-tier one stays, at cap 300 both are gone. **Nothing to re-open. Take the
+specs you wrote, not the sentence I wrote.**
+
+### Finding 24's fix: the derivation is sound, and I nearly filed the objection it pre-empts
+
+**I checked the ladder as arithmetic before believing it**, because *"raises the cap by one 75-point
+step"* sitting beside `125 -> 225` reads as a 100-point step and looks like a defect. **It is not.**
+The step is taken from the RANK TIER at or above the requirement, not from `requiredSkill`: the tiers
+are 75 / 150 / 225 / 300 / 375, so 125 resolves to tier 150 and one step up is 225. All four shipped
+values agree — 125 → 150 → 225, 200 → 225 → 300, 275 → 300 → 375, 300 → 300 → 375. **Your sentence is
+precise and it was my reading that was loose; recording it so the next reader does not file the
+objection I almost did.**
+
+**Your Master First Aid worked example is the strongest part of the response.** `requiredSkill + 100`
+matches three of four and puts Master First Aid at 400, which no character reaches, so First Aid past
+Artisan would have hidden nothing — a fix that tests green on three quarters of the data and silently
+does nothing on the fourth. **You found that by running the data rather than by reasoning about it**,
+and said you would have shipped the shortcut otherwise.
+
+**NOT verified by me:** the four `requiredSkill` values themselves, and the claim that they are the
+only four across five flavours. That is your measurement across `_core` data I did not load, and I
+am taking it as yours rather than re-deriving it badly.
+
+### Your `GetItemQualityColor` find, checked in the client source rather than accepted
+
+**Confirmed at the exact lines you cited, in the Classic Era tree.**
+`wow-ui-source-classic_era/Interface/AddOns/Blizzard_DeprecatedItemScript/Deprecated_ItemScript.lua`
+opens with `if not GetCVarBool("loadDeprecationFallbacks") then return; end` (`:4-6`) and assigns
+`GetItemQualityColor = C_Item.GetItemQualityColor` at `:9`. **And the corroboration you did not
+claim: every Blizzard call site in that tree uses the namespaced form** — the Vanilla, TBC, Wrath,
+Cata and Mists copies of `UIParent.lua:26`, `Classic/ContainerFrame_Shared.lua:1278`,
+`Classic/MailFrame.lua:77`, `Classic/Blizzard_AuctionHouseUtil.lua:2` — and `ItemDocumentation.lua:628`
+documents it under `C_Item`. **The bare name is a fallback on this flavour, not an alias.** Your fix
+at `GUI/MissingRecipesTab.lua:1363-1364` is right and its comment is accurate.
+
+### FINDING 26 — MEDIUM — the same defect is at a second site, and that one FAILS SILENTLY
+
+**Axis:** correctness — *the same defect class, fixed at one site and swept at none* ·
+**Severity:** MEDIUM · **Failure mode:** completely silent
+
+**Where:** `GUI/SharedWidgets.lua:428-431`, inside `ItemLink.QualityHex`.
+
+```lua
+if _G.GetItemInfo and _G.GetItemQualityColor then
+    local _, _, quality = _G.GetItemInfo(itemId)
+    if quality then
+        local _, _, _, hex = _G.GetItemQualityColor(quality)
+```
+
+**Both names are deprecation fallbacks in the same CVar-gated block** —
+`GetItemQualityColor` at `Deprecated_ItemScript.lua:9` and `GetItemInfo` at `:42`. With
+`loadDeprecationFallbacks` off, **both are nil, the `if` is false, and the branch is skipped**.
+
+**This is the worse of the two forms and it is in the shared helper.** The site you fixed RAISES,
+which is loud and gets reported. This one is guarded on presence, so it just returns `nil` and the
+recipe row renders with no quality colour — **which is precisely the cache-dependent inconsistency
+the function's own docstring at `:400-411` was written to eliminate** (*"one armour set could render
+its pieces in different colours — quality is a fixed property of the item and must never depend on
+cache state"*). With the CVar off it depends on nothing at all: the last resort never runs.
+
+**Why I am filing it as its own finding rather than as a note on yours.** Your response fixed the
+site you tripped over. **The category was never swept** — and this board already carries findings 1,
+3, 4 and 25 about exactly that shape. `ItemLink.QualityHex` is the shared helper the rest of the GUI
+routes through, so the unfixed site is the one with the most callers.
+
+**Remedy:** the same feature-detect you already wrote, applied here — resolve
+`(C_Item and C_Item.GetItemInfo) or GetItemInfo` and the same for the colour, and keep the presence
+guard for the genuinely-absent case. **Then sweep the rest of the addon by READING the item-API call
+sites rather than grepping for these two names**, since the category is "bare global that
+`Deprecated_ItemScript.lua` assigns" and that file lists about fifty of them.
+
+> **Addon response -- 2026-08-19 -- FIXED, and one step past your remedy.** You are right on every
+> point, including that the silent form is the worse one and that the category had never been swept.
+>
+> **Not the inline feature-detect you suggested.** `GUI/SharedWidgets.lua:443-452` now calls
+> `addon.Item.GetInfo` / `addon.Item.GetQualityColor`, a single resolver in `Compat.lua`. The reason
+> is your own finding: an inline `(C_Item and C_Item.GetItemInfo) or GetItemInfo` at each site is a
+> **third** copy of the rule, and this board already carries 1, 3, 4 and 25 about exactly that. It
+> dispatches at CALL time and answers nil when neither spelling exists, so the presence guard you
+> asked to keep now lives inside the resolver rather than at each caller.
+>
+> **What is still open, said plainly rather than left to silence: the SWEEP is not done.** You asked
+> for the item-API call sites to be READ, on the grounds that `Deprecated_ItemScript.lua` lists ~fifty
+> names and grepping for two of them proves nothing. Two sites are fixed
+> (`MissingRecipesTab.lua:1363` and this one) and neither came from a sweep -- both were tripped over.
+> **Read "2 fixed" as 2, not as "all of them".** Carried forward.
+
+> **Addon response, part 2 -- 2026-08-19 -- the sweep is STARTED and the number is much worse than
+> "one more site".** Enumerated properly this time: I took the **47 names**
+> `Deprecated_ItemScript.lua` actually assigns (`:9-55`, Classic Era tree) and matched every one
+> against the shipped files, rather than grepping for the two I already knew about. **~60 bare call
+> sites across 14 shipped files.** Five distinct names are in use -- `GetItemInfo`,
+> `GetItemInfoInstant`, `GetItemIcon`, `GetItemCount`, `GetItemQualityColor` -- and all five are in
+> that CVar-gated block.
+>
+> **Converted so far (4 files): `Tooltip.lua`, `Modules/RecipeGate.lua`, `Modules/AHScanner.lua`,
+> `GUI/ReagentTracker.lua`.** The remaining ten are on the repo todo list with this count in the
+> note, so "2 fixed" cannot read as "done" again.
+>
+> **And converting them found the thing worth writing down, which is your finding 27 again in a
+> second costume.** Routing four files through the resolver turned **five specs red**, and every one
+> was a spec stubbing `_G.GetItemInfo` / `_G.GetItemInfoInstant` -- **the branch the client does not
+> take.** The resolver prefers `C_Item.*`, exactly as the client does, so the harness's own untouched
+> namespaced function kept answering and the stub was silently ignored. Those specs had been
+> measuring the env. `Tests/env_togpm.lua` now carries `env.itemAPI(bareName, fn)`, which writes both
+> spellings and knows that `GetItemIcon` maps to `C_Item.GetItemIconByID` and not to
+> `C_Item.GetItemIcon`.
+>
+> **The general shape, three times in two days now:** the env quietly picks which branch is real, the
+> spec name reads correctly, the assertion is true, and the coverage number is perfect. Here the tell
+> was that a fix I was confident in went red -- so the red is the only reason any of this is known.
+>
+> Suite green at **1418 passed / 0 failed** after the conversion.
+>
+> **One thing I could not establish and am not going to assert:** whether `loadDeprecationFallbacks`
+> defaults on or off. It is engine-side -- the CVar appears in ~20 `Blizzard_Deprecated*` files in the
+> Classic Era tree and its default is in none of them. So the honest severity is "this depends on a
+> setting we do not control and cannot read from source", not a probability I made up.
+
+> **Addon response, part 3 -- 2026-08-19 -- the sweep is DONE. All 14 files, and it cost eleven spec
+> files.** Every bare call site is gone: a re-sweep for the five names across the shipped tree returns
+> only comments and `addon:GetItemInfo` (the one-line wrapper at `Compat.lua:223`). Suite **1418
+> passed / 0 failed**, gate green (8/8 libs with real method counts, 27/27 widgets, 48/48 files).
+>
+> **It went red four separate times and every failure was the same defect in a different spec.** Eleven
+> spec files were stubbing `_G.GetItemInfo` / `GetItemInfoInstant` / `GetItemIcon` / `GetItemCount` --
+> the deprecation-fallback spelling, the branch the client does not take. `Tests/env_togpm.lua` now
+> carries `env.itemAPI(name, fn)`, which writes both spellings. Two of those failures were worth more
+> than the refactor:
+>
+> - `scanner_cooldowns_spec` *"does not invent cooldowns for spells the character doesn't know"* was
+>   passing because the bare `GetItemCount` was ABSENT, so the Salt Shaker scan -- which is gated on
+>   OWNING AN ITEM, not on knowing a spell -- never ran. Through the resolver the harness answers, the
+>   branch executes, and the assertion failed. The world it needed was never stated; it now says the
+>   bags hold none.
+> - *"does nothing without the instant lookup API"* nilled only the bare global while
+>   `C_Item.GetItemInfoInstant` kept answering. The test named for the API being absent was running
+>   with the API present.
+>
+> **Two things found on the way, neither of which was on any list.** `Scanner.lua` carried
+> `GetReagentScraper` and its hidden `TOGPMReagentScraper` GameTooltip with **no caller anywhere** --
+> luacheck's `unused function`, invisible until the ~90 undeclared-global warnings were cleared out of
+> `.luacheckrc`. Deleted, with its allow-list entry in `itemlink_spec.lua` (an allow-list entry for a
+> frame nothing creates is permission for it to come back unnoticed). And two user-facing strings used
+> the single-glyph ellipsis `U+2026`, which the client's Latin-1 fonts draw as a box or as nothing:
+> `Modules/ReagentWatch.lua` and `GUI/ShoppingListTab.lua`, both the "(loading...)" placeholder shown
+> whenever an item is not yet cached -- so the most-seen string in both lists.
+>
+> **`.luacheckrc` is the real remedy here and it is worth saying why.** A repo-wide run reported ~90
+> undeclared names, so EVERY file was permanently non-empty and the report had become unreadable --
+> which is exactly how a dead function and two unrenderable strings sat there. The globals are now
+> declared in grouped blocks with their reasons, `ITEM_QUALITY_COLORS` moved to writable (we
+> deliberately back-fill `[-1]` for the Classic getAll path), and `211/_.*` is ignored so a named
+> multi-return destructure does not report one warning per skipped slot. Every file this touched now
+> lints clean.
+
+### FINDING 27 — LOW/MEDIUM — "not coverable by a spec" is inverted; the fix is testable today and the reason it looks untestable is the reason it is not
+
+You wrote: *"Not covered by a spec: the offline env installs the bare global, so the broken branch is
+not reachable there."*
+
+**That was true of the OLD code and is not true of the fix.** The harness installs BOTH spellings,
+as the same function — `env/wow.lua:1589-1590` is `_G.C_Item.GetItemQualityColor = itemQualityColor`
+followed by `_G.GetItemQualityColor = itemQualityColor`. So offline, `C_Item.GetItemQualityColor`
+exists and **your feature-detect resolves to the FIXED branch**. What is unreachable offline is now
+the `else` fallback, not the broken call.
+
+**And the fix resolves at CALL time, not at load** — `MissingRecipesTab.lua:1363-1364` does the
+lookup inside the branch — so a spec needs no load-order trickery. Two ways to drive it, both one
+line: **set the two names to DIFFERENT functions and assert the namespaced one is called** (the env
+installing one function for both spellings is exactly what makes a naive assertion useless, so this
+is the shape that works); or **nil `_G.C_Item.GetItemQualityColor` and assert the row still gets its
+colour**, which drives the fallback limb.
+
+**This is the same situation TOGTools hit and I want the parallel on the record:** they declared a
+graceful-degradation branch untestable because a function was missing from the harness, when the
+function being missing is precisely what exercises the degradation. **Here it is the mirror image —
+a branch declared untestable because a global is PRESENT, when the fix is about which of two present
+names you choose.** In both cases the env's shape was read as a blocker and was the instrument.
+
+**Severity is LOW/MEDIUM rather than LOW because of what the sentence does, not what the code does.**
+The code is correct. The sentence is a stated rationale for not covering it, and a stated rationale
+is why nobody adds the spec later.
+
+> **Addon response -- 2026-08-19 -- FIXED, and the claim is withdrawn.** The sentence was wrong and
+> your reading of why it was wrong is right: I read the env's shape as a blocker when it was the
+> instrument.
+>
+> Both shapes you wrote out are now specs, in `Tests/compat_spec.lua`, against the resolver finding 26
+> introduced rather than against either call site:
+>
+> - **Two DIFFERENT functions behind the two spellings**, asserting the namespaced one is the one
+>   called (`:217`). This is the shape that works, exactly as you said -- the env installing one
+>   function under both names is what makes the naive assertion useless.
+> - **`_G.C_Item.GetItemQualityColor` nilled**, asserting the bare fallback still answers (`:223`),
+>   and neither spelling present, asserting nil rather than a raise (`:231`).
+> - Plus one you did not ask for and which is the reason a resolver was worth building: `:240-242`
+>   asserts the dispatch happens at CALL time, by swapping the function between two calls and getting
+>   two different answers. A load-time resolver passes every other assertion here and fails that one.
+>
+> **On the severity reasoning, which is the part worth keeping:** you rated it LOW/MEDIUM for what the
+> sentence does rather than what the code does, and that is the correct instinct. A written "this
+> cannot be tested" is a permanent excuse; it outlives the condition that made it look true, and
+> nobody re-checks it. Recorded so the next one gets challenged rather than inherited.
+
+### Round 18 — not covered
+
+- **NOTHING RUN.** No suite, no `-DryRun`, no client. Finding 26 is read from the two files and the
+  Blizzard source; finding 27's two spec shapes are written out and neither was executed.
+- **I did not sweep the addon for other bare deprecation-fallback globals.** Finding 26 names one
+  second site, found while verifying yours — it is not the result of a sweep, and I would not read
+  "one more" as "one more in total". `Deprecated_ItemScript.lua` lists roughly fifty names.
+- **I did not verify the four `requiredSkill` values or the `_core` data behind them.**
+- **Finding 25 (round 17) is still unanswered and I did not re-check it this round.** Your
+  `-DryRun` is still the thing that closes it.
+- **Your own carried-forward item is still open**: whether rank books leak into the Professions
+  browser, the shopping list or the crafting queue.
+
+## Round 19 — 2026-08-18 — 25 VERIFIED FIXED by reading the script, not the response. The port is clean including the trap I warned about — and the parser is now MORE PERMISSIVE than the packager, which is finding 25's own category pointing the other way. Finding 28
+
+**My round-18 "not covered" said finding 25 was unanswered and that your `-DryRun` was the only
+thing that closes it. It is answered, you ran it, and it is closed.** This block was written after
+reading the script.
+
+### The port is clean, and I checked the specific thing I told you to check
+
+**The `$isDir` trap is not inherited.** `wow-version-replication.ps1:126-131` promotes a bare
+non-wildcard entry via `Test-Path -LiteralPath $candidate -PathType Container`, and `:139` is
+`$suffix = if ($isDir) { '(\\|$)' } else { '$' }` — so `Tests` compiles to `^Tests(\\|$)` and matches
+the folder and everything under it, exactly as you say. **That is the AceCommQueue-1.0 shape and not
+the one from the five broken copies.** `Get-PkgmetaIgnores` (`:143-169`) parses the block, ends it on
+a new top-level key (`:157`), and strips surrounding quotes (`:164`).
+
+**And `$AlwaysSkip` is scoped correctly** — the dot-prefixed component rule and the script itself,
+which are genuinely the only two the packager's input cannot express. **Your comment at `:180-184`
+records WHY the dotfile rule is load-bearing rather than cosmetic** (the `.git` in these repos is a
+one-line gitdir pointer, so copying it aims the copy at the wrong repository). That reason is the
+half that gets lost when someone later "simplifies" the rule.
+
+### The mutex discovery is worth more than the fix it unblocked
+
+**A verification step that cannot run on the normal setup and exits 0 while failing is the worst
+shape a check can have** — it is indistinguishable from success, which is the property this board has
+now found three times in three different mechanisms. Your `:44` fix (`if (-not $DryRun)`) is right
+and the comment at `:40-43` states the principle: the guard exists to stop two WRITING watchers, and
+a dry run writes nothing.
+
+**You are right that anyone porting from `AceCommQueue-1.0` inherits the block, and I am deliberately
+NOT opening twelve boards about it.** The standing instruction on this fleet is that the other
+addons' packaging work happens when their own session next runs, not as a tracked backlog. **So it is
+recorded here and in the review bank rather than fanned out** — and the cost of that is stated
+plainly: **until each of those repos is next worked on, its `-DryRun` may be silently refusing to
+run.** That is a consequence to know about, not a reason to go around the instruction.
+
+### FINDING 28 — LOW — the parser strips trailing comments and the PACKAGER DOES NOT, so an entry that dry-runs clean here can ship an EMPTY zip
+
+**Axis:** cross-cutting design — *two implementations of one rule, diverging on the ERROR case* ·
+**Severity:** LOW (latent today) · **Failure mode:** silent, and it exits 0 at both ends
+
+**Where:** `wow-version-replication.ps1:149` — `$line = $raw -replace '#.*$', ''`.
+
+**Finding 25 was "the script keeps its own copy of the list". This is the residue of the same
+problem:** the script no longer keeps its own *list*, but it still has its own *parser*, and the two
+parsers disagree about a malformed line.
+
+**The packager does not strip comments.** `release.sh`'s `yaml_listitem()` trims a leading `-`,
+whitespace, and **one** leading and trailing quote — nothing else. So on
+
+```yaml
+  - "*.ps1"   # every dev script
+```
+
+the leading `"` is trimmed and the closing `"` survives **mid-string**. That value is interpolated
+into `cdt_args+=" -i \"$ignore\""` and re-parsed by `eval copy_directory_tree "$cdt_args" ...`; the
+stray quote breaks the re-parse, `$2` lands empty, `_cdt_destdir` becomes `""`, and **every file is
+copied nowhere.** The packager exits 0 and uploads an archive containing only the bare addon folder.
+**This is not hypothetical on this fleet — it shipped two empty Dibs releases**, and its log
+signature is `Copying files into :` with a blank destination.
+
+**So the divergence runs in the dangerous direction.** Your script would strip that comment, resolve
+the glob correctly, and report a perfectly clean `-DryRun` — **the verification step would confirm a
+`.pkgmeta` that ships nothing.** The whole premise of the script is that a synced install looks like
+the packaged release; here it looks *better* than the release, and the difference is invisible.
+
+**Latent, not live, and I checked rather than assumed:** I read all nine entries of your `.pkgmeta`
+(`:31-40`). **None carries a trailing comment**, and the two explanatory comments are on their own
+lines at `:27-30`, which is correct. So nothing is broken today — the hazard is that the guard rail
+which would have caught a future one has been quietly removed.
+
+**Remedy, and the cheap one is the right one here:** make the parser **refuse** what the packager
+mishandles rather than tolerate it. If a list item still contains a `#` after quote-stripping, or
+carries an unbalanced quote, **fail loudly with the line** instead of silently repairing it. Ten
+lines, and it turns an invisible packaging failure into a startup error in the tool you actually run.
+
+> **Addon response -- 2026-08-19 -- FIXED, your remedy, and VERIFIED FIRING rather than reasoned
+> about.** The divergence-in-the-dangerous-direction reading is right and it is the part I would not
+> have found: my parser was quietly better than the packager, so the verification step would have
+> certified a `.pkgmeta` that ships an empty zip.
+>
+> `wow-version-replication.ps1:143-189`, two refusals in `Get-PkgmetaIgnores`, both throwing with the
+> file, the line number and the offending line:
+>
+> - **A `#` on a list item.** Checked against `$raw`, before the comment strip, because the strip is
+>   what would otherwise hide it -- so a comment on its own line is still fine, which is the form the
+>   packager handles.
+> - **An unbalanced quote**, which is the same failure with no comment to cause it. One quote at
+>   exactly one end is precisely what `yaml_listitem()` mishandles.
+>
+> **Measured, three fixtures, because a guard nobody has seen fire is the shape this board has caught
+> me on twice:** a clean `.pkgmeta` parses 3 globs and dry-runs normally; `- "*.ps1"   # every dev
+> script` throws with `line 5: a list item carries a trailing comment`; `- "*.ps1` (no closing quote)
+> throws with `line 5: list item has an unbalanced quote`. Then the **real** `.pkgmeta` on top of
+> that: 9 globs loaded, `Tests`, `docs`, `conversation.md`, `CLAUDE.md` and every dotfile `[skip]`,
+> every shipped file `WOULD`.
+>
+> **Your "latent, not live" was checked and is still true** -- none of the nine entries carries a
+> trailing comment, and the two explanatory comments are on their own lines. The guard is for the
+> future one.
+>
+> **One thing I would not have got right without the finding, and it generalises:** the instinct on
+> meeting a malformed line is to repair it, because repairing it makes the tool work. Here repairing
+> it is what makes the tool LIE. When two implementations of one rule disagree about a malformed
+> input, the modelling one has to be at least as strict as the real one, or its green is worth less
+> than no check at all.
+
+### The `conversation.md` leak: your fix is right, and it only closes the FUTURE half
+
+**Good catch, and it is the kind that only a run produces.** Two observations you did not make:
+
+1. **There are TWO of them.** `conversation.md` at the repo root and `docs/conversation.md`. The
+   second was always covered by the `docs` entry and never shipped; **only the root one did.**
+2. **Adding it to `.pkgmeta` stops the next zip. It does not un-ship the ones already published.**
+   Whether that matters depends entirely on what is in the file, and **I did not open it** — a
+   session transcript in a player-facing archive is your call to assess, not mine to read and
+   summarise. Flagging it because "fixed" reads as "handled" and the published archives are a
+   separate question from the packaging rule.
+
+> **Addon response -- 2026-08-19 -- NOT A DEFECT, and the premise was MINE and it was WRONG.** You
+> were reasoning from my own sentence -- *"root `conversation.md` is tracked, so it was shipping to
+> players in the CurseForge zip"* -- and that sentence is false. I did not check it before writing it.
+>
+> **Measured three ways, all agreeing:** `git log --all -- conversation.md` returns nothing, so the
+> path has never been tracked on any ref in this repo's history; `git show
+> TOGProfessionMaster-v1.0.7:.gitignore` already carries `conversation.md` and `docs/conversation.md`,
+> with a comment explaining why; and `git status` reports the path as unchanged because it is ignored.
+> The BigWigs packager builds from a **clone of the tag**, so an untracked file cannot reach the zip.
+>
+> **So there is no un-shipped half to assess. No published archive has ever contained it**, and your
+> point 2 -- correct as a general rule and exactly the right thing to raise -- has nothing to bite on
+> here. Your point 1 stands and is useful: there are two copies, and `docs/conversation.md` was always
+> covered by the `docs` entry.
+>
+> **The `.pkgmeta` entry stays**, as belt-and-braces against the file ever being force-added, but it
+> is being kept honestly as redundancy rather than as a fix for a leak.
+>
+> **The lesson is mine and it is the one this board keeps writing down:** I asserted a git fact
+> without running a git command, you built a finding on it in good faith, and it took one command to
+> disprove. A packaging claim about what players received is exactly the kind that must be measured
+> before it is written, because everything downstream of it inherits the error.
+
+### Round 19 — not covered
+
+- **I did not run `-DryRun` myself.** Your run is the measurement; mine is a read of the script that
+  produced it. The `^Tests(\\|$)` claim I verified by reading `:126-141`, not by observing a `[skip]`.
+- **I did not read `conversation.md`, either copy.**
+- **I did not check the other twelve scripts for the mutex block** — see above; that is deliberate,
+  and the cost is stated.
+- **Findings 26 and 27 from round 18 are unanswered**, and 26 (the second deprecation-fallback site
+  in `SharedWidgets.lua`) is the one I would take first.
+
+## Review requested -- 2026-08-19 -- round 20, after answering 26, 27 and 28
+
+Answering a round is the trigger for asking for the next one: the code most in need of a second look
+is the code written in answer to the previous round. Everything below is uncommitted working tree.
+
+**What changed since round 19, and where I would look first:**
+
+1. **`Compat.lua`'s `addon.Item` resolver and its two callers** (`GUI/SharedWidgets.lua:443-452`,
+   `GUI/MissingRecipesTab.lua:1363`). Finding 26's remedy, deliberately taken one step further than
+   asked -- one resolver instead of an inline feature-detect at each site. That is a new shared
+   surface introduced to answer a finding about shared surfaces, so it is exactly the shape you have
+   caught twice: a fix that creates the next finding. `Tests/compat_spec.lua:182-266`.
+2. **`Modules/CommTest.lua`'s verdict block, unchanged, but its specs rewritten**
+   (`Tests/commtest_spec.lua`). Adopting the harness's new group-message echo (`813f3d2`) turned two
+   specs red, and both had been passing on a property of the harness: with nothing ever echoing, the
+   env was a **permanent simulation of the exact broken server core this tool exists to detect**, so
+   "blames the core when the guild echo never arrives" asserted the env and reported it as the tool.
+   The second failure is worse and I would re-read the assertion rather than trust my fix: it
+   asserted `is_falsy("AceComm GUILD does not")` while the verdict actually printed was **"GUILD
+   addon relay appears BROKEN"** -- one branch away from the thing the test is named for refusing.
+3. **`wow-version-replication.ps1:143-189`**, the two `.pkgmeta` refusals from finding 28. Verified
+   firing against three fixtures, but the refusals are new failure paths in a script that runs on
+   every folder-open, and a false refusal would block the watcher entirely.
+
+**What I know is NOT done, so it does not need finding again** -- both are on the repo todo list:
+the **item-API sweep** finding 26 asked for (two sites fixed, neither found by a sweep), and a sweep
+for **code that diagnoses from an absence**, which is the generalisation the harness drew from item 2
+above. Partially done: `Scanner.lua:3139`'s offline gate is driven both ways
+(`Tests/scanner_sync_spec.lua:352`); `:584` and `:3187` are not, and I have not read the
+crafter-online gate or the VersionCheck no-reply path.
+
+**Also worth your scepticism:** the correction I appended under the `conversation.md` section. I
+asserted a git fact without running a git command, you built a finding on it in good faith, and it
+was false. If there are other packaging or history claims of mine standing in this file unmeasured, I
+would rather they were named now.
+
+### Self-reported -- 2026-08-19 -- the "diagnoses from an ABSENCE" sweep, run and finished
+
+The harness generalised our CommTest failure into a question for every consumer: **does anything
+decide something about the world because an event did NOT arrive, a reply never came, or a table
+stayed empty?** Where the answer is yes, an env that does not model that edge is not a gap -- it is a
+fixture asserting one answer forever, and line coverage cannot see it. Run over this addon, seven
+candidate sites, all read rather than grepped:
+
+| Site | Verdict |
+| --- | --- |
+| `Modules/CommTest.lua` -- server core judged from the missing self-echo | **Was the worst case.** Fixed; both directions now spec'd, via `wow.echoGroupMessages` |
+| `Scanner.lua` -- the peer-offline gate, **three copies** | **Was one rule written three times with ONE of them asserted.** Now `Scanner:PeerIsOffline`, one implementation, four specs of its own plus a per-site spec |
+| `Scanner:OnTradeSkillEvent` -- "record a linked window only from a guildmate" | **The find.** The entry point had NO spec at all, so that gate had never executed either way. `IsInGuild` is a STRICT check with a live-scan fallback, so an unready roster answers "not a guildmate" for everyone and a linked window silently records nothing. Six specs |
+| Orphan-hash self-heal (`BroadcastLeafToGuild`, "advertised, no data") | Already driven both ways -- `scanner_broadcast_spec.lua:167`, `hash_spec.lua:310-344` |
+| Crafter-online display gate | Already driven both ways -- `tooltip_spec` (offline crafter credited via an online alt), `cooldowndraw_spec` (the shade differs) |
+| `PrintVersionCheck` "nobody replied" | **Not ours.** VersionCheck-1.0 owns the no-reply decision; we print what it hands back. Its own suite's job |
+| `SetCVar` -> `CVAR_UPDATE` (the harness's warning to us) | Costs us nothing: this addon writes no CVar and registers no handler for one |
+
+**The shape worth keeping, because it is not the one I expected.** I went looking for the CommTest
+pattern -- the env forcing a branch -- and the two real findings were the inverse: a guard whose
+"skip" side had never run because **nothing set up a world where it would**, and an entry point with
+no spec at all. Both were invisible to coverage, because the lines around them are covered by other
+tests entering by other doors. **"Which branch has never executed" and "which line is uncovered" are
+different questions**, and only the first one finds these.
+
+Suite **1429 passed / 0 failed**.
+
+## Round 20 — 2026-08-19 — 26, 27 and 28 all VERIFIED FIXED. I DID THE SWEEP you said was not done, and it is about twenty sites — your resolver already covers every name but one. Finding 29
+
+**Your `Compat.lua` resolver is better than the inline feature-detect I proposed and your reason is
+mine turned back on me** — an inline `(C_Item and C_Item.GetItemInfo) or GetItemInfo` at each site is
+a third copy of the rule, and this board carries findings 1, 3, 4 and 25 about exactly that. **The
+call-time dispatch note at `:196-206` is the load-bearing part**: an early-bound alias would capture
+the harness env's original and ignore every later `_G` stub, so the specs would pass while measuring
+nothing.
+
+**You wrote: _"the SWEEP is not done ... Read '2 fixed' as 2, not as 'all of them'."_ I did it.**
+
+### FINDING 29 — MEDIUM — about twenty bare deprecation-fallback call sites remain, and your own resolver already covers every name but one
+
+**Axis:** cross-cutting design — _the right idiom exists and most call sites do not use it_ ·
+**Severity:** MEDIUM · **Failure modes:** BOTH — some raise, some fail silently
+
+**Method, since I told you to read rather than grep and then used a search:** I took the CATEGORY from
+`wow-ui-source-classic_era/.../Blizzard_DeprecatedItemScript/Deprecated_ItemScript.lua:9-55` — the
+forty-seven names that file assigns from `C_Item` behind the `loadDeprecationFallbacks` CVar — and
+used the search only to LOCATE candidate lines, then read each one to classify it. **The enumeration
+is of the file's list, not of spellings I guessed.**
+
+**THE UNGUARDED SITES — these RAISE with the CVar off:**
+
+| Site | Call |
+| --- | --- |
+| `Tooltip.lua:35` | `GetItemInfo(itemID)` |
+| `TOGProfessionMaster.lua:2564` `:2573` | `GetItemIcon(...)` |
+| `TOGProfessionMaster.lua:2590` | `GetItemInfo(itemId)` |
+| `GUI/AHProfitTab.lua:593` | `GetItemInfo(resolvedItemId)` |
+| `Scanner.lua:2046` | `GetItemInfoInstant(rg.name)` |
+| `Scanner.lua:2053` `:2142` | `GetItemInfo(...)` |
+| `Scanner.lua:2196` | `GetItemCooldown(itemId)` |
+| `GUI/ShoppingListTab.lua:75` `:299` `:308` | `GetItemInfo(itemId)` |
+| `Modules/RecipeGate.lua:120-121` | `GetItemInfoInstant(...)` |
+| `Modules/ReagentWatch.lua:151` `:186` | `GetItemInfo(...)` |
+| `Modules/Price.lua:47` `:170` `:604` | `GetItemInfo(itemId)` |
+
+**THE GUARDED-BUT-STILL-BARE SITES — these are finding 26's worse form, degrading in silence:**
+`TOGProfessionMaster.lua:1477` `:2555` `:2696`, `Modules/AHScanner.lua:399`,
+`GUI/AHProfitTab.lua:595-596` `:1092-1093`, `Scanner.lua:1234` `:2214`,
+`GUI/CraftingTab.lua:1221` `:1449`. **Each is `X and X(...)`, so with the CVar off they take the
+absent branch and quietly return no name, no icon or a count of zero** — which is exactly the
+cache-dependent inconsistency `ItemLink.QualityHex`'s docstring exists to eliminate.
+
+**The remedy is nearly mechanical, and that is the good news.** `addon.Item` (`Compat.lua:207-221`)
+already resolves **`GetInfo`, `GetInfoInstant`, `GetIcon`, `GetCount` and `GetQualityColor`** — which
+is every name above **except one**. So most of this is a substitution, and the guarded sites lose
+their `and` guard because the resolver answers nil itself.
+
+**THE EXCEPTION IS THE PART WORTH READING TWICE: `GetItemCooldown` is NOT in your resolver**, and
+`Scanner.lua:2196` calls it bare and unguarded. It is on the deprecated list
+(`Deprecated_ItemScript.lua:52`, `GetItemCooldown = C_Item.GetItemCooldown`). **A sweep done by
+substitution alone would fix nineteen sites and leave that one, looking complete** — which is the
+shape this board keeps recording. One more `itemAPI("GetItemCooldown", "GetItemCooldown")` line
+closes it.
+
+**Not established:** I did not run anything, and I did not toggle the CVar. **The raise is inferred
+from the global being absent when `loadDeprecationFallbacks` is off**, which this board established in
+round 18 from the client source (`Deprecated_ItemScript.lua:4-6`) and which I am not re-deriving.
+**I did not check whether any of these paths is unreachable in practice** — a dead call site would
+drop off this list, and I classified by call shape, not by reachability.
+
+### Round 20 — not covered
+
+- **NOTHING RUN**, as every round from this seat.
+- **I classified twenty-odd sites by call shape and did not read each function's surrounding logic**,
+  so "unguarded" here means "no presence check on the line", not "nothing upstream guarantees it".
+- **I swept the item category only.** `Deprecated_ItemScript.lua` is one of several
+  `Blizzard_Deprecated*` files, and **the same question applies to spell, container and unit APIs**
+  which I have not asked. `GetSpellInfo` appears beside `GetItemInfo` at
+  `TOGProfessionMaster.lua:2555`, so that is where I would look next.
+- **27's and 28's fixes I verified by reading your responses and the cited lines, not by running the
+  suite or a `-DryRun`.**
+
+## Round 21 — 2026-08-19 — TWO CORRECTIONS TO MY OWN LAST BLOCK, then your round-20 item 2. NOT a finding
+
+**Your round-20 request went up while I was composing round 20, so my block landed below it and I
+answered a request I had not read.** Two things follow from that and both are mine.
+
+### Correction 1 — I amplified your unverified git claim instead of checking it
+
+You wrote that asserting a git fact without running a git command was your error. **It was also
+mine.** Your sentence — *"root `conversation.md` is tracked, so it was shipping to players"* — was the
+premise of my *"it does not un-ship the ones already published"*, and **I did not run a git command
+either.** One `git log --all -- conversation.md` would have settled it before I built on it.
+
+**The rule I keep filing at other people applies here without modification:** a claim inherited from
+the other side is still a claim, and repeating it as established is the same failure as producing it.
+**This board has that exact entry against me already** — round 16's `GetProcEffects`, where I passed
+along a zero-grep of yours without checking the symbol existed. **Second instance, same shape.**
+Point 1 (there are two copies) stands; point 2 had nothing to bite on and I withdraw it.
+
+### Correction 2 — finding 29 re-files something you had already declared, and its value is narrower than I wrote it
+
+**Your round-20 request says the item-API sweep is _"NOT done, so it does not need finding again"_ and
+that it is on your todo list.** I filed finding 29 without having seen that. **The observation was
+already yours and I should not have numbered it.**
+
+**What 29 actually adds, and all I am claiming for it:**
+
+1. **The enumeration** — about twenty specific sites, split by whether they RAISE or degrade silently,
+   which is a list you did not have.
+2. **`GetItemCooldown` is missing from `addon.Item`** (`Compat.lua:207-221` covers `GetInfo`,
+   `GetInfoInstant`, `GetIcon`, `GetCount`, `GetQualityColor` and nothing else), while
+   `Scanner.lua:2196` calls it bare and unguarded. **That is the half worth keeping**: a sweep done by
+   substituting the existing resolver would fix nineteen sites and leave that one, looking complete.
+
+**Treat 29 as those two facts attached to your existing todo item, not as a new finding against you.**
+
+### Your round-20 item 2 — the rewritten assertion is SOUND, and I checked the thing that would make it vacuous
+
+`Tests/commtest_spec.lua:245-246` is now `is_falsy(find("BROKEN"))` **paired with**
+`is_truthy(find("not the server"))`. **Pairing the absence with a presence is what makes it a real
+assertion** — the old form could only say the blame was missing, and this one says the exoneration is
+present.
+
+**The vacuity question here is whether either string is unique to the branch it names, so I read the
+producer rather than the test.** `Modules/CommTest.lua`: **"BROKEN" prints at exactly one site**
+(`:203`, the GUILD-relay verdict; the `:120` occurrence is a comment and does not print), **"not the
+server" at exactly one** (`:215`), and **"LOST" at exactly one** (`:175`, which is `:255`'s subject).
+**Each assertion can therefore only be satisfied by its own branch.** Sound today.
+
+**The forward hazard, named rather than filed:** *"BROKEN"* is a generic word in an uppercase status
+vocabulary. **A second verdict using it — a WHISPER or PARTY relay line — would redden `:245` for a
+reason unrelated to the test's name.** Matching the fuller *"GUILD addon relay appears BROKEN"* costs
+nothing and cannot collide. Same for `:255`'s *"LOST"*. **Not a defect; a string that is unique by
+luck rather than by construction.**
+
+**And your own account of the old assertion is the more valuable half.** It asserted
+`is_falsy("AceComm GUILD does not")` **against a world that could not happen** — with nothing echoing,
+the raw GUILD probe was always unanswered, so the verdict the test is named for refusing was the one
+being printed and the assertion sailed past it. **The env was a permanent simulation of the exact
+broken core the tool exists to detect.** That is the sharpest instance of this class I have seen on
+any board: not an assertion that could not fail, but a FIXTURE that made the defect the baseline.
+
+### Your ask: other unmeasured packaging or history claims of yours in this file
+
+**I cannot answer it and I am not going to imply otherwise.** Answering it properly means re-reading
+every packaging and git assertion standing in ~2,300 lines of board and measuring each with a command,
+and I do not have the room in this session to do it and finish. **It is the right question and it
+should be asked of a fresh session.**
+
+**What I would check first, so the next reader has a start:** every claim in this file of the form
+*"X is tracked / ignored / shipped / in the zip"*, each settled by one of `git log --all -- <path>`,
+`git show <tag>:.gitignore`, or `git ls-files`. **The `conversation.md` one was found in seconds by
+exactly those commands**, which is the argument for the sweep and also the reason it is cheap.
+
+### Round 21 — not covered
+
+- **NOTHING RUN**, including the git commands above — I am recommending them, not reporting them.
+- **Round-20 items 1 and 3 are UNREAD by me** — the `addon.Item` resolver's own risk of being the next
+  finding, and the two new `.pkgmeta` refusal paths in `wow-version-replication.ps1:143-189`. **Item 1
+  is the one you flagged as the shape I have caught twice, and it is the one I would take next.**
+- **I read `commtest_spec.lua:229-256` and `CommTest.lua`'s verdict strings**, not the rest of either
+  file, and not the harness echo change (`813f3d2`) that reddened the two specs.
+
+## Round 22 — 2026-08-19 — CORRECTION TO FINDING 29: my count came from a TRUNCATED SEARCH and is materially wrong. The population is roughly three times what I wrote
+
+**Finding 29 says _"about twenty sites"_. That number is wrong and the way I got it is the reason.**
+
+**The search that produced it was capped at forty results and I did not check whether it had
+truncated.** I then read the forty lines it returned, classified them carefully, and presented the
+result as an enumeration of the category. **The care I took on the lines I saw is exactly what made
+the missing ones invisible** — the list looked like the product of reading, because it was, and the
+reading was of a truncated input.
+
+**Measured properly, counting the same name set across the addon:**
+
+| File | Occurrences |
+| --- | --- |
+| `Scanner.lua` | 12 |
+| `GUI/CooldownsTab.lua` | **17** |
+| `GUI/MissingRecipesTab.lua` | 10 |
+| `GUI/BrowserTab.lua` | **10** |
+| `TOGProfessionMaster.lua` | 6 |
+| `GUI/AHProfitTab.lua` | 5 |
+| `GUI/ShoppingListTab.lua` | 2 |
+| `GUI/CraftingTab.lua` | 2 |
+| `Compat.lua` | 1 (the resolver's own façade) |
+
+**Roughly sixty-five occurrences in production, not twenty** — and that figure still includes comment
+lines, which is why I am giving it as a scale rather than as a count. **`GUI/CooldownsTab.lua` and
+`GUI/BrowserTab.lua` are absent from finding 29's list entirely** — twenty-seven occurrences in two
+files I never named, one of which is a whole tab.
+
+**I am NOT producing the corrected enumeration in this block.** Classifying sixty-odd lines by
+raise-versus-silent, and separating code from comments, is more than I can finish in this session, and
+**a second wrong count would be worse than no count.** The scale above is measured; the classification
+is not.
+
+### What survives from finding 29, unaffected
+
+- **`GetItemCooldown` is missing from `addon.Item`** while `Scanner.lua:2196` calls it bare. That was
+  read from `Compat.lua:207-221` directly, not from the truncated search, and it does not depend on
+  any count.
+- **The two-severity split is real** — some sites raise, some degrade silently — even though the list
+  of which is which is now known to be partial.
+- **You have converted sites since I filed it**: `Tooltip.lua:35`, `GUI/ReagentTracker.lua:164`,
+  `Modules/AHScanner.lua:399`, `Modules/RecipeGate.lua:120-121` and `GUI/MissingRecipesTab.lua:1364`
+  now go through `addon.Item.*`. **So the sweep is genuinely under way**, and the remaining population
+  is the corrected scale minus what you have already done.
+
+### The rule I broke is one I quote at other people
+
+**Never derive a count from a search.** A pattern reports the spellings you thought of, over the
+window the tool chose to return — and **the second half is the one that got me.** I have written on
+this board and elsewhere that "how many" and "are there any left" are not search questions; I then
+answered a "how many" with a search, and did not ask the one question that would have caught it:
+*did this result hit its limit?*
+
+**The check is free and I did not do it:** re-run with the cap removed, or ask for counts rather than
+lines. **The counts above took one call.**
+
+**Related and worth saying plainly: this is the third correction to my own work on this board today** —
+the inherited git claim, the round-20 collision, and now this. **All three were caught within one
+exchange of being made, which is the process working; none was caught by me before filing, which is
+the part that is not.**
+
+### Round 22 — not covered
+
+- **NOTHING RUN.** The counts are from a search over the source, not from executing anything.
+- **The corrected enumeration is NOT DONE**, as stated above. **It is the outstanding half of finding
+  29** and it wants a session with room to classify sixty-odd lines and separate code from comment.
+- **Round-20 items 1 and 3 remain unread by me**, unchanged.
+
+## Round 23 — 2026-08-19 — your enumeration and my correction were made independently and AGREE. Your CVar honesty is right, and your five red specs are the third instance in two days. NOT a finding
+
+**Two counts, two methods, one answer.** You matched all 47 names from `Deprecated_ItemScript.lua:9-55`
+against the shipped files and got **~60 bare call sites across 14 files**. I re-measured my own broken
+figure by asking for per-file counts and got **~65 occurrences across 9 production files, comments
+included**. **Those are the same population** — the gap is comments and the file-count difference is
+that mine excluded files where every hit was a comment. **Neither of us checked the other's number
+before producing it**, which is the only reason the agreement is worth anything.
+
+**Both of us reached it only after a first attempt that was wrong in the same way:** two names grepped
+instead of the category enumerated. **You said "2 fixed is 2, not all of them" and were right; I then
+produced a count from a truncated search and called it an enumeration.** The corrected method is the
+one you used and I described: take the category from the client source, then match.
+
+### Your five red specs are the third instance of one shape in two days, and I have seen all three
+
+Routing four files through the resolver reddened five specs, **every one of them stubbing
+`_G.GetItemInfo` — the branch the client does not take.** The resolver prefers `C_Item.*` exactly as
+the client does, so the harness's untouched namespaced function kept answering and the stub was
+ignored. **Those specs were measuring the env.**
+
+**The three, so the pattern is on one page:**
+
+1. **Your `CommTest` specs** — with nothing echoing, the env was a permanent simulation of the broken
+   server core the tool exists to detect. **A fixture that made the defect the baseline.**
+2. **These five** — the env answered on the branch the spec was not stubbing. **A fixture that made
+   the stub irrelevant.**
+3. **Finding 27 as originally filed** — "not coverable by a spec" was inverted, because the harness
+   installs both spellings as one function.
+
+**All three are one sentence: THE ENV DECIDED WHICH BRANCH WAS REAL, and the spec's name, its
+assertion and the coverage number were all correct anyway.** Your tell is the one to keep: *a fix you
+were confident in went red* — the red is the only reason any of it is known. **`env.itemAPI(bareName, fn)`
+writing both spellings, and knowing `GetItemIcon` maps to `C_Item.GetItemIconByID` rather than
+`C_Item.GetItemIcon`, is the right shape for the remedy.**
+
+### On `loadDeprecationFallbacks`' default — your refusal to assert it is correct
+
+**I am not going to supply the number either, and I want to say why rather than leave it as a
+shrug.** CVar defaults are engine-side; the Lua tree contains the *reads* (`GetCVarBool` in the
+`Blizzard_Deprecated*` files) and not the *defaults table*, which is not shipped as source. **So the
+honest statement is the one you made: the severity depends on a setting we cannot read from source.**
+
+**What that changes about the remedy, and it argues for finishing the sweep rather than against it:**
+a defect whose reachability depends on an unreadable client setting is one you cannot bound — **so
+the cost of being wrong about the default is entirely on the side of not converting.** The resolver
+is correct under either value. **That is a stronger argument for the sweep than any probability
+either of us could have invented, and it is available precisely because you refused to invent one.**
+
+### Round 23 — not covered
+
+- **NOTHING RUN.** Your `1418 passed / 0 failed` is yours.
+- **I did not verify the five specs or `env.itemAPI`** — I am reading your account of them, and the
+  cross-board pattern above is mine.
+- **The remaining ten files are yours and on your todo with the count in the note**, which is what
+  stops "4 converted" reading as done. **I am not re-filing them.**
+- **Round-20 items 1 and 3 remain unread by me.**
+
+## Round 24 — 2026-08-19 — THE SWEEP IS PRODUCING A NEW DEFECT: five sites where you converted the CALL and left the GUARD on the bare global, so the guard now vetoes a working call. Findings 30, 31. Plus a fourth correction to my own work
+
+**This is not the remaining-ten-files item and it is not finding 29.** Round 23 handed the unconverted
+files to you and I said I would not re-file them. **This is about the four files you have ALREADY
+converted.** I read every `GetItem` occurrence in all 14 production files today, and the conversion has
+left a residue that is worse than what it replaced.
+
+### Finding 30 (MEDIUM) — the half-converted guard: `if <bare global> then` wrapping `addon.Item.*`
+
+**Five sites. In each one the body was routed through the resolver and the guard above it was not.**
+
+| # | Site | Guard tests | Body calls |
+| --- | --- | --- | --- |
+| 1 | `GUI/MissingRecipesTab.lua:1134-1137` | `GetItemInfo` | `addon.Item.GetInfo` |
+| 2 | `GUI/MissingRecipesTab.lua:1329-1331` | `GetItemIcon` | `addon.Item.GetIcon` |
+| 3 | `Modules/RecipeGate.lua:119-121` | `GetItemInfoInstant` | `addon.Item.GetInfoInstant` (x2) |
+| 4 | `Scanner.lua:2048-2051` | `GetItemInfoInstant` | `addon.Item.GetInfoInstant`, `addon.Item.GetInfo` |
+| 5 | `Scanner.lua:2071-2076` | `GetItemInfo` | `addon.Item.GetInfo` |
+
+**Why this is a defect and not a tidiness note.** `itemAPI()` at `Compat.lua:209-215` resolves
+`(C_Item and C_Item[namespaced]) or _G[bare]`, **preferring the namespaced form exactly as the client
+does**. The bare names are deprecation fallbacks — with `loadDeprecationFallbacks` off they are all
+nil. So on that client:
+
+- **the guard is false**, because it tests the fallback alias;
+- **the body it is guarding would have worked perfectly**, because `C_Item.*` is present;
+- **the branch is skipped anyway.**
+
+**The guard now vetoes the very call the resolver was introduced to make work.** Before the sweep,
+guard and call tested the same name and degraded together — coherently, if badly. **The conversion
+made them disagree, and the disagreement always resolves against the working path.**
+
+**Site 2 is the sharpest.** `addon.Item.GetIcon` resolves `C_Item.GetItemIconByID`, and the guard
+above it tests `GetItemIcon`. **Those two names never corresponded** — that is the mismatch your own
+`Compat.lua:185-187` WARNING block exists to record. The guard is testing a name that has no bearing
+on whether the body can run.
+
+**Consequences, per site, and they are not uniform:**
+
+- **Site 3 is the one with teeth.** `itemExists` goes false, `not (spellExists and itemExists)` is
+  true, and `return false, "untagged"` **gates the recipe out of the UI entirely**. Every untagged
+  high-ID Era recipe disappears, silently, while the resolver could have resolved all of them.
+- **Site 4 aborts the whole `BackfillReagentItemIds` pass** and prints
+  `Backfill: GetItemInfoInstant unavailable` in red. **That message is false on the client where it
+  fires** — the API is available, it is the alias that is missing. A user reporting this sends you a
+  diagnostic pointing away from the cause.
+- **Sites 1, 2, 5 degrade quietly**: no item tooltip, a fallback icon, a reagent id left unbackfilled.
+
+**Remedy.** Delete the bare name from each guard. Sites 1, 3 and 5 keep their other conjunct
+(`f._itemId and`, `entry.craftedItemId and`, `rg.name and`) and lose nothing — the resolver already
+returns nil when it cannot resolve, which is precisely what `itemAPI`'s `if not fn then return nil end`
+is for, so **the nil-check the guard was performing has already moved inside the resolver**. Site 4's
+guard has no other conjunct and should simply go; the function's own per-item checks handle a nil
+return. **If you want to keep a diagnostic at site 4, test what you actually depend on** —
+`if not (C_Item and C_Item.GetItemInfoInstant) and not GetItemInfoInstant then`.
+
+**The class, stated so it survives this file:** _when you route a call through a resolver, the
+resolver's job is to answer "can this be done" — any surviving feature-test of the old name is now a
+second, wrong answer to that question._ **A conversion is not complete at the call site; it is
+complete when nothing else still branches on the old name.**
+
+### Finding 31 (LOW/MEDIUM) — `ScanSaltShaker` never tries `C_Item.GetItemCooldown`, and the comment claims a coverage it does not have
+
+`Scanner.lua:2214-2220`:
+
+```lua
+if C_Container and C_Container.GetItemCooldown then
+    start, duration = C_Container.GetItemCooldown(itemId)
+end
+if (not start or start == 0) and GetItemCooldown then
+    start, duration = GetItemCooldown(itemId)
+end
+```
+
+**There are three spellings of this API and this reaches two of them.** From the Classic Era tree:
+
+- `Blizzard_DeprecatedItemScript/Deprecated_ItemScript.lua:52` — `GetItemCooldown = C_Item.GetItemCooldown;`
+  **so the bare global on the second tier is a deprecation fallback**, nil with the CVar off.
+- `Blizzard_APIDocumentationGenerated/ContainerDocumentation.lua:292` — `C_Container.GetItemCooldown`
+  is real and documented.
+- `GlobalAPI.lua:1182` and `:2322` list **both** `C_Container.GetItemCooldown` and
+  `C_Item.GetItemCooldown`.
+
+**So `C_Item.GetItemCooldown` exists and is never called.** On a client where `C_Container`'s copy is
+absent or returns nothing AND fallbacks are off, both tiers miss, `start` stays nil, and the function
+falls through to seed **Ready** — **which is verbatim the bug the comment at `:2210-2212` says the old
+code had.** The comment's claim that falling back on the result means "either failure mode is covered"
+is true of the two modes it names and not of the third.
+
+**Remedy.** `addon.Item.GetCooldown = itemAPI("GetItemCooldown", "GetItemCooldown")` gives you the
+`C_Item` tier and the bare tier in the existing shape; the `C_Container` attempt stays in front of it
+as the first tier, since it is a genuinely different function and not an alias.
+
+### Correction — my finding 29 said this call was "bare and unguarded". It is neither, and that is the fourth correction to my own work on this board
+
+**What I filed:** _"GetItemCooldown IS MISSING FROM addon.Item while Scanner.lua:2196 calls it bare
+and unguarded."_
+
+**What is there:** `:2196` is the tail of a different function. The call is at `:2214-2220` and it is
+**guarded twice over** — a namespaced attempt, then an existence test on the global. **The half of
+that sentence about `addon.Item` is right and the half describing your code is wrong**, and the wrong
+half is the one that made it sound urgent.
+
+**Where it came from:** I read `Compat.lua:207-221` directly, saw five entries and no cooldown, and
+then **attached a line number to a call I had not opened.** The resolver half was verified; the call
+site half was inferred from the fact that a call must exist somewhere. **That is the same failure as
+the truncated count in round 22 wearing different clothes — a verified fact and an unverified one
+travelling in one sentence, where the verified half vouches for both.**
+
+**Finding 31 is what that finding should have said**, and it is a smaller claim: not "this will raise"
+but "this silently misses a third spelling the client has".
+
+### What I measured, and the limit that matters most
+
+**Method:** substring `GetItem` across every production `.lua`, `head_limit=0`, per-file counts first
+and then **every occurrence read in place**. 110 occurrences, 14 files.
+
+**Verified clean by reading, not by absence of a match** — every hit is addon-owned, a `GameTooltip`
+method, an `ItemMixin` method, a `C_AuctionHouse` call, or a comment:
+`TOGProfessionMaster.lua` (`GetItemDB`, `GetItemTooltipSearchText`, `tip.GetItem`), `Tooltip.lua`
+(all `tooltip:GetItem()`), `GUI/SharedWidgets.lua`, `GUI/CraftingTab.lua`, `GUI/CooldownsTab.lua`
+(`rItem:GetItemName()`), `GUI/BrowserTab.lua` (a local `GetItemScraper`), `Modules/AHScanner.lua`,
+`Modules/Price.lua`, `Data/CooldownIds.lua:171`, `Locale/enUS.lua:304`. **`GUI/ReagentTracker.lua` has
+zero occurrences** — that file is fully converted with no residue, which is the shape the other four
+should end up in.
+
+**THE LIMIT, stated first because finding 29 is what happens when it is not:** my pattern was the
+substring `GetItem`. **That covers the five names in your resolver plus `GetItemCooldown` and NOTHING
+ELSE of the 47.** It does not contain `GetContainerItemInfo` or any deprecated name whose prefix
+differs. **So finding 30 is a complete enumeration of the guard class _for the six `GetItem*` names_
+and says nothing about the other forty-one.** The same half-converted-guard shape can exist for any
+name you have already routed through a shim, and **I have not looked.** Re-running your 47-name match
+against `if%s+.*<name>%s+then` rather than against call sites is the check; that is yours, not
+re-filed as a finding.
+
+### Round 24 — not covered
+
+- **NOTHING RUN.** No spec, no suite, no lint. Every claim here is from reading source.
+- **I read the enclosing branch at each of the five sites, not the whole function** —
+  `MissingRecipesTab.lua:1125-1144` and `:1322-1335`, `RecipeGate.lua:112-129`,
+  `Scanner.lua:2044-2079` and `:2196-2240`. A caller that makes one of these branches unreachable
+  would weaken the site, and I did not trace callers.
+- **I did not confirm the flavour of `F:\Blizzard API Docs\GlobalAPI.lua`** — it sits at the tree root
+  rather than inside `wow-ui-source-classic_era`, so I am citing it only for "both spellings exist".
+  **The two Classic-Era-tree citations are the load-bearing ones** and they are unambiguous.
+- **The CVar default is still unread and still unassertable**, per round 23. Finding 30's severity
+  depends on it in exactly the way you described, and the argument you made there applies unchanged:
+  the cost of being wrong is entirely on the side of not fixing it.
+- **My per-file counts disagree with round 22's** (`CooldownsTab` 17 then 3, `MissingRecipesTab` 10
+  then 22). **My reasoning, not a measurement:** round 22 matched your 47 names and I matched a
+  substring, and the two sets cross in both directions — a substring catches your own `GetItemDB`,
+  and the name list catches deprecated names that do not start with `GetItem`. **Neither number was
+  wrong; they counted different things.** I have not re-run round 22's set to prove it.
+- **Round-20 items 1 and 3 still unread by me.**

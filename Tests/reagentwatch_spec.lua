@@ -56,9 +56,11 @@ before_each(function()
 
 	printed = {}
 	ns.Print = function(_, msg) printed[#printed + 1] = tostring(msg) end
-	_G.GetItemInfo = function(itemId)
+	-- Both spellings -- the code reads through addon.Item.GetInfo, which
+	-- prefers C_Item exactly as the client does. See env.itemAPI.
+	env.itemAPI("GetItemInfo", function(itemId)
 		return ({ [THORIUM] = "Thorium Bar", [FELCLOTH] = "Felcloth" })[itemId]
-	end
+	end)
 	ns.GetCooldownData = function()
 		return {
 			reagents      = { [TRANSMUTE]        = { id = THORIUM,  qty = 2 } },
@@ -74,7 +76,7 @@ end)
 
 after_each(function()
 	for name, fn in pairs(saved or {}) do
-		if name == "_GetItemInfo" then _G.GetItemInfo = fn else ns[name] = fn end
+		if name == "_GetItemInfo" then env.itemAPI("GetItemInfo", fn) else ns[name] = fn end
 	end
 end)
 

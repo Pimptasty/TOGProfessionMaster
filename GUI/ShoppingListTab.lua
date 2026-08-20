@@ -72,7 +72,9 @@ function ShoppingListTab:BuildReagentList()
     for itemId, totalNeeded in pairs(need) do
         local have      = bags[itemId] or 0
         local shortfall = math.max(0, totalNeeded - have)
-        local itemName  = GetItemInfo(itemId) or "|cffaaaaaa(loading…)|r"
+        -- "..." not the single-glyph ellipsis: the client's fonts stop at
+        -- Latin-1 and U+2026 draws as a box or as nothing at all.
+        local itemName  = addon.Item.GetInfo(itemId) or "|cffaaaaaa(loading...)|r"
         table.insert(list, {
             itemId    = itemId,
             itemName  = itemName,
@@ -142,8 +144,10 @@ end
 function ShoppingListTab:FillShoppingList(container)
     local bl = Ace.db.char.shoppingList
 
-    local empty = true
-    for _ in pairs(bl) do empty = false; break end
+    -- `next` rather than a `for ... break`, which luacheck rightly calls out
+    -- ("loop is executed at most once") -- a loop that always breaks reads as
+    -- if it might not. This is just "is the table empty".
+    local empty = next(bl) == nil
 
     if empty then
         local lbl = AceGUI:Create("Label")
@@ -183,8 +187,8 @@ function ShoppingListTab:FillShoppingList(container)
         local lbl = AceGUI:Create("InteractiveLabel")
         lbl:SetText(spellName)
         lbl:SetWidth(200)
-        lbl:SetCallback("OnEnter", function(_widget)
-            addon.Tooltip.Owner(_widget.frame)
+        lbl:SetCallback("OnEnter", function(widget)
+            addon.Tooltip.Owner(widget.frame)
             GameTooltip:SetSpellByID(sid)
             -- A spell tooltip carries no item, so the global OnTooltipSetItem
             -- hook never fires -- these rows ARE recipes and showed none of the
@@ -294,9 +298,9 @@ function ShoppingListTab:FillMissingReagents(container)
         itemLbl:SetText(itemColour .. entry.itemName .. "|r")
         itemLbl:SetWidth(200)
         local itemId = entry.itemId
-        itemLbl:SetCallback("OnEnter", function(_widget)
-            addon.Tooltip.Owner(_widget.frame)
-            addon.ItemLink.SetItem(GameTooltip, select(2, GetItemInfo(itemId)), itemId)
+        itemLbl:SetCallback("OnEnter", function(widget)
+            addon.Tooltip.Owner(widget.frame)
+            addon.ItemLink.SetItem(GameTooltip, select(2, addon.Item.GetInfo(itemId)), itemId)
             GameTooltip:Show()
         end)
         itemLbl:SetCallback("OnLeave", function()
@@ -305,7 +309,7 @@ function ShoppingListTab:FillMissingReagents(container)
         end)
         itemLbl:SetCallback("OnClick", function(_widget, _event, button)
             if button == "LeftButton" then
-                addon.ItemLink.Click((select(2, GetItemInfo(itemId))))
+                addon.ItemLink.Click((select(2, addon.Item.GetInfo(itemId))))
             end
         end)
         row:AddChild(itemLbl)

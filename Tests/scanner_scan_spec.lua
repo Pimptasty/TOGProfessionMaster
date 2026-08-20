@@ -243,3 +243,67 @@ describe("ScanTradeSkillInto", function()
 		assert.same({}, gdb.recipes[171])
 	end)
 end)
+
+--- A LINKED trade skill -- someone in the guild has linked their window to you.
+---
+--- This whole entry point had NO spec, and the guard inside it -- "record it only
+--- if the linker is a guildmate" -- had therefore never executed in either
+--- direction. Found by the "does anything diagnose from an ABSENCE?" sweep the
+--- harness asked consumers to run: `IsInGuild` is a STRICT membership check with
+--- a live-scan fallback before the roster's first build, so an unready roster
+--- answers "not a guildmate" for everybody, and the symptom is a linked window
+--- that silently records nothing.
+describe("OnTradeSkillEvent -- a linked window", function()
+	before_each(function()
+		env.roster({ { name = "Testchar", isOnline = true }, { name = "Bob", isOnline = true } })
+		S.GuildRoster = ns.Scanner.GuildRoster
+		_G.UnitAffectingCombat = function() return false end
+		env.tradeSkillSession("Alchemy", {
+			{ name = "Minor Healing Potion", link = "|Henchant:2330|h[Minor Healing Potion]|h" },
+		})
+	end)
+
+	it("records a guildmate's linked window under THEIR key, not ours", function()
+		_G.IsTradeSkillLinked = function() return true, "Bob" end
+		S:OnTradeSkillEvent()
+		assert.is_not_nil(gdb.skills["Bob-Testrealm"])
+		assert.is_nil(gdb.skills[ME])
+	end)
+
+	it("records NOTHING for someone who is not in the guild", function()
+		-- The gate this describe exists for. A stranger's linked window is not
+		-- guild data and must not enter the database under any key.
+		_G.IsTradeSkillLinked = function() return true, "Stranger" end
+		S:OnTradeSkillEvent()
+		assert.is_nil(gdb.skills["Stranger-Testrealm"])
+		assert.is_nil(gdb.skills[ME])
+	end)
+
+	it("records nothing when no roster library is loaded at all", function()
+		S.GuildRoster = nil
+		_G.IsTradeSkillLinked = function() return true, "Bob" end
+		S:OnTradeSkillEvent()
+		assert.is_nil(gdb.skills["Bob-Testrealm"])
+	end)
+
+	it("never falls through to scanning a linked window into OUR OWN key", function()
+		-- The failure that would be worst and quietest: a linked window read as
+		-- our own recipes, so the guild is told we know things we do not.
+		_G.IsTradeSkillLinked = function() return true, "Stranger" end
+		S:OnTradeSkillEvent()
+		assert.is_nil(gdb.recipes[171])
+	end)
+
+	it("scans into our own key when the window is NOT linked", function()
+		_G.IsTradeSkillLinked = function() return false end
+		S:OnTradeSkillEvent()
+		assert.is_not_nil(gdb.skills[ME])
+	end)
+
+	it("does nothing at all while in combat", function()
+		_G.UnitAffectingCombat = function() return true end
+		_G.IsTradeSkillLinked = function() return false end
+		S:OnTradeSkillEvent()
+		assert.is_nil(gdb.skills[ME])
+	end)
+end)

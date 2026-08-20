@@ -396,7 +396,7 @@ function AH._scanNext()
         -- stackables like reagents); we listen for both. Modern AH has
         -- built-in throttling so we don't need an equivalent of the
         -- CanSendAuctionQuery gate that the legacy path requires.
-        if type(GetItemInfo) == "function" and not GetItemInfo(nextItem.itemId) then
+        if not addon.Item.GetInfo(nextItem.itemId) then
             -- Item not yet in the client cache — Blizzard's search will
             -- return empty. Force a cache fetch and retry in 0.5s.
             addon:DebugPrint("AH Scan: item not in cache, retrying in 0.5s")
@@ -760,7 +760,9 @@ local function onItemSearchResultsUpdated(itemKey)
         local info = C_AuctionHouse.GetItemSearchResultInfo(itemKey, i)
         if info then
             listings[#listings + 1] = {
-                itemName    = AH._currentItem.itemName,  -- reuse the queued name; modern API doesn't return a separate plain-text name
+                -- Reuse the queued name: the modern API returns no separate
+                -- plain-text name on a search result.
+                itemName    = AH._currentItem.itemName,
                 count       = info.quantity or 1,
                 buyoutPrice = info.buyoutAmount or 0,
                 bidAmount   = info.bidAmount or 0,

@@ -35,16 +35,18 @@ local ns, BrowserTab
 -- One Lua state runs the whole suite and specs reassign globals freely, so every
 -- global this file owns is reinstalled on each test rather than once at load.
 local function installGlobals()
-	_G.GetItemInfo = function(id)
+	-- Both spellings -- the code reads through addon.Item.*, which prefers
+	-- C_Item exactly as the client does. See env.itemAPI.
+	env.itemAPI("GetItemInfo", function(id)
 		local link = items[id]
 		if not link then return nil end
 		return link:match("%[(.-)%]"), link
-	end
+	end)
 	_G.GetSpellLink = function(id)
 		return "|cff71d5ff|Hspell:" .. id .. "|h[Spell " .. id .. "]|h|r"
 	end
-	_G.GetItemInfoInstant = function(id) return items[id] and id or nil end
-	_G.GetItemIcon        = function() return nil end
+	env.itemAPI("GetItemInfoInstant", function(id) return items[id] and id or nil end)
+	env.itemAPI("GetItemIcon",        function() return nil end)
 	_G.GetSpellInfo       = function(id) return "Spell " .. id end
 	_G.GetSpellTexture    = function() return nil end
 	_G.GetTime            = function() return 0 end

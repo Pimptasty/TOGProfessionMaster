@@ -1,3 +1,11 @@
+<!-- charset-ok: a maintainer-facing document that QUOTES third-party source and
+     other addons' prose verbatim, and whose existing sections were written with
+     em dashes throughout. Nothing in this file is ever drawn by the WoW client:
+     it is read on GitHub and in an editor, never rendered by a fontstring.
+     Rewriting the quotations to ASCII would make them stop being quotations.
+     New text written from here on still uses -- and -> ; the declaration exists
+     so the ~20 characters already here do not have to be rewritten.
+     Added 2026-08-19 while filing section 12. -->
 # Dependency contracts
 
 Requirements TOGProfessionMaster has on code it does **not** own — required
@@ -1557,3 +1565,66 @@ What the workaround costs, and why the contract is still wanted:
 Pinned by `Tests/integrations_spec.lua` (eight cases, including that the methods are restored after
 a raise) and by `Tests/tooltipwrapflag_spec.lua`, which now also enforces a `TITLE_EXEMPT` budget so
 neither failure mode — a second unwrapped line, or the title starting to wrap — can return quietly.
+
+---
+
+## 12. LibProfessionDB -- 26 recipes carry a `requiredSkill` above their own expansion's cap
+
+**Status:** open question, not a blocker. Raised 2026-08-19. **TOGPM needs no change from this and
+is not waiting on it** -- the player-visible bug these numbers were implicated in was ours and is
+fixed. This is an accuracy question about the shipped data, filed so it is measured once rather than
+re-derived by whoever meets it next.
+
+> **RAISED WITH THEM, 2026-08-19 -- the live copy is `ProfessionDB/docs/AUDIT.md`, "Round 5".**
+> A request on another addon goes in THAT addon's repo, not ours; a section only they can act on,
+> sitting only in our file, is a request nobody is reading. It went to their `docs/AUDIT.md` rather
+> than their `docs/DEPENDENCY_CONTRACTS.md` because the enforced cross-repo law permits a session
+> standing outside an addon to write exactly two files there -- `docs/AUDIT.md` and
+> `Tests/HARNESS_CONTRACT.md` -- and nothing else. **Their copy is the one to read and the one they
+> answer in.** This section is kept as our own record of what we measured and what we changed on our
+> side; if the two ever disagree, theirs is the conversation.
+
+### What was measured
+
+Loading every `Data/<flavour>/_core/*.lua` with a stub LibStub and comparing each recipe's
+`requiredSkill` against the profession cap for that expansion:
+
+| Flavour | Cap | Above it | What they are |
+| --- | --- | --- | --- |
+| Vanilla | 300 | 14 of 1565 | 13 are 6-and-7-digit SoD/Anniversary ids (skill 315 to 320). The 14th is **24266 at 315**, Gurubashi Mojo Madness, an ordinary Zul'Gurub recipe |
+| TBC | 375 | 12 of 2170 | **All Alchemy.** 28580-28585 at **385**, and 28586-28591 at **390**: Super Rejuvenation Potion and all five flasks, including Flask of Blinding Light (28590) |
+| Wrath | 450 | 0 of 3129 | none |
+| Cata | 525 | 0 of 3795 | none |
+| Mists | 600 | 0 of 4693 | none |
+
+The TBC flasks' `difficulty` arrays agree with their `requiredSkill` (28590 ships
+`{390, 393, 397, 405}`), so this is not a stray field. Six of the twelve are also set deliberately
+in `tools/manual_skill_overrides.json` with `"source": "TBC flask", "verified_by": "Galdof"`, which
+is the top-priority source in `build_authoritative_data.py`.
+
+### Why it is worth a second look
+
+TBC Alchemy caps at 375, so a recipe needing 390 cannot be learned by anyone on that client: the
+orange tier alone is 15 points past the ceiling. Either the numbers came from a build later than the
+one the TBC dataset is meant to describe, or TBC genuinely ships unreachable thresholds and the
+override is right. **We have not established which, and are not asserting one.** The one thing that
+is certain is that the two numbers cannot both be describing the same client.
+
+Worth noting the pipeline already knows this hazard: `manual_skill_overrides.json`'s own README
+documents `'TBC TRAINER_SHOW capture'` as the source that *"overrides emulator SQL ReqSkillRank when
+the live game disagrees with the emulator (Blizzard rebalances between expansions)"*. `"TBC flask"`
+is not one of the documented source labels, so those six entries are the least-attributed values in
+the file.
+
+**A `GetTrainerServiceSkillReq` reading from a TBC Anniversary trainer would settle all twelve in one
+visit**, which is the same instrument that README already names.
+
+### What TOGPM did about it, so the finding is not read as blocking
+
+Nothing, deliberately, and this is the part worth carrying away. **We had a gate that turned "this
+number is above the cap" into "this recipe does not exist on this client", and it deleted all twelve
+TBC recipes from every list.** That is what produced the report *"flask of blinding light is not
+showing up on tbc"* (2026-08-14). The gate is gone; `Modules/RecipeGate.lua` carries the full
+reasoning. Correcting the data would have fixed the symptom while leaving the mechanism in place to
+hide the next recipe whose number is unusual, so the data question is genuinely independent of the
+bug and is filed here rather than as a fix we are waiting on.

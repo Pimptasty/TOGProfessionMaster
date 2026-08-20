@@ -481,10 +481,10 @@ local function BuildRows(readyOnly, viewMode)
                         -- cooldowns through GetItemInfo first.
                         local cdName
                         if spellId == data.saltShakerItem then
-                            cdName = GetItemInfo(spellId) or "Salt Shaker"
+                            cdName = addon.Item.GetInfo(spellId) or "Salt Shaker"
                         else
                             cdName = data.cooldowns[spellId] or GetSpellInfo(spellId)
-                                     or GetItemInfo(spellId) or tostring(spellId)
+                                     or addon.Item.GetInfo(spellId) or tostring(spellId)
                         end
                         local iconItemId    = data.iconOverrides and data.iconOverrides[spellId]
                         local outputName    = (data.outputOverrides and data.outputOverrides[spellId]) or cdName
@@ -902,7 +902,7 @@ local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, re
         DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. L["MailMsgHasItems"])
         return
     end
-    local reagentName = GetItemInfo(reagentId) or ("item:" .. reagentId)
+    local reagentName = addon.Item.GetInfo(reagentId) or ("item:" .. reagentId)
     local totalInBags, stacks = CdMail_CountItemInBags(reagentId)
     if totalInBags == 0 then
         DEFAULT_CHAT_FRAME:AddMessage(string.format(
@@ -1184,7 +1184,7 @@ function CooldownsTab:Draw(container)
             local items, seen = {}, {}
             local function addItem(id)
                 if not id or seen[id] then return end
-                local name = GetItemInfo(id)
+                local name = addon.Item.GetInfo(id)
                 if type(name) == "string" and name ~= "" then
                     seen[id] = true
                     items[#items + 1] = { itemId = id, itemName = name }
@@ -1637,11 +1637,11 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         -- generic net/cloth texture. Checked BEFORE isGroup so multi-reagent
         -- cloth cooldowns (Primal Mooncloth/Spellcloth/Shadowcloth) that render
         -- as expand rows still show the produced bolt's icon, not the bad one.
-        iconTexture = select(10, GetItemInfo(row.iconItemId))
+        iconTexture = select(10, addon.Item.GetInfo(row.iconItemId))
         if not iconTexture then
             local iconItem = Item:CreateFromItemID(row.iconItemId)
             iconItem:ContinueOnItemLoad(function()
-                local t = select(10, GetItemInfo(row.iconItemId))
+                local t = select(10, addon.Item.GetInfo(row.iconItemId))
                 if t then
                     iconW:SetTexture(t)
                     iconW:SetTexCoord(0.08, 0.92, 0.08, 0.92)
@@ -1741,7 +1741,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         -- so it is the signal already in the addon for exactly this.
         registerReagentTint(reagentLbl, reagentRestColor)
 
-        local reagentName = GetItemInfo(itemId)
+        local reagentName = addon.Item.GetInfo(itemId)
         if reagentName then
             reagentLbl:SetText(reagentName)
         else
@@ -1763,7 +1763,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         end)
         reagentHit:SetScript("OnClick", function(_, button)
             if button == "LeftButton" then
-                addon.ItemLink.Click((select(2, GetItemInfo(itemId))))
+                addon.ItemLink.Click((select(2, addon.Item.GetInfo(itemId))))
             end
         end)
         x2 = x2 + reagentW
@@ -1782,7 +1782,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
             ahLbl:SetPoint("LEFT", ahBtn, "LEFT", 0, 0)
             ahLbl:SetText("|cFF88CCFF[AH]|r")
             ahBtn:SetScript("OnClick", function()
-                local name = GetItemInfo(itemId)
+                local name = addon.Item.GetInfo(itemId)
                 if name then addon.AH.SearchFor(name) end
             end)
             ahBtn:SetScript("OnEnter", function()
@@ -1804,8 +1804,8 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
             bankLbl:SetPoint("LEFT", bankBtn, "LEFT", 0, 0)
             bankLbl:SetText("|cFF88FF88[Bank]|r")
             bankBtn:SetScript("OnClick", function()
-                local name = GetItemInfo(itemId)
-                local link = select(2, GetItemInfo(itemId))
+                local name = addon.Item.GetInfo(itemId)
+                local link = select(2, addon.Item.GetInfo(itemId))
                 addon.Bank.ShowRequestDialog(itemId, name, link)
             end)
             bankBtn:SetScript("OnEnter", function()
@@ -2098,7 +2098,7 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
             end
             applyReagentRestColor()
             rowRefreshers[#rowRefreshers + 1] = applyReagentRestColor
-            local rName = GetItemInfo(reagentId)
+            local rName = addon.Item.GetInfo(reagentId)
             if rName then
                 reagentLbl:SetText(rName)
             else
@@ -2127,7 +2127,7 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
             end)
             reagentZone:SetScript("OnMouseUp", function(_, button)
                 if button == "LeftButton" then
-                    addon.ItemLink.Click((select(2, GetItemInfo(reagentId))))
+                    addon.ItemLink.Click((select(2, addon.Item.GetInfo(reagentId))))
                 end
             end)
 
@@ -2145,7 +2145,7 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
                 ahBtn:SetText("|cFF88CCFF[AH]|r")
                 ahBtn:Hide()  -- starts hidden; refresher reveals when listings exist
                 ahBtn:SetScript("OnClick", function()
-                    local name = GetItemInfo(reagentId)
+                    local name = addon.Item.GetInfo(reagentId)
                     if name then addon.AH.SearchFor(name) end
                 end)
                 ahBtn:SetScript("OnEnter", function()
@@ -2177,8 +2177,8 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
                 bankBtn:SetText("|cFF88FF88[Bank]|r")
                 bankBtn:Hide()  -- starts hidden; refresher reveals when stock > 0
                 bankBtn:SetScript("OnClick", function()
-                    local name = GetItemInfo(reagentId)
-                    local link = select(2, GetItemInfo(reagentId))
+                    local name = addon.Item.GetInfo(reagentId)
+                    local link = select(2, addon.Item.GetInfo(reagentId))
                     addon.Bank.ShowRequestDialog(reagentId, name, link)
                 end)
                 bankBtn:SetScript("OnEnter", function()
@@ -2217,7 +2217,7 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
                 elseif spellName and spellName ~= "" then
                     outputName = spellName
                 elseif recipeId then
-                    outputName = GetItemInfo(recipeId) or spellName or ""
+                    outputName = addon.Item.GetInfo(recipeId) or spellName or ""
                 else
                     outputName = spellName or ""
                 end

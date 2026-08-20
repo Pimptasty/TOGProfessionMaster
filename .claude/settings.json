@@ -38,7 +38,14 @@
       "mcp__checks__lint_file",
       "mcp__checks__lint_markdown",
       "mcp__bank__bank_write",
-      "Monitor"
+      "Monitor",
+      "Edit(//c/Program Files (x86)/World of Warcraft/_classic_era_/Interface/AddOns/ProfessionDB/**)",
+      "mcp__checks__todos",
+      "mcp__checks__git_ls_remote",
+      "mcp__checks__git_status",
+      "mcp__checks__git_log",
+      "mcp__checks__verify",
+      "mcp__checks__git_show"
     ],
     "additionalDirectories": [
       "f:\\game development\\wowapitesting\\docs\\contracts"

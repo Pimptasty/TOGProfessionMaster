@@ -1,3 +1,7 @@
+<!-- charset-ok: this file is never drawn by the WoW client. It is rendered by
+     GitHub and by the CurseForge listing, both UTF-8, and read in an editor.
+     Its prose has used em dashes since the first release. Same declaration and
+     same reason as CHANGELOG.md. Added 2026-08-20. -->
 # TOG Profession Master
 
 Stop whispering every alchemist in your guild to ask "is your transmute up?" and stop logging into five different alts to remember who knows the recipe you need. TOG Profession Master keeps a live, shared view of every guildmate's professions, recipes, and cooldowns — and lets you mail reagents straight to the crafter without typing a single character name.
@@ -19,7 +23,7 @@ That's it. Within a minute or two you'll see your guildmates' recipes and cooldo
 
 **Cooldowns Tab** — Every guildmate's active and ready profession cooldowns in one view: transmutes, Mooncloth, Salt Shaker, Northrend Research, Icy Prism, Truegold, Living Steel, JC daily cuts, and more. Hit the one-click **[Mail]** button to send the crafter a pre-composed supply mail with the right reagent. The reagent column is white when your bags hold enough of it to fill that mail and grey when they don't, so a glance down the list tells you which cooldowns you can actually feed — and it recolours as you loot or send things, without a tab switch.
 
-**Missing Recipes Tab** — Pick a character and a profession and see every recipe scroll they haven't learned yet, with where to obtain it (vendor, drop, quest, container, fishing). Filter to a single profession or search by name.
+**Missing Recipes Tab** — Pick a character and a profession and see every recipe scroll they haven't learned yet, with where to obtain it (vendor, drop, quest, container, fishing). Filter to a single profession or search by name. A **Guild** view shows recipes *nobody* in the guild knows, which is the coverage gap worth acting on. Rank-up books (Expert, Artisan and so on) drop off the list once you have outgrown them. On TBC there is an optional filter to hide recipes from content phases that are not live yet — it ships off, so by default nothing is hidden from you.
 
 **Guild Tab** — Who in the guild has which profession, at what skill, and with which specialization. Specializations are inferred from the spec-gated recipes a crafter knows, so they show up even for people who never announced them. Gathering professions are included, and a profession with nobody in it is shown at zero — coverage gaps are the thing you actually want to see.
 
@@ -39,11 +43,17 @@ That's it. Within a minute or two you'll see your guildmates' recipes and cooldo
 
 **Item Tooltips** — Hover any item in your bags, the AH, a vendor, or a chat link, and you'll see which guildmates know how to craft it, with their skill rank and online status.
 
-**Recipe details on every tooltip** — Hover a recipe scroll, or the item it makes, anywhere in the game: skill-up difficulty in the game's own tier colours, where the recipe comes from (trainer, drop, vendor, quest, container), and a red **Unlearned** list of which of *your* characters could still learn it, with their skill rank and specialisation. The source data is keyed by the recipe rather than by a scroll item, so it answers for the roughly one recipe in three that is trainer-taught and has no scroll at all — 74.9% of Vanilla recipes, against 44.6% for an item-keyed lookup. If you run **RecipeMaster** it keeps the game's own tooltips and TOGPM fills in the ones RM can't see; without it, TOGPM covers both. A setting overrides that either way.
+**Recipe details on every tooltip** — Hover a recipe scroll, or the item it makes, anywhere in the game: skill-up difficulty in the game's own tier colours, where the recipe comes from (trainer, drop, vendor, quest, container), and a red **Unlearned** list of which of *your* characters could still learn it, with their skill rank and specialisation. The source data is keyed by the recipe rather than by a scroll item, so it answers for the roughly one recipe in three that is trainer-taught and has no scroll at all — 74.9% of Vanilla recipes, against 44.6% for an item-keyed lookup. **This renders even if you run RecipeMaster**, and that is deliberate as of v1.0.7. TOGPM's block is not a duplicate of RM's: only TOGPM tells you which of *your own* characters could still learn the recipe, and which guildmates can craft it. Standing down to avoid overlapping two rows also withheld the rows nothing else in the game provides. A setting reverts to the old behaviour (RM owns the game's tooltips, TOGPM fills in the ones RM can't see) or switches the block off entirely.
 
 **Item links behave like the rest of the game** — Shift-click any item name, reagent or recipe anywhere in the addon to link it in chat; ctrl-click to preview it in the dressing room. Hold the compare modifier over an item to see it side by side with what you're wearing. All of it goes through Blizzard's own handler, so it honours whatever you have those modifiers bound to rather than assuming shift and ctrl. If you'd rather have the full stock tooltip everywhere instead of TOGPM's trimmed one, there's a setting for that (off by default).
 
-**Vendor sell price on recipe scrolls** — The recipe block shows what a vendor pays you for the scroll, the same number and the same place TradeSkillMaster labels "Vendor Sell Price". Two caveats worth knowing. It's the *sell* price, not the *buy* price — those differ by roughly 4x, and cost-to-craft totals elsewhere in the addon deliberately use the buy price instead, because that's what a reagent costs you. And it reads the game's own item data, which means it doesn't appear for an item your client hasn't cached yet; hovering once fetches it, so a second hover shows the row.
+**Vendor buy *and* sell price, on every item** — Hover anything, anywhere: your bags, the auction house, a vendor, a chat link. Not just recipes. Two rows, and each one appears only when its number is real, so you never get a confident zero.
+
+**Sell** is what a vendor pays you, the same figure TradeSkillMaster labels "Vendor Sell Price". **Buy** is what a vendor charges, which is a different number entirely — the two differ by roughly 4x, and cost-to-craft totals elsewhere in the addon deliberately use the buy price, because that is what a reagent actually costs you.
+
+Buy comes from a three-tier lookup: Auctionator's vendor cache, then prices TOGPM captured live from vendors *you* have opened, then ItemDB's base price. Where you have met the vendor yourself the figure reflects your reputation discount rather than a book value. Sell asks the client first and falls back to ItemDB, so unlike most vendor-price lines it still answers for an item your client has never cached.
+
+Nobody else shows both: TSM and Leatrix Plus show sell only, AllTheThings shows neither, and the game itself shows neither in your bags.
 
 ### How TOGPM behaves on a tooltip that isn't its own
 
@@ -126,10 +136,14 @@ time, and shipped as static tables:
   reverse-engineered and tested them. The client stores none of it. They ship in
   ProfessionDB, with the npc names alongside the ids, and the npc names are
   English only because the world databases are not localized.
-- **Which TBC content phase gates a recipe** — the `phase` tags used by the
-  Missing Recipes filter are derived from
+- **Which TBC content phase gates a recipe** — the `phase` tags behind the
+  optional Missing Recipes phase filter are derived from
   [AllTheThings](https://github.com/ATTWoWAddon/AllTheThings) (MIT), via its raid,
-  reputation and patch metadata.
+  reputation and patch metadata. That filter **ships off** as of v1.0.8: by
+  default you see every recipe, and you turn it on if you would rather hide
+  content that is not live on your realm yet. It defaulted to *on* before that,
+  pinned to a phase number that had to be bumped by a release each time Blizzard
+  opened one — which stopped happening, and quietly hid 194 real TBC recipes.
 
 In every case the projects' files are **not** redistributed: only the factual
 mappings are extracted and re-expressed in this addon's own format, and each

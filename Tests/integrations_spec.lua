@@ -450,13 +450,15 @@ describe("crafted-item quality colour", function()
 		ns.GetItemDB = function()
 			return { GetLink = function() return EPIC end }
 		end
-		_G.GetItemInfo = function() return nil end
+		env.itemAPI("GetItemInfo", function() return nil end)
 		assert.equal("ffa335ee", IL.QualityHex(nil, 19019))
 	end)
 
 	it("returns nil rather than a wrong colour when nothing knows", function()
 		ns.GetItemDB = function() return { GetLink = function() return nil end } end
-		_G.GetItemInfo = function() return nil end
+		-- Both spellings: QualityHex reads through addon.Item.GetInfo, which
+		-- prefers C_Item, so a bare-global stub alone tested nothing here.
+		env.itemAPI("GetItemInfo", function() return nil end)
 		assert.is_nil(IL.QualityHex(nil, 19019))
 	end)
 

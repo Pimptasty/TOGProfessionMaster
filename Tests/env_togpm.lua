@@ -285,6 +285,41 @@ function M.spellsExist(...)
 	return M
 end
 
+--- Stub an item API under BOTH of its spellings.
+---
+--- `addon.Item.*` (Compat.lua) resolves `C_Item.<Namespaced>` first and only
+--- falls back to the bare global, because that is the order the client uses --
+--- the bare names are deprecation fallbacks that `Blizzard_DeprecatedItemScript`
+--- assigns from `C_Item`, and only when the `loadDeprecationFallbacks` CVar is
+--- on. A spec that writes `_G.GetItemInfo = fn` is therefore stubbing THE BRANCH
+--- THE CLIENT DOES NOT TAKE: the resolver keeps using the harness's untouched
+--- `C_Item.GetItemInfo`, the stub is silently ignored, and the spec measures the
+--- env rather than the code. Found the honest way -- routing four files through
+--- the resolver turned five specs red, each for exactly this reason.
+---
+--- Note `GetItemIcon` maps to `C_Item.GetItemIconByID`. The names do NOT
+--- correspond one-to-one and a mechanical rename produces a nil that only shows
+--- up as a missing texture.
+---
+--- `wow.reset()` rebuilds both, so there is nothing to restore by hand.
+--- Pass `nil` to drive "this client has neither spelling".
+local ITEM_API_NAMESPACED = {
+	GetItemInfo         = "GetItemInfo",
+	GetItemInfoInstant  = "GetItemInfoInstant",
+	GetItemIcon         = "GetItemIconByID",
+	GetItemCount        = "GetItemCount",
+	GetItemQualityColor = "GetItemQualityColor",
+}
+
+function M.itemAPI(bareName, fn)
+	local namespaced = ITEM_API_NAMESPACED[bareName]
+	assert(namespaced, "unknown item API: " .. tostring(bareName))
+	_G[bareName] = fn
+	_G.C_Item = _G.C_Item or {}
+	_G.C_Item[namespaced] = fn
+	return M
+end
+
 -- `M.loadItem` lived here until the harness shipped `wow.loadItem(id, fields)`
 -- at 41fdefe, with the same two-call design this env asked for: writing
 -- `wow.items[id]` models an item already cached when the frame drew, and

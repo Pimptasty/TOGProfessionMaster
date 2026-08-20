@@ -19,18 +19,33 @@ local L   = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 local Scanner = {}
 addon.Scanner = Scanner
 
--- Hidden tooltip used to scrape reagent item links when the engine's
--- GetTradeSkillReagentItemLink / GetCraftReagentItemLink return nil — a known
--- Classic Era quirk where the link APIs silently fail even though the
--- equivalent SetTradeSkillItem / SetCraftItem tooltip APIs work fine.
-local _reagentScraper
-local function GetReagentScraper()
-    if not _reagentScraper then
-        _reagentScraper = CreateFrame("GameTooltip", "TOGPMReagentScraper", nil, "GameTooltipTemplate")
-        _reagentScraper:SetOwner(WorldFrame, "ANCHOR_NONE")
-    end
-    return _reagentScraper
+--- Has `sender` gone offline since the broadcast we are answering?
+---
+--- ONE implementation, because there were THREE and only one of them was ever
+--- asserted. Every outbound `DS:RequestData` is gated on this: DeltaSync has its
+--- own internal offline check, but that races with GUILD_ROSTER_UPDATE
+--- propagation, so gating here catches the common case where LibGuildRoster has
+--- already seen the transition. Mirrors TOGBankClassic's DeltaComms pattern --
+--- every send site gets a guard before dispatch.
+---
+--- **False when no roster library is loaded**, which is deliberate and is the
+--- reason this is a named function rather than an inline `and`: with no roster we
+--- know nothing about who is online, and refusing to send on the strength of
+--- knowing nothing would disable sync entirely rather than protect it.
+function Scanner:PeerIsOffline(sender)
+    local GR = self.GuildRoster
+    return (GR and not GR:IsOnline(sender)) and true or false
 end
+
+-- DELETED 2026-08-19: `GetReagentScraper` and its `_reagentScraper` upvalue.
+-- A hidden GameTooltip ("TOGPMReagentScraper") built to scrape reagent item
+-- links when GetTradeSkillReagentItemLink / GetCraftReagentItemLink return nil
+-- on Classic Era. It had NO CALLER -- luacheck's `unused function` found it, and
+-- the whole-repo lint that surfaced that had been unreadable behind ~90
+-- undeclared-global warnings, which is how it survived. Whatever replaced the
+-- scrape path did so without taking the frame with it. If the link APIs are ever
+-- seen failing again, this is the shape the fix took, but write it back with a
+-- caller attached.
 
 -- ---------------------------------------------------------------------------
 -- Module-scope merge helpers (reused by ScanTradeSkillInto, ScanCraftSkillInto,
@@ -581,8 +596,8 @@ function Scanner:InitDeltaSync()
         -- DeltaComms.lua — every send site gets a guard before dispatch.
         onSyncAccepted = function(itemKey, sender)
             addon:DebugPrint("Scanner: onSyncAccepted itemKey=", itemKey, "sender=", sender)
-            if Scanner.GuildRoster and not Scanner.GuildRoster:IsOnline(sender) then
-                addon:DebugPrint("Scanner:   → skip RequestData — peer offline:", sender)
+            if Scanner:PeerIsOffline(sender) then
+                addon:DebugPrint("Scanner:   -> skip RequestData -- peer offline:", sender)
                 return
             end
             if itemKey == "guild:cooldowns" or itemKey == "guild:accountchars"
@@ -1005,7 +1020,8 @@ function addon:PrintDeltaSyncStatus()
                 .. "  " .. tostring(f.bytes) .. " bytes")
         end
         if refused > 0 and not addon:GetGuildKey() then
-            addon:Print("    \226\148\148 |cffffd100You are not in a guild|r \226\128\148 guild broadcasts are refused by the client; this is expected.")
+            addon:Print("    \226\148\148 |cffffd100You are not in a guild|r \226\128\148 guild broadcasts"
+                .. " are refused by the client; this is expected.")
         end
     else
         addon:Print("  Sends: |cffaaaaaano delivery accounting|r (DeltaSync < MINOR 17)")
@@ -1019,7 +1035,9 @@ function addon:PrintDeltaSyncStatus()
     end
 
     addon:Print(sep)
-    addon:Print("|cffaaaaaaIsolation check: run another DeltaSync addon's status (e.g. /fgids) \226\128\148 each host should show its OWN namespace and prefixes, and neither's sync should disturb the other.|r")
+    addon:Print("|cffaaaaaaIsolation check: run another DeltaSync addon's status (e.g. /fgids)"
+        .. " \226\128\148 each host should show its OWN namespace and prefixes, and neither's"
+        .. " sync should disturb the other.|r")
 end
 
 -- ---------------------------------------------------------------------------
@@ -1214,7 +1232,8 @@ function Scanner:OnTrainerShow()
     -- The one-line summary on captures stays user-facing — small,
     -- informative, fires once per trainer visit (the early no-services
     -- fires now return at the top so they don't print at all).
-    addon:DebugPrint(("Scanner: trainerObs captured=%d updated=%d refreshed=%d skipped(header)=%d skipped(no-spell)=%d total=%d"):format(
+    addon:DebugPrint(("Scanner: trainerObs captured=%d updated=%d refreshed=%d"
+        .. " skipped(header)=%d skipped(no-spell)=%d total=%d"):format(
         captured, updated, refreshed, skipped_header, skipped_no_spell, total))
     if captured > 0 or updated > 0 then
         addon:Print(("Trainer scan: %d new, %d updated (%d total recorded)"):format(captured, updated, total))
@@ -1231,7 +1250,7 @@ function Scanner:OnBagCooldownEvent()
     if not itemId then return end
 
     -- Skip entirely if the player doesn't own a Salt Shaker.
-    local count = GetItemCount and GetItemCount(itemId, true) or 0
+    local count = addon.Item.GetCount(itemId, true) or 0
     if not count or count == 0 then return end
 
     local gdb     = addon:GetGuildDb()
@@ -1615,9 +1634,13 @@ end
 -- ---------------------------------------------------------------------------
 
 local SPEC_SPELLS = {
-    [171] = { 28672, 28675, 28677 },   -- Alchemy: Transmutation / Potion / Elixir Master (DBC-verified; 28682/28683 were wrong — Combustion/Leap)
+    -- Alchemy: Transmutation / Potion / Elixir Master
+    -- (DBC-verified; 28682/28683 were wrong -- Combustion/Leap)
+    [171] = { 28672, 28675, 28677 },
     [202] = { 20219, 20222 },          -- Engineering: Gnomish / Goblin
-    [197] = { 26797, 26798, 26801 },   -- Tailoring: Spellfire / Mooncloth / Shadoweave (DBC-verified; 26802 was wrong — "Detect Amore", a holiday spell. Mooncloth is 26798)
+    -- Tailoring: Spellfire / Mooncloth / Shadoweave (DBC-verified; 26802 was
+    -- wrong -- "Detect Amore", a holiday spell. Mooncloth is 26798)
+    [197] = { 26797, 26798, 26801 },
     -- Vanilla Leatherworking / Blacksmithing specializations (still present on
     -- TBC/Wrath; removed in Cata 4.0.1). No bonus-output mapping — recorded so
     -- the Guild tab can break professions down by sub-class. IsSpellKnown just
@@ -2043,14 +2066,14 @@ function Scanner:BackfillReagentItemIds()
                             rg.itemId = tonumber(rg.itemLink:match("item:(%d+)"))
                         end
                         if (not rg.itemId or rg.itemId == 0) and rg.name then
-                            rg.itemId = (GetItemInfoInstant(rg.name))
+                            rg.itemId = (addon.Item.GetInfoInstant(rg.name))
                         end
                         if (not rg.itemId or rg.itemId == 0) and rg.name and GetItemInfo then
                             -- Cache-loading variant: returns nil on this call if
                             -- the item isn't cached yet, but issues a server-side
                             -- load.  Next retry picks up the result via the
                             -- GetItemInfoInstant path above once the load resolves.
-                            local _, link = GetItemInfo(rg.name)
+                            local _, link = addon.Item.GetInfo(rg.name)
                             if type(link) == "string" then
                                 rg.itemId = tonumber(link:match("item:(%d+)"))
                                 if not rg.itemLink or rg.itemLink == "" then
@@ -2139,7 +2162,7 @@ function Scanner:BackfillBogusRecipeNames()
             -- 26926 = Heavy Copper Ring; item 26926 = "59 TEST Green Shaman
             -- Chest"), and we don't want the test name leaking into the UI.
             if isBogusName(rd.name) and rd.isSpell ~= true and type(recipeId) == "number" then
-                local nm, link, _, _, _, _, _, _, _, icon = GetItemInfo(recipeId)
+                local nm, link, _, _, _, _, _, _, _, icon = addon.Item.GetInfo(recipeId)
                 if nm and not isObsoleteItemName(nm) then
                     rd.name     = rd.name     and not isBogusName(rd.name)     and rd.name     or nm
                     rd.icon     = rd.icon     or icon
@@ -2211,7 +2234,7 @@ function Scanner:ScanSaltShaker(stored, now, itemId)
 
     -- Not on cooldown (or bogus value). Seed to Ready if player owns item (incl. bank).
     if not stored[itemId] or (stored[itemId] - now) > 691200 then
-        local count = GetItemCount and GetItemCount(itemId, true) or 0
+        local count = addon.Item.GetCount(itemId, true) or 0
         if count and count > 0 then
             stored[itemId] = now - 1
         end
@@ -2857,7 +2880,9 @@ function Scanner:MergeRecipeMetaIntoGdb(gdb, profId, meta)
                     existing.name = incomingName
                 end
                 if rd.icon    and not existing.icon    then existing.icon    = rd.icon    end
-                if rd.isSpell ~= nil and existing.isSpell == nil then existing.isSpell = rd.isSpell and true or false end
+                if rd.isSpell ~= nil and existing.isSpell == nil then
+                    existing.isSpell = rd.isSpell and true or false
+                end
                 if rd.spellId and not existing.spellId then existing.spellId = rd.spellId end
                 if asString(rd.itemLink)   and not existing.itemLink   then existing.itemLink   = rd.itemLink   end
                 if asString(rd.recipeLink) and not existing.recipeLink then existing.recipeLink = rd.recipeLink end
@@ -3136,8 +3161,8 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
             -- still-gated peer's `myTs > reqStamp` passes and it serves us). Online
             -- gate mirrors onSyncAccepted — the peer may have gone offline between
             -- their subhashes broadcast and this follow-up landing on the wire.
-            if Scanner.GuildRoster and not Scanner.GuildRoster:IsOnline(sender) then
-                addon:DebugPrint("Scanner:   → skip leaf-data RequestData — peer offline:", sender)
+            if Scanner:PeerIsOffline(sender) then
+                addon:DebugPrint("Scanner:   -> skip leaf-data RequestData -- peer offline:", sender)
             else
                 DS:RequestData(sender, { type = "leaf-data", keys = toRequest, stamps = stamps })
             end
@@ -3184,8 +3209,8 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
         local players = {}
         for _, d in ipairs(diffs) do players[#players + 1] = d.ck end
         if #players > 0 and DS and DS.RequestData then
-            if Scanner.GuildRoster and not Scanner.GuildRoster:IsOnline(sender) then
-                addon:DebugPrint("Scanner:   → skip player-leaf RequestData — peer offline:", sender)
+            if Scanner:PeerIsOffline(sender) then
+                addon:DebugPrint("Scanner:   -> skip player-leaf RequestData -- peer offline:", sender)
             else
                 DS:RequestData(sender, { type = "player-leaf", profId = profId, players = players })
             end

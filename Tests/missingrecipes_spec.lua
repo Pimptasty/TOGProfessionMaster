@@ -53,8 +53,10 @@ before_each(function()
 	ns.sourceDB = { [ALCHEMY] = {} }
 	gdb.skills[ME] = { [ALCHEMY] = { skillRank = 150, skillMax = 300 } }
 	gdb.accountChars[ME] = true
-	_G.GetItemInfo = function() return nil end
-	_G.GetItemIcon = function() return nil end
+	-- Both spellings -- the code reads through addon.Item.*, which prefers
+	-- C_Item exactly as the client does. See env.itemAPI.
+	env.itemAPI("GetItemInfo", function() return nil end)
+	env.itemAPI("GetItemIcon", function() return nil end)
 end)
 
 -- Rows are keyed by the recipe's SPELL id.
@@ -249,5 +251,89 @@ describe("character and profession pickers", function()
 		local out = M._GetProfessionsForCharacter(ME)
 		ns.IsProfessionAvailable = prev
 		assert.same({}, out)
+	end)
+end)
+
+-- Skill-RANK books (audit finding 24). A rank book raises the profession CAP; it
+-- is not a recipe and must vanish once the character has read it, while staying
+-- listed for a character who has not. The filter that used to be here never ran
+-- once -- it tested `type(data.teaches) == "string"` against a table keyed by
+-- rank NAME, and `teaches` is a spell id -- so a maxed character was told
+-- forever to go and buy books they had already consumed.
+describe("BuildMissingList -- skill-rank books", function()
+	-- Two of the three fixture recipes stand in for rank books: B requires 100,
+	-- C requires 200. Classification is addon.ItemLink.TeachingItem's second
+	-- return in production; stubbed here so this spec measures the SKILL GATE
+	-- and not ProfessionDB's classifier, which has its own specs upstream.
+	local savedTeachingItem
+
+	before_each(function()
+		savedTeachingItem = ns.ItemLink.TeachingItem
+	end)
+
+	after_each(function()
+		ns.ItemLink.TeachingItem = savedTeachingItem
+	end)
+
+	-- Mark the given recipe ids as rank books.
+	local function rankBooks(...)
+		local flagged = {}
+		for _, id in ipairs({ ... }) do flagged[id] = true end
+		ns.ItemLink.TeachingItem = function(_, recipeId)
+			if flagged[recipeId] then return 16084, true end
+			return nil, false
+		end
+	end
+
+	local function listAt(skillMax)
+		gdb.skills[ME] = { [ALCHEMY] = { skillRank = 1, skillMax = skillMax } }
+		return ids(M._BuildMissingList(ME, ALCHEMY, true, false, false, "char"))
+	end
+
+	it("derives the cap a rank book grants from every requiredSkill that ships", function()
+		-- 125 / 200 / 275 / 300 are the ONLY values carried by any rank book in
+		-- ProfessionDB, across all five flavours (measured against the shipped
+		-- _core data, 2026-08-18). Note the last two: a flat requiredSkill + 100
+		-- would put Master First Aid at 400 and never hide it.
+		assert.equal(225, M._RankBookGrantedCap(125))   -- Expert
+		assert.equal(300, M._RankBookGrantedCap(200))   -- Artisan
+		assert.equal(375, M._RankBookGrantedCap(275))   -- Master Fishing
+		assert.equal(375, M._RankBookGrantedCap(300))   -- Master First Aid
+		assert.equal(600, M._RankBookGrantedCap(600))   -- clamped at the ceiling
+		assert.is_nil(M._RankBookGrantedCap(nil))
+		assert.is_nil(M._RankBookGrantedCap("Expert"))  -- the old key type
+	end)
+
+	it("hides a rank book once the cap it grants has been reached", function()
+		rankBooks(B)                       -- requiredSkill 100 -> grants 225
+		assert.same({ A, C }, listAt(225))
+	end)
+
+	it("still lists a rank book the character has not read", function()
+		rankBooks(B)
+		assert.same({ A, B, C }, listAt(150))
+	end)
+
+	it("hides only the ranks already taken, not every rank book", function()
+		-- The reviewer's own acceptance test, and the half that a blanket
+		-- "hide all rank books" fix would get wrong: at cap 300 the Expert-tier
+		-- book (grants 225) is gone and the Artisan-tier one (grants 375) stays.
+		rankBooks(B, C)                    -- B grants 225, C (200) grants 300
+		assert.same({ A }, listAt(300))
+		assert.same({ A, C }, listAt(225))
+	end)
+
+	it("leaves ordinary recipes alone at any skill", function()
+		rankBooks()                        -- nothing is a rank book
+		assert.same({ A, B, C }, listAt(600))
+	end)
+
+	it("keeps listing a rank book when its requiredSkill is missing", function()
+		-- No requiredSkill means no derivable cap, so there is nothing to compare
+		-- against. Show it rather than hide it: a false positive costs a wasted
+		-- vendor trip, a false negative hides the only route past a cap.
+		ns.recipeDB[ALCHEMY][B].requiredSkill = nil
+		rankBooks(B)
+		assert.same({ A, B, C }, listAt(600))
 	end)
 end)

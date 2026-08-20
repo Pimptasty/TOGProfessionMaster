@@ -37,3 +37,4 @@ ignore:
   - "*.code-workspace"
   - "CLAUDE.md"
   - "CHANGELOG_ARCHIVE.md"
+  - "conversation.md"

@@ -70,7 +70,12 @@ end
 local function tbcPhaseLimit()
 	local Ace = addon.lib
 	if addon.isTBC and Ace and Ace.db and Ace.db.profile then
-		return Ace.db.profile.tbcAnniversaryPhase or 2
+		-- `or 4` -- show everything -- must match the DB default in
+		-- TOGProfessionMaster.lua, which explains at length why the old `or 2`
+		-- hid 194 real recipes. A fallback that disagrees with the default is
+		-- the same bug wearing a second hat: it fires for exactly the profiles
+		-- that never wrote the setting, which is every new install.
+		return Ace.db.profile.tbcAnniversaryPhase or 4
 	end
 	return nil
 end
@@ -93,7 +98,9 @@ end
 function RecipeGate:IsValidOnClient(profId, recipeId, meta)
 	if not meta then return false, "nometa" end
 
-	local clientExp, clientMaxSkill = self:Client()
+	-- Only the expansion index is a gate. The cap is deliberately NOT read here
+	-- any more -- see the block further down that used to compare against it.
+	local clientExp = self:Client()
 	-- Era means "a Vanilla client that is not running Season of Discovery".
 	-- IsSoD() only ever RELAXES these gates; this addon does not support SoD.
 	local isEra = (clientExp == 1) and not addon:IsSoD()
@@ -117,13 +124,53 @@ function RecipeGate:IsValidOnClient(profId, recipeId, meta)
 		-- shared 1.15 tables while having no spell on an Era client.
 		local spellExists = GetSpellInfo and GetSpellInfo(recipeId) ~= nil
 		local itemExists  = GetItemInfoInstant and (
-			(meta.itemId        and GetItemInfoInstant(meta.itemId)) or
-			(meta.craftedItemId and GetItemInfoInstant(meta.craftedItemId)))
+			(meta.itemId        and addon.Item.GetInfoInstant(meta.itemId)) or
+			(meta.craftedItemId and addon.Item.GetInfoInstant(meta.craftedItemId)))
 		if not (spellExists and itemExists) then return false, "untagged" end
 	end
-	if meta.requiredSkill and meta.requiredSkill > clientMaxSkill then
-		return false, "skillcap"
-	end
+	-- THE SKILL CAP IS NOT A GATE, and treating it as one hid twelve real TBC
+	-- recipes -- every flask in the game among them. Reported 2026-08-14:
+	-- "flask of blinding light is not showing up on tbc".
+	--
+	-- The rule used to be `meta.requiredSkill > clientMaxSkill -> reject`. It
+	-- reads as an expansion check ("nobody on this client could ever need this
+	-- much skill, so the recipe must be from a later one") and it is not one.
+	-- Measured across all five shipped datasets, every recipe it rejected was a
+	-- REAL recipe of that expansion whose skill number simply exceeds the
+	-- nominal cap:
+	--
+	--   TBC     (cap 375): 12 of 2170, ALL Alchemy. 28580-28585 at 385 and
+	--                      28586-28591 at 390 -- Super Rejuvenation and the six
+	--                      flasks, i.e. Fortification, Mighty Restoration,
+	--                      Relentless Assault, Blinding Light, Pure Death.
+	--   Vanilla (cap 300): 14 of 1565. Thirteen are 6-and-7-digit SoD/Anniversary
+	--                      ids already rejected by SOD_RECIPE_ID_MIN above, so
+	--                      this rule was their SECOND rejection and never their
+	--                      only one. The fourteenth is 24266 at 315 -- Gurubashi
+	--                      Mojo Madness, a Zul'Gurub recipe a Vanilla player can
+	--                      genuinely learn, hidden on Era all along.
+	--   Wrath / Cata / Mists: none. The rule has never fired there.
+	--
+	-- So it caught nothing that another gate did not already catch, and hid
+	-- thirteen real recipes to do it.
+	--
+	-- The premise was wrong twice over. The datasets are already flavour-scoped
+	-- (every `_core` file opens `if not lib:IsGameVersion("TBC") then return end`),
+	-- so a recipe reaching here IS a recipe of this expansion and its skill
+	-- number cannot mean "wrong expansion"; and the TBC bandage leak this file's
+	-- ERA_BLACKLIST exists for does NOT come through the Vanilla dataset --
+	-- 27032/27033 are absent from `Data/Vanilla/_core/Firstaid.lua`, checked --
+	-- so the cap was never what stood between Era and them.
+	--
+	-- What a too-high number actually means is that the DATA is wrong (nobody
+	-- can reach 390 on a 375 client) or that the recipe is simply out of reach
+	-- for now. Neither is this file's business: its scope note above says
+	-- per-character reachability belongs to the calling tab. Raised with
+	-- ProfessionDB separately as a data-accuracy question; it is not the cause
+	-- of the disappearance and fixing the numbers would not have fixed this.
+	--
+	-- `clientMaxSkill` is still returned by Client() -- the tabs use it for the
+	-- skill-tier bands -- it just no longer decides existence.
 	local phaseLimit = tbcPhaseLimit()
 	if phaseLimit and meta.phase and meta.phase > phaseLimit then
 		return false, "phase"

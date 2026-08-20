@@ -63,7 +63,9 @@ before_each(function()
 		[ARCANITE] = "Arcanite Bar", [THORIUM] = "Thorium Bar",
 		[MOONCLOTH] = "Mooncloth",   [FELCLOTH] = "Felcloth",
 	}
-	_G.GetItemInfo = function(itemId) return names[itemId] end
+	-- Both spellings -- the code reads through addon.Item.GetInfo, which
+	-- prefers C_Item exactly as the client does. See env.itemAPI.
+	env.itemAPI("GetItemInfo", function(itemId) return names[itemId] end)
 
 	ns.GetCooldownData = function()
 		return {
@@ -82,7 +84,7 @@ end)
 
 after_each(function()
 	for name, fn in pairs(saved or {}) do
-		if name == "GetItemInfo" then _G.GetItemInfo = fn else ns[name] = fn end
+		if name == "GetItemInfo" then env.itemAPI("GetItemInfo", fn) else ns[name] = fn end
 	end
 end)
 
@@ -213,7 +215,7 @@ describe("BuildReagentList — presentation", function()
 	end)
 
 	it("names an item the client has not cached yet without erroring", function()
-		_G.GetItemInfo = function() return nil end
+		env.itemAPI("GetItemInfo", function() return nil end)
 		queue(TRANSMUTE_ARCANITE, 1)
 		local row = rowFor(THORIUM)
 		assert.is_truthy(row)

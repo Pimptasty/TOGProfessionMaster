@@ -113,8 +113,9 @@ describe("RunCommTest — the report", function()
 	end)
 
 	it("reports a probe that never came back as NO REPLY", function()
-		-- Nothing echoes in the harness, so every probe is unanswered — which
-		-- is the state the tool exists to describe.
+		-- WHISPER is deliberately NOT echoed by the harness (nor by the server:
+		-- a whisper to yourself does not come back as an addon message), so the
+		-- whisper probe is the unanswered one whatever the group channels do.
 		ns:RunCommTest()
 		waitForReport()
 		assert.is_truthy(output():find("NO REPLY", 1, true))
@@ -123,9 +124,29 @@ describe("RunCommTest — the report", function()
 	it("blames the core when the guild echo never arrives", function()
 		-- The decisive verdict: a guild addon message that does not echo back
 		-- to its own sender means the server is dropping guild addon traffic.
+		--
+		-- The broken core has to be BUILT now. Since harness 813f3d2 the env
+		-- echoes GUILD/OFFICER/PARTY/RAID/INSTANCE_CHAT addon messages back to
+		-- the sender, as a working server does, so "nothing echoes offline" is
+		-- no longer the ambient state. This assertion used to pass because the
+		-- env happened to be broken in the same way the Whitemane core is, not
+		-- because the tool diagnosed anything. `echoGroupMessages` is the switch
+		-- the harness ships for exactly this case; wow.reset() puts it back.
+		wow.echoGroupMessages = false
 		ns:RunCommTest()
 		waitForReport()
+		wow.echoGroupMessages = true
 		assert.is_truthy(output():find("BROKEN", 1, true))
+	end)
+
+	it("does NOT blame the core once the echo does arrive", function()
+		-- The other half, unreachable while the env never echoed: on a healthy
+		-- core the raw GUILD probe answers itself, and the verdict has to say so
+		-- rather than condemning the server.
+		ns:RunCommTest()
+		waitForReport()
+		assert.is_falsy(output():find("BROKEN", 1, true))
+		assert.is_truthy(output():find("GUILD addon relay works", 1, true))
 	end)
 end)
 
@@ -208,10 +229,21 @@ describe("the delivery verdict on the AceComm probe", function()
 	it("does not blame the core for a send the client never made", function()
 		-- The whole point of taking the verdict: a refused send says NOTHING
 		-- about whether the server relays guild addon traffic.
+		--
+		-- This assertion used to read `is_falsy(... "AceComm GUILD does not")`,
+		-- and it was checking the wrong string against a world that could not
+		-- happen. With no echo in the env the raw GUILD probe was ALWAYS
+		-- unanswered, so the verdict this test is named for -- "GUILD addon
+		-- relay appears BROKEN", which does blame the core -- was the one being
+		-- printed, and the old assertion sailed past it. Since harness 813f3d2
+		-- the raw probe echoes, so the real question is reachable: with the
+		-- AceComm send lost, the verdict must exonerate the server and point at
+		-- the queue.
 		aceSendYielding(nil, "lost")
 		ns:RunCommTest()
 		waitForReport()
-		assert.is_falsy(output():find("AceComm GUILD does not", 1, true))
+		assert.is_falsy(output():find("BROKEN", 1, true))
+		assert.is_truthy(output():find("not the server", 1, true))
 	end)
 
 	it("still reports no verdict at all when none arrives in the window", function()

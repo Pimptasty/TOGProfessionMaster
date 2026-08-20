@@ -590,10 +590,10 @@ function ProfitTab:BuildRows(mode)
                         local totalCost, priced, count = addon.Price.CraftCost(profId, recipeId, 1)
                         local cost = (count > 0 and priced == count) and totalCost or nil
                         local profit = (type(sell) == "number" and type(cost) == "number") and (sell - cost) or nil
-                        local _, itemLink = GetItemInfo(resolvedItemId)
+                        local _, itemLink = addon.Item.GetInfo(resolvedItemId)
                         local displayItemId = craftedItemId or resolvedItemId
-                        local icon = (displayItemId and GetItemIcon and GetItemIcon(displayItemId))
-                                  or (resolvedItemId and GetItemIcon and GetItemIcon(resolvedItemId))
+                        local icon = (displayItemId and addon.Item.GetIcon(displayItemId))
+                                  or (resolvedItemId and addon.Item.GetIcon(resolvedItemId))
                                   or (GetSpellTexture and GetSpellTexture(recipeId))
                         rows[#rows + 1] = {
                             itemId = resolvedItemId,
@@ -601,7 +601,9 @@ function ProfitTab:BuildRows(mode)
                             recipeId = recipeId,
                             icon = icon,
                             itemLink = itemLink,
-                            recipe = (meta and meta.name) or (itemLink and itemLink:match("%[(.-)%]")) or ("#" .. tostring(recipeId)),
+                            recipe = (meta and meta.name)
+                                or (itemLink and itemLink:match("%[(.-)%]"))
+                                or ("#" .. tostring(recipeId)),
                             profId = profId,
                             profession = addon.PROF_NAMES[profId] or tostring(profId),
                             craftersList = mine,
@@ -686,7 +688,8 @@ function ProfitTab:BuildToolbar(parent, mode, options)
         self:RefreshRowsInPlace(true)
     end)
     addon.GUI.AttachTooltip(profDropdown, "Professions",
-        "Filter recipes by profession. Tick multiple professions — the menu stays open. Use Select All / Clear All at the top.")
+        "Filter recipes by profession. Tick multiple professions -- the menu stays open."
+        .. " Use Select All / Clear All at the top.")
     toolbar:AddChild(profDropdown)
 
     -- Crafter dropdown
@@ -786,11 +789,14 @@ function ProfitTab:BuildHeaders(parent)
     -- money right.
     local cols = {
         { key = "recipe",     label = "Recipe",        width = COL.recipe,     tip = "Crafted item." },
-        { key = "profession", label = "Profession",    width = COL.profession, tip = "Profession that crafts this recipe." },
-        { key = "crafters",   label = "Your Crafters", width = COL.crafters,   tip = "Your characters that know this recipe." },
+        { key = "profession", label = "Profession",    width = COL.profession,
+          tip = "Profession that crafts this recipe." },
+        { key = "crafters",   label = "Your Crafters", width = COL.crafters,
+          tip = "Your characters that know this recipe." },
         { key = "source",     label = "Price Source",  width = COL.source,     tip = "Provider used for sale price." },
         { key = "cost",       label = "Craft Cost",    width = COL.cost,       tip = "Material cost for one craft." },
-        { key = "sell",       label = "Sell Price",    width = COL.sell,       tip = "Current or historical sell price for one item." },
+        { key = "sell",       label = "Sell Price",    width = COL.sell,
+          tip = "Current or historical sell price for one item." },
         { key = "profit",     label = "Profit",        width = COL.profit,     tip = "Sell minus craft cost." },
     }
 
@@ -833,7 +839,7 @@ function ProfitTab:BuildHeaders(parent)
             end
             if prevOnRelease then prevOnRelease(widget) end
         end)
-        
+
         self._headerWidgets[col.key] = w
     end
 
@@ -1017,7 +1023,7 @@ function ProfitTab:BuildPool(parent)
             local row = rf._row
             -- Always anchor tooltip to BOTTOMLEFT (bottom-right of cursor) for profit tab rows
             GameTooltip:SetOwner(rf, "ANCHOR_BOTTOMLEFT")
-            
+
             -- Show actual game item tooltip
             if row.itemLink then
                 addon.ItemLink.SetItem(GameTooltip, row.itemLink)
@@ -1029,7 +1035,7 @@ function ProfitTab:BuildPool(parent)
                 -- Fallback if no item info available
                 GameTooltip:SetText(row.recipe, 1, 1, 1, 1, true)
             end
-            
+
             -- Add profit planner details
             GameTooltip:AddLine(" ")  -- Blank line separator
             GameTooltip:AddLine("Profit Planner:", 1, 0.82, 0, true)
@@ -1041,7 +1047,9 @@ function ProfitTab:BuildPool(parent)
             GameTooltip:AddLine("Profession: " .. row.profession, 0.9, 0.9, 0.9, true)
             GameTooltip:AddLine("Crafters: " .. row.crafters, 0.9, 0.9, 0.9, true)
             if row.source then
-                GameTooltip:AddLine("Price Source: " .. (addon.Price and addon.Price.ColorizeSource(row.source) or row.source), 1, 1, 1, true)
+                GameTooltip:AddLine("Price Source: "
+                    .. (addon.Price and addon.Price.ColorizeSource(row.source) or row.source),
+                    1, 1, 1, true)
             else
                 GameTooltip:AddLine("Price Source: |cff888888No price|r", 1, 1, 1, true)
             end
@@ -1089,8 +1097,8 @@ function ProfitTab:UpdateRows()
         if row then
             f._row = row
             addon.GUI.ApplyRowStripe(f, first + i)
-            local tex = (row.displayItemId and GetItemIcon and GetItemIcon(row.displayItemId))
-                     or (row.itemId and GetItemIcon and GetItemIcon(row.itemId))
+            local tex = (row.displayItemId and addon.Item.GetIcon(row.displayItemId))
+                     or (row.itemId and addon.Item.GetIcon(row.itemId))
                      or row.icon
                      or (row.recipeId and GetSpellTexture and GetSpellTexture(row.recipeId))
             f.icon:SetTexture(tex or 134400)

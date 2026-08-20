@@ -253,15 +253,36 @@ local SPEC_PARENT = {
     [17041] = 9787,  -- Master Axesmith    → Weaponsmith
 }
 
-local RANK_CAPS = {
-    ["Journeyman"]               = 150,
-    ["Expert"]                   = 225,
-    ["Artisan"]                  = 300,
-    ["Master"]                   = 375,
-    ["Grand Master"]             = 450,
-    ["Illustrious Grand Master"] = 525,
-    ["Zen Master"]               = 600,
-}
+-- Skill-RANK books (Expert First Aid, Artisan Fishing) are not recipes: they
+-- raise the profession's CAP. They must stop being listed as missing once the
+-- character has read one, and must keep being listed while they have not.
+--
+-- The cap ladder is 75 / 150 / 225 / ... / 600. A rank book is usable at the
+-- tier at or above its own requiredSkill, and raises the cap by exactly one
+-- 75-point step:
+--
+--   Expert  (requiredSkill 125) -> usable at tier 150 -> grants 225
+--   Artisan (200)               -> 225 -> 300
+--   Master Fishing (275)        -> 300 -> 375
+--   Master First Aid (300)      -> 300 -> 375
+--
+-- Those four are EVERY distinct requiredSkill on EVERY rank book ProfessionDB
+-- ships across all five flavours (measured 2026-08-18 by loading the shipped
+-- _core data for Vanilla/TBC/Wrath/Cata/Mists, not by reading titles). Note the
+-- last two: a flat `requiredSkill + 100` gets the first three right and Master
+-- First Aid wrong, so the ladder is here instead of an arithmetic shortcut.
+local CAP_STEP = 75
+local MAX_CAP  = 600
+
+local function RankBookGrantedCap(requiredSkill)
+    if type(requiredSkill) ~= "number" or requiredSkill <= 0 then return nil end
+    local tier = CAP_STEP
+    while tier < requiredSkill and tier < MAX_CAP do tier = tier + CAP_STEP end
+    local granted = tier + CAP_STEP
+    if granted > MAX_CAP then granted = MAX_CAP end
+    return granted
+end
+MissingRecipesTab._RankBookGrantedCap = RankBookGrantedCap
 
 -- Build the missing-recipe list for (charKey, profId). Returns the full
 -- unfiltered set sorted by required skill — search filtering is applied at
@@ -416,15 +437,26 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
         -- and silently disabled the season, skill-cap and phase gates.
         local skip = not addon.RecipeGate:IsValidOnClient(profId, spellId, data)
 
-        if not skip and type(data.teaches) == "string" and RANK_CAPS[data.teaches] then
-            -- Rank-up book (e.g. "Expert First Aid" raises max from 150
-            -- to 225, "Artisan First Aid" from 225 to 300). The character's
-            -- skillMax is the only proxy we have for "did they consume
-            -- this book" — there's no WoW API to detect that. If their
-            -- skillMax is already at or above the rank's cap they must
-            -- have used the book to get there.
-            if skillMax >= RANK_CAPS[data.teaches] then
-                skip = true
+        -- Rank-up book already read. skillMax is the only proxy we have for
+        -- "did they consume this book" -- there is no WoW API for it -- and it
+        -- is a sound one, because a cap cannot rise past a rank's threshold by
+        -- any other means. So: at or above the cap this book grants, they read
+        -- it.
+        --
+        -- Classification comes from ProfessionDB via the shared
+        -- ItemLink.TeachingItem, which derives `isRankBook` from DBC data. The
+        -- previous version of this branch tested `type(data.teaches) ==
+        -- "string"` against a table keyed by rank NAME; `teaches` is a spell id
+        -- and always a number, so the branch never executed once and every
+        -- maxed character was told to go and buy books they had already used.
+        -- Do not reintroduce a name-based test: it would also be locale-bound.
+        if not skip and addon.ItemLink and addon.ItemLink.TeachingItem then
+            local _, isRankBook = addon.ItemLink.TeachingItem(profId, spellId)
+            if isRankBook then
+                local grantedCap = RankBookGrantedCap(data.requiredSkill)
+                if grantedCap and skillMax >= grantedCap then
+                    skip = true
+                end
             end
         end
 
@@ -528,7 +560,9 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
                     -- those recipes at the top of the list.
                     requiredSkill = data.requiredSkill,
                     tiers         = data.difficulty,  -- {orange,yellow,green,grey} skill breakpoints
-                    effect        = addon:GetCraftedItemStatText(data.craftedItemId) or data.effect,  -- crafted gear/consumable stats (LibItemDB) win; enchant effect (ProfessionDB) is the fallback
+                    -- Crafted gear/consumable stats (LibItemDB) win; the enchant
+                    -- effect (ProfessionDB) is the fallback.
+                    effect        = addon:GetCraftedItemStatText(data.craftedItemId) or data.effect,
                     known         = knownByChar(spellId)
                                     or (data.teaches and knownByChar(data.teaches))
                                     or (data.craftedItemId and knownByChar(data.craftedItemId))
@@ -866,7 +900,7 @@ function MissingRecipesTab:DrawScope(container)
             for _, entry in ipairs(self._list or {}) do
                 local iid = entry.itemId
                 if iid then
-                    local name = GetItemInfo and GetItemInfo(iid)
+                    local name = addon.Item.GetInfo(iid)
                     if type(name) == "string" and name ~= "" then
                         items[#items + 1] = { itemId = iid, itemName = name }
                     end
@@ -1098,7 +1132,7 @@ function MissingRecipesTab:BuildPool(parent)
             -- prefetch trigger, so the next mouseover lands warm.
             local useItem = false
             if f._itemId and GetItemInfo then
-                local cachedName = GetItemInfo(f._itemId)
+                local cachedName = addon.Item.GetInfo(f._itemId)
                 useItem = cachedName ~= nil
             end
             if useItem then
@@ -1165,7 +1199,7 @@ function MissingRecipesTab:BuildPool(parent)
             if button ~= "LeftButton" then return end
             local link
             if f._itemId then
-                _, link = GetItemInfo(f._itemId)
+                _, link = addon.Item.GetInfo(f._itemId)
             elseif f._spellId and GetSpellLink then
                 link = GetSpellLink(f._spellId)
             end
@@ -1262,7 +1296,7 @@ function MissingRecipesTab:UpdateVirtualRows()
                               or ("|cffaaaaaaspell:" .. tostring(entry.spellId) .. "|r")
                 -- GetItemIcon reads static item file data (synchronous, fires no
                 -- cache event); fall back to the spell texture.
-                f.icon:SetTexture((GetItemIcon and GetItemIcon(itemId))
+                f.icon:SetTexture(addon.Item.GetIcon(itemId)
                                   or (GetSpellTexture and GetSpellTexture(entry.spellId))
                                   or 134400)
             else
@@ -1293,7 +1327,7 @@ function MissingRecipesTab:UpdateVirtualRows()
                 --      assigned the spell).
                 local craftedIcon
                 if entry.craftedItemId and GetItemIcon then
-                    craftedIcon = GetItemIcon(entry.craftedItemId)
+                    craftedIcon = addon.Item.GetIcon(entry.craftedItemId)
                 end
                 local spellIcon = craftedIcon
                               or (GetSpellTexture and GetSpellTexture(entry.spellId))
@@ -1320,7 +1354,14 @@ function MissingRecipesTab:UpdateVirtualRows()
             local color
             local q = idb and entry.craftedItemId and idb:GetQuality(entry.craftedItemId)
             if q and q > 1 then
-                local r, g, b = GetItemQualityColor(q)
+                -- C_Item.GetItemQualityColor is the real function on every
+                -- flavour this addon supports. The bare global is only a
+                -- DEPRECATION FALLBACK -- Blizzard_DeprecatedItemScript assigns
+                -- it from the namespaced one, and only when the
+                -- `loadDeprecationFallbacks` CVar is on, so with that CVar off
+                -- the bare call raises. Compat.lua owns the resolution (audit
+                -- finding 26); do not re-detect it here.
+                local r, g, b = addon.Item.GetQualityColor(q)
                 if r and g and b then
                     color = string.format("ff%02x%02x%02x", r * 255, g * 255, b * 255)
                 end
@@ -1415,7 +1456,7 @@ function MissingRecipesTab:SortList(list)
         for _, e in ipairs(list) do
             if col == "recipe" then
                 local n = (e.itemId and idb and idb:GetName(e.itemId))
-                          or (e.itemId and GetItemInfo and GetItemInfo(e.itemId))
+                          or (e.itemId and addon.Item.GetInfo(e.itemId))
                           or (GetSpellInfo and GetSpellInfo(e.spellId))
                           or e.name or ""
                 key[e] = tostring(n):lower()
@@ -1484,7 +1525,8 @@ function MissingRecipesTab:FillList()
         fullList = {}
         for _, pid in ipairs(profIds) do
             if addon.recipeDB and addon.recipeDB[pid] then
-                local sub   = BuildMissingList(self._charKey, pid, self._includeTrainer, self._canLearnOnly, self._showAll, self._scope)
+                local sub   = BuildMissingList(self._charKey, pid, self._includeTrainer,
+                                               self._canLearnOnly, self._showAll, self._scope)
                 local pname = addon.PROF_NAMES[pid] or tostring(pid)
                 for _, e in ipairs(sub) do
                     e.profId   = pid
@@ -1501,7 +1543,8 @@ function MissingRecipesTab:FillList()
             section:AddChild(lbl)
             return
         end
-        fullList = BuildMissingList(self._charKey, self._profId, self._includeTrainer, self._canLearnOnly, self._showAll, self._scope)
+        fullList = BuildMissingList(self._charKey, self._profId, self._includeTrainer,
+                                    self._canLearnOnly, self._showAll, self._scope)
     end
 
     -- Apply search filter using GetItemInfo — its first return IS the item
@@ -1524,7 +1567,7 @@ function MissingRecipesTab:FillList()
             -- no scroll item; lets the user find e.g. "Brown Linen Vest"
             -- regardless of whether the recipe is taught by a pattern or
             -- only by a trainer.
-            local name = (entry.itemId and GetItemInfo and GetItemInfo(entry.itemId))
+            local name = (entry.itemId and addon.Item.GetInfo(entry.itemId))
                          or (GetSpellInfo and GetSpellInfo(entry.spellId))
             local nameHit = type(name) == "string" and name:lower():find(filter, 1, true)
             -- Also match the effect text ("+5 Weapon Damage", "+12 Agility")

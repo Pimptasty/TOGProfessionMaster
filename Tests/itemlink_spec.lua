@@ -302,8 +302,10 @@ describe("one tooltip frame, everywhere", function()
 		-- needs a much better reason than the last one had.
 		local ALLOWED = {
 			TOGPMSearchScraper  = true,   -- TOGProfessionMaster.lua
-			TOGPMReagentScraper = true,   -- Scanner.lua
 			TOGPMItemScraper    = true,   -- GUI/BrowserTab.lua
+			-- TOGPMReagentScraper is GONE, deleted 2026-08-19: its builder had no
+			-- caller at all. An allow-list entry for a frame nothing creates is
+			-- permission for it to come back unnoticed, so it goes with the code.
 		}
 		local offenders, scanned = {}, 0
 		for _, path in ipairs({

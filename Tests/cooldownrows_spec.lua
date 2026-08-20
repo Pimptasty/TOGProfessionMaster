@@ -33,9 +33,11 @@ before_each(function()
 	gdb = env.resetDb()
 	env.roster({ { name = "Testchar", isOnline = true }, { name = "Bob", isOnline = true } })
 	env.setRecipeDB({})
-	_G.GetItemInfo  = function() return nil end
+	-- Both spellings -- the code reads through addon.Item.*, which prefers
+	-- C_Item exactly as the client does. See env.itemAPI.
+	env.itemAPI("GetItemInfo", function() return nil end)
 	_G.GetSpellInfo = function(id) return "Spell " .. tostring(id) end
-	_G.GetItemIcon  = function() return nil end
+	env.itemAPI("GetItemIcon", function() return nil end)
 	data = ns:GetCooldownData()
 end)
 
@@ -50,7 +52,9 @@ local function anyWhitelisted()
 end
 
 local function anyTransmute()
-	for spellId in pairs(data.transmutes) do return spellId end
+	-- `next` rather than a one-iteration `for`, which luacheck rightly reads as
+	-- a loop that cannot loop. "Any key from this set" is what is meant.
+	return (next(data.transmutes))
 end
 
 local function give(charKey, spellId, expiresAt)
@@ -202,13 +206,14 @@ describe("BuildRows", function()
 	end)
 
 	it("emits one grouped row per group, not one per member spell", function()
-		local groupSpell, group
-		for spellId, g in pairs(data.groupBySpell or {}) do groupSpell, group = spellId, g; break end
+		-- Any one group; `next` says "the first pair" without pretending to loop.
+		local groupSpell, group = next(data.groupBySpell or {})
 		if not groupSpell then return end
-		local second
-		for sid in pairs(group.spells) do
-			if sid ~= groupSpell then second = sid; break end
-		end
+		-- Any OTHER spell in the group. NOT `next(group.spells, groupSpell)`:
+		-- that returns nil when groupSpell happens to be last in iteration
+		-- order, which would silently skip the two-member case this test is for.
+		local second = next(group.spells)
+		if second == groupSpell then second = next(group.spells, second) end
 		give(MATE, groupSpell, NOW + 100)
 		if second then give(MATE, second, NOW + 900) end
 		local rows = CD._BuildRows(false, "guild")
@@ -234,15 +239,15 @@ describe("BuildRows", function()
 		-- 15846 is both the Salt Shaker item and "Veil of Shadow"; resolving via
 		-- GetSpellInfo first labelled the row with the NPC ability.
 		give(MATE, data.saltShakerItem, NOW + 3600)
-		_G.GetItemInfo = function(id)
+		env.itemAPI("GetItemInfo", function(id)
 			if id == data.saltShakerItem then return "Salt Shaker" end
-		end
+		end)
 		assert.equal("Salt Shaker", CD._BuildRows(false, "guild")[1].cdName)
 	end)
 
 	it("falls back to a sane name when the client knows neither", function()
 		give(MATE, data.saltShakerItem, NOW + 3600)
-		_G.GetItemInfo = function() return nil end
+		env.itemAPI("GetItemInfo", function() return nil end)
 		assert.equal("Salt Shaker", CD._BuildRows(false, "guild")[1].cdName)
 	end)
 

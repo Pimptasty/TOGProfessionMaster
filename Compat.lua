@@ -170,10 +170,58 @@ function addon:GetSpellInfo(spellId)
 end
 
 -- ---------------------------------------------------------------------------
--- Item info (no API change on Classic — plain wrapper for consistency)
+-- Item API -- ONE resolver, because every bare name here is a DEPRECATION
+-- FALLBACK rather than the real function. Audit findings 26/27.
+--
+-- `Blizzard_DeprecatedItemScript.lua` opens with
+--     if not GetCVarBool("loadDeprecationFallbacks") then return end
+-- and then assigns ~47 bare globals from their C_Item counterparts. Ours are at
+-- `:42` (GetItemInfo), `:10` (GetItemInfoInstant), `:16` (GetItemIcon), `:46`
+-- (GetItemCount) and `:9` (GetItemQualityColor). With that CVar off, every one
+-- of them is nil -- so an unguarded call raises, and a `if GetItemInfo then`
+-- guard silently skips the branch instead. Both shapes were live here: the
+-- raise in MissingRecipesTab and the silent skip in ItemLink.QualityHex.
+--
+-- WARNING: `GetItemIcon` maps to `C_Item.GetItemIconByID`, NOT
+-- `C_Item.GetItemIcon`. The names do not correspond one-to-one and a mechanical
+-- rename would produce a nil that only shows up as a missing texture.
+--
+-- Every C_Item name below is confirmed present on Classic Era in
+-- `GlobalAPI.lua`. The bare tail is kept for a client that genuinely lacks the
+-- namespace; it is a fallback, not the preferred path.
+--
+-- The previous wrapper here said "no API change on Classic -- plain wrapper for
+-- consistency", which was wrong in exactly the way that mattered.
 -- ---------------------------------------------------------------------------
+-- Each entry resolves at CALL time, not at load. Two reasons, and the second is
+-- the one that bites:
+--
+--   1. A client that gains or loses the namespace mid-session is handled for
+--      free, and load order stops mattering to consumers.
+--   2. THE OFFLINE SUITE STUBS THESE BY NAME. Specs assign `_G.GetItemInfo` in
+--      `before_each` to feed a specific answer, and the harness env installs
+--      BOTH spellings as the SAME function object. An early-bound alias would
+--      capture the env's original at load and quietly ignore every later stub --
+--      so the specs would still pass while measuring nothing, which is the exact
+--      failure shape this board keeps recording.
+addon.Item = addon.Item or {}
+
+local function itemAPI(namespaced, bare)
+    return function(...)
+        local fn = (C_Item and C_Item[namespaced]) or _G[bare]
+        if not fn then return nil end
+        return fn(...)
+    end
+end
+
+addon.Item.GetInfo         = itemAPI("GetItemInfo",         "GetItemInfo")
+addon.Item.GetInfoInstant  = itemAPI("GetItemInfoInstant",  "GetItemInfoInstant")
+addon.Item.GetIcon         = itemAPI("GetItemIconByID",     "GetItemIcon")
+addon.Item.GetCount        = itemAPI("GetItemCount",        "GetItemCount")
+addon.Item.GetQualityColor = itemAPI("GetItemQualityColor", "GetItemQualityColor")
+
 function addon:GetItemInfo(itemId)
-    return GetItemInfo(itemId)
+    return addon.Item.GetInfo(itemId)
 end
 
 -- ---------------------------------------------------------------------------
@@ -430,7 +478,8 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
     d.itemLbl:SetText(itemLink or itemName or ("Item #" .. tostring(itemId)))
     d.qtyBox:SetText(tostring(defaultQty))
     if pct < 100 then
-        d.stockLbl:SetText(string.format("Bank stock: %d  |  Max requestable: %d (%d%%)", totalStock, maxRequestable, pct))
+        d.stockLbl:SetText(string.format("Bank stock: %d  |  Max requestable: %d (%d%%)",
+            totalStock, maxRequestable, pct))
     else
         d.stockLbl:SetText(string.format("Bank stock: %d", totalStock))
     end
@@ -471,7 +520,8 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
             return
         end
         if qty > d.maxRequestable then
-            DEFAULT_CHAT_FRAME:AddMessage(string.format("|cFFFF4444[TOGPM] Maximum requestable quantity is %d.|r", d.maxRequestable))
+            DEFAULT_CHAT_FRAME:AddMessage(string.format(
+                "|cFFFF4444[TOGPM] Maximum requestable quantity is %d.|r", d.maxRequestable))
             return
         end
         if not d.selectedBank or d.selectedBank == "" then

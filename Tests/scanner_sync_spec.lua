@@ -377,4 +377,50 @@ describe("OnGuildDataReceived — player subhashes", function()
 		})
 		assert.equal("crafters:" .. ALCHEMY, DS.completed[1].key)
 	end)
+
+	it("stays silent when the peer has gone offline mid-exchange", function()
+		-- The third copy of the online gate. It had never executed: only the
+		-- leaf-data site above was asserted, and this one and onSyncAccepted
+		-- were taken on faith because they read the same. They are now ONE
+		-- function, and this is the spec that says so for this site.
+		gdb.recipes[ALCHEMY] = { [2330] = { crafters = { [OWNER] = ns:GetCurrentGuildTag() } } }
+		env.roster({ { name = "Testchar", isOnline = true } })
+		S.GuildRoster = ns.Scanner.GuildRoster
+		S:OnGuildDataReceived("Bob", {
+			charKey = OWNER, type = "player-subhashes", profId = ALCHEMY,
+			players = { [OWNER] = { h = 999999, ts = 100 } },
+		})
+		assert.equal(0, #DS.requests)
+	end)
+end)
+
+--- The gate itself, because it now has one implementation and three call sites.
+--- Every outbound RequestData is behind it, so a wrong answer here is either
+--- "sync stops working" or "we send to someone who left".
+describe("Scanner:PeerIsOffline", function()
+	it("is true for a guildmate the roster reports offline", function()
+		env.roster({ { name = "Testchar", isOnline = true }, { name = "Bob", isOnline = false } })
+		S.GuildRoster = ns.Scanner.GuildRoster
+		assert.is_true(S:PeerIsOffline("Bob"))
+	end)
+
+	it("is false for one it reports online", function()
+		env.roster({ { name = "Testchar", isOnline = true }, { name = "Bob", isOnline = true } })
+		S.GuildRoster = ns.Scanner.GuildRoster
+		assert.is_false(S:PeerIsOffline("Bob"))
+	end)
+
+	it("is FALSE with no roster library, which is the load-bearing case", function()
+		-- Knowing nothing about who is online must not be read as "everyone is
+		-- offline": that would refuse every send and disable sync entirely,
+		-- rather than protect it. This is why the gate is a named function and
+		-- not an inline `and` -- the nil case is a decision, not an accident.
+		S.GuildRoster = nil
+		assert.is_false(S:PeerIsOffline("Bob"))
+	end)
+
+	it("answers a boolean, never a nil, so a caller can assert on it", function()
+		S.GuildRoster = nil
+		assert.equal("boolean", type(S:PeerIsOffline("Bob")))
+	end)
 end)

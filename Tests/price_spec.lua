@@ -31,7 +31,9 @@ before_each(function()
 	-- No third-party pricing addons present.
 	_G.Auctionator, _G.AucAdvanced, _G.TSM_API = nil, nil, nil
 	_G.GetCoinTextureString = nil
-	_G.GetItemInfo = function() return nil end
+	-- Both spellings -- Price.lua reads through addon.Item.GetInfo, which
+	-- prefers C_Item exactly as the client does. See env.itemAPI.
+	env.itemAPI("GetItemInfo", function() return nil end)
 
 	-- Blank the persisted price stores and every source toggle.
 	local fr = Ace.db.factionrealm
@@ -78,13 +80,13 @@ end
 -- Mark an item Bind-on-Pickup through the real GetItemInfo contract (bindType
 -- is the 14th return).
 local function bindOnPickup(itemId)
-	_G.GetItemInfo = function(id)
+	env.itemAPI("GetItemInfo", function(id)
 		if id == itemId then
 			return "Soulbound Thing", "|cffffffff|Hitem:" .. id .. "|h[x]|h|r",
 			       1, 60, 60, "", "", 1, "", "", 0, 0, 0, 1
 		end
 		return nil
-	end
+	end)
 end
 
 describe("source presentation", function()

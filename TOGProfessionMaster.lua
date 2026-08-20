@@ -375,16 +375,36 @@ local SETTINGS_DEFAULTS = {
         -- see them) but do respect "never".
         tooltipRecipeDetails = "always",
 
-        -- TBC Anniversary content phase. The recipe DB ships with `phase`
-        -- field on TBC raid / Shattered-Sun / BT / Hyjal / Sunwell recipes
-        -- (sourced from ATT at build time). When the client is TBC, the
-        -- Missing Recipes tab hides any recipe whose `phase` exceeds this
-        -- setting — keeps phase-locked content like Sunwell jewelcrafting
-        -- patterns from showing up before Blizzard opens the phase. Defaults
-        -- to 2 (Anniversary live state as of v0.5.4 release: SSC + TK).
-        -- User bumps it manually when phase 3 / 3.5 / 4 go live; we'll ship
-        -- the new default in a follow-up patch each time.
-        tbcAnniversaryPhase = 2,
+        -- TBC Anniversary content phase. The recipe DB ships a `phase` field on
+        -- TBC raid / Shattered-Sun / BT / Hyjal / Sunwell recipes (sourced from
+        -- ATT at build time), and on a TBC client any recipe whose `phase`
+        -- exceeds this setting is hidden.
+        --
+        -- DEFAULTS TO 4 -- SHOW EVERYTHING -- AND MUST STAY THAT WAY.
+        --
+        -- It used to default to 2, described as "Anniversary live state as of
+        -- v0.5.4 release: SSC + TK", with the plan being "we'll ship the new
+        -- default in a follow-up patch each time" a phase opens. That patch was
+        -- never shipped, and the design guarantees it will be late again: a
+        -- constant that has to be chased by a release is wrong for most of every
+        -- phase's life, and wrong SILENTLY.
+        --
+        -- Measured 2026-08-19 against the shipped TBC data: the default of 2 hid
+        -- 194 of 2170 recipes -- 109 tagged phase 3 and 85 tagged phase 4 --
+        -- across every profession (Jewelcrafting 69, Leatherworking 51,
+        -- Engineering 20, Blacksmithing 17, Tailoring 17, Enchanting 10,
+        -- Alchemy 6, Cooking 2, Fishing 1, Mining 1). That is the "a lot of
+        -- missing recipes on TBC" report, and it was our default, not the data.
+        --
+        -- The two failure directions are not symmetric, which is what decides
+        -- the default. Too HIGH shows a few not-yet-live recipes in a list of
+        -- things you do not have -- visible, harmless, self-correcting when the
+        -- phase opens. Too LOW deletes real obtainable recipes from the addon's
+        -- answer with no indication anything was filtered. Fail toward showing.
+        --
+        -- The setting stays, for anyone who wants to hide unreleased content
+        -- deliberately; it is now opt-in rather than opt-out.
+        tbcAnniversaryPhase = 4,
 
         -- UI Language Override. "auto" = follow the WoW client's GetLocale().
         -- Other values map to a locale code in addon.Locales (populated by
@@ -793,8 +813,10 @@ addon:RebuildLocalizedTables()  -- initial population from current L state
 -- assignment time would see nil. Calls happen at dropdown-build time
 -- where the flags are guaranteed populated.
 addon.PROF_AVAILABILITY = {
-    [755] = function() return addon.isTBC   or addon.isWrath or addon.isCata or addon.isMoP end,  -- Jewelcrafting (TBC+)
-    [773] = function() return addon.isWrath or addon.isCata  or addon.isMoP end,                  -- Inscription (Wrath+)
+    -- Jewelcrafting (TBC+)
+    [755] = function() return addon.isTBC   or addon.isWrath or addon.isCata or addon.isMoP end,
+    -- Inscription (Wrath+)
+    [773] = function() return addon.isWrath or addon.isCata  or addon.isMoP end,
     [794] = function() return addon.isCata  or addon.isMoP end,                                   -- Archaeology (Cata+)
 }
 
@@ -1474,7 +1496,7 @@ function addon:DumpPrice(args)
         return
     end
 
-    local itemName = (GetItemInfo and GetItemInfo(itemId)) or ("item:" .. tostring(itemId))
+    local itemName = addon.Item.GetInfo(itemId) or ("item:" .. tostring(itemId))
     Ace:Print(("|cffda8cffPrice diagnostic|r for %s (%d)"):format(tostring(itemName), itemId))
 
     local p, src, age = addon.Price.Get(itemId)
@@ -1498,7 +1520,8 @@ function addon:DumpPrice(args)
         Ace:Print(("  Auctioneer toggles: useAuctioneer=%s useAuctioneerCached=%s"):format(
             tostring(diag.useAuctioneer), tostring(diag.useAuctioneerCached)))
         Ace:Print(("  Auctioneer API: ready=%s hasAlgorithmAPI=%s hasModuleRegistry=%s serverKey=%s"):format(
-            tostring(diag.ready), tostring(diag.hasAlgorithmAPI), tostring(diag.hasModuleRegistry), tostring(diag.serverKey)))
+            tostring(diag.ready), tostring(diag.hasAlgorithmAPI),
+            tostring(diag.hasModuleRegistry), tostring(diag.serverKey)))
         Ace:Print(("  Auctioneer values: live=%s cached=%s"):format(
             diag.live and addon.Price.Money(diag.live) or "nil",
             diag.cached and addon.Price.Money(diag.cached) or "nil"))
@@ -1541,7 +1564,8 @@ function addon:ReportItemDBGaps(args)
                         nostat = nostat + 1
                         if shown < CAP then
                             shown = shown + 1
-                            Ace:Print(("  prof %d  item %d  %s \226\128\148 no stats"):format(pid, cid, DB:GetName(cid) or "?"))
+                            Ace:Print(("  prof %d  item %d  %s \226\128\148 no stats")
+                                :format(pid, cid, DB:GetName(cid) or "?"))
                         end
                     end
                 end
@@ -1565,7 +1589,8 @@ function addon:ToggleDebug(args)
         addon.debug = not addon.debug
     end
     Ace.db.profile.debug = addon.debug
-    Ace:Print(string.format(L["SlashDebugToggleFormat"], addon.debug and L["SlashDebugEnabled"] or L["SlashDebugDisabled"]))
+    Ace:Print(string.format(L["SlashDebugToggleFormat"],
+        addon.debug and L["SlashDebugEnabled"] or L["SlashDebugDisabled"]))
     -- Tooltip width reporting rides debug rather than having its own command:
     -- the question it answers needs a SWEEP across many items, and a one-shot
     -- command re-typed between every hover was unusable. See the block above
@@ -1648,7 +1673,8 @@ function Ace:PrintHelp()
     self:Print("  /togpm purge        \226\128\148 " .. L["SlashHelpPurge"])
     self:Print("  /togpm sync         \226\128\148 " .. L["SlashHelpSync"])
     self:Print("  /togpm status       \226\128\148 " .. L["SlashHelpStatus"])
-    self:Print("  /togpm dsstatus     \226\128\148 DeltaSync multi-host health check (namespace / MINOR / prefixes / P2P)")
+    self:Print("  /togpm dsstatus     \226\128\148 DeltaSync multi-host health check"
+        .. " (namespace / MINOR / prefixes / P2P)")
     self:Print("  /togpm versioncheck \226\128\148 " .. L["SlashHelpVersionCheck"])
     self:Print("  /togpm dumpprice <itemId|itemLink> \226\128\148 Dump full price diagnostics for an item")
     self:Print("  /togpm commtest [name] \226\128\148 Probe which addon-message channels the server relays")
@@ -2033,7 +2059,8 @@ function addon:BroadcastSisterRosters()
                         -- Record our own send so we suppress next interval too
                         -- (broadcasting duty rotates rather than pinning one member).
                         self._seenSisterRoster[key] = { hash = hash, t = now }
-                        self:DebugPrint("Cross-guild: broadcast sister roster", key, "(", #members, "members, hash", hash, ")")
+                        self:DebugPrint("Cross-guild: broadcast sister roster", key,
+                            "(", #members, "members, hash", hash, ")")
                     end
                 end
             end
@@ -2552,7 +2579,7 @@ function addon:GetRecipeName(profId, recipeId)
     if m and m.name then return m.name end
     -- Fallback: WoW client APIs (may return localized name).
     if type(recipeId) == "number" then
-        local n = (GetSpellInfo and GetSpellInfo(recipeId)) or (GetItemInfo and GetItemInfo(recipeId))
+        local n = (GetSpellInfo and GetSpellInfo(recipeId)) or addon.Item.GetInfo(recipeId)
         if n then return n end
     end
     return tostring(recipeId)
@@ -2560,8 +2587,8 @@ end
 
 function addon:GetRecipeIcon(profId, recipeId)
     local m = self:GetRecipeMeta(profId, recipeId)
-    if m and m.craftedItemId and GetItemIcon then
-        local t = GetItemIcon(m.craftedItemId)
+    if m and m.craftedItemId then
+        local t = addon.Item.GetIcon(m.craftedItemId)
         if t then return t end
     end
     if type(recipeId) == "number" then
@@ -2569,10 +2596,8 @@ function addon:GetRecipeIcon(profId, recipeId)
             local t = GetSpellTexture(recipeId)
             if t then return t end
         end
-        if GetItemIcon then
-            local t = GetItemIcon(recipeId)
-            if t then return t end
-        end
+        local t = addon.Item.GetIcon(recipeId)
+        if t then return t end
     end
     return 134400  -- generic question-mark fallback
 end
@@ -2587,7 +2612,7 @@ function addon:GetRecipeReagents(profId, recipeId)
     if not m or not m.reagents then return nil end
     local arr = {}
     for itemId, count in pairs(m.reagents) do
-        local name, link = GetItemInfo(itemId)
+        local name, link = addon.Item.GetInfo(itemId)
         arr[#arr + 1] = {
             itemId   = itemId,
             count    = count,
@@ -2693,7 +2718,7 @@ function addon:GetItemTooltipSearchText(itemId)
     if cached ~= nil then return cached or nil end
     -- Don't scrape until the client has the item (an unloaded item tooltips
     -- empty); calling GetItemInfo also warms it so it's ready next time.
-    if GetItemInfo and not GetItemInfo(itemId) then return nil end
+    if not addon.Item.GetInfo(itemId) then return nil end
     if not _ttScraper then
         _ttScraper = CreateFrame("GameTooltip", "TOGPMSearchScraper", UIParent, "GameTooltipTemplate")
     end

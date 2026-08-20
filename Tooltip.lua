@@ -32,7 +32,7 @@ end
 
 -- Return true when the item flags indicate Bind-on-Pickup so we skip BOPs.
 local function IsBOP(itemID)
-    local _, _, _, _, _, _, _, _, _, _, _, _, _, bindType = GetItemInfo(itemID)
+    local _, _, _, _, _, _, _, _, _, _, _, _, _, bindType = addon.Item.GetInfo(itemID)
     return bindType == 1  -- LE_ITEM_BIND_ON_ACQUIRE
 end
 
@@ -216,14 +216,19 @@ local function AppendCraftersAndIds(tooltip, itemID)
         local gdb = addon:GetGuildDb()
         local diag = "recipe-not-found"
         local crafterCount = 0
-        for _, hit in ipairs(ResolveRecipesForItem(itemID)) do
+        -- FIRST hit only, and written as an index rather than a `for ... break`
+        -- so that is legible: this is a diagnostic line, and reporting one
+        -- recipe's crafter count is the whole intent. luacheck called the old
+        -- shape out ("loop is executed at most once") and it was right --
+        -- a loop that always breaks reads as if it might not.
+        local hit = ResolveRecipesForItem(itemID)[1]
+        if hit then
             local meta = addon.recipeDB[hit.profId][hit.recipeId]
             if meta.teaches then table.insert(idParts, "spellId=" .. meta.teaches) end
             local profRow = gdb and gdb.recipes and gdb.recipes[hit.profId]
             local rd      = profRow and profRow[hit.recipeId]
             for _ in pairs((rd and rd.crafters) or {}) do crafterCount = crafterCount + 1 end
             diag = (crafterCount > 0) and ("crafters=" .. crafterCount) or "recipe-no-crafters"
-            break
         end
         if not showCrafters then
             diag = "crafters-disabled"

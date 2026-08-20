@@ -43,13 +43,15 @@ before_each(function()
 		isVanilla = ns.isVanilla, isTBC = ns.isTBC, isWrath = ns.isWrath,
 		isCata = ns.isCata, isMoP = ns.isMoP,
 	}
-	savedGetItemInfoInstant = _G.GetItemInfoInstant
+	-- Saved from the NAMESPACED spelling, because that is the one
+	-- addon.Item.GetInfoInstant actually resolves. See env.itemAPI.
+	savedGetItemInfoInstant = (_G.C_Item and _G.C_Item.GetItemInfoInstant) or _G.GetItemInfoInstant
 	ns.isVanilla, ns.isTBC, ns.isWrath, ns.isCata, ns.isMoP = true, false, false, false, false
 end)
 
 after_each(function()
 	for k, v in pairs(savedFlags) do ns[k] = v end
-	_G.GetItemInfoInstant = savedGetItemInfoInstant
+	env.itemAPI("GetItemInfoInstant", savedGetItemInfoInstant)
 end)
 
 --- Verdict + reason for a recipe, on whatever client the example has set up.
@@ -115,11 +117,28 @@ describe("RecipeGate:IsValidOnClient — Classic Era", function()
 		assert.equal("nospell", why)
 	end)
 
-	it("rejects a recipe above the client's skill cap", function()
+	it("KEEPS a recipe whose requiredSkill is above the client's cap", function()
+		-- This spec asserted the opposite and was wrong, which is how "flask of
+		-- blinding light is not showing up on tbc" shipped. A skill number
+		-- higher than the expansion's cap means the DATA is wrong or the recipe
+		-- is out of reach for now; it never means the recipe does not exist on
+		-- this client. Measured: the old rule hid all twelve of TBC's high-end
+		-- Alchemy recipes, every flask included, and on Era it hid Gurubashi
+		-- Mojo Madness (24266, skill 315 against a 300 cap) -- a Zul'Gurub
+		-- recipe a Vanilla player can genuinely learn.
 		env.spellsExist(2330)
-		local ok, why = gate(ALCHEMY, 2330, { name = "Too advanced", requiredSkill = 375 })
-		assert.is_false(ok)
-		assert.equal("skillcap", why)
+		assert.is_true(gate(ALCHEMY, 2330, { name = "Above the cap", requiredSkill = 375 }))
+	end)
+
+	it("keeps the real TBC flask that was reported missing", function()
+		-- The exact recipe from the report, with the exact numbers ProfessionDB
+		-- ships for it: Flask of Blinding Light, requiredSkill 390, on a TBC
+		-- client whose cap is 375.
+		ns.isVanilla, ns.isTBC = false, true
+		env.spellsExist(28590)
+		assert.is_true(gate(ALCHEMY, 28590, {
+			name = "Flask of Blinding Light", craftedItemId = 22861, requiredSkill = 390,
+		}))
 	end)
 
 	it("rejects seasonal content", function()
@@ -133,7 +152,7 @@ describe("RecipeGate:IsValidOnClient — Classic Era", function()
 	-- one here would assert "blacklist" and leave this path unexercised.
 	it("rejects an untagged high-ID recipe whose item does not resolve", function()
 		env.spellsExist(26000)
-		_G.GetItemInfoInstant = function() return nil end
+		env.itemAPI("GetItemInfoInstant", function() return nil end)
 		local ok, why = gate(COOKING, 26000, { name = "Untagged post-Vanilla", craftedItemId = 22645 })
 		assert.is_false(ok)
 		assert.equal("untagged", why)
@@ -141,7 +160,7 @@ describe("RecipeGate:IsValidOnClient — Classic Era", function()
 
 	it("passes an untagged high-ID recipe when both its spell and item resolve", function()
 		env.spellsExist(26000)
-		_G.GetItemInfoInstant = function(id) return id end
+		env.itemAPI("GetItemInfoInstant", function(id) return id end)
 		assert.is_true(gate(COOKING, 26000, { name = "Untagged but real", craftedItemId = 22645 }))
 	end)
 end)
@@ -152,7 +171,7 @@ end)
 -- only thing standing between it and a "you are missing this" row.
 describe("RecipeGate — TBC recipes that survive every generic Era gate", function()
 	before_each(function()
-		_G.GetItemInfoInstant = function(id) return id end
+		env.itemAPI("GetItemInfoInstant", function(id) return id end)
 	end)
 
 	local LEAKS = {
@@ -189,7 +208,7 @@ end)
 -- and switched off the season, skill-cap and phase gates for that recipe.
 describe("RecipeGate — no gate can be short-circuited by an earlier one", function()
 	before_each(function()
-		_G.GetItemInfoInstant = function(id) return id end
+		env.itemAPI("GetItemInfoInstant", function(id) return id end)
 		env.spellsExist(25704)
 	end)
 
@@ -199,10 +218,19 @@ describe("RecipeGate — no gate can be short-circuited by an earlier one", func
 		assert.equal("season", why)
 	end)
 
-	it("still applies the skill cap to an untagged high-ID recipe", function()
-		local ok, why = gate(ALCHEMY, 25704, { name = "Untagged, too advanced", craftedItemId = 21877, requiredSkill = 375 })
+	it("still applies the PHASE gate to an untagged high-ID recipe", function()
+		-- Replaces a skill-cap case. The skill cap is no longer a gate at all
+		-- (see "KEEPS a recipe whose requiredSkill is above the client's cap"),
+		-- so it cannot demonstrate what this describe is about -- but the phase
+		-- gate sits in the same position below the untagged branch and can.
+		ns.isVanilla, ns.isTBC = false, true
+		ns.lib.db.profile.tbcAnniversaryPhase = 2
+		env.spellsExist(25704)
+		local ok, why = gate(ALCHEMY, 25704, {
+			name = "Untagged, later phase", craftedItemId = 21877, phase = 5,
+		})
 		assert.is_false(ok)
-		assert.equal("skillcap", why)
+		assert.equal("phase", why)
 	end)
 end)
 
@@ -225,6 +253,45 @@ describe("RecipeGate — TBC content phase", function()
 
 	it("passes a recipe carrying no phase tag at all", function()
 		assert.is_true(gate(ALCHEMY, 28596, { name = "Untagged pattern" }))
+	end)
+end)
+
+--- The DEFAULT, which is the half that shipped broken. Every test above sets
+--- the phase explicitly, so none of them could ever have caught a wrong default
+--- -- the filter was measured working while nobody checked what it was set to.
+describe("RecipeGate -- the TBC phase filter is OPT-IN, not opt-out", function()
+	before_each(function()
+		ns.isVanilla, ns.isTBC = false, true
+		env.spellsExist(28596)
+	end)
+
+	it("hides NOTHING on a profile that has never touched the setting", function()
+		-- Reported as "a lot of missing recipes" on TBC. The default was 2,
+		-- described in the code as the live state "as of v0.5.4", with a plan to
+		-- patch it forward each phase that never happened. Measured against the
+		-- shipped data: it hid 194 of 2170 TBC recipes, 109 at phase 3 and 85 at
+		-- phase 4, across every profession.
+		ns.lib.db.profile.tbcAnniversaryPhase = nil
+		assert.is_true(gate(ALCHEMY, 28596, { name = "Sunwell pattern", phase = 4 }))
+		assert.is_true(gate(ALCHEMY, 28596, { name = "Black Temple pattern", phase = 3 }))
+	end)
+
+	it("ships a DB default that hides nothing either", function()
+		-- Belt and braces, and the two halves really are separate: the fallback
+		-- above only fires for a profile with no value written, while a fresh
+		-- install gets the AceDB default. Them disagreeing is how this comes
+		-- back. Read the same way tooltipwrap_spec reads its defaults.
+		local defaults = ns.SETTINGS_DEFAULTS or (ns.lib and ns.lib.db
+		                 and ns.lib.db.defaults and ns.lib.db.defaults.profile)
+		assert.is_table(defaults)
+		assert.equal(4, defaults.tbcAnniversaryPhase)
+	end)
+
+	it("still filters once the user opts in", function()
+		ns.lib.db.profile.tbcAnniversaryPhase = 2
+		local ok, why = gate(ALCHEMY, 28596, { name = "Sunwell pattern", phase = 4 })
+		assert.is_false(ok)
+		assert.equal("phase", why)
 	end)
 end)
 

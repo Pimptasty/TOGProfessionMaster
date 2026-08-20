@@ -98,9 +98,12 @@ describe("crafters line", function()
 
 	it("skips Bind-on-Pickup items, which can't be traded anyway", function()
 		crafter(MATE)
-		_G.GetItemInfo = function()
+		-- Both spellings: Tooltip.lua reads the BOP flag through
+		-- addon.Item.GetInfo, which prefers C_Item and would not see a stub
+		-- written only to the bare global. See env.itemAPI.
+		env.itemAPI("GetItemInfo", function()
 			return "Soulbound", "link", 1, 60, 60, "", "", 1, "", "", 0, 0, 0, 1
-		end
+		end)
 		local t = fakeTooltip(POTION)
 		Tooltip.Tooltip.AppendCrafters(t, POTION)
 		assert.is_true(allText(t):find("Bob", 1, true) == nil)

@@ -44,7 +44,7 @@ local BIND_ON_PICKUP = 1
 
 local function isBoPItem(itemId)
     if type(itemId) ~= "number" then return false end
-    local bindType = select(14, GetItemInfo(itemId))
+    local bindType = select(14, addon.Item.GetInfo(itemId))
     return bindType == BIND_ON_PICKUP
 end
 
@@ -167,7 +167,7 @@ end
 -- when they were needed and Auctioneer was never queried at all.
 local function auctioneerLinks(itemId)
     local links = {}
-    local itemLink = select(2, GetItemInfo(itemId))
+    local itemLink = select(2, addon.Item.GetInfo(itemId))
     if type(itemLink) == "string" and itemLink ~= "" then links[#links + 1] = itemLink end
     -- Canonical WoW itemstring form (8 fields) tends to sanitize/parse
     -- consistently across pricing addons.
@@ -601,7 +601,7 @@ function Price.GetVendorSell(itemId)
 
     -- A type check rather than a truthiness test: 0 is a real answer for an item
     -- no vendor will buy, and must not render as a price.
-    local sell = select(11, GetItemInfo(itemId))
+    local sell = select(11, addon.Item.GetInfo(itemId))
     if type(sell) == "number" and sell > 0 then return sell, "vendor-sell-client" end
 
     local itemDB = addon.GetItemDB and addon:GetItemDB()

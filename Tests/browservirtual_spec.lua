@@ -337,6 +337,22 @@ describe("row hover — which tooltip a recipe gets", function()
 		assert.is_truthy(table.concat(calls.lines, "\n"):find("Leatherworking: Barbaric Shoulders", 1, true))
 	end)
 
+	it("names a reagent the cache had not seen when the list was built, in the Reagents line", function()
+		-- The third draw site of the 2026-09-11 "Item #15417" report. The entry's
+		-- reagent table was built cold (placeholder inside, exactly as
+		-- GetRecipeReagents left it); the hover must resolve it, not print it.
+		ns2._profDB = { GetRecipeItem = function() return nil, false end,
+		                GetSyntheticRecipeScroll = function() return nil end }
+		ns2._itemDB = { GetName = function(_, id) return id == 15417 and "Devilsaur Leather" or nil end }
+		local tab = tabWith(recipes(1), 0)
+		hover(tab, entryFor(NO_SCROLL, {
+			reagents = { { itemId = 15417, count = 8, name = "Item #15417" } },
+		}))
+		local joined = table.concat(calls.lines, "\n")
+		assert.is_truthy(joined:find("Devilsaur Leather (8)", 1, true))
+		assert.is_nil(joined:find("Item #15417", 1, true))
+	end)
+
 	-- The three lines the game's own scroll tooltip opens with, in its order:
 	-- the requirement, "Already known" when it is, then the Use sentence. Ours
 	-- shipped without all three, each missing for a different reason, and the

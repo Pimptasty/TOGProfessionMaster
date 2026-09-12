@@ -433,6 +433,90 @@ describe("TOGBankClassic integration", function()
 		assert.is_false(ns.Bank.IsBanker(nil))
 	end)
 
+	-- TOGBankClassic v1.4.2, INV2-RETIRE-003 (peer-review thread 18f6cc11):
+	-- the per-alt `items` rows are gone -- not written, stripped on load -- and
+	-- the inventory is read through `Guild:GetAltItemTotal(altName, itemId)`.
+	-- These install THAT shape: an alt record with no `items` at all, and the
+	-- accessor answering.
+	describe("against a TOGBankClassic where alt.items is nil and GetAltItemTotal exists", function()
+		--- `store[altName][itemId] = count`, the way the V2 store answers.
+		local function installV2(store, banks, opts)
+			_G.TOGBankClassic_Guild = {
+				Info = { alts = {} },
+				GetBanks = function() return banks or {} end,
+				IsBank = function() return true end,
+				GetAltItemTotal = function(_, altName, itemId)
+					return store[altName] and store[altName][itemId] or 0
+				end,
+				NormalizeName = opts and opts.normalize,
+			}
+			for altName in pairs(store) do
+				_G.TOGBankClassic_Guild.Info.alts[altName] = { lastScan = 1 }   -- no items field
+			end
+		end
+
+		it("totals stock through the accessor when the rows are gone", function()
+			installV2({ Bank1 = { [2589] = 20 }, Bank2 = { [2589] = 12 } })
+			assert.equal(32, ns.Bank.GetStock(2589))
+			assert.equal(0,  ns.Bank.GetStock(4444))
+		end)
+
+		it("lists bankers through the accessor when the rows are gone", function()
+			installV2({ Zed = { [2589] = 3 }, Abe = { [2589] = 7 }, None = { [2589] = 0 } },
+			          { "Zed", "Abe", "None", "Ghost" })
+			local out = ns.Bank.GetBanksWithItem(2589)
+			assert.equal(2, #out)
+			assert.equal("Abe", out[1].name)
+			assert.equal(7,     out[1].count)
+			assert.equal("Zed", out[2].name)
+		end)
+
+		it("would have reported EMPTY everywhere on the old reader -- the failure the finding describes", function()
+			-- Same fixture, read the old way: nothing.
+			installV2({ Bank1 = { [2589] = 20 } }, { "Bank1" })
+			local legacy = 0
+			for _, alt in pairs(_G.TOGBankClassic_Guild.Info.alts) do
+				for _, e in ipairs(alt.items or {}) do if e.ID == 2589 then legacy = legacy + e.Count end end
+			end
+			assert.equal(0,  legacy)
+			assert.equal(20, ns.Bank.GetStock(2589))
+		end)
+
+		it("prefers the accessor over stale rows when a record carries both", function()
+			-- An older SavedVariable read by a newer client before the strip ran,
+			-- or a shim answering `items`: the accessor is the truth either way.
+			installV2({ Bank1 = { [2589] = 20 } }, { "Bank1" })
+			_G.TOGBankClassic_Guild.Info.alts.Bank1.items = { { ID = 2589, Count = 999 } }
+			assert.equal(20, ns.Bank.GetStock(2589))
+			assert.equal(20, ns.Bank.GetBanksWithItem(2589)[1].count)
+		end)
+
+		it("normalizes the roster name before asking the store, and reports the roster name back", function()
+			-- GetBanks hands out roster names; the store is keyed by TOGBank's
+			-- normalized form. The player sees the name GetBanks gave.
+			installV2({ ["Abe-Testrealm"] = { [2589] = 7 } }, { "Abe" },
+			          { normalize = function(_, n) return n .. "-Testrealm" end })
+			local out = ns.Bank.GetBanksWithItem(2589)
+			assert.equal(1,     #out)
+			assert.equal("Abe", out[1].name)
+			assert.equal(7,     out[1].count)
+		end)
+
+		it("still opens the request dialog's gate on accessor-reported stock", function()
+			-- ShowRequestDialog sums GetBanksWithItem into totalStock; with the
+			-- rows gone that sum was 0 and the dialog refused every request.
+			local said
+			_G.DEFAULT_CHAT_FRAME = { AddMessage = function(_, msg) said = msg end }
+			installV2({ Bank1 = { [111] = 1 } }, { "Bank1" })
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			assert.is_true(said:find("No bankers", 1, true) ~= nil)
+			said = nil
+			installV2({ Bank1 = { [2589] = 5 } }, { "Bank1" })
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			assert.is_nil(said)
+		end)
+	end)
+
 	it("refuses to open a request dialog when nobody stocks the item", function()
 		local said
 		_G.DEFAULT_CHAT_FRAME = { AddMessage = function(_, msg) said = msg end }

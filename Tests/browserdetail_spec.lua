@@ -14,7 +14,7 @@
 package.path = "./Tests/?.lua;" .. package.path
 local env = require("env_togpm")
 
-local ns, Ace, BT, frames, L
+local ns, Ace, BT, L
 local ME   = "Testchar-Testrealm"
 local MATE = "Bob-Testrealm"
 
@@ -33,7 +33,7 @@ setup(function()
 end)
 
 before_each(function()
-	frames = env.installFrames()
+	env.installFrames()
 	env.resetDb()
 	env.roster({
 		{ name = "Testchar", isOnline = true },
@@ -346,5 +346,203 @@ describe("the Known By list", function()
 			{ name = "Bob", charKey = MATE, online = true },
 		} }))
 		assert.is_truthy(shownCrafterRows(tab)[1]:GetScript("OnClick"))
+	end)
+end)
+
+-- Reported in game 2026-09-11: Devilsaur Gauntlets drew "Rugged Leather",
+-- "Rune Thread" and "Item #15417" -- with Devilsaur Leather's REAL icon beside
+-- the placeholder. These drive the whole path the screenshot came from: the
+-- reagent table built by the real addon:GetRecipeReagents while the item cache
+-- is cold, then drawn by the real DrawDetail, then read back off the fontstring
+-- a player would see. reagentname_spec pins the resolver; this pins that the
+-- panel actually calls it.
+describe("a reagent the client had not cached when the list was built", function()
+	local PROF, SPELL = 165, 23799            -- Leatherworking, Devilsaur Gauntlets
+	local DEVILSAUR, RUGGED = 15417, 8170
+	local LINK = "|cffffffff|Hitem:15417::::::::60:::::|h[Devilsaur Leather]|h|r"
+	local savedIdb
+
+	local function itemDB(names)
+		return {
+			GetName = function(_, id) return names[id] end,
+			GetLink = function(_, id) return names[id] and ("|Hitem:" .. id .. "|h[" .. names[id] .. "]|h") or nil end,
+		}
+	end
+
+	--- The entry exactly as the browser builds it: reagents from the real
+	--- accessor, against whatever the cache and LibItemDB hold RIGHT NOW.
+	local function gauntlets()
+		return entryWith({ id = SPELL, profId = PROF, name = "Devilsaur Gauntlets",
+		                   reagents = ns:GetRecipeReagents(PROF, SPELL) })
+	end
+
+	--- The reagent names on screen, as a set. Order is pairs()-order from the
+	--- recipe DB, so a spec asks "is this name drawn" rather than "is it first".
+	local function drawnNames(tab)
+		local out = {}
+		for _, rf in ipairs(shownReagentRows(tab)) do out[rf.nameLbl:GetText()] = true end
+		return out
+	end
+
+	before_each(function()
+		savedIdb = ns._itemDB
+		ns._itemDB = false
+		env.setRecipeDB({
+			[PROF] = { [SPELL] = { name = "Devilsaur Gauntlets",
+			                       reagents = { [DEVILSAUR] = 8, [RUGGED] = 30 } } },
+		})
+		-- Rugged Leather is cached, Devilsaur Leather is not -- the report's shape.
+		env.wow.items[RUGGED] = { name = "Rugged Leather", link = "|Hitem:8170|h[Rugged Leather]|h" }
+	end)
+
+	after_each(function()
+		ns._itemDB = savedIdb
+	end)
+
+	it("REPRODUCES the report without LibItemDB: cold at build, drawn as a number", function()
+		local tab = panel()
+		tab:DrawDetail(gauntlets())
+		local names = drawnNames(tab)
+		assert.is_true(names["Rugged Leather"])
+		assert.is_true(names["Item #15417"])
+	end)
+
+	it("draws LibItemDB's name instead of the number when the cache is cold", function()
+		ns._itemDB = itemDB({ [DEVILSAUR] = "Devilsaur Leather" })
+		local tab = panel()
+		tab:DrawDetail(gauntlets())
+		local names = drawnNames(tab)
+		assert.is_true(names["Rugged Leather"])
+		assert.is_true(names["Devilsaur Leather"])
+		assert.is_nil(names["Item #15417"])
+	end)
+
+	it("heals on the next draw once the cache is warm, and heals the entry the shopping list would save", function()
+		local tab = panel()
+		local entry = gauntlets()                       -- built cold: placeholder inside
+		tab:DrawDetail(entry)
+		assert.is_true(drawnNames(tab)["Item #15417"])
+
+		env.wow.items[DEVILSAUR] = { name = "Devilsaur Leather", link = LINK }
+		tab:DrawDetail(entry)                           -- same table, redrawn warm
+		local names = drawnNames(tab)
+		assert.is_true(names["Devilsaur Leather"])
+		assert.is_nil(names["Item #15417"])
+
+		-- This is the table the + button copies into Ace.db.char.shoppingList.
+		-- Before the fix it carried the placeholder to disk.
+		local saved
+		for _, r in ipairs(entry.reagents) do if r.itemId == DEVILSAUR then saved = r end end
+		assert.equal("Devilsaur Leather", saved.name)
+		assert.equal(LINK, saved.itemLink)
+	end)
+
+	it("heals a placeholder already sitting in the shopping-list SavedVariable", function()
+		-- Data written by a build BEFORE this fix: the placeholder is on disk with
+		-- no flag saying so. The expanded reagent row in the shopping-list
+		-- section must still draw the real name once anything can resolve it.
+		ns._itemDB = itemDB({ [DEVILSAUR] = "Devilsaur Leather" })
+		Ace.db.char.shoppingList[SPELL] = {
+			name = "Devilsaur Gauntlets", quantity = 1,
+			reagents = { { itemId = DEVILSAUR, count = 8, name = "Item #15417" } },
+		}
+		local tab = panel()
+		tab._slExpanded = { [SPELL] = true }
+		-- The AceGUI container: rows parent to .content, and the section sets the
+		-- widget's height when it is done laying out.
+		tab:FillShoppingListSection({ content = CreateFrame("Frame", nil, UIParent),
+		                              SetHeight = function() end })
+		local row = tab._slReagentPool[1]
+		assert.is_true(row:IsShown())
+		assert.equal("Devilsaur Leather", row.nameLbl:GetText())
+		assert.equal("Devilsaur Leather", Ace.db.char.shoppingList[SPELL].reagents[1].name)
+	end)
+end)
+
+-- Reported on Discord 2026-08-28, reproduced with ElvUI off: six Shadoweave
+-- recipes on the shopping list, all expanded, and the section drew every row at
+-- full height -- taller than the tab, so the column headers and the recipe
+-- list were pushed below the window's bottom edge. The section is now capped
+-- at a share of the tab's height and scrolls inside itself.
+describe("the shopping-list section against a window it would overflow", function()
+	local ROW = 14
+	local TAB_H = 300                         -- the tab container's live height
+	local CAP = math.floor(TAB_H * 0.4)       -- what the section may show
+
+	--- A tab whose container has a real height, and a section widget that
+	--- records the height the fill gives it -- the InlineGroup's role.
+	local function tabAndSection()
+		local tab = panel()
+		local cont = CreateFrame("Frame", nil, UIParent)
+		cont:SetHeight(TAB_H)
+		tab._container = { frame = cont }
+		local section = { content = CreateFrame("Frame", nil, UIParent), height = nil }
+		function section:SetHeight(h) self.height = h end
+		return tab, section
+	end
+
+	--- N recipes, each with `reagents` reagents, every one expanded.
+	local function listOf(n, reagents)
+		Ace.db.char.shoppingList = {}
+		local expanded = {}
+		for i = 1, n do
+			local rs = {}
+			for j = 1, reagents do rs[j] = { itemId = 1000 + j, count = j, name = "Reagent " .. j } end
+			Ace.db.char.shoppingList[100 + i] = { name = ("Shadoweave %02d"):format(i), quantity = 1, reagents = rs }
+			expanded[100 + i] = true
+		end
+		return expanded
+	end
+
+	it("REPRODUCES the report's row count and keeps the section inside the cap", function()
+		local tab, section = tabAndSection()
+		tab._slExpanded = listOf(6, 4)                 -- 6 headers + 24 reagent rows
+		tab:FillShoppingListSection(section)
+		local rows = 6 + 24
+		assert.equal(rows * ROW, tab._slContent:GetHeight())   -- every row still exists...
+		assert.equal(CAP + 40, section.height)                 -- ...but the section is capped
+		assert.is_true(tab._slSB:IsShown())
+		local _, maxScroll = tab._slSB:GetMinMaxValues()
+		assert.equal(rows * ROW - CAP, maxScroll)
+	end)
+
+	it("does not reserve a scrollbar or cap a list that fits", function()
+		local tab, section = tabAndSection()
+		tab._slExpanded = listOf(2, 1)                 -- 4 rows
+		tab:FillShoppingListSection(section)
+		assert.equal(4 * ROW + 40, section.height)
+		assert.is_false(tab._slSB:IsShown())
+		local _, maxScroll = tab._slSB:GetMinMaxValues()
+		assert.equal(0, maxScroll)
+	end)
+
+	it("scrolls the rows by the slider and clamps when the list shrinks", function()
+		local tab, section = tabAndSection()
+		tab._slExpanded = listOf(6, 4)
+		tab:FillShoppingListSection(section)
+		tab._slSB:SetValue(ROW * 5)
+		assert.equal(ROW * 5, tab._slSF:GetVerticalScroll())
+
+		-- Collapse everything: 6 rows fit, so the offset must come back to 0
+		-- rather than leave the rows scrolled out of an unscrollable section.
+		tab._slExpanded = {}
+		tab:FillShoppingListSection(section)
+		assert.equal(0, tab._slSF:GetVerticalScroll())
+		assert.is_false(tab._slSB:IsShown())
+	end)
+
+	it("falls back to a fixed row count before the tab has a height", function()
+		local tab = panel()                            -- no _container at all
+		assert.equal(ROW * 10, tab:ShoppingListMaxHeight())
+	end)
+
+	it("detaches the scroll frame from the pooled section on release", function()
+		local tab, section = tabAndSection()
+		tab._slExpanded = listOf(2, 1)
+		tab:FillShoppingListSection(section)
+		assert.equal(section.content, tab._slSF:GetParent())
+		tab:DetachShoppingListPool()
+		assert.equal(UIParent, tab._slSF:GetParent())
+		assert.is_false(tab._slSF:IsShown())
 	end)
 end)

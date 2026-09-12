@@ -148,6 +148,36 @@ function Warmer:Clear()
     wipe(self._queue)
 end
 
+-- ---------------------------------------------------------------------------
+-- Perf -- in-game timing record, read back with /togpm perf
+-- ---------------------------------------------------------------------------
+-- Reported from Discord, 2026-09-11: "getting a lag on open of about 3-5
+-- seconds". The offline suite times every tab's cold draw against the
+-- operator's real database at under 200 ms of Lua (Tests/openperf_spec.lua), so
+-- the seconds are somewhere the harness cannot run -- the client's per-item
+-- tooltip renders and server queries inside the Professions build, or the
+-- login load itself. The only instrument that can attribute them is one that
+-- runs in the client, and this is it: each timed section records a mark, the
+-- last 40 are kept, and /togpm perf prints them alongside the size of every
+-- SavedVariables section. A report that pastes that output carries a number.
+local Perf = { marks = {}, MAX = 40, scrapeMs = 0, scrapeN = 0 }
+addon.Perf = Perf
+
+--- Milliseconds, monotonic. debugprofilestop is the client's high-resolution
+--- clock; offline the harness has GetTime instead.
+function Perf.now()
+    if debugprofilestop then return debugprofilestop() end
+    return (GetTime and GetTime() or 0) * 1000
+end
+
+--- Record one timed section. `detail` is free text for the printout.
+function Perf.mark(label, ms, detail)
+    local m = Perf.marks
+    m[#m + 1] = { label = label, ms = ms, detail = detail, at = GetTime and GetTime() or 0 }
+    if #m > Perf.MAX then table.remove(m, 1) end
+    addon:DebugPrint(("perf: %s -- %.0f ms%s"):format(label, ms, detail and (" (" .. detail .. ")") or ""))
+end
+
 -- Convenient shorthand used throughout the addon files.
 -- `addon.lib:RegisterEvent(...)` → Ace's event system.
 -- `addon.lib:Print(...)` → prefixed chat output.
@@ -212,8 +242,12 @@ local GUILD_DB_DEFAULTS = {
                                --   accountChars above) to avoid the boolean/array
                                --   type conflict when the same charKey is both an
                                --   own char AND a broadcaster.
-        altGroups       = {},  -- [charKey] = { array of charKeys on same account }
-                               --   derived view, rebuilt from altClaims on receive
+        -- altGroups is deliberately NOT a default: it is a derived view of
+        -- altClaims ([charKey] = the account's array, keyed per MEMBER -- the
+        -- SAME array object as altClaims', not a copy; the purge relies on that)
+        -- that Scanner:RebuildAltGroups serves through a metatable so it never
+        -- reaches the SavedVariables. A default here would make AceDB rawset an
+        -- empty table on every login, which would shadow the view.
 
         -- Guild registry: maps tag → metadata. Tag is FNV-1a-32 hash of the
         -- guildKey ("Faction-GuildName") as 6 hex chars. Reserved tag "personal"
@@ -495,6 +529,7 @@ local SLASH_COMMANDS = {
     ["sync"]         = "ForceSync",
     ["status"]       = "PrintStatus",
     ["dsstatus"]     = "PrintDeltaSyncStatus",
+    ["perf"]         = "PrintPerf",
     ["versioncheck"] = "PrintVersionCheck",
     ["debug"]        = "ToggleDebug",
     ["craft"]        = "ToggleCraftingTakeover",
@@ -1679,8 +1714,60 @@ function Ace:PrintHelp()
     self:Print("  /togpm dumpprice <itemId|itemLink> \226\128\148 Dump full price diagnostics for an item")
     self:Print("  /togpm commtest [name] \226\128\148 Probe which addon-message channels the server relays")
     self:Print("  /togpm whyvisible <name> \226\128\148 Explain why a character is still shown (or hidden)")
+    self:Print("  /togpm perf         \226\128\148 Timings of the last opens and tab draws, and the saved data's size")
     self:Print("  /togpm debug        \226\128\148 " .. L["SlashHelpDebug"])
     self:Print("  /togpm help         \226\128\148 " .. L["SlashHelpHelp"])
+end
+
+--- /togpm perf -- what the last opens cost, and what the database weighs.
+---
+--- Two halves, because "lag on open" has two candidate homes. The marks are
+--- every timed section since login (window open, each tab draw, each
+--- synchronous Professions-list build with the tooltip-scrape share broken
+--- out), newest last. The sizes are entries per SavedVariables section --
+--- the login-load cost -- so a large one is visible without opening the file.
+function Ace:PrintPerf()
+    local P = addon.Perf
+    self:Print("Perf -- timed sections this session (newest last):")
+    if #P.marks == 0 then
+        self:Print("  (nothing timed yet -- open the window, then run this again)")
+    end
+    for _, m in ipairs(P.marks) do
+        self:Print(("  %6.0f ms  %s%s"):format(m.ms, m.label, m.detail and ("  " .. m.detail) or ""))
+    end
+    if P.scrapeN > 0 then
+        self:Print(("  item tooltip scrapes this session: %d, %.0f ms total, %.2f ms each")
+            :format(P.scrapeN, P.scrapeMs, P.scrapeMs / P.scrapeN))
+    end
+
+    local gdb = addon:GetGuildDb()
+    if not gdb then return end
+    local function n(t) local c = 0; for _ in pairs(t or {}) do c = c + 1 end; return c end
+    local function entries(t)     -- total across every sub-table
+        local c = 0
+        for _, sub in pairs(t or {}) do
+            if type(sub) == "table" then for _ in pairs(sub) do c = c + 1 end else c = c + 1 end
+        end
+        return c
+    end
+    local pairsN, recipesN = 0, 0
+    for _, prof in pairs(gdb.recipes or {}) do
+        for _, rd in pairs(prof) do
+            recipesN = recipesN + 1
+            pairsN = pairsN + n(rd.crafters)
+        end
+    end
+    self:Print("Perf -- saved data (entries; each is roughly one line of the SavedVariables file):")
+    self:Print(("  recipes: %d recipes, %d recipe-crafter pairs"):format(recipesN, pairsN))
+    self:Print(("  skills %d | cooldowns %d | hashes %d | lastScan %d | syncLog %d")
+        :format(entries(gdb.skills), entries(gdb.cooldowns), n(gdb.hashes), entries(gdb.lastScan), n(gdb.syncLog)))
+    self:Print(("  altClaims %d entries | altGroups %d entries (%s)")
+        :format(entries(gdb.altClaims), entries(gdb.altGroups),
+                rawget(gdb, "altGroups") and "WRITTEN to disk" or "derived, not written"))
+    local sv = addon.lib and addon.lib.db and addon.lib.db.factionrealm
+    if sv then
+        self:Print(("  ahPrices %d | vendorPrices %d"):format(n(sv.ahPrices), n(sv.vendorPrices)))
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -2298,30 +2385,28 @@ function addon:IsVisibleCrafter(charKey, crafterTag)
     return false
 end
 
--- Return true if charKey is in any altGroup whose owner OR any sibling is
+-- Return true if charKey shares an account group with a character who is
 -- currently in the guild roster. Protects bank alts of in-guild mains.
+--
+-- `gdb.altGroups` is keyed by MEMBER: Scanner:RebuildAltGroups files every
+-- member of a claim under its own key, all pointing at the one array. So the
+-- group a character belongs to is one lookup, and this used to walk the entire
+-- table instead -- every key, every array -- to find the row it could have
+-- indexed. Measured against the operator's database (Tests/openperf_spec.lua):
+-- 500 us per call over 997 keys / 14,095 entries, once per not-in-roster
+-- crafter per list build. The walk's owner branch also matched a character
+-- against ITSELF (`ownerKey == charKey` -> IsInGuild(charKey)), which was audit
+-- finding 36: `/togpm whyvisible` reported any guild member as "alt of an
+-- in-roster character". Excluding self below is what the sibling loop always
+-- did; the owner branch had no equivalent.
 function addon:IsAltOfInRosterCharacter(charKey)
     local gdb = self:GetGuildDb()
-    local altGroups = gdb and gdb.altGroups
-    if not altGroups then return false end
+    local group = gdb and gdb.altGroups and gdb.altGroups[charKey]
+    if type(group) ~= "table" then return false end
     local GC = self.Scanner and self.Scanner.GuildRoster
     if not GC then return false end
-
-    for ownerKey, alts in pairs(altGroups) do
-        local belongsHere = (ownerKey == charKey)
-        if not belongsHere and type(alts) == "table" then
-            for _, altCk in ipairs(alts) do
-                if altCk == charKey then belongsHere = true; break end
-            end
-        end
-        if belongsHere then
-            if GC:IsInGuild(ownerKey) then return true end
-            if type(alts) == "table" then
-                for _, altCk in ipairs(alts) do
-                    if altCk ~= charKey and GC:IsInGuild(altCk) then return true end
-                end
-            end
-        end
+    for _, altCk in ipairs(group) do
+        if altCk ~= charKey and GC:IsInGuild(altCk) then return true end
     end
     return false
 end
@@ -2395,24 +2480,6 @@ function addon:ExplainVisibility(args)
     line("=> IsVisibleCrafter (current-guild tag)", self:IsVisibleCrafter(name, myTag))
     line("=> IsInCurrentGuildScope", self:IsInCurrentGuildScope(name))
     Ace:Print("  (a 'false' IsVisibleCrafter also queues them for the timed purge sweep)")
-end
-
--- Return true if charKey appears as an alt in someone's accountChars / altGroups
--- list. Used by the visibility gate to keep alts of in-guild members alive
--- even when the alt itself isn't in the roster.
-function addon:IsAltOfKnownCharacter(charKey)
-    local gdb = self:GetGuildDb()
-    local altGroups = gdb and gdb.altGroups
-    if not altGroups then return false end
-    for ownerKey, alts in pairs(altGroups) do
-        if ownerKey == charKey then return true end   -- own owner key
-        if type(alts) == "table" then
-            for _, altCk in ipairs(alts) do
-                if altCk == charKey then return true end
-            end
-        end
-    end
-    return false
 end
 
 --- Tell every guild-scoped view that roster truth has changed, so it re-runs its
@@ -2499,7 +2566,14 @@ function addon:RunPendingPurge()
             if gdb.syncTimes       then gdb.syncTimes[charKey]       = nil end
             if gdb.altGroups then
                 gdb.altGroups[charKey] = nil
-                -- Also strip charKey from other owners' alt arrays.
+                -- Also strip charKey from other owners' alt arrays. THIS IS NOT
+                -- HOUSEKEEPING ON A CACHE: every array in altGroups IS the
+                -- corresponding altClaims array (RebuildAltGroups aliases, it does
+                -- not copy -- audit finding 35), so this loop is what removes the
+                -- purged character from OTHER owners' authoritative claims. The
+                -- altClaims line below only covers them as an owner. Make
+                -- RebuildAltGroups copy and this purge silently stops working;
+                -- purge_spec's "alt in another owner's claim" case is the guard.
                 for _, alts in pairs(gdb.altGroups) do
                     if type(alts) == "table" then
                         for i = #alts, 1, -1 do
@@ -2509,9 +2583,10 @@ function addon:RunPendingPurge()
                 end
             end
             -- altClaims is the OWNER-AUTHORITATIVE alt-group DATA (altGroups above is
-            -- only the derived view). Delete it too — otherwise the accountchars leaf
-            -- hash we drop below just gets re-minted from this surviving data on the
-            -- next RebuildOnFirstLoad, resurrecting the purged character. Also clear its
+            -- the per-member index over the SAME arrays, not a copy). Delete the
+            -- owner entry too — otherwise the accountchars leaf hash we drop below
+            -- just gets re-minted from this surviving data on the next
+            -- RebuildOnFirstLoad, resurrecting the purged character. Also clear its
             -- lastScan so nothing re-stamps a hash for a character we've removed.
             if gdb.altClaims then gdb.altClaims[charKey] = nil end
             if gdb.lastScan  then gdb.lastScan[charKey]  = nil end
@@ -2602,23 +2677,58 @@ function addon:GetRecipeIcon(profId, recipeId)
     return 134400  -- generic question-mark fallback
 end
 
+local function reagentPlaceholder(itemId) return "Item #" .. itemId end
+
+-- A reagent's display name, resolved and written back onto the reagent table.
+--
+-- Order: the client cache (localized, what the player sees everywhere else),
+-- then LibItemDB's shipped name (present whether or not this client has ever
+-- seen the item), then the "Item #<id>" placeholder as the last resort.
+--
+-- Why it writes back and why every draw site calls it rather than reading
+-- `r.name`: the reagent tables are built once, when the recipe list is, and a
+-- `GetItemInfo` miss at that moment used to freeze the placeholder into the
+-- table for good. The icon beside it was re-fetched live at draw time, so the
+-- panel showed a real Devilsaur Leather icon next to "Item #15417" -- and the
+-- shopping list then persisted that name into SavedVariables, and the [AH]
+-- button searched the auction house for the literal string. A placeholder is
+-- retried on every call, so a table built cold heals the first time the cache
+-- is warm, and a name LibItemDB knows never reaches the screen as a number.
+function addon:ResolveReagentName(r)
+    if not r then return "" end
+    local id = r.itemId
+    if r.name and r.name ~= "" and not (id and r.name == reagentPlaceholder(id)) then
+        return r.name
+    end
+    if not id then return r.name or "" end
+    local name, link = addon.Item.GetInfo(id)
+    if not name then
+        local db = self:GetItemDB()
+        if db and db.GetName then name = db:GetName(id) end
+        if not link and db and db.GetLink then link = db:GetLink(id) end
+    end
+    if name then
+        r.name = name
+        if not r.itemLink and link then r.itemLink = link end
+        return name
+    end
+    r.name = reagentPlaceholder(id)
+    return r.name
+end
+
 -- Return reagents as the array-of-tables form GUI consumers expect:
 --   { { itemId, count, name, itemLink }, ... }
 -- The shipped addon.recipeDB stores { [itemId] = count }, so we convert on
--- read. GetItemInfo populates name+link; nil values are fine (consumers
--- handle uncached items by retrying via Item:CreateFromItemID).
+-- read. Names come from ResolveReagentName above; a nil itemLink is fine
+-- (consumers handle uncached items by retrying via Item:CreateFromItemID).
 function addon:GetRecipeReagents(profId, recipeId)
     local m = self:GetRecipeMeta(profId, recipeId)
     if not m or not m.reagents then return nil end
     local arr = {}
     for itemId, count in pairs(m.reagents) do
-        local name, link = addon.Item.GetInfo(itemId)
-        arr[#arr + 1] = {
-            itemId   = itemId,
-            count    = count,
-            name     = name or ("Item #" .. itemId),
-            itemLink = link,
-        }
+        local r = { itemId = itemId, count = count }
+        self:ResolveReagentName(r)
+        arr[#arr + 1] = r
     end
     return arr
 end
@@ -2723,6 +2833,9 @@ function addon:GetItemTooltipSearchText(itemId)
         _ttScraper = CreateFrame("GameTooltip", "TOGPMSearchScraper", UIParent, "GameTooltipTemplate")
     end
     if not _ttScraper.SetItemByID then return nil end
+    -- Timed: this is the one client-side cost per recipe in a list build, and
+    -- the offline suite cannot see it. /togpm perf reports the running total.
+    local t0 = Perf.now()
     _ttScraper:SetOwner(UIParent, "ANCHOR_NONE")
     _ttScraper:ClearLines()
     _ttScraper:SetItemByID(itemId)
@@ -2732,6 +2845,8 @@ function addon:GetItemTooltipSearchText(itemId)
         local txt = fs and fs:GetText()
         if txt and txt ~= "" then parts[#parts + 1] = txt:lower() end
     end
+    Perf.scrapeMs = Perf.scrapeMs + (Perf.now() - t0)
+    Perf.scrapeN  = Perf.scrapeN + 1
     local s = (#parts > 0) and table.concat(parts, " ") or false
     self._itemTTText[itemId] = s
     return s or nil

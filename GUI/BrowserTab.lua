@@ -1175,10 +1175,76 @@ end
 -- Shopping list helpers
 -- ---------------------------------------------------------------------------
 
+-- The shopping-list section may show at most this share of the tab's height;
+-- past it the rows scroll inside the section instead of pushing the column
+-- headers and the recipe list off the bottom of the window. Reported on
+-- Discord 2026-08-28 (six Shadoweave recipes expanded, ~28 rows: the section
+-- was taller than the tab and the recipe list drew below the frame).
+local SL_MAX_SHARE = 0.4
+local SL_MIN_ROWS  = 4
+local SL_SB_WIDTH  = 16   -- right margin reserved for the slider when it shows
+
+-- Tallest the section's row area may be right now. Derived from the tab
+-- container's live height so a taller window shows more rows; falls back to
+-- a fixed row count before the first layout has given the container a size.
+function BrowserTab:ShoppingListMaxHeight()
+    local frame = self._container and self._container.frame
+    local h = frame and frame.GetHeight and frame:GetHeight() or 0
+    if h and h > 0 then
+        return math.max(ROW_HEIGHT * SL_MIN_ROWS, math.floor(h * SL_MAX_SHARE))
+    end
+    return ROW_HEIGHT * 10
+end
+
+-- Lazily build the persistent scroll frame the shopping-list rows live in and
+-- attach it to `host` (the InlineGroup's content). Owned by this tab, not by
+-- the pooled InlineGroup: it is re-parented on every fill and detached on the
+-- InlineGroup's release, exactly like the detail panel's `_detailOuter`.
+-- Returns the scroll child, which is what the pooled rows are parented to.
+function BrowserTab:EnsureShoppingListScroll(host)
+    local sf = self._slSF
+    if not sf then
+        sf = CreateFrame("ScrollFrame", nil, host)
+        self._slSF = sf
+
+        local content = CreateFrame("Frame", nil, sf)
+        content:SetHeight(ROW_HEIGHT)
+        sf:SetScrollChild(content)
+        self._slContent = content
+        -- A scroll child never inherits its parent's width; track it so the
+        -- rows' TOPLEFT/TOPRIGHT anchors span the section.
+        sf:SetScript("OnSizeChanged", function(_, w)
+            if w and w > 0 then content:SetWidth(w) end
+        end)
+
+        local sb = CreateFrame("Slider", nil, sf, "UIPanelScrollBarTemplate")
+        sb:SetPoint("TOPLEFT",    sf, "TOPRIGHT", 2, -16)
+        sb:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", 2, 16)
+        sb:SetMinMaxValues(0, 0)
+        sb:SetValueStep(ROW_HEIGHT)
+        if sb.SetObeyStepOnDrag then sb:SetObeyStepOnDrag(true) end
+        sb:SetScript("OnValueChanged", function(_, val) sf:SetVerticalScroll(val) end)
+        sf:SetScript("OnMouseWheel", function(_, delta)
+            sb:SetValue(sb:GetValue() - delta * ROW_HEIGHT * 3)
+        end)
+        sb:Hide()
+        self._slSB = sb
+    end
+    sf:SetParent(host)
+    sf:ClearAllPoints()
+    sf:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
+    sf:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", 0, 0)
+    sf:Show()
+    local w = host.GetWidth and host:GetWidth() or 0
+    if w and w > 0 then self._slContent:SetWidth(w) end
+    return self._slContent
+end
+
 function BrowserTab:FillShoppingListSection(container)
     local bl = Ace.db.char.shoppingList
 
-    local parent = container.content or container.frame
+    local host   = container.content or container.frame
+    local parent = self:EnsureShoppingListScroll(host)
 
     if not self._slPool        then self._slPool        = {} end
     if not self._slReagentPool then self._slReagentPool = {} end
@@ -1488,7 +1554,10 @@ function BrowserTab:FillShoppingListSection(container)
                     rf.icon:SetTexture(nil)
                 end
 
-                rf.nameLbl:SetText(r.name or "")
+                -- Same draw-time resolution as the detail pane; this is the
+                -- table the shopping list PERSISTS, so a placeholder here
+                -- would otherwise survive a reload.
+                rf.nameLbl:SetText(addon:ResolveReagentName(r))
 
                 local rItemId   = ResolveReagentItemId(r)
                 local rItemLink = ResolveReagentItemLink(r)
@@ -1558,8 +1627,20 @@ function BrowserTab:FillShoppingListSection(container)
         end
     end
 
-    local totalH = math.max(yOffset, ROW_HEIGHT)
-    container:SetHeight(totalH + 40)
+    -- The rows live in the scroll child at their full height; the section
+    -- itself is capped, and the difference is what the slider scrolls.
+    local totalH   = math.max(yOffset, ROW_HEIGHT)
+    local visibleH = math.min(totalH, self:ShoppingListMaxHeight())
+    parent:SetHeight(totalH)
+    container:SetHeight(visibleH + 40)
+
+    local overflow = math.max(0, totalH - visibleH)
+    local sf, sb = self._slSF, self._slSB
+    sf:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", overflow > 0 and -SL_SB_WIDTH or 0, 0)
+    sb:SetMinMaxValues(0, overflow)
+    if sb:GetValue() > overflow then sb:SetValue(overflow) end
+    if overflow > 0 then sb:Show() else sb:Hide() end
+    sf:SetVerticalScroll(sb:GetValue())
 end
 
 function BrowserTab:RefreshShoppingList()
@@ -1644,7 +1725,15 @@ function BrowserTab:GetFullList(profId, viewMode, showAll)
     local key    = listCacheKey(profId, viewMode, showAll)
     local cached = self._listCache[key]
     if cached then return cached end
+    -- A miss is the one place this tab can stall a frame the player is waiting
+    -- on, so it is timed, with the tooltip-scrape share broken out: that share
+    -- is the client's cost and the only part the offline suite cannot measure.
+    local P = addon.Perf
+    local t0, scrape0, n0 = P.now(), P.scrapeMs, P.scrapeN
     local full = BuildFullList(profId, viewMode, { showAll = showAll })
+    P.mark("Professions list build (synchronous, cache miss)", P.now() - t0,
+        ("%d rows, key %s; %d tooltip scrapes = %.0f ms of it"):format(
+            #full, tostring(key), P.scrapeN - n0, P.scrapeMs - scrape0))
     self._listCache[key] = full
     return full
 end
@@ -1933,7 +2022,7 @@ function BrowserTab:BuildPool(parent)
             elseif entry.reagents and #entry.reagents > 0 then
                 local parts = {}
                 for _, r in ipairs(entry.reagents) do
-                    table.insert(parts, r.name .. " (" .. r.count .. ")")
+                    table.insert(parts, addon:ResolveReagentName(r) .. " (" .. r.count .. ")")
                 end
                 local reagentLine = (SPELL_REAGENTS or "Reagents:") .. " " .. table.concat(parts, ", ")
                 -- Titled like the scroll the game does not have, so the list has
@@ -2173,6 +2262,8 @@ end
 function BrowserTab:DetachShoppingListPool()
     addon.GUI.DetachPool(self._slPool)
     addon.GUI.DetachPool(self._slReagentPool)
+    -- The rows' scroll frame is parented to the InlineGroup's content too.
+    addon.GUI.DetachPool(self._slSF)
 end
 
 -- ---------------------------------------------------------------------------
@@ -2532,7 +2623,10 @@ function BrowserTab:DrawDetail(entry)
             else
                 rf.icon:SetTexture(nil)
             end
-            rf.nameLbl:SetText(r.name or "")
+            -- Resolved at draw time, not read from the table: see
+            -- addon:ResolveReagentName for why a name frozen at build time
+            -- rendered as "Item #15417" beside a real icon.
+            rf.nameLbl:SetText(addon:ResolveReagentName(r))
             rf.countLbl:SetText("|cffffffff\195\151" .. (r.count or 1) * mult .. "|r")
 
             if rLink or rItemId then

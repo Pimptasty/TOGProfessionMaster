@@ -146,6 +146,11 @@ ignore = { "542", "212/self", "211/_.*" }
 -- Vendored libraries and the shared test harness are not ours to lint.
 exclude_files = { "libs", "Tests/wowapi" }
 
+-- Locale files are one player-facing sentence per line, by design: a string
+-- wrapped into concatenations is harder to translate and harder to read than
+-- a long line. Every other check still applies to them.
+files["Locale"] = { ignore = { "631" } }
+
 files["Tests"] = {
 	std = "lua51+busted",
 	ignore = { "143/assert" },

@@ -176,3 +176,39 @@ describe("every TOC loads SharedWidgets before the tabs that use it", function()
 			"these read addon.UI but are not in the CONSUMERS ordering check")
 	end)
 end)
+
+-- Audit finding 34 (GuildRoster's review, 2026-08-26): `GuildRoster` was in
+-- `## Dependencies:` on the Era TOC and on NONE of the other four. Dependencies
+-- is a LOAD-ORDER declaration; undeclared, the client may load us before the
+-- GuildRoster addon, `LibStub("LibGuildRoster-1.0", true)` answers nil at login,
+-- and guild sync is off for the whole session with one DebugPrint as the only
+-- trace. Found on 2026-09-11's release vet, five months after the flavours
+-- diverged. So: every dependency-shaped header is asserted identical across
+-- the five TOCs, and the libraries the code hard-requires are asserted present.
+describe("every TOC declares the same dependencies", function()
+	local function header(path, key)
+		for line in read(path):gmatch("[^\r\n]+") do
+			local v = line:match("^##%s*" .. key .. ":%s*(.-)%s*$")
+			if v then return v end
+		end
+		return nil
+	end
+
+	for _, key in ipairs({ "Dependencies", "OptionalDeps" }) do
+		it("agrees on ## " .. key .. " in all five", function()
+			local base = header(TOCS[1], key)
+			assert.is_truthy(base, key .. " missing from " .. TOCS[1])
+			for i = 2, #TOCS do
+				assert.equal(base, header(TOCS[i], key), TOCS[i] .. " differs on ## " .. key)
+			end
+		end)
+	end
+
+	it("hard-requires every addon the code resolves through LibStub without a fallback", function()
+		local deps = header(TOCS[1], "Dependencies")
+		for _, name in ipairs({ "Ace3", "DeltaSync", "GuildRoster", "ProfessionDB", "ItemDB",
+		                        "AceCommQueue-1.0", "VersionCheck-1.0" }) do
+			assert.is_truthy(deps:find(name, 1, true), name .. " is not in ## Dependencies")
+		end
+	end)
+end)

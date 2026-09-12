@@ -1582,20 +1582,14 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
 
     -- Pre-check bank stock now so we can compute exact inner widths before
     -- creating any widgets (avoids dynamic resize after layout).
+    -- Through addon.Bank, not a private walk of TOGBankClassic_Guild.Info.alts:
+    -- this was a third copy of GetStock's loop, and it read `alt.items`, which
+    -- TOGBank v1.4.2 no longer writes (INV2-RETIRE-003). One reader,
+    -- one place to track their API.
     local itemId   = row.reagentItemId
     local hasBank  = false
     if itemId and addon:IsAddOnLoaded("TOGBankClassic") then
-        local TOG = _G["TOGBankClassic_Guild"]
-        if TOG and TOG.Info and TOG.Info.alts then
-            for _, alt in pairs(TOG.Info.alts) do
-                for _, entry in ipairs(alt.items or {}) do
-                    if entry.ID == itemId and (entry.Count or 0) > 0 then
-                        hasBank = true; break
-                    end
-                end
-                if hasBank then break end
-            end
-        end
+        hasBank = addon.Bank.GetStock(itemId) > 0
     end
 
     -- Pre-check whether the AH scanner has cached listings for this row's

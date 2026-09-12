@@ -358,7 +358,9 @@ function Engine:GetRecipeList()
                         link = link, color = linkColour(link),
                         requiredSkill = meta and meta.requiredSkill or nil,
                         tiers = meta and meta.difficulty or nil,  -- {orange,yellow,green,grey}
-                        effect = meta and (addon:GetCraftedItemStatText(meta.craftedItemId) or meta.effect) or nil,  -- crafted consumable's use-effect buff (LibItemDB) wins; enchant effect (ProfessionDB) is the fallback
+                        -- crafted consumable's use-effect buff (LibItemDB) wins;
+                        -- enchant effect (ProfessionDB) is the fallback
+                        effect = meta and (addon:GetCraftedItemStatText(meta.craftedItemId) or meta.effect) or nil,
                     }
                 end
             end
@@ -389,7 +391,9 @@ function Engine:GetRecipeList()
                         link = link, color = linkColour(link),
                         requiredSkill = meta and meta.requiredSkill or nil,
                         tiers = meta and meta.difficulty or nil,  -- {orange,yellow,green,grey}
-                        effect = meta and (addon:GetCraftedItemStatText(meta.craftedItemId) or meta.effect) or nil,  -- crafted consumable's use-effect buff (LibItemDB) wins; enchant effect (ProfessionDB) is the fallback
+                        -- crafted consumable's use-effect buff (LibItemDB) wins;
+                        -- enchant effect (ProfessionDB) is the fallback
+                        effect = meta and (addon:GetCraftedItemStatText(meta.craftedItemId) or meta.effect) or nil,
                     }
                 end
             end
@@ -577,6 +581,10 @@ function Engine:OnEvent(event)
         self._craftOpen = true
         if CloseTradeSkill then CloseTradeSkill() end
         self._isCraftWindow = true
+        if self:IsPetTrainingSession() then
+            self:HandOffPetTraining()
+            return
+        end
         self:OnProfessionShow()
 
     elseif event == "TRADE_SKILL_CLOSE" then
@@ -619,6 +627,46 @@ function Engine:ScheduleClose()
     else
         check()  -- no timer API (defensive): preserve the old immediate close
     end
+end
+
+-- ---------------------------------------------------------------------------
+-- Beast Training: a craft session that is NOT a profession
+-- ---------------------------------------------------------------------------
+-- On Vanilla/TBC a hunter's Beast Training opens the SAME window as Enchanting
+-- -- Blizzard_CraftUI's CraftFrame -- and fires the same CRAFT_SHOW. Reported
+-- from Discord, 2026-09-10: "hunter training skill conflicts in classic with
+-- TOGPM causing it to not be usable to train pets". With the crafting takeover
+-- on, Init has unregistered CRAFT_SHOW from UIParent and CraftFrame, so the
+-- only window that can teach a pet never appears, and our Crafting tab opens
+-- on a session it cannot read -- GetOpenInfo returns nil, because there is no
+-- skill line. The hunter is left with nothing.
+--
+-- How the game itself tells them apart, from Blizzard_CraftUI.lua (Vanilla
+-- :101-116, TBC :136-151): `GetCraftDisplaySkillLine()` returns the skill name
+-- for a profession and NIL for Beast Training, and CraftFrame hides its rank
+-- bar on exactly that nil. Its rows carry a `trainingPointCost` too, but the
+-- skill line is the check Blizzard's own frame makes, so it is the one here.
+-- The Scanner already keys on the same nil (ScanCraftSkillInto).
+function Engine:IsPetTrainingSession()
+    if not self._isCraftWindow or not GetCraftDisplaySkillLine then return false end
+    local name = GetCraftDisplaySkillLine()
+    return name == nil or name == ""
+end
+
+-- Give the session straight back to Blizzard's window and take no part in it:
+-- no tab, no toggle button, no "last UI" record, no foreign-window suppression.
+-- In hands-off mode UIParent's handler was never unregistered and has already
+-- shown the frame, so there is nothing to summon. The session flags stay set
+-- so CRAFT_CLOSE unwinds through the normal path.
+function Engine:HandOffPetTraining()
+    self._sessionOpen  = true
+    self._tabDriven    = false      -- the OnShow suppress hook must not hide it
+    self._autoOpened   = false
+    self._showingDefault = true
+    if not self:IsHandsOff() and UIParent_OnEvent then
+        UIParent_OnEvent(UIParent, "CRAFT_SHOW")
+    end
+    self:FireUpdate()
 end
 
 -- ---------------------------------------------------------------------------

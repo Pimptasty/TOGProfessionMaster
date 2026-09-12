@@ -618,10 +618,17 @@ function M.resetDb()
 	-- so without this the NEXT test inherits a missing table and fails somewhere
 	-- unrelated to what it is testing.
 	for _, key in ipairs({ "recipes", "skills", "cooldowns", "specializations",
-	                       "altGroups", "altClaims", "accountChars", "lastScan",
+	                       "altClaims", "accountChars", "lastScan",
 	                       "hashes", "pendingPurge", "guildRegistry" }) do
 		if type(g[key]) ~= "table" then g[key] = {} end
 	end
+	-- altGroups is a derived view served through a metatable once
+	-- Scanner:RebuildAltGroups has run (so it never reaches the SV), which means
+	-- the raw-key wipe above cannot see it and the skeleton loop would find it
+	-- "already a table". Assign it outright: a plain set before the metatable
+	-- exists, a side-table replacement after. Either way the next test starts
+	-- with an empty view, exactly as production does after a rebuild.
+	g.altGroups = {}
 	return g
 end
 

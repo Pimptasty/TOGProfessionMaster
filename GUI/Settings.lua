@@ -316,6 +316,26 @@ local OPTIONS = {
             end,
         },
 
+        -- Background opacity: the window's fills only, so the contents stay
+        -- readable over the world. Applied live when the window is open.
+        windowOpacity = {
+            name      = L["SettingsWindowOpacity"],
+            desc      = L["SettingsWindowOpacityDesc"],
+            type      = "range",
+            order     = 4.6,
+            min       = 0.2,
+            max       = 1,
+            step      = 0.05,
+            isPercent = true,
+            -- MainWindow owns the clamp (it loads before this file in every
+            -- TOC), so the slider shows exactly what the window applies.
+            get       = function() return addon.MainWindow:GetOpacity() end,
+            set       = function(_, val)
+                Ace.db.profile.windowOpacity = val
+                addon.MainWindow:ApplyOpacity()
+            end,
+        },
+
         -- ---- Sync ----------------------------------------------------------
         syncHeader = {
             name  = L["SettingsSyncHeader"],

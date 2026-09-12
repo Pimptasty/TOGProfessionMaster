@@ -6,6 +6,234 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # TOG Profession Master Changelog
 
+## [v1.0.9] (2026-09-11) - Background opacity, vendor reagents cost the vendor price, hunters get their pet-training window back, a reagent named "Item #15417", a shopping list that spilled out of the window, and a slow open measured
+
+### New Features
+
+- **Background opacity slider** (Settings -> Display -> "Background opacity",
+  20-100%). Fades the window's two fills -- the frame's black backdrop and
+  the tab pane's grey one -- and nothing else, so text, borders, icons and
+  rows stay fully readable over the world behind the window. Frame alpha
+  would have faded the contents too, which is not the ask. Applies live while
+  the window is open. The stock AceGUI colours are put back before the
+  widgets return to the pool, because both the Frame and the TabGroup are
+  recycled across addons and neither resets its backdrop colour on release --
+  a faded fill would otherwise surface in the next addon to acquire them.
+  Six specs, mutation-checked: disabling the apply turns three red, skipping
+  the restore turns the pool guard red. Locations: `GUI/MainWindow.lua`,
+  `GUI/Settings.lua`, `Locale/enUS.lua`.
+
+### Bug Fixes
+
+- **Crafting cost and profit priced a vendor-sold reagent at whatever
+  someone had listed it for on the Auction House.** Reported on Discord
+  2026-08-23: *"it seems togpm uses the auction house price for easy to
+  obtain vendor items like vials"* -- and the follow-up, *"when calculating
+  profit margins, it should use the vendor price of reagents when
+  applicable, not the ah price"*. Every reagent cost went through
+  `Price.Get`, whose ladder is auction sources first and vendor last,
+  because it answers "what is this worth" -- the right question for the item
+  you are about to sell and the wrong one for a Crystal Vial, which nobody
+  buys off the AH. One player listing vials at 5g made every alchemy
+  recipe's cost, and its profit, wrong for everyone who scanned.
+
+  New `Price.GetReagentCost`: vendor buy price first (Auctionator's vendor
+  cache, our captured merchant prices, ItemDB's static table -- the existing
+  `GetVendorBuy` ladder, unchanged), and the AH ladder only for a reagent no
+  vendor sells. Both crafting-cost functions and the Crafting tab's
+  per-reagent line use it, so the line and the total agree. `Price.Get` is
+  untouched -- the crafted item's sale price still comes from the AH. Eight
+  specs in `Tests/price_spec.lua`, including one that reproduces the report
+  through `Price.Get`; with the vendor tier removed, five go red. The
+  "Crafting Cost" header tooltip says which price a reagent gets, and the
+  thirteen untranslated English copies of that tooltip in the other locale
+  files are gone -- they fall back to enUS, so the text lives once.
+  Locations: `Modules/Price.lua`, `GUI/CraftingTab.lua`, `Locale/`.
+
+- **Scan AH on the Crafting tab never looked up the crafted item.** Same
+  Discord thread: *"when I select a recipe in the crafting tab and hit scan
+  AH, it does not search and update the value of the actual crafted item,
+  only the mats"*. The scan list was built from the reagents alone, so the
+  detail panel's AH price and Profit line -- which read the crafted item's
+  price -- had nothing to show unless another addon had it. The list now
+  starts with the crafted item, resolved from the recipe's item link exactly
+  as the profit line resolves it; an enchant has no crafted item and scans
+  its reagents as before. `CraftingTab:ScanAHItems` is the one place the
+  list is built; four specs in `Tests/craftingtab_draw_spec.lua`. Location:
+  `GUI/CraftingTab.lua`.
+
+- **The shopping list in the Professions tab spilled out of the window.**
+  Reported on Discord 2026-08-28 with a screenshot, and reproduced with
+  ElvUI switched off: six Shadoweave recipes on the list, all expanded --
+  about 28 rows -- and the section drew every one at full height. It had no
+  height cap: an InlineGroup sized to its rows, so past a dozen or so it was
+  taller than the tab, and the column headers and the recipe list (which
+  anchor below it) were pushed out through the bottom of the frame.
+
+  The section is now capped at 40% of the tab's height (never fewer than
+  four rows, ten before the first layout) and the rows scroll inside it --
+  a native ScrollFrame with a slider on the right and mouse-wheel support,
+  the same pattern the detail panel has used since v0.9. The scroll frame
+  is owned by the tab and re-parented on every fill, so it is detached
+  from the pooled InlineGroup on release like the rows already were. A
+  list that fits gets no slider and no reserved margin; one that shrinks
+  under the cap snaps its scroll offset back so rows are never left
+  scrolled out of view. Five specs in `Tests/browserdetail_spec.lua`,
+  including one that reproduces the report's row count; the clamp case
+  goes red with the clamp removed. Location: `GUI/BrowserTab.lua`.
+
+- **The window's title bar could sit above the top of the screen, out of
+  reach.** Same Discord thread, 2026-08-30; the reporter's workaround was
+  dropping UI scale to 65%. The saved position (top/left) is restored
+  verbatim, and one saved under a different UI scale or resolution -- the
+  coordinate space is 768/uiScale units tall -- can land outside the
+  screen the player has now, where the title bar cannot be dragged. The
+  frame is now clamped to the screen, which the client applies to restored
+  positions as well as drags (Blizzard's own `FrameUtil.lua` has to switch
+  it off to animate a frame out of view). And a saved Browser/Crafting
+  size is capped at the screen in the frame's scaled units, so clamping
+  cannot trade an off-screen top for an off-screen bottom. Three specs in
+  `Tests/mainwindow_spec.lua`. Location: `GUI/MainWindow.lua`.
+
+- **On TBC, Wrath, Cataclysm and Mists, guild sync could silently stay off
+  for a whole session.** Audit finding 34, from GuildRoster's review of
+  2026-08-26, confirmed on the release vet: `GuildRoster` was declared in
+  `## Dependencies` on the Classic Era TOC and on none of the other four.
+  That header is a load-order declaration -- undeclared, the client may load
+  TOGPM before the GuildRoster addon, `LibStub("LibGuildRoster-1.0", true)`
+  answers nil at login, `Scanner:InitDeltaSync` returns, and guild sync is
+  off until the next `/reload`, with one debug line as the only trace. From
+  the player's seat it looks like a quiet guild. All five TOCs now declare
+  the same dependencies, and `Tests/loadorder_spec.lua` asserts the five
+  `## Dependencies` / `## OptionalDeps` headers are identical and that every
+  hard-required library is listed -- a drift like this cannot land green
+  again. Locations: `TOGProfessionMaster_TBC.toc`, `_Wrath.toc`, `_Cata.toc`,
+  `_Mists.toc`.
+
+- **A hunter could not train pets with the crafting takeover on.** Reported
+  from Discord, 2026-09-10: *"hunter training skill conflicts in classic with
+  TOGPM causing it to not be usable to train pets"*. Classic Era and TBC only.
+
+  On Vanilla/TBC, Beast Training opens the same window as Enchanting --
+  Blizzard's CraftFrame -- and fires the same `CRAFT_SHOW`. With the takeover
+  on, the engine unregisters that event from UIParent and CraftFrame at init
+  so it can put its own Crafting tab up instead. That is right for
+  Enchanting and wrong for Beast Training: the only window that can teach a
+  pet never appears, and the Crafting tab opens on a session it cannot read
+  (no skill line, so nothing to show). The hunter is left with nothing.
+
+  The engine now checks how Blizzard's own frame tells the two apart --
+  `GetCraftDisplaySkillLine()` returns the profession's name for Enchanting
+  and nil for Beast Training, which is why CraftFrame hides its rank bar there
+  -- and hands a pet-training session straight to Blizzard's window: no tab,
+  no toggle button, no "last UI" record, no foreign-window suppression. In
+  hands-off mode the window was never suppressed and nothing changes. Ten
+  specs in `Tests/pettraining_spec.lua`, including the Enchanting control that
+  reproduces the takeover. Location: `Modules/Crafting/CraftingEngine.lua`.
+
+- **A reagent could render as "Item #15417" beside its own real icon.** Reported
+  in game on Devilsaur Gauntlets: Rugged Leather and Rune Thread by name,
+  Devilsaur Leather as a number, with the correct leather icon next to it.
+
+  The reagent tables are built once, when the recipe list is, and a
+  `GetItemInfo` cache miss at that moment wrote the placeholder into the
+  table for good. The icon beside it is re-fetched at draw time, so it was the
+  only part of the row that noticed the cache warming up. Worse than the
+  display: the shopping list persists that table into SavedVariables, so the
+  placeholder survived a reload, and the [AH] button would have searched the
+  auction house for the literal string.
+
+  Names now resolve through `addon:ResolveReagentName` -- the client cache
+  first (localized), then LibItemDB's shipped name, then the placeholder as a
+  last resort -- and every draw site calls it instead of reading the stored
+  name, so a placeholder written cold heals the first time it is drawn warm
+  and writes the real name back. A name LibItemDB knows never reaches the
+  screen as a number, and it never has to wait for the cache. Eleven specs in
+  `Tests/reagentname_spec.lua` pin the resolver; five more drive the real
+  draw paths end to end -- the detail pane built cold and redrawn warm, a
+  placeholder already in the shopping-list SavedVariable, and the row
+  tooltip's Reagents line -- in `Tests/browserdetail_spec.lua` and
+  `Tests/browservirtual_spec.lua`, including one that reproduces the report
+  verbatim. Locations: `TOGProfessionMaster.lua`, `GUI/BrowserTab.lua`.
+
+- **The alt-group visibility gate walked the whole table on every call, and
+  reported any guild member as "an alt of someone".** Found while measuring
+  the report below. `IsAltOfInRosterCharacter` is asked once per crafter the
+  roster does not list, per list build, and it scanned every key and every
+  array in `altGroups` to find the character's own group -- 500 us per call
+  against the operator's database (997 keys, 14,095 entries). The table is
+  keyed per member, so the group is one lookup; it now is. The scan's owner
+  branch also matched a character against itself, which is what made
+  `/togpm whyvisible` print "alt of an in-roster character: true" for every
+  ordinary guild member (audit finding 36). Gone with the scan. Location:
+  `TOGProfessionMaster.lua`.
+
+  Two neighbours closed with it. `IsAltOfKnownCharacter` -- no caller, no
+  spec, and a docstring claiming the visibility gate used it (finding 37) --
+  is deleted; wiring it in would have kept alive the alts of every ex-member
+  still in the database. And the fact the purge depends on, that
+  `RebuildAltGroups` files the altClaims arrays themselves rather than
+  copies (finding 35), is now stated at the alias, at the purge and at the
+  defaults, with `Tests/purge_spec.lua` pinning the one case a "store a
+  copy" hardening would break: a character purged from another owner's
+  claim stays purged across a rebuild.
+
+### Improvements
+
+- **"Lag on open of 3-5 seconds", reported 2026-09-11 -- measured, two
+  things fixed, and an instrument for whatever is left.** The offline suite
+  now loads the operator's real SavedVariables (2.4 MB: 1,166 recipes with
+  crafters, 35,712 recipe-crafter pairs, 467 crafters) and the full Vanilla
+  recipe database, and times every tab's cold draw for real
+  (`Tests/openperf_spec.lua`). Result: the Lua behind an open is **under
+  200 ms on every tab** -- the Professions list build, the one that runs
+  synchronously on a cache miss, is ~170 ms of Lua. Two defects the
+  measurement did flag are fixed above and below (the alt-group scan; the
+  `altGroups` section of the saved data). With both in, the operator's own
+  open lost its pause in game; a later open, right after a `/reload`, paused
+  again. That is consistent with a cold cache -- the first open after a
+  reload runs the build synchronously, and its client-side half (one tooltip
+  render per crafted item, ~1,090, plus a server query per item the client
+  has not cached) is the part the harness cannot time. Not confirmed.
+
+  So: **`/togpm perf`** prints every timed section since login -- each window
+  open and tab draw, each synchronous list build with its tooltip-scrape share
+  broken out -- plus the entry count of every saved-data section. A report
+  that pastes it carries the number that decides the next step. Locations:
+  `TOGProfessionMaster.lua`, `GUI/MainWindow.lua`, `GUI/BrowserTab.lua`.
+
+- **The saved data no longer carries `altGroups`, which was 16% of the file
+  for nothing.** It is a derived view of `altClaims`, rebuilt on every load,
+  and keyed per member -- so an account of N characters was written N times
+  over: 14,095 entries on disk against 5,637 in the data it is derived from.
+  The view is now served through a metatable, which the client's
+  SavedVariables writer never sees, and rebuilt at login; every reader and
+  writer is unchanged. A copy saved by an older build is dropped on the first
+  login. Location: `Scanner.lua`, `TOGProfessionMaster.lua`.
+
+- **Bank stock is read through TOGBankClassic's public accessor, and from
+  one place.** Peer review relayed TOGBankClassic's own finding: its v1.4.2
+  retires the per-alt `alt.items` rows (no longer written,
+  stripped from SavedVariables on load) and reads inventory from a tuple
+  store through `Guild:GetAltItemTotal(altName, itemId)`. Our `[Bank]` button, the
+  "Bankers:" tooltip line and the request dialog walked those rows directly
+  in three places -- `addon.Bank.GetStock`, `GetBanksWithItem`, and a third
+  private copy of the same loop in the Cooldowns tab that nothing shared.
+
+  TOGBank then added a compatibility metatable so `alt.items` still answers
+  for us, so nothing was broken on the day; but a consumer should not depend
+  on a shim another addon maintains for it. All three sites now go through
+  one helper that prefers the accessor when the method exists and falls back
+  to the rows for an older TOGBank -- feature-detected on the method, not a
+  version string, so both shapes are covered without a version table. Roster
+  names are normalized through `TOG:NormalizeName` before the store is asked,
+  since the store is keyed by the normalized form. Six specs install the
+  new shape (accessor present, rows absent), including one that shows the
+  old reader returning empty against it. Locations: `Compat.lua`,
+  `GUI/CooldownsTab.lua`.
+
+---
+
 ## [v1.0.8] (2026-08-19) - 206 TBC recipes come back, including every flask; the item API stops depending on a CVar; one offline gate instead of three
 
 ### Bug Fixes
@@ -913,82 +1141,4 @@ diagnostic command. Both gaps are closed here, plus MINOR 6's fifth verdict.
 
 ---
 
-## [v1.0.5] (2026-08-03) - Enchant recipes showed a random item's tooltip; the Crafting tab left a second window open
-
-### Bug Fixes
-
-- **Opening the Crafting tab also popped a second profession window — TSM's, or Blizzard's — and left it there.** Reported on TBC. On Classic there is exactly one way to get a trade-skill session: **cast the profession**. That session (not any frame) is what the tab reads recipes from and crafts through — but the cast fires `TRADE_SKILL_SHOW` / `CRAFT_SHOW`, which is the same event every *other* profession UI listens for. So clicking our tab handed TSM (or Blizzard) their cue too, and the player got two windows. TOGPM only ever hid Blizzard's own frames, and only the one belonging to the current session, so anything else stayed up. The Crafting tab now **claims the session it opens**: for as long as it owns one, Blizzard's `TradeSkillFrame` *and* `CraftFrame` are hidden — re-hidden from an `OnShow` hook, so an addon that shows one later can't leave it up — and TSM's window is hidden through TSM's own public API (`TSM_API.RegisterUICallback`, the only integration point it exposes). Every hide clears the frame's `OnHide` script first, because each of those windows closes the trade-skill session from `OnHide` and that would blank our own tab; if the session is ever observed dying anyway, TSM suppression disables itself for the rest of the play session — a second window beats a Crafting tab with no data in it. The **WoW UI** button releases the claim, so choosing the native window mid-session still works and it stays up. Location: `Modules/Crafting/CraftingEngine.lua`. See `docs/DEPENDENCY_CONTRACTS.md` for the TSM API this is working around.
-
-- **Hovering an enchant in the Professions tab showed a completely unrelated item — a staff, a trinket, whatever happened to share the number.** Reported on TBC; it was present on every flavour. Every recipe key in the shipped recipe data (LibProfessionDB) is the recipe's trade-skill **spell** id, but the browser's link resolver treated that key as an **item** id whenever the entry carried no crafted-item link — and WoW's item and spell id spaces overlap freely, so the lookup silently succeeded on the wrong thing. Spell **13937** is *Enchant 2H Weapon - Greater Impact*; item **13937** is the staff *Headmaster's Charge*, which is precisely what the report's screenshot showed. Crafted-item recipes hid the fault because their link is built from `craftedItemId` and wins first — enchants produce no item, so they fell straight through to the bad lookup. Recipe entries now carry their spell id explicitly, the crafted-item lookup is keyed by `craftedItemId`, and an enchant resolves to its **spell** tooltip (description + reagents). Shift-clicking an enchant likewise inserts the recipe's spell link instead of an unrelated item link. Location: `GUI/BrowserTab.lua`.
-
-- **The recipe list's `[Bank]` button was reading stock for the wrong item.** Same root cause: the button asked TOGBankClassic for stock of `entry.id` — a spell id — so it appeared (or didn't) based on whatever unrelated item shared that number, and the request dialog it opened named that item. It now uses the recipe's `craftedItemId`, so it appears only for recipes that actually produce a bankable item. Location: `GUI/BrowserTab.lua`.
-
-- **The `[TOGPM] crafters` line never appeared on Professions-tab tooltips.** It was looked up by spell id against an item-keyed table, so the lookup always missed and the line silently never rendered. Now keyed by the crafted item, matching the global item-tooltip hook. The `[TOGPM] itemId= spellId=` diagnostic line was reporting the spell id in the **itemId** slot for every recipe; both fields are now correct. Location: `GUI/BrowserTab.lua`.
-
-- **Enchants on the shopping list had no hover tooltip at all** (no crafted item to link). They now show the recipe's spell tooltip. Location: `GUI/BrowserTab.lua`.
-
-- **A guildless player could get sync errors in their bug catcher.** `BroadcastSisterConfig` and `BroadcastSisterRosters` send on `GUILD` and neither checked the player was actually in one. The client refuses such a send — it always did, silently — but **AceCommQueue-1.0 MINOR 5+ now reports a refusal with no delivery callback through `geterrorhandler()`**, so what used to be an invisible dropped message became a visible error, repeating on the ~12-minute config-gossip timer. Anyone who configured allied guilds and then left their guild (or received the list by gossip) would see it. Both now return early when guildless. Location: `TOGProfessionMaster.lua`.
-
-- **Recipes named "… [PH]" were never filtered out of the cache.** The obsolete-name guard that keeps Blizzard's internal placeholders (TEST / QA / DEPRECATED / ZZOLD / OLD) from reaching the UI checks for `[PH]` with `string.find(..., plain)` — and with the plain flag set, the pattern is matched **literally**, so the escaped form `%[ph%]` searched for a percent sign followed by a bracket and matched nothing, ever. Every "Manual: … [PH]" placeholder sailed through the filter and persisted in SavedVariables, where the only way to shift it was a purge. Written plainly now. Found by `Tests/scanner_names_spec.lua`. Location: `Scanner.lua`.
-
-- **Auctioneer pricing never ran for any item the client hadn't cached.** Found while writing `Modules/Price.lua`'s specs. Both Auctioneer bridges build their probe list as `{ itemLink, "item:N:0:0:…", "item:N" }` — and `itemLink` is nil whenever `GetItemInfo` hasn't loaded the item yet, which puts a **nil in slot 1** and makes `ipairs` stop on entry. So the two synthetic item forms, which exist precisely *for* the uncached case, were unreachable exactly when they were needed and Auctioneer was never queried at all. The list is now built by appending, so the synthetic forms are always probed. (Both call sites shared the bug; they now share one builder.) Location: `Modules/Price.lua`.
-
-- **Removed a dead TSM code path.** `tsmAppHelperLoaded` — an `IsAddOnLoaded` probe — was referenced by nothing; readiness is decided by the useTSM / useTSMAppHelper toggles plus the presence of `TSM_API`, which is the real capability test. Location: `Modules/Price.lua`.
-
-- **`Scanner:ResolveProfessionId` called `GetProfessions()` without checking it exists.** Found while writing its specs. `GetProfessions` is the Cata+ API; this addon feature-detects it at every *other* call site — `enumerateHeldProfessions` right below it (whose own comment notes it is a no-op on Classic Era), and `CraftingEngine:GetKnownProfessions` — but not here. This one sits in the hot path of **every** trade-skill and craft-window scan, so on a client without the global nothing would scan at all rather than degrading. Now guarded like its neighbours: absent → fall through to the static profession-name map, exactly as a slot walk that finds nothing already does. Behaviour is identical wherever the API exists. Location: `Scanner.lua`.
-
-- **`HashManager:HasContent` answered "no" as `nil` on some paths and `false` on others.** Found while writing its specs: branches written as `gdb.cooldowns and next(gdb.cooldowns) ~= nil` evaluate to **nil** — not false — when the table is absent, so the same "we hold nothing for this leaf" answer came back with two different types depending on which table happened to be missing. Harmless for `if HasContent(...)`, a trap for any caller comparing against `false` or putting the result on the wire. Every branch now returns a real boolean. Location: `Modules/HashManager.lua`.
-
-### Improvements
-
-- **Guild sync now uses DeltaSync's revision-2 content hash.** Revision 1 renders a number and its string form identically — `{v = 1}` and `{v = "1"}` hash the same — so a genuine difference between two clients can be invisible and the sync silently skipped. Revision 2 (DeltaSync MINOR 16) types each scalar. Both now ride together on every leaf: `HashManager` mints the pair, the wire carries both, a delivered pair is adopted **verbatim** like any other owner-minted token, and every comparison — DeltaSync's own OFFER protocol and our subhash diff alike — uses the **highest revision both ends advertise**. A peer on an older build sends no revision-2 token, so that pair falls back to revision 1 and still agrees; two updated peers get the collision-free comparison. No flag day, no coordination, and no version bump on the wire. One subtlety worth recording: a **roll-up** advertises revision 2 only when *every* contributing leaf has one — a roll-up composed from a mix of revisions isn't comparable to another client's mix, so a half-upgraded guild would otherwise churn; it upgrades itself once the last old leaf is re-minted. This is what lets revision 1 eventually retire across the addon suite. Two now-unreachable helpers (`ComputeCharSkillsHash`, `ComputeCharProfessionsHash`) were removed as part of this — the coverage run flagged them as the only unexecuted lines left in the file, and they were the last revision-1-only minting paths in the addon: a leaf minted through one would carry no revision-2 token and quietly drag its whole roll-up back down. Location: `Modules/HashManager.lua`, `Scanner.lua`.
-
-- **`/togpm dsstatus` now answers "did my sync messages actually arrive?"** DeltaSync-1.0 MINOR 17 added delivery accounting — WoW silently discards addon messages under congestion, and AceComm forwards only a boolean, so a refused send was previously indistinguishable from a delivered one and a sync that had quietly stopped working looked exactly like an idle one. The status block now reports `delivered / refused / not-attempted` with the last refusal's channel, target and size, and adds a plain-language note when the refusals are simply because you're guildless. A new `onSendFailed` hook also logs each refusal to the Sync Log as it happens (capped at the first three, so a guildless player doesn't get one line per message forever). Degrades quietly on an older DeltaSync, which is reported rather than shown as a misleading zero. Location: `Scanner.lua`.
-
-- **Offline test suite added — 634 specs.** TOGProfessionMaster now carries the shared `WoWAPITesting` harness (`Tests/wowapi`, git submodule), `Tests/coverage.lua` (exact line coverage from Lua 5.1 bytecode debug info, not a source-text heuristic), and `Tests/env_togpm.lua`, which boots the **real** addon core offline: the real Ace3 chain, the real AceCommQueue-1.0 and DeltaSync-1.0 from the sibling AddOns folders, the real `Ace:OnInitialize()` with its AceDB and guild-tag hashing. Specs therefore read real tables and compute real hashes rather than hand-copied stand-ins that drift. The specs:
-
-  - `hash_spec.lua` — `Modules/HashManager.lua` at **100%**, including the owner-mints/relay-adopts convergence invariant the cooldown-drift disaster came from.
-  - `craftqueue_spec.lua` — `Modules/Crafting/CraftQueue.lua` at **99.2%**, driving the REAL CraftingEngine against stubbed trade-skill APIs, so the queue is tested against the engine rather than against our assumptions about it. Covers the per-item completion model that v0.8.1 fixed twice.
-  - `scope_spec.lua` — the display-time visibility gates, run against the REAL LibGuildRoster driven to ready (or deliberately left mid-build). Every bug those gates have had was a question about what to do when the roster *cannot yet answer*, so the cold-start and library-absent paths are asserted explicitly — including that hiding a cross-guild alt must never queue it for deletion.
-  - `scanner_merge_spec.lua` — Scanner's merge and normalise half: id extraction, recipe/crafter merges, the cross-guild federation gate, the dropped-profession resurrection guard, alt-group indexing.
-  - `price_spec.lua` — `Modules/Price.lua` at **100%**: the source priority ladder, and every optional integration (Auctionator, Auctioneer, TSM) proven inert until the user opts in.
-  - `compat_spec.lua` — the version flags and API shims, loaded once per client build (Vanilla → MoP) so a wrong flavour flag or skill cap fails here instead of on someone else's client.
-  - `tooltip_spec.lua` — the `[TOGPM]` crafters and IDs lines: the item → recipe → crafter → visibility-gate lookup, deduping, and the deferred-append guard.
-  - `browserlist_spec.lua` — the Professions tab's recipe-list pipeline: `BuildFullList` (including the visibility verdict it bakes into each cached row), the tokenised search filter, the skill-tier bands, and the multi-select cache key.
-  - `cooldownrows_spec.lua` — the Cooldowns tab's row pipeline (transmute grouping, the spell whitelist, the dropped-profession hide, Salt Shaker's item/spell id collision), the tiebreaking sort, and the supply-mail stack planner.
-  - `missingrecipes_spec.lua` — the missing-set subtraction in both scopes, including a recipe stored under its crafted-item id counting as known, and a cross-guild alt NOT covering the guild's gap.
-  - `craftingtab_spec.lua` — the Crafting tab's filter and sort, and the Profit Planner's row builder and money formatting.
-  - `scanner_sync_spec.lua` — what goes on the wire and what happens to what arrives: absolute-expiry cooldown leaves shipped with the owner's minted token, the adopt-or-ignore rules (including the strict-newer test that stops two peers ping-ponging drifted tokens, and the refusal to let anyone overwrite our own cooldowns), and the subhash diff's `-1` stamp for a leaf we hold no data for.
-  - `scanner_cooldowns_spec.lua` — the only place a cooldown is minted: the shared transmute bucket, Ready seeding, the salt-shaker API fallback, and the change-detection that keeps a re-scan from redrawing.
-  - `scanner_broadcast_spec.lua` — the send side: the differential hash broadcast, and the serve-side coalescing rules that stop one popular leaf being re-broadcast guild-wide once per requester — including the asymmetry that a CHANGED leaf must always go out immediately (swallowing that is what once stalled two-client cooldown sync), and the orphan-hash self-heal when we're asked for a leaf we hold no data for. Plus sister-roster persistence and the accept gate that rejects a roster for a guild we haven't allied with.
-  - `purge_spec.lua` — the only code that deletes another player's data: it refuses to run against an unconfirmed roster, re-validates every flag at sweep time, protects own alts and bank alts of current members, and drops the departed character's leaf HASHES along with the data (a surviving hash is re-minted from surviving data on the next rebuild and resurrects them).
-  - `scanner_scan_spec.lua` — the owner-authoritative profession registry and the specialisation read. The delete path is the point: a dropped profession has no window to re-scan, so a wrong "gone" reading destroys data permanently — it therefore deletes only from a read it can trust (locale-independent ids, or an English client) and only after TWO consecutive reads agree, because a partial skill-line read seconds after login looks exactly like a drop.
-  - `scanner_names_spec.lua` — recipe-name recovery and the item/spell id-namespace collision behind it (spell 26926 is "Heavy Copper Ring"; item 26926 is "59 TEST Green Shaman Chest").
-  - `hashv2_spec.lua` — the revision-2 hash rollout: the revision-1 collision it exists to fix (asserted against the real library, not assumed), that every leaf family carries both tokens, the roll-up's all-or-nothing V2 rule, and the mixed-version comparison in both directions — including the phantom-difference case where getting the fallback wrong would make an old peer and a new one re-sync the same leaf forever.
-  - `browserlink_spec.lua` and `craftsuppress_spec.lua` — the two fixes above.
-
-  Run with `lua Tests/wowapi/run.lua` from the addon root (Lua 5.1 only, no busted needed). `Tests` is excluded from packaged builds via `.pkgmeta`. Overall coverage is **4,743 of 14,601** executable lines (32.5%, counting everything the addon ships except the `Locale/` translation tables): Price, HashManager and CraftQueue 100%, CooldownIds 94.7%, Tooltip 68.5%, Scanner 58.8%, CraftingEngine 50.1%, TOGProfessionMaster.lua 48.2%, Compat 44.0%, CooldownsTab 28.5%, MissingRecipesTab 28.2%, AHProfitTab 25.4%, BrowserTab 22.3%, SharedWidgets 18.6%, CraftingTab 14.7%.
-
-  On testing GUI files: the logic in a tab (list building, filters, sort keys) touches no frame — in `GUI/BrowserTab.lua` the first `CreateFrame` sits 300 lines below the last logic function. Those functions are `local` purely because nothing outside the file calls them, which also put them out of the suite's reach. Each such file therefore ends with a small, commented **test seam** exposing them by name. That is deliberately preferred over relocating the logic into `Modules/`: it reaches exactly the same code, changes no call site, and avoids adding a file to all five `.toc` load orders. What stays untested is genuine frame construction, which needs the game client.
-
-- **`docs/DEPENDENCY_CONTRACTS.md` added.** Dependency and third-party-addon repos are read-only from TOGPM: when work here needs a change in one of them, it is written up as a contract (what, why, exact API shape) and applied upstream separately rather than patched locally. Opens with the TradeSkillMaster "suppress the crafting UI for this session" contract that the fix above is working around.
-
----
-
-## [v1.0.4] (2026-07-28) - Enchanting's Craft button, departed guildmates clearing on their own & the Settings scrollbar
-
-### Bug Fixes
-
-- **Enchanting's Craft button did nothing — the long-standing "every profession works except Enchanting" bug. Fixed.** Enchanting is the one profession whose craft runs through a **secure action button** (it casts `/cast <recipe>` from a secure macro; every other profession crafts from the button's ordinary, insecure `PreClick`). Blizzard's `SecureActionButton_OnClick` only performs the action when the click that arrived matches its key-down/key-up gate — `(down and useOnKeyDown) or (not down and not useOnKeyDown)`, where `useOnKeyDown` falls back to the **`ActionButtonUseKeyDown` CVar**. TOGPM registered the button for `LeftButtonUp` **only**, so for every player with that CVar switched on — **ElvUI** and **Bartender4** both set it, as does Blizzard's own "use key down" option — the click was dispatched, the secure gate discarded it, and no enchant was ever cast. Trade skills were unaffected because their craft happens in `PreClick`, which isn't gated: exactly the reported "I tested alchemy and the craft function works fine, so enchanting may be the only profession not working". The button now registers **both** the up- and down-click while it's in enchant mode, so whichever way the CVar is set (and whichever variant of the gate the client ships) exactly one of the two satisfies it and the enchant casts once. Trade skills keep the single up-click registration so their `PreClick` can't fire twice per click. Verified against Blizzard's `SecureTemplates.lua` and against TradeSkillMaster, whose `SecureMacroActionButton` branches on the same CVar for the same reason. Location: `GUI/CraftingTab.lua`.
-
-- **Guildmates who left the guild kept showing after login until you clicked around — now they clear on their own.** TOGPM never deletes data on its own; it *masks* it by bouncing the database off the live guild roster. Until LibGuildRoster reports its first build complete, that gate deliberately hides **nothing** — a half-built roster can't vouch for anyone, and blanking a legitimate list is far worse than briefly over-showing one. That guard is right; the other half of it was missing. **Nothing told the UI when the cold-start window closed.** The only roster callbacks anyone had hooked were `OnMemberOnline` / `OnMemberOffline` (and only in the Professions tab), so after a login or `/reload` a departed member kept rendering until some *unrelated* event happened to rebuild the list — which is exactly the reported "I saw his name, looked through TOGPM a bit, and then it disappeared". Three fixes: the roster's **ready**, **joined** and **left** transitions now raise a re-scope signal; that signal (`roster`) is routed to every guild-scoped tab instead of only the Guild tab — **Professions, Cooldowns, Missing Recipes** all filter through the same gate and were all missing it; and the Professions tab now rebuilds its recipe-list cache on it, because that cache **bakes each crafter's visibility verdict in at build time**, so a cache warmed during the cold-start window kept serving ex-members for the rest of the session even after the roster went ready. Location: `TOGProfessionMaster.lua`, `GUI/MainWindow.lua`, `GUI/BrowserTab.lua`.
-
-- **The Settings window could clip its lower options with no scrollbar (reported with ElvUI).** AceGUI's scroll frame decides whether to show its scrollbar by comparing the window height against a content height it **cached during layout** — not against what the widgets measure now. Ace3 skinners restyle those widgets *after* AceConfigDialog has laid the options out, which changes their real heights while the cached figure stays at the pre-skin value, so the scroll frame concludes everything fits: no scrollbar appears, the options past the bottom edge are clipped, and the mouse wheel doesn't rescue you either (AceGUI ignores the wheel while the bar is hidden). Opening Settings now re-runs the layout once the window has settled, re-measuring the skinned widgets so the scrollbar comes up. Location: `GUI/Settings.lua`.
-
-### New Features
-
-- **`/togpm whyvisible <Name>` — find out why a character is still being shown.** The display gate keeps several deliberate escape hatches (roster not ready yet, a **sister-guild** tag on the crafter entry, a **stale sister roster**, or being an **alt of somebody still in the guild**) and from the outside they're indistinguishable from "it just isn't purging" — which is what made the bug above so hard to pin down from reports. The command prints each gate's answer for one character, plus the crafter tags actually stored against them and the final `IsVisibleCrafter` / `IsInCurrentGuildScope` verdicts, so a report can name the real cause. Note a `false` verdict also queues that character for the timed purge sweep — the command says so in its output rather than mutating quietly. Location: `TOGProfessionMaster.lua`.
-
----
-
-> Releases v1.0.3 and earlier are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
+> Releases v1.0.5 and earlier are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).

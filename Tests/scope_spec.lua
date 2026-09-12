@@ -187,19 +187,37 @@ describe("IsVisibleCrafter", function()
 end)
 
 describe("IsAltOfInRosterCharacter", function()
+	-- Fixtures go through altClaims and the REAL rebuild, so altGroups has the
+	-- shape production gives it: keyed per MEMBER, every key pointing at the one
+	-- array. The earlier fixtures keyed it by an "owner" who was not in the
+	-- array -- a shape RebuildAltGroups never produces -- and passed only because
+	-- the gate walked every key looking for the character (audit finding 38).
+	local function claim(owner, ...)
+		gdb.altClaims[owner] = { owner, ... }
+		ns.Scanner:RebuildAltGroups(gdb)
+	end
+
 	it("accepts an alt whose group OWNER is in the roster", function()
-		gdb.altGroups["Bank-Testrealm"] = { MATE, "Bank-Testrealm" }
-		gdb.altGroups[MATE] = gdb.altGroups["Bank-Testrealm"]
+		claim(MATE, "Bank-Testrealm")
 		assert.is_true(ns:IsAltOfInRosterCharacter("Bank-Testrealm"))
 	end)
 
 	it("accepts an alt whose SIBLING is in the roster", function()
-		gdb.altGroups["Owner-Testrealm"] = { "Bank-Testrealm", MATE }
+		claim("Owner-Testrealm", "Bank-Testrealm", MATE)
 		assert.is_true(ns:IsAltOfInRosterCharacter("Bank-Testrealm"))
 	end)
 
+	it("does NOT report a guild member as an alt of themselves (finding 36)", function()
+		-- MATE is in the roster on their own account. The old walk's owner
+		-- branch tested IsInGuild(MATE) for the MATE key and said "alt of an
+		-- in-roster character" -- `/togpm whyvisible` printed the wrong gate.
+		claim(MATE, "Bank-Testrealm")
+		env.roster({ { name = "Testchar" }, { name = "Bob" } })   -- Bob = MATE, Bank is not
+		assert.is_false(ns:IsAltOfInRosterCharacter(MATE))
+	end)
+
 	it("rejects an alt group with nobody in the roster", function()
-		gdb.altGroups["Owner-Testrealm"] = { "Bank-Testrealm", STRANGER }
+		claim("Owner-Testrealm", "Bank-Testrealm", STRANGER)
 		assert.is_false(ns:IsAltOfInRosterCharacter("Bank-Testrealm"))
 	end)
 
@@ -209,7 +227,7 @@ describe("IsAltOfInRosterCharacter", function()
 
 	it("rejects everything when the roster library is absent", function()
 		env.noRoster()
-		gdb.altGroups["Owner-Testrealm"] = { "Bank-Testrealm", MATE }
+		claim("Owner-Testrealm", "Bank-Testrealm", MATE)
 		assert.is_false(ns:IsAltOfInRosterCharacter("Bank-Testrealm"))
 	end)
 end)
@@ -219,10 +237,7 @@ describe("IsCooldownProfessionDropped", function()
 	-- hard-coding a spell id that could be re-tagged later.
 	local SPELL, PROF
 	setup(function()
-		for spellId, profId in pairs(ns:GetCooldownData().professionOf) do
-			SPELL, PROF = spellId, profId
-			break
-		end
+		SPELL, PROF = next(ns:GetCooldownData().professionOf)
 	end)
 
 	it("only ever judges our OWN characters", function()

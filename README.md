@@ -10,7 +10,7 @@ Works on Classic Era / Anniversary, TBC Classic, Wrath Classic, Cataclysm Classi
 
 ## Quickstart
 
-1. Install via [CurseForge](https://www.curseforge.com/wow/addons/tog-profession-master) (recommended — handles dependencies automatically) or drop the folder into `Interface\AddOns`
+1. Install via [CurseForge](https://www.curseforge.com/wow/addons/togprofessionmaster) (recommended — handles dependencies automatically) or drop the folder into `Interface\AddOns`
 2. `/reload` or restart WoW
 3. Click the **TOGPM minimap button** to open the main window
 4. Open your own profession windows (Alchemy, Tailoring, etc.) at least once on each character — TOGPM scans them automatically and starts syncing with the guild
@@ -27,7 +27,7 @@ That's it. Within a minute or two you'll see your guildmates' recipes and cooldo
 
 **Guild Tab** — Who in the guild has which profession, at what skill, and with which specialization. Specializations are inferred from the spec-gated recipes a crafter knows, so they show up even for people who never announced them. Gathering professions are included, and a profession with nobody in it is shown at zero — coverage gaps are the thing you actually want to see.
 
-**Crafting Tab** — A full crafting screen in TOGPM's own style, including a craft queue and a cost-to-craft with profit preview. Optionally takes over the default profession window (`/togpm craft`). Enchanting is supported, recipe tooltips included.
+**Crafting Tab** — A full crafting screen in TOGPM's own style, including a craft queue and a cost-to-craft with profit preview (a reagent a vendor sells is costed at the vendor price, never an auction listing). Optionally takes over the default profession window (`/togpm craft`). Enchanting is supported, recipe tooltips included. A hunter's Beast Training shares Enchanting's window on Classic and TBC; the takeover leaves it to the game, so pets can always be trained.
 
 **Profit Planner** — What's worth making right now, using auction prices from the built-in scanner. No other addon required, though it plays nicely with Auctionator.
 
@@ -91,6 +91,7 @@ If sync isn't working, these are the ones worth running before opening a bug rep
 | `/togpm dsstatus` | Sync engine status: what's been sent, received, and refused |
 | `/togpm xgdiag` | Cross-guild diagnostics — why an allied guild's data isn't arriving |
 | `/togpm whyvisible <Name>` | Explains why a particular character is (or isn't) shown |
+| `/togpm perf` | How long each window open and tab draw took this session, and how large each part of your saved data is. If the window is slow to open, run this straight afterwards and paste it |
 | `/acq status` | The comm queue's own view: which sends are in flight, stalled, or refused |
 
 ## Requirements
@@ -105,7 +106,7 @@ Keep **AceCommQueue-1.0** current in particular — it is the layer that queues 
 
 All settings live in WoW's standard Options panel: **ESC → Options → AddOns → TOG Profession Master**. Or click the gear icon on the main window, or use `/togpm` and then the gear.
 
-Settings include cooldown-ready alarms, crafter-online alerts, instance-mute toggle, periodic reminder cadence, and more — every option has a hover tooltip explaining what it does.
+Settings include cooldown-ready alarms, crafter-online alerts, instance-mute toggle, periodic reminder cadence, window scale and background opacity (turn the window see-through without fading its text), and more — every option has a hover tooltip explaining what it does.
 
 ## Need Help?
 
@@ -115,13 +116,13 @@ Bug reports, feature requests, questions, or just chatting: **[Join the Discord]
 
 **Pimptasty** — author and maintainer.
 
-Built on the [Ace3](https://www.curseforge.com/wow/addons/ace3) library suite (AceAddon, AceGUI, AceDB, AceConfig, AceComm, AceSerializer, AceTimer, AceConsole), plus [DeltaSync](https://www.curseforge.com/wow/addons/deltasync) for the peer-to-peer sync engine, [AceCommQueue](https://www.curseforge.com/wow/addons/acecommqueue), [VersionCheck](https://www.curseforge.com/wow/addons/versioncheck), LibDataBroker, and LibDBIcon.
+Built on the [Ace3](https://www.curseforge.com/wow/addons/ace3) library suite (AceAddon, AceGUI, AceDB, AceConfig, AceComm, AceSerializer, AceTimer, AceConsole), plus [DeltaSync](https://www.curseforge.com/wow/addons/deltasync) for the peer-to-peer sync engine, [GuildRoster](https://www.curseforge.com/wow/addons/libguildroster) for guild membership and online state, [ItemDB](https://www.curseforge.com/wow/addons/libitemdb) for item stats, vendor prices and recipe-scroll data, [AceCommQueue](https://www.curseforge.com/wow/addons/acecommqueue), [VersionCheck](https://www.curseforge.com/wow/addons/versioncheck), LibDataBroker, and LibDBIcon.
 
 Optional integrations: [TOGBankClassic](https://www.curseforge.com/wow/addons/togbankclassic) for guild-bank reagent buttons; [GreenWall](https://www.curseforge.com/wow/addons/greenwall) for confederate-guild cooldown announcements.
 
 ### Data sources
 
-Recipe data comes from [ProfessionDB](https://www.curseforge.com/wow/addons/professiondb),
+Recipe data comes from [ProfessionDB](https://www.curseforge.com/wow/addons/libprofessiondb),
 built from Blizzard's own client data via [wago.tools](https://wago.tools). This
 addon ships no recipe data of its own and generates none — ProfessionDB owns the
 whole pipeline, so every table is correct for the exact client version you are

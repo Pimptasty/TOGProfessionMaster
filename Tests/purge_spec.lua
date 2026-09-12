@@ -136,11 +136,34 @@ describe("RunPendingPurge", function()
 	end)
 
 	it("protects a character sharing an alt group with a current member", function()
+		-- Through altClaims and the real rebuild, so altGroups is keyed per
+		-- MEMBER as production keys it; a fixture keyed by MATE alone modelled
+		-- a shape RebuildAltGroups never produces.
 		populate(GONE)
-		gdb.altGroups[MATE] = { MATE, GONE }
+		gdb.altClaims[MATE] = { MATE, GONE }
+		ns.Scanner:RebuildAltGroups(gdb)
 		ns:FlagForPurge(GONE)
 		ns:RunPendingPurge()
 		assert.is_true(stillHasData(GONE))
+	end)
+
+	it("a character purged from ANOTHER owner's claim does not come back on rebuild (finding 35)", function()
+		-- The purge strips the name from the alt arrays through altGroups, and
+		-- those arrays ARE altClaims' arrays (one table, filed under every
+		-- member). That aliasing is what keeps the character purged: a rebuild
+		-- re-derives altGroups from altClaims, so if the strip had reached only a
+		-- copy, altClaims would still hold GONE and the rebuild would re-mint it.
+		-- This is the case the fixture above cannot reach, and the one an
+		-- innocent "store a copy" hardening would break.
+		populate(GONE)
+		gdb.altClaims["Ghost-Testrealm"] = { "Ghost-Testrealm", GONE }   -- Ghost is not in the roster
+		ns.Scanner:RebuildAltGroups(gdb)
+		ns:FlagForPurge(GONE)
+		ns:RunPendingPurge()
+		assert.is_false(stillHasData(GONE))
+		ns.Scanner:RebuildAltGroups(gdb)
+		assert.is_nil(gdb.altGroups[GONE])
+		assert.same({ "Ghost-Testrealm" }, gdb.altClaims["Ghost-Testrealm"])
 	end)
 
 	it("ignores a flag for nothing", function()

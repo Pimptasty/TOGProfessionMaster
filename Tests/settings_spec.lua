@@ -42,9 +42,11 @@ setup(function()
 	-- Settings.lua looks AceConfig up silently, so without this the whole
 	-- registration is skipped and the table never exists to be tested.
 	ace.load("AceConfig-3.0", "AceConfigDialog-3.0")
-	-- SharedWidgets before Settings, mirroring the TOC — Settings binds
-	-- addon.UI.Brand / addon.UI.Count at file scope.
+	-- SharedWidgets and MainWindow before Settings, mirroring the TOC — Settings
+	-- binds addon.UI.Brand / addon.UI.Count at file scope, and the opacity
+	-- slider reads its clamp from MainWindow.
 	env.loadModule("GUI/SharedWidgets.lua")
+	env.loadModule("GUI/MainWindow.lua")
 	env.loadModule("GUI/Settings.lua")
 
 	-- Registration is hooked onto OnInitialize, which initDb has already run —
@@ -148,6 +150,35 @@ describe("window scale", function()
 	it("round-trips a chosen scale", function()
 		opt("windowScale").set(nil, 1.25)
 		assert.equal(1.25, opt("windowScale").get())
+	end)
+end)
+
+describe("background opacity", function()
+	it("is a percentage slider from 20% to 100%", function()
+		local o = opt("windowOpacity")
+		assert.equal("range", o.type)
+		assert.is_true(o.isPercent)
+		assert.equal(0.2, o.min)
+		assert.equal(1,   o.max)
+	end)
+
+	it("reports fully opaque when nothing has been chosen", function()
+		ns.lib.db.profile.windowOpacity = nil
+		assert.equal(1, opt("windowOpacity").get())
+	end)
+
+	it("round-trips a chosen opacity", function()
+		opt("windowOpacity").set(nil, 0.6)
+		assert.equal(0.6, opt("windowOpacity").get())
+	end)
+
+	it("clamps a stale or absurd saved value into range rather than erroring", function()
+		ns.lib.db.profile.windowOpacity = "0.05"
+		assert.equal(0.2, opt("windowOpacity").get())
+		ns.lib.db.profile.windowOpacity = 7
+		assert.equal(1, opt("windowOpacity").get())
+		ns.lib.db.profile.windowOpacity = "solid"
+		assert.equal(1, opt("windowOpacity").get())
 	end)
 end)
 

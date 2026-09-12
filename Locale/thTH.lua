@@ -412,7 +412,6 @@ L["CraftScanAHDesc"]      = "Scan the Auction House for the selected recipe's re
 L["CraftScanAHNoItems"]   = "Select a recipe first to scan its reagents."
 L["CraftHaveMaterials"]   = "Have Materials"
 L["CraftCostLabel"]       = "Crafting Cost"
-L["CraftCostDesc"]        = "Estimated material cost for one craft: each reagent priced from the Auction House (Auctionator if installed, otherwise TOGPM's own AH scan) or vendor. \"*\" means one or more reagents had no price yet, so the total is a lower bound. \"~\" means a price is stale (>14 days)."
 L["CraftCostNone"]        = "—"
 L["CraftColCostHdr"]      = "Cost"
 L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else TOGPM's own scan) or vendor; \"—\" when no price is known yet."

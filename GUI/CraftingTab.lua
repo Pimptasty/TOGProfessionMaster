@@ -265,8 +265,16 @@ function CraftingTab:Draw(container)
     addon.GUI.AttachTooltip(haveBtn, L["CraftHaveMaterials"], L["CraftHaveMaterialsDesc"])
     toolbar:AddChild(haveBtn)
 
-    -- Scan AH for the selected recipe's reagents → the per-reagent [AH] buttons
-    -- light up. Self-attaches to the toolbar (between Have Materials and WoW UI).
+    -- Scan AH for the selected recipe: the CRAFTED item first, so the AH price
+    -- and Profit line in the detail panel have a number to show, then every
+    -- reagent so the per-reagent [AH] buttons light up. Self-attaches to the
+    -- toolbar (between Have Materials and WoW UI).
+    --
+    -- The crafted item was missing from this list until 2026-09-11 (Discord,
+    -- 2026-08-23: "when I select a recipe in the crafting tab and hit scan AH,
+    -- it does not search and update the value of the actual crafted item, only
+    -- the mats"). Its id comes from the recipe's item link, exactly as the
+    -- profit line resolves it (see RefreshDetail).
     addon.GUI.MakeScanAHButton({
         parent        = toolbar,
         tabName       = "crafting",
@@ -276,17 +284,7 @@ function CraftingTab:Draw(container)
         tooltipDesc   = L["CraftScanAHDesc"],
         width         = 110,
         noItemsError  = L["CraftScanAHNoItems"],
-        getItems      = function()
-            local items = {}
-            if self._selIndex and Engine then
-                for _, r in ipairs(Engine:GetReagents(self._selIndex)) do
-                    if r.itemId and r.name and r.name ~= "" then
-                        items[#items + 1] = { itemId = r.itemId, itemName = r.name }
-                    end
-                end
-            end
-            return items
-        end,
+        getItems      = function() return self:ScanAHItems() end,
         onRefresh     = function()
             local mw = addon.MainWindow
             if mw and mw.activeTab == "crafting" then CraftingTab:RefreshDetail() end
@@ -1103,6 +1101,33 @@ function CraftingTab:BuildDetailPanel(parent)
     self._dpQty = qty
 end
 
+--- The items Scan AH looks up for the selected recipe: the crafted item first
+--- (so the detail panel's AH price and Profit line get a number), then each
+--- reagent (so the per-reagent [AH] buttons light up). Empty with nothing
+--- selected. An enchant has no crafted item and contributes only reagents.
+function CraftingTab:ScanAHItems()
+    local items = {}
+    local Engine = addon.CraftingEngine
+    if not (self._selIndex and Engine) then return items end
+
+    local sel
+    for _, e in ipairs(Engine:GetRecipeList()) do
+        if e.kind == "recipe" and e.index == self._selIndex then sel = e; break end
+    end
+    local craftedId = sel and sel.link and tonumber(sel.link:match("item:(%d+)"))
+    local craftedName = sel and sel.link and sel.link:match("%[(.-)%]")
+    if craftedId and craftedName and craftedName ~= "" then
+        items[#items + 1] = { itemId = craftedId, itemName = craftedName }
+    end
+
+    for _, r in ipairs(Engine:GetReagents(self._selIndex)) do
+        if r.itemId and r.name and r.name ~= "" and r.itemId ~= craftedId then
+            items[#items + 1] = { itemId = r.itemId, itemName = r.name }
+        end
+    end
+    return items
+end
+
 function CraftingTab:RefreshDetail()
     local panel = self._detailPanel
     if not panel then return end
@@ -1230,8 +1255,10 @@ function CraftingTab:RefreshDetail()
                 ("%d/%d"):format(bags, bankq)))
 
             -- Per-reagent line cost: unit price × needed. "—" when unpriced.
+            -- GetReagentCost, not Get: a vendor-sold reagent is costed at the
+            -- vendor price, so this line agrees with the total below it.
             if addon.Price and r.itemId then
-                local p, src = addon.Price.Get(r.itemId)
+                local p, src = addon.Price.GetReagentCost(r.itemId)
                 if p then
                     row.cost:SetText(addon.Price.Money(p * (r.need or 1)) .. PriceSourceTag(src))
                 else

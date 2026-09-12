@@ -268,17 +268,40 @@ end
 -- ---------------------------------------------------------------------------
 addon.Bank = {}
 
+--- How many of `itemId` one banker alt holds, summed across stacks.
+--
+-- TOGBankClassic v1.4.2 (INV2-RETIRE-003, in its working tree) retires the
+-- per-alt `alt.items` rows: its scan no longer writes them and it strips
+-- them from SavedVariables on load, so the V2 tuple store is the only
+-- inventory. The public reader for the question this addon asks is
+-- `TOG:GetAltItemTotal(altName, itemId)` -- a number, 0 when unknown, no
+-- allocation. Feature-detected on the METHOD, not a version: an older
+-- TOGBank still has the rows and lacks the accessor, a newer one has the
+-- accessor and lacks the rows, and the two branches cover both. (That tree
+-- also answers `alt.items` through a metatable for exactly this reader --
+-- INV2-COMPAT-001 -- but a consumer should not depend on a shim written for
+-- it when the accessor is public.) Peer-review thread 18f6cc11, relayed from
+-- TOGBank's own audit.
+local function altItemTotal(TOG, altName, alt, itemId)
+    if TOG.GetAltItemTotal then
+        return TOG:GetAltItemTotal(altName, itemId) or 0
+    end
+    local total = 0
+    for _, entry in ipairs((alt and alt.items) or {}) do
+        if entry.ID == itemId then
+            total = total + (entry.Count or 0)
+        end
+    end
+    return total
+end
+
 --- Returns the total item count held across all banker alts.
 function addon.Bank.GetStock(itemId)
     local TOG = _G["TOGBankClassic_Guild"]
     if not TOG or not TOG.Info or not TOG.Info.alts then return 0 end
     local total = 0
-    for _, alt in pairs(TOG.Info.alts) do
-        for _, entry in ipairs(alt.items or {}) do
-            if entry.ID == itemId then
-                total = total + (entry.Count or 0)
-            end
-        end
+    for altName, alt in pairs(TOG.Info.alts) do
+        total = total + altItemTotal(TOG, altName, alt, itemId)
     end
     return total
 end
@@ -300,17 +323,12 @@ function addon.Bank.GetBanksWithItem(itemId)
     local alts   = TOG.Info and TOG.Info.alts or {}
     local result = {}
     for _, bankName in ipairs(banks) do
-        local alt = alts[bankName]
-        if alt and alt.items then
-            local total = 0
-            for _, entry in ipairs(alt.items) do
-                if entry.ID == itemId then
-                    total = total + (entry.Count or 0)
-                end
-            end
-            if total > 0 then
-                table.insert(result, { name = bankName, count = total })
-            end
+        -- GetBanks returns roster names; the store is keyed by TOGBank's
+        -- normalized form, so normalize when it can (Guild.lua:NormalizeName).
+        local altName = (TOG.NormalizeName and TOG:NormalizeName(bankName)) or bankName
+        local total = altItemTotal(TOG, altName, alts[altName] or alts[bankName], itemId)
+        if total > 0 then
+            table.insert(result, { name = bankName, count = total })
         end
     end
     table.sort(result, function(a, b) return a.name < b.name end)

@@ -25,7 +25,7 @@ local COMMANDS = {
 	"versioncheck", "debug", "craft", "spellcache", "itemgaps",
 	"dumprecipe Healing Potion", "dumphashes", "dumpcooldowns", "transmutedebug",
 	"dumpprice 12359", "forcebroadcast", "backfill", "myalts",
-	"pullroster Bob", "xgdiag", "whyvisible Bob", "commtest", "help",
+	"pullroster Bob", "xgdiag", "whyvisible Bob", "commtest", "perf", "help",
 }
 
 
@@ -188,6 +188,24 @@ describe("the diagnostics say something useful", function()
 	it("dumpcooldowns lists a running cooldown", function()
 		Ace:OnSlashCommand("dumpcooldowns")
 		assert.is_true(#printed > 0)
+	end)
+
+	it("perf reports the tab draw the open just cost, and whether altGroups is written to disk", function()
+		-- The instrument behind the 2026-09-11 "lag on open" report: a mark per
+		-- tab draw, and the SavedVariables composition. Opening the window is
+		-- what produces the mark, so open first, then ask.
+		Ace:OnSlashCommand("")
+		printed = {}
+		Ace:OnSlashCommand("perf")
+		local joined = table.concat(printed, "\n")
+		assert.is_truthy(joined:find("Tab draw: browser", 1, true))
+		assert.is_truthy(joined:find("recipe-crafter pairs", 1, true))
+		assert.is_truthy(joined:find("altGroups", 1, true))
+		-- The derived view must not be a raw field once a rebuild has run.
+		ns.Scanner:RebuildAltGroups(ns:GetGuildDb())
+		printed = {}
+		Ace:OnSlashCommand("perf")
+		assert.is_truthy(table.concat(printed, "\n"):find("derived, not written", 1, true))
 	end)
 end)
 

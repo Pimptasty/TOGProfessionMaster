@@ -188,6 +188,16 @@ function MainWindow:Open(tabKey)
     f:SetStatusTable(frames.mainWindow)
     self._suppressBrowserSize = false
 
+    -- The status table restores top/left verbatim. A position saved under a
+    -- different UI scale or resolution (the coordinate space is 768/uiScale
+    -- units tall) can land the title bar above the screen, where it cannot
+    -- be dragged back. Reported on Discord 2026-08-30 -- the reporter's
+    -- workaround was lowering UI scale to 65%, which enlarges the space
+    -- until the saved top fits again. Clamping keeps the frame on screen
+    -- for restored positions as well as drags (Blizzard's FrameUtil.lua
+    -- has to switch it off to animate a frame out of view).
+    f.frame:SetClampedToScreen(true)
+
     -- Fire a cross-tab WINDOW_RESIZED callback (debounced ~150ms) on every
     -- user-driven resize so tabs that compute responsive layouts can re-
     -- render. HookScript chains rather than overriding, so AceGUI's own
@@ -217,13 +227,13 @@ function MainWindow:Open(tabKey)
         end)
     end)
 
-    f:SetCallback("OnClose", function(_widget)
+    f:SetCallback("OnClose", function(widget)
         -- Browser's last user-chosen size is already persisted by the
         -- OnSizeChanged hook above, so no special-case capture needed
         -- on close. All chrome-detach + Release routing lives in the
         -- shared _ReleaseFrame helper below so the X-button path AND
         -- the programmatic Close() path use identical cleanup.
-        self:_ReleaseFrame(_widget)
+        self:_ReleaseFrame(widget)
     end)
 
     -- Shrink the default status bar right edge to create room for the help
@@ -273,6 +283,10 @@ function MainWindow:Open(tabKey)
         .. "|c" .. (srcCol["tsm-live"] or "ff63d2ff") .. "[TSM Live]|r "
         .. "|c" .. (srcCol["tsm-history"] or "ffe0b85a") .. "[TSM App]|r"
 
+    -- Help text: one sentence per entry, as the player reads it. Wrapping these
+    -- into concatenations would hide the prose behind string plumbing, so the
+    -- line-length rule is set aside for this table only.
+    -- luacheck: push ignore 631
     local TAB_HELP = {
         browser = {
             title = "Profession Browser",
@@ -362,13 +376,19 @@ function MainWindow:Open(tabKey)
         },
 
     }
+    -- luacheck: pop
 
-    helpIcon:SetScript("OnEnter", function(self)
+    -- `icon`, not `self`: this handler's first argument is the icon frame, and
+    -- inside Open() a bare `self` is the MainWindow table. A lint rename on
+    -- 2026-09-11 dropped the parameter and left the body reading `self`, and
+    -- SetOwner raised "Wrong object type" on the first hover. The parameter is
+    -- what the body needs, so it stays named.
+    helpIcon:SetScript("OnEnter", function(icon)
         local tab  = MainWindow.activeTab or "browser"
         local help = TAB_HELP[tab] or TAB_HELP.browser
         -- ANCHOR_TOP (centered above) is intentional here; the helper's
         -- TOPLEFT/BOTTOMLEFT picks look worse for this fixed-position icon.
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetOwner(icon, "ANCHOR_TOP")
         -- 280 keeps the help text readable as paragraphs without forcing a
         -- tooltip far wider than the game's own. It MUST be put back in
         -- OnLeave — see below.
@@ -481,7 +501,7 @@ function MainWindow:Open(tabKey)
     tg:SetFullWidth(true)
     tg:SetFullHeight(true)
 
-    tg:SetCallback("OnGroupSelected", function(_widget, _event, group)
+    tg:SetCallback("OnGroupSelected", function(widget, _event, group)
         -- Browser's last size is kept current by the OnSizeChanged hook
         -- above (it persists w/h whenever activeTab == "browser"), so by
         -- the time we leave Browser the saved value is already correct.
@@ -501,8 +521,8 @@ function MainWindow:Open(tabKey)
         local _, setLastTab = addon.GUI.PersistentChoice("char", "lastMainTab")
         setLastTab(group)
         self:ApplyTabSize(group)
-        _widget:ReleaseChildren()
-        self:DrawTab(group, _widget)
+        widget:ReleaseChildren()
+        self:DrawTab(group, widget)
     end)
 
     f:AddChild(tg)
@@ -511,6 +531,7 @@ function MainWindow:Open(tabKey)
     self.tabs  = tg
 
     self:ApplyScale()
+    self:ApplyOpacity()
     _escProxy:Show()
     -- Apply size BEFORE selecting the tab so the first Draw sees the
     -- correct frame dimensions (some tabs read frame width during Draw).
@@ -541,6 +562,51 @@ function MainWindow:ApplyScale()
     local s = tonumber(Ace.db.profile.windowScale) or 1
     if s < 0.5 then s = 0.5 elseif s > 1.5 then s = 1.5 end
     self.frame.frame:SetScale(s)
+end
+
+-- Background opacity (Settings → Display → "Background opacity"). Fades the
+-- two fills a player sees through -- the AceGUI Frame's black backdrop and the
+-- TabGroup pane's grey one -- and nothing else: text, borders, icons and rows
+-- keep full alpha, so the window stays readable over the world behind it.
+-- Frame alpha (SetAlpha) would fade the contents too, which is not the ask.
+--
+-- The stock values are AceGUI's own (Frame: 0,0,0,1; TabGroup border:
+-- 0.1,0.1,0.1,0.5), and RestoreOpacity puts them back before the widgets go
+-- to the pool -- both are recycled across addons, and neither widget's
+-- OnRelease resets its backdrop colour, so a faded fill would otherwise
+-- surface in the next addon that acquires the widget. Clamped 0.2-1.0: below
+-- 20% the pane reads as bare text floating on the world.
+local FRAME_FILL = { 0, 0, 0 }
+local PANE_FILL  = { 0.1, 0.1, 0.1 }
+local PANE_ALPHA = 0.5
+
+function MainWindow:GetOpacity()
+    local a = tonumber(Ace.db.profile.windowOpacity) or 1
+    if a < 0.2 then a = 0.2 elseif a > 1 then a = 1 end
+    return a
+end
+
+function MainWindow:ApplyOpacity()
+    local a = self:GetOpacity()
+    local f = self.frame and self.frame.frame
+    if f and f.SetBackdropColor then
+        f:SetBackdropColor(FRAME_FILL[1], FRAME_FILL[2], FRAME_FILL[3], a)
+    end
+    local pane = self.tabs and self.tabs.border
+    if pane and pane.SetBackdropColor then
+        pane:SetBackdropColor(PANE_FILL[1], PANE_FILL[2], PANE_FILL[3], PANE_ALPHA * a)
+    end
+end
+
+function MainWindow:RestoreOpacity()
+    local f = self.frame and self.frame.frame
+    if f and f.SetBackdropColor then
+        f:SetBackdropColor(FRAME_FILL[1], FRAME_FILL[2], FRAME_FILL[3], 1)
+    end
+    local pane = self.tabs and self.tabs.border
+    if pane and pane.SetBackdropColor then
+        pane:SetBackdropColor(PANE_FILL[1], PANE_FILL[2], PANE_FILL[3], PANE_ALPHA)
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -610,6 +676,15 @@ function MainWindow:ApplyTabSize(tabKey)
         end
         local w = math.max(minW, frames.mainWindow.browserWidth  or minW)
         local h = math.max(minH, frames.mainWindow.browserHeight or minH)
+        -- A size saved under a larger coordinate space (lower UI scale, or
+        -- a bigger monitor) can be taller than the screen is now; clamping
+        -- then keeps the title bar on screen and pushes the bottom off
+        -- instead. Cap at the screen, in the frame's own scaled units.
+        local screenW, screenH = UIParent:GetWidth(), UIParent:GetHeight()
+        local s = f.frame:GetScale() or 1
+        if s <= 0 then s = 1 end
+        if screenH and screenH > 0 then h = math.min(h, math.floor(screenH / s)) end
+        if screenW and screenW > 0 then w = math.min(w, math.floor(screenW / s)) end
         f.frame:SetWidth(w)
         f.frame:SetHeight(h)
     end
@@ -631,6 +706,8 @@ function MainWindow:_ReleaseFrame(widget)
     self._helpIcon = nil
     addon.GUI.DetachPool(self._gearIcon)
     self._gearIcon = nil
+    -- Stock backdrop colours back before the pool gets these widgets.
+    self:RestoreOpacity()
     self.frame = nil
     self.tabs  = nil
     _escProxy:Hide()
@@ -728,6 +805,9 @@ function MainWindow:DrawTab(group, container)
     -- (StatusBase = version + the TEMP redraw counter.)
     self:SetStatusText(self:StatusBase())
 
+    -- Timed (see addon.Perf): a tab draw is the whole of what a player waits
+    -- for on open or on a tab click, so every one is a mark for /togpm perf.
+    local t0 = addon.Perf.now()
     if group == "browser" then
         if addon.BrowserTab then
             addon.BrowserTab:Draw(container)
@@ -753,6 +833,7 @@ function MainWindow:DrawTab(group, container)
             addon.AHProfitTab:Draw(container)
         end
     end
+    addon.Perf.mark("Tab draw: " .. tostring(group), addon.Perf.now() - t0)
 end
 
 -- ---------------------------------------------------------------------------

@@ -673,6 +673,34 @@ end
 -- Crafting cost
 -- ---------------------------------------------------------------------------
 
+--- What it COSTS to obtain one of this reagent, in copper -- the number the
+--- crafting-cost and profit maths are built from.
+---
+--- This is NOT `Price.Get`. That answers "what is this worth" and prefers the
+--- auction house, which is right for the crafted item you are about to sell
+--- and wrong for a reagent a vendor stocks: nobody buys Crystal Vials off the
+--- AH at 5x the vendor price, and one player listing them there was making
+--- every alchemy recipe's cost -- and profit -- wrong for everyone who scanned.
+--- Reported on Discord 2026-08-23 ("it seems togpm uses the auction house
+--- price for easy to obtain vendor items like vials"). The operator's
+--- directive, 2026-09-11: a vendor-sold reagent is costed at the vendor price,
+--- even when someone has listed it on the AH.
+---
+--- So: vendor buy price first (Auctionator's vendor cache, our own captured
+--- merchant prices, then ItemDB's static table -- `GetVendorBuy`'s ladder,
+--- unchanged), and only when NO vendor sells the item does the AH ladder in
+--- `Price.Get` answer. Same three returns as `Price.Get`; age is nil for a
+--- vendor price because it does not go stale.
+--- @return number|nil copper
+--- @return string|nil source
+--- @return number|nil ageSeconds
+function Price.GetReagentCost(itemId)
+    if type(itemId) ~= "number" then return nil end
+    local v, vSrc = Price.GetVendorBuy(itemId)
+    if v then return v, vSrc, nil end
+    return Price.Get(itemId)
+end
+
 --- Total material cost to craft `qty` of (profId, recipeId), from LibProfessionDB
 --- reagents. Returns:
 ---   total      copper (sum of priced reagents × need × qty); 0 if none priced
@@ -696,7 +724,7 @@ function Price.CraftCost(profId, recipeId, qty)
         if countable then
             count = count + 1
         end
-        local p, _, age = Price.Get(itemId)
+        local p, _, age = Price.GetReagentCost(itemId)
         if p then
             if countable then
                 priced = priced + 1
@@ -722,7 +750,7 @@ function Price.CraftCostForReagents(reagents, qty)
             if countable then
                 count = count + 1
             end
-            local p, _, age = Price.Get(r.itemId)
+            local p, _, age = Price.GetReagentCost(r.itemId)
             if p then
                 if countable then
                     priced = priced + 1

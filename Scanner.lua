@@ -713,6 +713,12 @@ end
 function Scanner:Init()
     InstallChatFilter()
 
+    -- The alt-group view is derived, not stored (see RebuildAltGroups): rebuild
+    -- it from altClaims now, before any display gate reads it. This also lifts
+    -- a copy persisted by an older build out of the SV on the first login.
+    local gdb = addon:GetGuildDb()
+    if gdb then self:RebuildAltGroups(gdb) end
+
     -- Trade skill window (TBC+/Wrath/Cata/MoP — most professions)
     Ace:RegisterEvent("TRADE_SKILL_SHOW",   function() Scanner:OnTradeSkillEvent() end)
     Ace:RegisterEvent("TRADE_SKILL_UPDATE", function() Scanner:OnTradeSkillEvent() end)
@@ -2816,18 +2822,72 @@ end
 -- Receive & merge guild data
 -- ---------------------------------------------------------------------------
 
+--- gdb.altGroups is a DERIVED VIEW and must not reach the SavedVariables.
+---
+--- It is rebuilt wholesale from gdb.altClaims (below) and keyed per MEMBER, so an
+--- account of N characters is filed N times, each key pointing at the same array.
+--- In memory that is one array. On disk the client serializes a table's raw
+--- contents with no notion of shared references, so the same array is written
+--- once per member: O(N^2) for data that is O(N) in altClaims. Measured on the
+--- operator's account (Tests/openperf_spec.lua): 14,095 entries written against
+--- 5,637 in altClaims -- 2.5x the source, ~16% of a 2.4 MB file, re-derived
+--- from altClaims on every load anyway.
+---
+--- So the view lives in a side table and gdb answers `altGroups` through a
+--- metatable. Every reader and writer keeps working unchanged (`gdb.altGroups[k]`,
+--- `gdb.altGroups[k] = nil`, `gdb.altGroups = {}`); the field is simply not a
+--- raw key of the database, so the SV writer never sees it. AceDB strips the
+--- section's metatable at logout (removeDefaults) and then only touches raw
+--- keys, so nothing is re-created on the way out either. Same mechanism, same
+--- reason, as TOGBankClassic's INV2-COMPAT-001. A copy persisted by an older
+--- build is dropped here on the first rebuild.
+local altGroupsView = setmetatable({}, { __mode = "k" })   -- gdb -> derived table
+local ALT_GROUPS_MT = {
+    __index = function(t, k)
+        if k ~= "altGroups" then return nil end
+        local v = altGroupsView[t]
+        if not v then v = {}; altGroupsView[t] = v end
+        return v
+    end,
+    __newindex = function(t, k, v)
+        if k == "altGroups" then altGroupsView[t] = v else rawset(t, k, v) end
+    end,
+}
+
+--- Make gdb serve `altGroups` from the side table rather than as a raw field.
+--- Idempotent; a database wearing some other metatable is left alone (none does
+--- today -- AceDB only installs one for `*` defaults, and this DB has none).
+function Scanner:DetachAltGroupsFromSV(gdb)
+    if type(gdb) ~= "table" then return false end
+    local mt = getmetatable(gdb)
+    if mt == ALT_GROUPS_MT then return true end
+    if mt ~= nil then return false end
+    local persisted = rawget(gdb, "altGroups")
+    rawset(gdb, "altGroups", nil)
+    setmetatable(gdb, ALT_GROUPS_MT)
+    if type(persisted) == "table" then altGroupsView[gdb] = persisted end
+    return true
+end
+
 --- Rebuild gdb.altGroups (denormalized lookup) from gdb.altClaims
 --- (per-broadcaster authoritative).
---- Each member of any group gets a pointer to the same group array.
+--- Each member of any group gets a pointer to the same group array -- the
+--- altClaims array ITSELF, deliberately not a copy (audit finding 35). The
+--- purge in TOGProfessionMaster.lua strips a character from other owners'
+--- claims by editing the arrays it reaches through this view; a copy here
+--- would leave altClaims intact and the next rebuild would resurrect the
+--- purged character. purge_spec pins it.
 function Scanner:RebuildAltGroups(gdb)
-    gdb.altGroups = {}
+    self:DetachAltGroupsFromSV(gdb)
+    local view = {}
     for _, group in pairs(gdb.altClaims or {}) do
         if type(group) == "table" then
             for _, member in ipairs(group) do
-                gdb.altGroups[member] = group
+                view[member] = group
             end
         end
     end
+    gdb.altGroups = view
 end
 
 --- Merge recipe metadata for one profession (incoming from a recipemeta:<profId>

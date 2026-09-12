@@ -545,6 +545,84 @@ describe("craft cost", function()
 	end)
 end)
 
+-- Discord 2026-08-23: "togpm uses the auction house price for easy to obtain
+-- vendor items like vials". Price.Get prefers the AH because it answers "what
+-- is this worth"; a reagent's COST is what you pay to get one, and nobody pays
+-- the AH for a vial a vendor stocks. The operator's directive: a vendor-sold
+-- reagent is costed at the vendor price even when someone has listed it.
+describe("a vendor-sold reagent's cost", function()
+	it("REPRODUCES the report through Price.Get: a listing outranks the vendor", function()
+		Price.StoreVendorPrice(THREAD, 10)
+		Price.StoreAHPrice(THREAD, 500)
+		assert.equal(500, (Price.Get(THREAD)))
+	end)
+
+	it("is the vendor price even when the same item is listed on the AH", function()
+		Price.StoreVendorPrice(THREAD, 10)
+		Price.StoreAHPrice(THREAD, 500)
+		local p, src, age = Price.GetReagentCost(THREAD)
+		assert.equal(10, p)
+		assert.equal("togpm-vendor", src)
+		assert.is_nil(age)
+	end)
+
+	it("is the vendor price when an Auctionator listing exists too", function()
+		Price.StoreVendorPrice(THREAD, 10)
+		Ace.db.profile.useAuctionator = true
+		_G.Auctionator = { API = { v1 = {
+			GetAuctionPriceByItemID = function() return 900 end,
+			GetVendorPriceByItemID  = function() return nil end,
+		} } }
+		assert.equal(10, (Price.GetReagentCost(THREAD)))
+	end)
+
+	it("falls through to the AH ladder for a reagent no vendor sells", function()
+		Price.StoreAHPrice(ORE, 500)
+		local p, src = Price.GetReagentCost(ORE)
+		assert.equal(500, p)
+		assert.equal("togpm-ah", src)
+	end)
+
+	it("is nil for a reagent nobody prices, and for a non-number", function()
+		assert.is_nil(Price.GetReagentCost(ORE))
+		assert.is_nil(Price.GetReagentCost("x"))
+	end)
+
+	it("drives the crafting total: a listed vial does not inflate the cost", function()
+		Price.StoreVendorPrice(THREAD, 10)        -- the "vial": vendor 10c, listed at 5g
+		Price.StoreAHPrice(THREAD, 50000)
+		Price.StoreAHPrice(ORE, 100)              -- a real AH reagent
+		local total, priced, count, stale = Price.CraftCostForReagents({
+			{ itemId = THREAD, need = 1 },
+			{ itemId = ORE,    need = 2 },
+		})
+		assert.equal(10 + 200, total)
+		assert.equal(2, priced); assert.equal(2, count)
+		assert.is_false(stale)
+	end)
+
+	it("and a vendor price never reads as stale, however old the listing beside it", function()
+		env.serverTime = 1000
+		Price.StoreAHPrice(THREAD, 500)
+		Price.StoreVendorPrice(THREAD, 10)
+		env.serverTime = 1000 + 30 * 24 * 60 * 60
+		local _, _, _, stale = Price.CraftCostForReagents({ { itemId = THREAD, need = 1 } })
+		assert.is_false(stale)
+	end)
+
+	it("drives Price.CraftCost the same way", function()
+		local lib = assert(env.professionDB(), "sibling ProfessionDB install required")
+		local reagents = lib:GetReagents(171, 2330)     -- Minor Healing Potion
+		local vendorTotal = 0
+		for itemId, need in pairs(reagents) do
+			Price.StoreVendorPrice(itemId, 7)
+			Price.StoreAHPrice(itemId, 7000)
+			vendorTotal = vendorTotal + 7 * need
+		end
+		assert.equal(vendorTotal, (Price.CraftCost(171, 2330, 1)))
+	end)
+end)
+
 describe("Money", function()
 	it("uses the client's coin string when there is one", function()
 		_G.GetCoinTextureString = function(c) return "COIN:" .. c end

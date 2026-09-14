@@ -6,6 +6,218 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # TOG Profession Master Changelog
 
+## [v1.0.10] (2026-09-14) - The allied-guild list and rosters move into GuildRoster, and the pause came back intermittently; /togpm perf now says whose it is
+
+### Improvements
+
+- **The allied ("sister") guild list and the allied rosters live in GuildRoster
+  now, once, for every TOG addon.** The user's direction, 2026-09-13, on the
+  same names being wanted in TOGTools' mail autocomplete and in TOGBankClassic:
+  *"i need that and i need it to not step on each other"* / *"probably best
+  to do it in the library"*. Since v0.10.1 TOGPM kept the list in its own
+  settings, gossiped it to the guild on its own prefix, pulled an allied
+  roster over a DeltaSync RosterSync host, persisted the roster in its own
+  guild database and relayed it on a second prefix -- and every other addon
+  wanting the same rosters would have needed all of that too, three lists
+  that could disagree and three feeders doing wipe-and-replace into one
+  store. LibGuildRoster-1.0 MINOR 18 (GuildRoster 0.7.0) owns every one of
+  those now: the list in `LibGuildRosterDB` keyed by home guild, the officer
+  gate, the gossip, the pull (its own two messages over WHISPER -- no
+  DeltaSync needed on either end), the persistence, the login re-feed and the
+  relay. TOGPM is a reader: `GetSisterGuilds` / `GetSisterGuildKeys` /
+  `IsSisterGuildKey` resolve against the library, the Settings input edits
+  through `SetSisterGuildNames` (the library refuses a non-officer itself),
+  and the guild-scoped views refresh on the library's `OnSisterConfigChanged`
+  and `OnSisterRosterUpdated`. `/togpm pullroster <Name>` is
+  `lib:PullSisterRoster` plus TOGPM's own profession-data request to the same
+  peer, which stays: recipes, cooldowns and skills are TOGPM's data and still
+  travel over DeltaSync with the consent proof both sides check, gated on the
+  library's list.
+
+  **An older build's list and rosters are imported once.** On the first
+  roster-ready after upgrading, `profile.sisterGuilds` (with its stamp) and
+  `guild.sisterRosters` move into the library's store and the TOGPM copies
+  are deleted, so nobody re-types a list an officer already typed and TOGPM
+  can never feed the store again. Written directly rather than through the
+  officer-gated setter, because the importing character is usually a member
+  who held the list by gossip; the library's last-writer rule is kept, so a
+  list the library already holds with a newer stamp wins. The library gossips
+  whatever it holds on its own timer.
+
+  **What is gone from TOGPM:** the `TOGPMxgc` / `TOGPMxgr` prefixes, the
+  12-minute config timer, the 5-minute roster timer, the hash-suppressed
+  relay, the RosterSync host, `PersistSisterRoster` / `RefeedSisterRosters` /
+  `DropSisterGuildData`, and the delivery-verdict callback on those sends --
+  TOGPM no longer makes any AceComm send of its own. The two AceDB defaults
+  are removed too (a re-created empty table would have hidden "moved" from
+  "never had one"). Under a GuildRoster older than 0.7.0 cross-guild is
+  simply off -- every reader answers "nothing configured" and the Settings
+  input says which version is needed -- rather than half-working from a list
+  only TOGPM could see. Locations: `TOGProfessionMaster.lua` (the
+  cross-guild configuration section, `MigrateSisterGuildsToLibrary`,
+  `PullSisterRoster`, `OnEnable`), `Scanner.lua` (`InitDeltaSync`),
+  `GUI/Settings.lua`, `Locale/enUS.lua`.
+
+  **Tests:** `Tests/sisterguild_spec.lua` (25 specs) drives the real
+  library: the readers answer from `LibGuildRosterDB` and TOGPM's settings
+  stay empty; the import moves a list and its rosters, keeps a newer list the
+  library holds, drops an unlisted roster, never overwrites a roster the
+  library persisted, is idempotent, and leaves the copies alone under an old
+  library; the library's callbacks reach `GUILD_DATA_UPDATED`; the removed
+  feeders are pinned absent. Mutation-checked: with the list move disabled,
+  four specs go red. The 29 specs that pinned the removed feeders
+  (`purge_spec`, `scanner_broadcast_spec`) are gone with them.
+  `Tests/env_guild.lua` adopts three MINOR-18 resets from GuildRoster's copy
+  (the library's SavedVariables, ChatThrottleLib's queue, stale AceComm
+  registrations) so one spec's roster cannot be re-fed into the next.
+  Whole suite 1538/1538. **Not run in a client.** What proves it in game: an
+  upgraded client whose officer had a list sees it under `/guildroster
+  sisters` after the first login, and `/togpm pullroster <Name>` on a member
+  of that guild prints "sister roster updated" and the Cross-Guild
+  diagnostics list the roster under "Persisted allied rosters
+  (LibGuildRoster)".
+
+- **`/togpm perf` reads the client's own addon profiler.** The 4-5 s pause
+  from v1.0.9 returned, intermittently. The marks added then covered only
+  the sections this addon chose to time -- the window open, the tab draws,
+  the synchronous list build -- so a pause with no window open recorded
+  nothing, and no mark of ours could say whether another addon's frame was
+  the one that stalled. The client keeps that record itself: `C_AddOnProfiler`
+  (present on Classic Era, per `AddOnProfilerDocumentation.lua`) tracks every
+  loaded addon's worst single frame since login and how many of its frames
+  ran over 100 / 500 / 1000 ms. `/togpm perf` now prints the whole-client
+  peak, the all-addons peak, this addon's own peak and hitch counts, and the
+  five addons with the highest peaks. A 4 s frame is on that list against
+  whoever owned it -- and a large whole-client peak beside small addon
+  peaks means no addon's Lua was running during the pause at all. Location:
+  `TOGProfessionMaster.lua` (`PrintPerf`).
+
+  **One thing the profiler cannot do, found from its own rules:** an
+  `OnEvent` script is charged to the addon that created the frame, and
+  AceEvent / AceAddon / AceTimer each own one frame -- so for every addon
+  that loads Ace3 from the standalone folder (this one included), its
+  login work, its events and its timers are all charged to "Ace3", pooled
+  with every other such addon's. The operator's first paste showed exactly
+  that: TOGProfessionMaster 38 ms worst frame, "Ace3" 995 ms, and no way to
+  split the second number. So the login path times itself (next entry).
+
+- **The login path measured, and timed in game.** The operator: *"it
+  'glitched' on login. i told you, this happens ON LOGIN"*. Every
+  synchronous stage of TOGPM's login -- the three `OnInitialize`
+  migrations, `RebuildAltGroups`, the first-load hash rebuild, the name
+  scrub, the +2 s scans and hash broadcast, both backfills -- now runs in
+  order against the operator's real database in `Tests/openperf_spec.lua`
+  ("the login path"), with a 100 ms per-stage budget: **11 ms of Lua in
+  total**, the largest stage the hash rebuild at 8 ms. The wire cost of
+  every crafters leaf as a peer would send it -- `BuildLeafPayload`, then
+  DeltaSync's `SerializeWithChecksum` (AceSerializer plus a byte-by-byte
+  Lua checksum) and `DeserializeWithChecksum` -- is measured the same way:
+  the largest, Cooking at 4,878 pairs / 158 KB, costs 10 ms to receive.
+  Nothing in this addon's login accounts for seconds. What the suite still
+  cannot run is the client's item-cache work inside the +3 s / +4 s
+  backfills and the +2 s scans, so those timers, and the entering-world
+  stage, now record a mark past 50 ms. Locations: `Scanner.lua`
+  (`timedLogin`, the PEW hook), `Tests/openperf_spec.lua`,
+  `Tests/perf_spec.lua`.
+
+- **The profiler is now watched, not only read, so a stall gets a clock
+  time.** The first paste after a 5 s pause (2026-09-12) answered WHOSE:
+  this addon's worst frame 21 ms with no frame over 100 ms; AllTheThings'
+  7,675 ms; the whole client's 7,718 ms, so the frame was addon Lua and
+  almost all of it one addon's. It could not answer WHEN, which is the half
+  a pause report needs: `PeakTime` is a high-water mark, so once one
+  addon's login frame sets it a later 5 s frame by anyone smaller never
+  moves it, and the hitch counts are cumulative with no clock. From
+  `PLAYER_ENTERING_WORLD`, once a second, the all-addon count of frames
+  over 500 ms is compared to its last read; a rise is a stall that happened
+  in that second and leaves a "Client stall" mark with the wall-clock time,
+  the new all-addon peak when it set one, and the addons whose own counts
+  moved -- each with its peak. Counts baseline at zero, so the first tick
+  puts the login load itself on the clock. Every mark now prints its clock
+  time, and the printout carries the attribution rule beside the addon
+  list so an "Ace3 1028 ms" line is never read as Ace3's own doing. One
+  C call per quiet second. Location: `TOGProfessionMaster.lua`
+  (`Perf.WatchStalls`, `PrintPerf`).
+
+- **The two sections that run with nothing open are now timed.** The
+  background warm tick and the sync merge were the untimed candidates for
+  an intermittent pause; each now records a mark when it runs past 50 ms
+  (`Perf.SLOW_MS`), with the resume count or the leaf count and byte size.
+  Quiet ones record nothing, so the 40-entry ring keeps the marks that
+  matter. Locations: `TOGProfessionMaster.lua` (Warmer), `Scanner.lua`
+  (`OnGuildDataReceived`).
+
+### Bug Fixes
+
+- **Four presence guards vetoed the item calls they were guarding, and on a
+  client with deprecation fallbacks off one of them hid every untagged
+  high-ID Era recipe.** Audit findings 29-33, the deprecation-fallback sweep
+  that v1.0.8 started. The v1.0.8 sweep routed the item calls through
+  `addon.Item` (which prefers `C_Item.*` and answers nil itself) but left
+  `if GetItemInfo then`-shaped guards above four of them, testing the BARE
+  name -- a deprecation-fallback alias that is nil when the
+  `loadDeprecationFallbacks` CVar is off. On that client the guard was
+  false, the resolver would have answered through `C_Item`, and the branch
+  was skipped anyway: `Modules/RecipeGate.lua` returned "untagged" for every
+  untagged post-Vanilla recipe (gone from the UI, silently);
+  `Scanner:BackfillReagentItemIds` aborted its whole pass printing
+  "GetItemInfoInstant unavailable", which was false on the client printing
+  it; the Missing Recipes tooltip and crafted-item icon degraded quietly. The
+  four guards are gone (the backfill one now tests EITHER spelling), and the
+  rule that stops it recurring is written where the resolver lives
+  (`Compat.lua`, THE GUARD RULE): a bare global gets a presence guard if and
+  only if it is a deprecation fallback, and a name routed through the
+  resolver never does. Each site is pinned with the bare alias absent and
+  `C_Item` present.
+
+  **`ScanSaltShaker` never tried `C_Item.GetItemCooldown`.** Its ladder
+  reached `C_Container.GetItemCooldown` and the bare `GetItemCooldown` --
+  which is on the deprecated list (`Deprecated_ItemScript.lua:52`) -- so on
+  a client where the container copy is absent or answers nothing AND the
+  fallbacks are off, both tiers missed and the Salt Shaker seeded Ready:
+  verbatim the bug the comment beside it claimed was covered. It was also
+  the one bare, unguarded item-API call left in the addon.
+  `addon.Item.GetCooldown` joins the resolver and is the second tier;
+  mutation-checked (old ladder back: the finding-31 spec goes red).
+
+  **The `GetSpellInfo and GetSpellInfo(id)` idiom is gone from all thirteen
+  sites** that carried it, because it taught a false rule: `GetSpellInfo` is
+  in no `Deprecated_*` file in either Classic tree and Blizzard's own UI
+  calls it bare, so a guard on it can never be false -- and the same idiom
+  applied by name shape rather than by family is exactly where the four
+  wrong item guards came from. **Three `Compat.lua` shims with no production
+  caller are deleted** -- `addon.GetAddOnMetadata`, `addon:GetSpellInfo`,
+  `addon:GetItemInfo` -- along with the three spec cases that vouched for
+  them; `addon.Version` (the copy that actually runs, resolved in the main
+  file because it loads before Compat) is now asserted instead. Locations:
+  `Compat.lua`, `Scanner.lua` (`BackfillReagentItemIds`, `ScanSaltShaker`),
+  `Modules/RecipeGate.lua`, `GUI/MissingRecipesTab.lua`, and the twelve
+  one-line guard removals. Suite 1543/1543.
+
+- **The background warm's frame budget could stop working if any addon
+  reset the shared profiler timer.** The Warmer bounded each tick with
+  `debugprofilestop()`, which is one global timer that `debugprofilestart()`
+  -- callable by any addon at any moment -- resets to zero. A reset between
+  the tick's two reads makes the difference hugely negative and the budget
+  never trips, so the whole warm queue (every profession's list build,
+  tooltip scrapes included) drains in one frame. No addon on the
+  development machine calls it, so this is not the operator's pause, but
+  it is exactly the shape of one and any player's addon set could trigger
+  it. `Perf.now` now prefers `GetTimePreciseSec()`, which has no shared
+  state -- the same clock Blizzard's own console uses to budget its
+  coroutine -- and the Warmer budgets on `Perf.now`. Spec pinned with the
+  shared timer stubbed at zero: one resume per tick with the fix, all five
+  queued tasks drained without it. Location: `TOGProfessionMaster.lua`.
+
+- **Test env:** a reference `C_AddOnProfiler` model in `Tests/env_togpm.lua`
+  (the harness ships none) with the Classic Era enum values; `Tests/perf_spec.lua`
+  covers the clock preference, the budget, both slow-section marks, the
+  login-path marks, the profiler read-out and the stall watch, 18 specs.
+  Suite 1539/1539 at the time (1538/1538 after the allied-guild move above);
+  `TOGProfessionMaster.lua` at 100% line coverage.
+
+---
+
 ## [v1.0.9] (2026-09-11) - Background opacity, vendor reagents cost the vendor price, hunters get their pet-training window back, a reagent named "Item #15417", a shopping list that spilled out of the window, and a slow open measured
 
 ### New Features

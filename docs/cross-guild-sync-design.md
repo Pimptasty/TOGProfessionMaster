@@ -1,5 +1,16 @@
 # Cross-Guild Sync Design (working doc)
 
+> **Where this landed (2026-09-13, v1.0.10).** The roster half of this design
+> -- the allied-guild list, its gossip, the roster pull, the persistence, the
+> login re-feed and the GUILD relay -- is **LibGuildRoster's** now (MINOR 18,
+> GuildRoster 0.7.0), so that TOGPM, TOGTools and TOGBankClassic read one list
+> and one roster store. TOGPM keeps only the profession DATA exchange
+> (`sister-pull` over DeltaSync with the consent proof). Discovery is NOT
+> `/who`: `C_FriendList.SendWho` needs a hardware event, and GuildRoster
+> carries a recorded directive against any `/who` in the library; presence
+> comes from proven sightings on the wire. Everything below is the record of
+> how the design got there, kept as written.
+
 Status: **exploration — no decisions committed yet.**
 
 Goal: let users who belong to two (or more) configured sister guilds share TOGPM

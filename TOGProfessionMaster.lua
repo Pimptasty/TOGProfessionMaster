@@ -94,6 +94,124 @@ LibStub("AceCommQueue-1.0"):Embed(Ace)
 addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
 
 -- ---------------------------------------------------------------------------
+-- Perf -- in-game timing record, read back with /togpm perf
+-- ---------------------------------------------------------------------------
+-- Reported from Discord, 2026-09-11: "getting a lag on open of about 3-5
+-- seconds". The offline suite times every tab's cold draw against the
+-- operator's real database at under 200 ms of Lua (Tests/openperf_spec.lua), so
+-- the seconds are somewhere the harness cannot run -- the client's per-item
+-- tooltip renders and server queries inside the Professions build, or the
+-- login load itself. The only instrument that can attribute them is one that
+-- runs in the client, and this is it: each timed section records a mark, the
+-- last 40 are kept, and /togpm perf prints them alongside the size of every
+-- SavedVariables section. A report that pastes that output carries a number.
+--
+-- Then, same day: the pause came back intermittently at 4-5 s. Two things were
+-- wrong with the instrument. The Warmer tick and the sync merge were not timed
+-- at all -- both run when nobody has opened anything, which is what
+-- "intermittent" looks like from the chair -- so both now record a mark when
+-- they run past SLOW_MS. And nothing here could say whether a stall was OURS:
+-- /togpm perf now also prints the client's own per-addon profiler
+-- (C_AddOnProfiler, verified present in the Classic Era API documentation),
+-- whose PeakTime is the worst single frame since login for every addon
+-- loaded. A 4 s frame lands there against whoever owned it.
+--
+-- 2026-09-12, first printout from the chair after a 5 s pause: this addon's
+-- worst frame 21 ms, AllTheThings' 7675 ms, the client's 7718 ms. Answered
+-- WHOSE -- and could not answer WHEN, which is the half a pause report needs:
+-- PeakTime is a high-water mark, so once one addon's login frame sets it, a
+-- later 5 s frame by anyone smaller never moves it, and the counts are
+-- cumulative with no clock. So the profiler is now WATCHED, not only read:
+-- once a second, the all-addon count of frames over STALL_MS is compared to
+-- the last read, and a rise is a stall that happened in that second -- it
+-- leaves a mark with the wall-clock time and the addons whose own counts
+-- moved with it. Every mark now carries the clock time for the same reason.
+--
+-- Attribution, from the client's own rule (warcraft.wiki.gg, C_AddOnProfiler):
+-- an OnEvent script, a timer or a reused frame is blamed on the addon that
+-- CREATED the frame, not the one that set the handler. Ace3's frames belong to
+-- whoever loaded Ace3, so every Ace addon's events, timers and comm -- ours
+-- included -- land on that addon's line, and this addon's own line covers
+-- only the paths that start on frames it created itself (the Warmer, the
+-- stall watch). That is why the login stages time themselves in Scanner.lua,
+-- and why the printout says so next to the list.
+local Perf = { marks = {}, MAX = 40, scrapeMs = 0, scrapeN = 0, SLOW_MS = 50, STALL_MS = 500 }
+addon.Perf = Perf
+
+--- Milliseconds, monotonic.
+---
+--- GetTimePreciseSec first: it has no shared state. debugprofilestop is
+--- time since the last debugprofilestart, ONE global timer any addon may
+--- reset at any moment -- a reset landing between two reads makes the
+--- difference hugely negative, and a frame budget built on that difference
+--- never trips (the Warmer would drain its whole queue in one frame).
+--- Blizzard's own console budgets its coroutine on GetTimePreciseSec for
+--- the same reason (Blizzard_Console.lua:476). Offline the harness has
+--- neither, so GetTime carries the fallback.
+function Perf.now()
+    if GetTimePreciseSec then return GetTimePreciseSec() * 1000 end
+    if debugprofilestop then return debugprofilestop() end
+    return (GetTime and GetTime() or 0) * 1000
+end
+
+--- Record one timed section. `detail` is free text for the printout.
+function Perf.mark(label, ms, detail)
+    local m = Perf.marks
+    m[#m + 1] = { label = label, ms = ms, detail = detail, at = GetTime and GetTime() or 0,
+                  clock = date("%H:%M:%S") }
+    if #m > Perf.MAX then table.remove(m, 1) end
+    addon:DebugPrint(("perf: %s -- %.0f ms%s"):format(label, ms, detail and (" (" .. detail .. ")") or ""))
+end
+
+--- Record a section only when it ran past SLOW_MS. For the sections that run
+--- every frame or every sync -- a quiet one would push the marks that matter
+--- out of the ring within seconds.
+function Perf.markIfSlow(label, ms, detail)
+    if ms > Perf.SLOW_MS then Perf.mark(label, ms, detail) end
+end
+
+--- Start the stall watch (see the header). Idempotent; a no-op on a client
+--- with no profiler or no C_Timer. Every count is baselined at ZERO rather
+--- than at the current reading, so the first tick reports whatever accrued
+--- before the watch began -- that is the login load, and a report that put
+--- it on the clock is the point.
+function Perf.WatchStalls()
+    if Perf.stallTicker then return end
+    local profiler = C_AddOnProfiler
+    local metric   = Enum and Enum.AddOnProfilerMetric
+    if not (profiler and metric and profiler.IsEnabled and profiler.IsEnabled()
+            and C_Timer and C_Timer.NewTicker) then
+        return
+    end
+    local over   = metric.CountTimeOver500Ms
+    local peakOf = metric.PeakTime
+    local lastCount, lastPeak, seen, first = 0, 0, {}, true
+    Perf.stallTicker = C_Timer.NewTicker(1, function()
+        local count = profiler.GetOverallMetric(over)
+        if count == lastCount then return end
+        local peak = profiler.GetOverallMetric(peakOf)
+        -- Which addons' own counts moved in the same second. Top 25 by count:
+        -- an addon that has stalled at all is near the top of that list.
+        local who = {}
+        for _, r in ipairs(profiler.GetTopKAddOnsForMetric(over, 25) or {}) do
+            local prev = seen[r.addOnName] or 0
+            if r.metricValue > prev then
+                who[#who + 1] = ("%s x%d (its peak %.0f ms)"):format(
+                    r.addOnName, r.metricValue - prev, profiler.GetAddOnMetric(r.addOnName, peakOf))
+                seen[r.addOnName] = r.metricValue
+            end
+        end
+        -- The mark's ms is the new all-addon peak when this stall set one;
+        -- otherwise all that is known is that it passed STALL_MS.
+        Perf.mark(("Client stall: %d frame(s) over %d ms"):format(count - lastCount, Perf.STALL_MS),
+            peak > lastPeak and peak or Perf.STALL_MS,
+            (first and "accrued before the watch began, i.e. the login load -- " or "")
+            .. (who[1] and table.concat(who, ", ") or "no single addon's count moved"))
+        lastCount, lastPeak, first = count, peak, false
+    end)
+end
+
+-- ---------------------------------------------------------------------------
 -- Warmer — frame-budgeted background task runner
 -- ---------------------------------------------------------------------------
 -- Heavy UI list builds (e.g. the Browser recipe list) are enqueued here as
@@ -111,19 +229,34 @@ local warmFrame = CreateFrame("Frame")
 warmFrame:Hide()
 warmFrame:SetScript("OnUpdate", function()
     local q = Warmer._queue
-    local start = debugprofilestop()
+    -- Perf.now, never debugprofilestop directly -- see Perf.now for why a
+    -- budget on that timer can silently stop tripping.
+    local start   = Perf.now()
+    local resumed = 0
     while q[1] do
         local co = q[1]
         local ok, err = coroutine.resume(co)
+        resumed = resumed + 1
         if not ok then
             addon:DebugPrint("Warmer: task error:", err)
             table.remove(q, 1)
         elseif coroutine.status(co) == "dead" then
             table.remove(q, 1)
         end
-        if debugprofilestop() - start > Warmer.budgetMs then return end
+        if Perf.now() - start > Warmer.budgetMs then break end
     end
-    warmFrame:Hide()   -- queue drained: stop ticking
+    if not q[1] then warmFrame:Hide() end   -- queue drained: stop ticking
+    -- The budget bounds how many resumes a tick makes, not how long ONE resume
+    -- runs: a task that does not yield often enough owns the frame until it
+    -- does. That is invisible from the chair except as a pause, so it is
+    -- recorded here for /togpm perf.
+    -- Threshold first, then the string: this runs every frame while a warm is
+    -- in flight, and a quiet tick should allocate nothing.
+    local spent = Perf.now() - start
+    if spent > Perf.SLOW_MS then
+        Perf.mark("Background warm tick ran long", spent,
+            ("%d resumes against a %d ms budget"):format(resumed, Warmer.budgetMs))
+    end
 end)
 
 -- Enqueue a function to run in the background. It should call Warmer:Yield()
@@ -148,35 +281,6 @@ function Warmer:Clear()
     wipe(self._queue)
 end
 
--- ---------------------------------------------------------------------------
--- Perf -- in-game timing record, read back with /togpm perf
--- ---------------------------------------------------------------------------
--- Reported from Discord, 2026-09-11: "getting a lag on open of about 3-5
--- seconds". The offline suite times every tab's cold draw against the
--- operator's real database at under 200 ms of Lua (Tests/openperf_spec.lua), so
--- the seconds are somewhere the harness cannot run -- the client's per-item
--- tooltip renders and server queries inside the Professions build, or the
--- login load itself. The only instrument that can attribute them is one that
--- runs in the client, and this is it: each timed section records a mark, the
--- last 40 are kept, and /togpm perf prints them alongside the size of every
--- SavedVariables section. A report that pastes that output carries a number.
-local Perf = { marks = {}, MAX = 40, scrapeMs = 0, scrapeN = 0 }
-addon.Perf = Perf
-
---- Milliseconds, monotonic. debugprofilestop is the client's high-resolution
---- clock; offline the harness has GetTime instead.
-function Perf.now()
-    if debugprofilestop then return debugprofilestop() end
-    return (GetTime and GetTime() or 0) * 1000
-end
-
---- Record one timed section. `detail` is free text for the printout.
-function Perf.mark(label, ms, detail)
-    local m = Perf.marks
-    m[#m + 1] = { label = label, ms = ms, detail = detail, at = GetTime and GetTime() or 0 }
-    if #m > Perf.MAX then table.remove(m, 1) end
-    addon:DebugPrint(("perf: %s -- %.0f ms%s"):format(label, ms, detail and (" (" .. detail .. ")") or ""))
-end
 
 -- Convenient shorthand used throughout the addon files.
 -- `addon.lib:RegisterEvent(...)` → Ace's event system.
@@ -271,9 +375,12 @@ local GUILD_DB_DEFAULTS = {
         -- Sync log ring buffer (Modules/SyncLog.lua caps at 200 entries).
         syncLog = {},
 
-        -- v0.10.1 cross-guild: persisted sister-guild rosters, re-fed into
-        -- LibGuildRoster on login. [guildKey] = { members, meta, fedAt }.
-        sisterRosters = {},
+        -- `sisterRosters` lived here from v0.10.1 to v1.0.10. The persisted
+        -- sister-guild rosters are LibGuildRoster's now (LibGuildRosterDB, MINOR
+        -- 18); a copy left by an older build is moved there once by
+        -- addon:MigrateSisterGuildsToLibrary and the field is then nil. No
+        -- default, or AceDB would re-create an empty table every login and the
+        -- migration could never tell "moved" from "never had one".
     },
 }
 
@@ -452,10 +559,12 @@ local SETTINGS_DEFAULTS = {
         -- those locales reach players on enUS / zhTW / etc. clients.
         uiLanguageOverride = "auto",
 
-        -- Cross-guild: user-configured allied ("sister") guild names that TOGPM
-        -- shares profession data with. Flat list of display names; faction is
-        -- derived from the current player when forming "Faction-GuildName" keys.
-        sisterGuilds = {},
+        -- `sisterGuilds` / `sisterGuildsTs` lived here from v0.10.1 to v1.0.10.
+        -- The allied-guild list is LibGuildRoster's now (one list for every
+        -- addon on the account, officer-edited through the library); a list left
+        -- by an older build is imported once by addon:MigrateSisterGuildsToLibrary
+        -- and both fields are then nil. No default, for the same reason as
+        -- guild.sisterRosters above.
     },
     -- Realm-scoped: shared across every character on the same realm. Guild-only
     -- sync mode is a per-SERVER capability (some private/emulated servers — e.g.
@@ -719,6 +828,11 @@ function Ace:OnEnable()
         -- every reference for each flagged charKey (departed members
         -- queued by display-time visibility checks).
         GuildRoster:RegisterCallback("OnRosterReady", function()
+            -- The library's sister-guild store is keyed by the home guild, so
+            -- it resolves here and not before; the one-shot import of an older
+            -- build's list runs first so the scope change below already sees
+            -- the re-fed rosters.
+            addon:MigrateSisterGuildsToLibrary()
             addon:OnRosterScopeChanged("ready")
             self:ScheduleTimer(function() addon:RunPendingPurge() end, 60)
         end)
@@ -731,22 +845,22 @@ function Ace:OnEnable()
         GuildRoster:RegisterCallback("OnMemberJoined", function()
             addon:OnRosterScopeChanged("joined")
         end)
+
+        -- Cross-guild (LibGuildRoster MINOR 18). The allied-guild list, its
+        -- gossip, the roster pull, the roster relay and the login re-feed are
+        -- all the library's; TOGPM used to run its own copy of every one of
+        -- them (v0.10.1 - v1.0.10) and every addon reading the store would
+        -- have needed one too. What is left here is reacting: a changed list
+        -- or a landed roster changes cross-guild membership and attribution,
+        -- so the guild-scoped views refresh. Both callbacks are MINOR 18
+        -- additions; an older library fires neither and cross-guild is off.
+        GuildRoster:RegisterCallback("OnSisterConfigChanged", function(_, names, ts, source)
+            addon:OnSisterConfigChanged(names, ts, source)
+        end)
+        GuildRoster:RegisterCallback("OnSisterRosterUpdated", function(_, guildKey, source)
+            addon:OnSisterRosterUpdated(guildKey, source)
+        end)
     end
-
-    -- Cross-guild config propagation (gossip): receive guildmates' allied-guild
-    -- lists, announce ours shortly after login, and re-broadcast every ~12 min
-    -- so members who log in later converge. See addon:BroadcastSisterConfig.
-    self:RegisterComm(addon.SisterCfgPrefix, "OnSisterConfigComm")
-    self:ScheduleTimer(function() addon:BroadcastSisterConfig() end, 20)
-    self:ScheduleRepeatingTimer(function() addon:BroadcastSisterConfig() end, 720)
-
-    -- Cross-guild ROSTER propagation (Part B): receive relayed sister rosters,
-    -- and broadcast any we hold so members who never pulled still get the
-    -- canonical roster the visibility gate needs. Suppression keeps it to ~one
-    -- broadcaster per interval. See addon:BroadcastSisterRosters.
-    self:RegisterComm(addon.SisterRosterPrefix, "OnSisterRosterComm")
-    self:ScheduleTimer(function() addon:BroadcastSisterRosters() end, 35)
-    self:ScheduleRepeatingTimer(function() addon:BroadcastSisterRosters() end, 300)
 
     addon:DebugPrint("OnEnable complete.")
 end
@@ -757,6 +871,11 @@ end
 
 function Ace:OnPlayerEnteringWorld(_event, isInitialLogin, isReloadingUi)
     addon:DebugPrint("PLAYER_ENTERING_WORLD", "login:", isInitialLogin, "reload:", isReloadingUi)
+
+    -- The stall watch on the client's profiler (see Perf). Started here rather
+    -- than at load so the harness's driven clock owns the ticker; its counts
+    -- baseline at zero, so the login frames before this point still report.
+    Perf.WatchStalls()
 
     -- Register this character in the account-wide accountChars table.
     -- Done here (not OnInitialize) because GetNormalizedRealmName() returns ""
@@ -1026,24 +1145,32 @@ function addon:ShowMinimapButton() addon:DebugPrint("ShowMinimapButton — UI no
 function addon:OpenPurge()      addon:DebugPrint("OpenPurge — UI not yet loaded") end
 function addon:ForceSync()      addon:DebugPrint("ForceSync — sync not yet loaded") end
 
--- /togpm pullroster <Name[-Realm]> — manually pull an allied guild's roster
--- from a known online member. Test trigger for cross-guild sync; the automatic
--- /who discovery comes in a later step. Routes through DeltaSync RosterSync over
--- a whisper; on success the sister roster lands in LibGuildRoster and is
--- persisted (watch for "sister roster updated" in debug output).
+-- /togpm pullroster <Name[-Realm]> — pull an allied guild's roster from one of
+-- its online members, and TOGPM's own profession data from the same peer.
+--
+-- The ROSTER half is LibGuildRoster's (MINOR 18): its own two-message exchange
+-- over WHISPER, after which the library persists the roster, relays it to the
+-- home guild and fires OnSisterRosterUpdated -- so this is the same bootstrap
+-- as `/guildroster pull` and every automatic pull the library makes. The DATA
+-- half (recipes, cooldowns, skills) is still TOGPM's: RequestSisterData asks
+-- over DeltaSync with the consent proof both sides check. A cross-realm member
+-- needs the realm-qualified name; a bare name gets the local realm appended.
 function addon:PullSisterRoster(args)
     local peer = strtrim(args or "")
     if peer == "" then
         Ace:Print("Usage: /togpm pullroster <Name> (an online member of an allied guild)")
         return
     end
-    local DS = addon.Scanner and addon.Scanner.DS
-    if not DS or not DS.RequestRosterSync then
-        Ace:Print("|cffff4444Cross-guild sync unavailable|r (DeltaSync RosterSync not loaded).")
+    local GR = addon.Scanner and addon.Scanner.GuildRoster
+    if not (GR and GR.PullSisterRoster) then
+        Ace:Print("|cffff4444Cross-guild sync unavailable|r (LibGuildRoster 0.7.0+ is required).")
+        return
+    end
+    if not GR:PullSisterRoster(peer) then
+        Ace:Print("|cffff4444Cross-guild sync unavailable|r (roster not ready, or no guild).")
         return
     end
     Ace:Print("Requesting roster + profession data from " .. peer .. " ...")
-    DS:RequestRosterSync(peer)
     if addon.Scanner and addon.Scanner.RequestSisterData then
         addon.Scanner:RequestSisterData(peer)
     end
@@ -1190,7 +1317,7 @@ function addon:DumpCooldowns(args)
     Ace:Print(("|cffda8cff%s cooldowns:|r"):format(charKey))
     for spellId, expiresAt in pairs(bucket) do
         local remaining = expiresAt - now
-        local name = (GetSpellInfo and GetSpellInfo(spellId)) or "?"
+        local name = GetSpellInfo(spellId) or "?"
         Ace:Print(("  [%s] %s expiresAt=%d remaining=%ds"):format(
             tostring(spellId), name, expiresAt, remaining))
     end
@@ -1714,7 +1841,8 @@ function Ace:PrintHelp()
     self:Print("  /togpm dumpprice <itemId|itemLink> \226\128\148 Dump full price diagnostics for an item")
     self:Print("  /togpm commtest [name] \226\128\148 Probe which addon-message channels the server relays")
     self:Print("  /togpm whyvisible <name> \226\128\148 Explain why a character is still shown (or hidden)")
-    self:Print("  /togpm perf         \226\128\148 Timings of the last opens and tab draws, and the saved data's size")
+    self:Print("  /togpm perf         \226\128\148 Timings of the last opens, draws, builds and syncs;"
+        .. " every addon's worst frame; the saved data's size")
     self:Print("  /togpm debug        \226\128\148 " .. L["SlashHelpDebug"])
     self:Print("  /togpm help         \226\128\148 " .. L["SlashHelpHelp"])
 end
@@ -1733,11 +1861,53 @@ function Ace:PrintPerf()
         self:Print("  (nothing timed yet -- open the window, then run this again)")
     end
     for _, m in ipairs(P.marks) do
-        self:Print(("  %6.0f ms  %s%s"):format(m.ms, m.label, m.detail and ("  " .. m.detail) or ""))
+        self:Print(("  %s  %6.0f ms  %s%s"):format(m.clock or "--:--:--", m.ms, m.label,
+            m.detail and ("  " .. m.detail) or ""))
     end
     if P.scrapeN > 0 then
         self:Print(("  item tooltip scrapes this session: %d, %.0f ms total, %.2f ms each")
             :format(P.scrapeN, P.scrapeMs, P.scrapeMs / P.scrapeN))
+    end
+
+    -- The client's own profiler. The marks above cover only the sections this
+    -- addon chose to time; this covers every addon loaded, measured by the
+    -- client, since login. PeakTime is the worst single frame, so a pause
+    -- anyone felt is on this list against whoever owned it -- and if the
+    -- whole-client peak is large while every addon's is small, no addon's Lua
+    -- was running during the pause at all.
+    local profiler = C_AddOnProfiler
+    local metric   = Enum and Enum.AddOnProfilerMetric
+    if profiler and metric and profiler.IsEnabled and profiler.IsEnabled() then
+        self:Print("Perf -- the client's addon profiler, worst single frame since login (ms):")
+        self:Print(("  whole client %.0f | all addons together %.0f (frames over 500 / 1000 ms: %d / %d) | %s %.0f "
+                 .. "(its frames over 100 / 500 / 1000 ms: %d / %d / %d)"):format(
+            profiler.GetApplicationMetric(metric.PeakTime),
+            profiler.GetOverallMetric(metric.PeakTime),
+            profiler.GetOverallMetric(metric.CountTimeOver500Ms),
+            profiler.GetOverallMetric(metric.CountTimeOver1000Ms),
+            addonName, profiler.GetAddOnMetric(addonName, metric.PeakTime),
+            profiler.GetAddOnMetric(addonName, metric.CountTimeOver100Ms),
+            profiler.GetAddOnMetric(addonName, metric.CountTimeOver500Ms),
+            profiler.GetAddOnMetric(addonName, metric.CountTimeOver1000Ms)))
+        -- Counts beside each peak: the login frame gives every addon one big
+        -- peak, so the peak alone cannot separate "paused once at login" from
+        -- "pauses during play". The over-500 / over-1000 counts can.
+        for _, r in ipairs(profiler.GetTopKAddOnsForMetric(metric.PeakTime, 5) or {}) do
+            self:Print(("  %6.0f ms  %s  (frames over 500 / 1000 ms: %d / %d)"):format(
+                r.metricValue, r.addOnName,
+                profiler.GetAddOnMetric(r.addOnName, metric.CountTimeOver500Ms),
+                profiler.GetAddOnMetric(r.addOnName, metric.CountTimeOver1000Ms)))
+        end
+        self:Print("  (the client blames a frame on the addon that CREATED the frame it ran on, so a shared "
+            .. "library's line -- Ace3 -- carries every Ace addon's events, timers and comm, this one's included; "
+            .. "the line above for " .. addonName .. " covers only its own frames. The login stages therefore "
+            .. "time themselves and appear in the marks.)")
+        self:Print(P.stallTicker
+            and ("  stall watch: on -- a frame over %d ms by any addon leaves a 'Client stall' mark "
+                 .. "with the clock time"):format(P.STALL_MS)
+            or  "  stall watch: not running (no C_Timer, or PLAYER_ENTERING_WORLD has not fired)")
+    else
+        self:Print("Perf -- this client has no addon profiler (C_AddOnProfiler); only the marks above are available")
     end
 
     local gdb = addon:GetGuildDb()
@@ -1898,324 +2068,192 @@ function addon:GuildTagFromKey(guildKey)
 end
 
 -- ---------------------------------------------------------------------------
--- Cross-guild ("sister guild") configuration
+-- Cross-guild ("sister guild") configuration -- READ from LibGuildRoster
 -- ---------------------------------------------------------------------------
+-- The allied-guild list is LibGuildRoster's (MINOR 18, GuildRoster 0.7.0): one
+-- list per home guild in the library's own SavedVariables, officer-edited,
+-- gossiped to the guild by the library, and read by every addon on the account
+-- -- TOGPM, TOGTools, TOGBankClassic -- through the same calls. The user's
+-- direction, 2026-09-13: "i need it to not step on each other, because i need
+-- to build that into togbank too" / "probably best to do it in the library".
+--
+-- So nothing below OWNS anything. Each function is the name the rest of TOGPM
+-- has always called (the data-sync gates in Scanner.lua, the Settings panel,
+-- the visibility gate) resolved against the library, and every one of them
+-- answers "nothing configured" when the library is too old to have the API --
+-- which is how cross-guild switches off cleanly under an un-upgraded
+-- GuildRoster rather than half-working from a list nobody else can see.
 
--- Officer gate: only the GM, or an officer (a rank that can edit officer notes),
--- may CHANGE the allied-guild list. The list is guild-wide — it federates to
--- every member — so letting anyone edit it would let one person redirect the
--- whole guild's cross-guild sharing, or grief it. Members still SEE the list
--- (read-only) and still relay it (gossip); they just can't author a new one.
--- Guildless players can't configure cross-guild at all.
+-- The roster library, if it is loaded and carries the sister-guild store.
+-- Resolved through Scanner.GuildRoster (what the specs hand in) so a spec can
+-- attach a real library without touching LibStub.
+local function sisterLib(self)
+    local GR = self.Scanner and self.Scanner.GuildRoster
+    if GR and GR.GetSisterGuildNames then return GR end
+    return nil
+end
+
+-- Officer gate: only the GM or an officer may CHANGE the allied-guild list. The
+-- library decides -- SetSisterGuildNames refuses a non-officer itself -- and
+-- this asks it the same question so the Settings input greys out for exactly
+-- the players whose edit would be refused. The fallback below is the check the
+-- library makes (guild leader, or a rank that can edit officer notes), for a
+-- library without IsOfficer.
 function addon:CanEditSisterGuilds()
     if not (IsInGuild and IsInGuild()) then return false end
+    local GR = self.Scanner and self.Scanner.GuildRoster
+    if GR and GR.IsOfficer then return GR:IsOfficer() and true or false end
     if IsGuildLeader and IsGuildLeader() then return true end
     if CanEditOfficerNote and CanEditOfficerNote() then return true end
     return false
 end
 
--- The user-configured list of allied guild display names TOGPM shares
--- profession data with. Stored in the shared settings profile; nil-safe.
+-- The configured allied guild display names, sorted. Empty when nothing is
+-- configured, when guildless, or under a library without the store.
 function addon:GetSisterGuilds()
-    return (Ace.db and Ace.db.profile and Ace.db.profile.sisterGuilds) or {}
+    local GR = sisterLib(self)
+    return (GR and GR:GetSisterGuildNames()) or {}
 end
 
--- Parse newline-separated text from the settings input into a trimmed,
--- case-insensitively de-duplicated list of guild names and store it.
--- Officer-only (CanEditSisterGuilds) — backstop for a direct call; the Settings
--- input is also disabled for non-officers, and members get the list via the
--- config gossip (OnSisterConfigReceived), not through here.
+-- Replace the allied-guild list from the Settings input (newline-separated
+-- text). The library trims, de-duplicates case-insensitively, stamps the edit
+-- so it wins the last-writer race, tears down any guild dropped from the list
+-- and gossips the result -- and refuses a non-officer, which is reported here
+-- in the player's words. Returns what the library returned.
 function addon:SetSisterGuilds(text)
-    if not self:CanEditSisterGuilds() then
+    local GR = sisterLib(self)
+    if not (GR and GR.SetSisterGuildNames) then
+        self:Print(L["SettingsSisterGuildsLibraryTooOld"])
+        return false, "no-library"
+    end
+    local ok, reason = GR:SetSisterGuildNames(text)
+    if not ok and reason == "not-officer" then
         self:Print(L["SettingsSisterGuildsOfficerOnly"])
-        return
     end
-    local out, seen = {}, {}
-    for line in tostring(text or ""):gmatch("[^\r\n]+") do
-        local name = line:gsub("^%s+", ""):gsub("%s+$", "")
-        if name ~= "" and not seen[name:lower()] then
-            seen[name:lower()] = true
-            out[#out + 1] = name
-        end
-    end
-    if Ace.db and Ace.db.profile then
-        -- Capture which sister guilds we're DROPPING so we can tear down their
-        -- federated roster + data — everything gates on the list, so a removed
-        -- guild must stop being served, accepted, displayed, and re-fed.
-        local oldKeys = self:GetSisterGuildKeySet()
-        Ace.db.profile.sisterGuilds   = out
-        -- Stamp a fresh server-time so this edit wins the last-writer race, then
-        -- gossip it to the home guild immediately (config-propagation MVP).
-        Ace.db.profile.sisterGuildsTs = (GetServerTime and GetServerTime()) or (time and time()) or 0
-        local newKeys = self:GetSisterGuildKeySet()
-        for key in pairs(oldKeys) do
-            if not newKeys[key] then self:DropSisterGuildData(key) end
-        end
-        self:BroadcastSisterConfig()
-    end
+    return ok, reason
 end
 
--- Tear down a sister guild we no longer federate with: remove its roster from
--- LibGuildRoster, drop our persisted copy (so login re-feed doesn't resurrect
--- it), and let the visibility gate purge its now-unrostered crafters on the next
--- refresh. Called when a guild is removed from the allied-guild list.
-function addon:DropSisterGuildData(guildKey)
-    if not guildKey then return end
-    local Scanner = self.Scanner
-    local GR = Scanner and Scanner.GuildRoster
-    if GR and GR.RemoveSisterRoster then GR:RemoveSisterRoster(guildKey) end
-    local gdb = self:GetGuildDb()
-    if gdb and type(gdb.sisterRosters) == "table" then
-        gdb.sisterRosters[guildKey] = nil
-    end
-    self:DebugPrint("Cross-guild: dropped de-configured sister guild", guildKey)
-end
-
--- ---------------------------------------------------------------------------
--- Cross-guild config propagation (gossip)
--- The allied-guild list must reach every home-guild member — eventually only
--- officers can EDIT it, so members can only RECEIVE it. Model: broadcast on
--- change, on a ~12-minute repeating timer, and on demand (the "Sync now"
--- button); last-writer-wins by the server-time stamp captured when
--- SetSisterGuilds ran. Re-broadcasts carry the ORIGINAL stamp, so a member
--- relaying can't clobber a newer officer edit. A member holding no config
--- (ts 0) never broadcasts, so an empty list can't win the race against a real
--- one — and a member who logs in later converges within one timer interval.
--- ---------------------------------------------------------------------------
-
-addon.SisterCfgPrefix = "TOGPMxgc"   -- AceComm prefix (must be <= 16 chars)
-
--- Delivery verdict for TOGPM's OWN AceComm sends — the two cross-guild
--- broadcasts below. Everything else on the wire goes through DeltaSync, which
--- runs its own `OnSendResult` and surfaces it via `/togpm dsstatus`; these two
--- are the sends TOGPM makes directly, and until v1.0.6 nothing was listening.
---
--- AceCommQueue-1.0 MINOR 5 ends every accepted send in exactly ONE terminal
--- callback: `delivered` is the verdict for the WHOLE message (true delivered /
--- false refused by the client / nil never attempted) and `reason` names which.
--- Pass no callback and the library reports a refusal through geterrorhandler()
--- itself — correct, but it lands in the player's bug catcher attributed to the
--- comm layer, and TOGPM learns nothing.
---
--- This is about VISIBILITY, not recovery. Both broadcasts are periodic (on
--- change, plus the ~12-minute timer), so a refusal heals itself on the next
--- tick; what was missing is any way to see that cross-guild propagation is
--- failing. It goes to the Sync Log and the debug stream, where it's diagnosable.
---
--- Four of the five reasons are failures and one is not:
---
---   "refused" / "rejected" / "error" — the client said no, or the send raised.
---   "lost"      — MINOR 6. The callback never arrived, ChatThrottleLib has no
---                 record of the send, and the retry budget is spent. `delivered`
---                 is NIL here, not false, so the old `delivered == false` test
---                 missed it entirely — and this is the single most important one
---                 to see, because it is the terminal verdict on the stall that
---                 MINOR 6 exists to recover from. A send that ends "lost" has
---                 already been re-sent and failed again; silence here would hide
---                 a cross-guild link that is down rather than merely slow.
---   "suppressed" — one of our own wrappers dropped the send on purpose. Doing
---                 nothing is the correct response, so it is NOT a failure.
---
--- `delivered` is a BOOLEAN, never an Enum.SendAddonMessageResult — AceComm
--- discards the enum, so there is no way to learn *why* from here.
-local function OnXGuildSendResult(ctx, _sent, _total, delivered, reason)
-    if not (delivered == false or reason == "rejected" or reason == "error"
-            or reason == "lost") then return end
-    local what = (ctx and ctx.what) or "cross-guild broadcast"
-    local why  = reason or "refused"
-    addon:DebugPrint("Cross-guild:", what, "NOT delivered (" .. why .. ")")
-    -- guildDb is nil-guarded because SyncLog writes straight into it; a send
-    -- that somehow resolves before OnInitialize must not take the callback down.
-    if addon.SyncLog and addon.guildDb then
-        addon.SyncLog:Record("failed", "guild", 0, what .. " (" .. why .. ")")
-    end
-end
-
+-- The server-time stamp of the held list (0 = holding nothing).
 function addon:GetSisterGuildsTs()
-    return (Ace.db and Ace.db.profile and tonumber(Ace.db.profile.sisterGuildsTs)) or 0
+    local GR = sisterLib(self)
+    return (GR and GR.GetSisterGuildsTs and GR:GetSisterGuildsTs()) or 0
 end
 
--- Serialize + send our current allied-guild list on GUILD. No-op when we hold
--- nothing (ts 0), so empties never participate in the last-writer race.
-function addon:BroadcastSisterConfig()
-    if not (Ace.db and Ace.db.profile) then return end
-    -- Never broadcast on GUILD while guildless. The client REFUSES such a send,
-    -- and since AceCommQueue-1.0 MINOR 5 a refusal with no delivery callback is
-    -- reported through geterrorhandler() — so a guildless player still holding a
-    -- config (configured it, then left; or received it by gossip) would get an
-    -- error in their bug catcher on every broadcast, including the ~12-minute
-    -- timer. The send was always being dropped; it just used to be silent.
-    if not self:GetGuildKey() then return end
-    local ts = self:GetSisterGuildsTs()
-    if ts <= 0 then return end
-    local guilds = self:GetSisterGuilds()
-    local ok, msg = pcall(function() return Ace:Serialize({ g = guilds, t = ts }) end)
-    if ok and type(msg) == "string" then
-        Ace:SendCommMessage(addon.SisterCfgPrefix, msg, "GUILD", nil, "NORMAL",
-            OnXGuildSendResult, { what = "sister config" })
-        self:DebugPrint("Cross-guild: broadcast sister config (ts", ts, ",", #guilds, "guild(s))")
-    end
-end
+-- ---------------------------------------------------------------------------
+-- Reacting to the library
+-- ---------------------------------------------------------------------------
 
--- A guildmate sent their allied-guild list. Last-writer-wins by stamp; adopt a
--- strictly-newer config WITHOUT re-stamping (keep the origin ts so gossip
--- converges) and without re-broadcasting (the on-change broadcast already
--- reached every online member; the periodic timer covers latecomers).
-function addon:OnSisterConfigReceived(prefix, message, _distribution, sender)
-    if prefix ~= addon.SisterCfgPrefix then return end
-    -- Drop our own echo.
-    local GR = self.Scanner and self.Scanner.GuildRoster
-    local me = self:GetCharacterKey()
-    local normSender = (GR and GR.NormalizeName and GR:NormalizeName(sender)) or sender
-    if sender == me or normSender == me then return end
-
-    local success, payload = Ace:Deserialize(message)
-    if not success or type(payload) ~= "table" then return end
-    local incomingTs = tonumber(payload.t) or 0
-    if incomingTs <= self:GetSisterGuildsTs() then return end   -- not newer → ignore
-    if type(payload.g) ~= "table" then return end
-
-    local clean = {}
-    for _, name in ipairs(payload.g) do
-        if type(name) == "string" and name ~= "" then clean[#clean + 1] = name end
-    end
-    -- Tear down any guild this adopted config drops (same as a manual edit), so
-    -- a federated removal also stops the gates/display for that guild.
-    local oldKeys = self:GetSisterGuildKeySet()
-    Ace.db.profile.sisterGuilds   = clean
-    Ace.db.profile.sisterGuildsTs = incomingTs
-    local newKeys = self:GetSisterGuildKeySet()
-    for key in pairs(oldKeys) do
-        if not newKeys[key] then self:DropSisterGuildData(key) end
-    end
-    self:DebugPrint("Cross-guild: adopted sister config from", sender, "(ts", incomingTs, ",", #clean, "guild(s))")
-
+-- The list changed -- an officer edited it here, or the gossip adopted a newer
+-- one. The library has already torn down whatever was dropped (roster,
+-- presence, persisted copy); what is TOGPM's is the crafter data attributed to
+-- that guild, which the visibility gate purges on the next refresh once the
+-- roster is gone. So: refresh, and let the Settings panel re-read.
+function addon:OnSisterConfigChanged(names, ts, source)
+    self:DebugPrint("Cross-guild: allied-guild list changed (", source, ", ts", ts, ",",
+        type(names) == "table" and #names or 0, "guild(s))")
     local AceRegistry = LibStub("AceConfigRegistry-3.0", true)
     if AceRegistry then AceRegistry:NotifyChange("TOGProfessionMaster") end
     if self.callbacks then self.callbacks:Fire("GUILD_DATA_UPDATED", "sisterconfig") end
 end
 
--- AceComm dispatches to a named method on the addon object (Ace); bounce to the
--- addon-namespace handler above.
-function Ace:OnSisterConfigComm(prefix, message, distribution, sender)
-    addon:OnSisterConfigReceived(prefix, message, distribution, sender)
-end
-
--- ---------------------------------------------------------------------------
--- Cross-guild ROSTER propagation (Part B)
--- The visibility gate keeps a sister crafter only if their charKey is in a
--- sister roster we hold. A member who configured the allied guild (via the
--- config gossip above) but never PULLED its roster would therefore purge every
--- relayed sister crafter — so the roster must reach the whole guild too, not
--- just the puller. A member who holds a sister roster broadcasts it on the GUILD
--- channel; others apply it. A "recently-seen by hash" suppression means only ~one
--- holder broadcasts per interval no matter how many hold it, and whoever holds
--- it can take over if the usual broadcaster logs off. Gated by IsSisterGuildKey
--- on receive, so an unlisted guild's roster is never accepted.
--- ---------------------------------------------------------------------------
-
-addon.SisterRosterPrefix = "TOGPMxgr"   -- AceComm prefix (<= 16 chars)
-addon._seenSisterRoster  = addon._seenSisterRoster or {}   -- guildKey -> { hash, t }
-local SISTERROSTER_SUPPRESS = 270       -- seconds; skip if seen this hash recently
-
--- Broadcast each held sister roster to our home guild, unless we saw the same
--- roster (by hash) circulate recently.
-function addon:BroadcastSisterRosters()
-    local GR = self.Scanner and self.Scanner.GuildRoster
-    if not GR or not GR.GetKnownRosters or not GR.GetRoster then return end
-    if #self:GetSisterGuilds() == 0 then return end
-    local homeKey = self:GetGuildKey()
-    -- Same guard as BroadcastSisterConfig: a GUILD send while guildless is
-    -- refused by the client and now surfaces as an error to the player.
-    if not homeKey then return end
-    local now = (GetServerTime and GetServerTime()) or (time and time()) or 0
-    for _, key in ipairs(GR:GetKnownRosters()) do
-        if key ~= homeKey and self:IsSisterGuildKey(key) then
-            local hash = (GR.GetRosterHash and GR:GetRosterHash(key)) or 0
-            local seen = self._seenSisterRoster[key]
-            if not (seen and seen.hash == hash and (now - seen.t) < SISTERROSTER_SUPPRESS) then
-                local roster, members = GR:GetRoster(key) or {}, {}
-                for ck, m in pairs(roster) do
-                    members[#members + 1] = { n = ck, c = m and m.class, l = m and m.level }
-                end
-                if #members > 0 then
-                    local ok, msg = pcall(function() return Ace:Serialize({ k = key, h = hash, m = members }) end)
-                    if ok and type(msg) == "string" then
-                        Ace:SendCommMessage(self.SisterRosterPrefix, msg, "GUILD", nil, "NORMAL",
-                            OnXGuildSendResult, { what = "sister roster " .. key })
-                        -- Record our own send so we suppress next interval too
-                        -- (broadcasting duty rotates rather than pinning one member).
-                        self._seenSisterRoster[key] = { hash = hash, t = now }
-                        self:DebugPrint("Cross-guild: broadcast sister roster", key,
-                            "(", #members, "members, hash", hash, ")")
-                    end
-                end
-            end
-        end
-    end
-end
-
--- A home guildmate relayed a sister roster. Apply it (if we don't already hold
--- the same one), gated by IsSisterGuildKey, and note it as circulating.
-function addon:OnSisterRosterReceived(prefix, message, _distribution, sender)
-    if prefix ~= self.SisterRosterPrefix then return end
-    local GR = self.Scanner and self.Scanner.GuildRoster
-    if not GR or not GR.SetSisterRoster then return end
-    local success, payload = Ace:Deserialize(message)
-    if not success or type(payload) ~= "table" then return end
-    local key = payload.k
-    if not self:IsSisterGuildKey(key) then return end          -- federation gate
-    local hash = tonumber(payload.h) or 0
-    self._seenSisterRoster[key] = { hash = hash, t = (GetServerTime and GetServerTime()) or 0 }
-    -- Skip if we already hold this exact roster (avoid redundant re-feeds).
-    local mine = GR.GetRosterHash and GR:GetRosterHash(key) or nil
-    if mine and mine == hash then return end
-    if type(payload.m) ~= "table" then return end
-    local members = {}
-    for _, e in ipairs(payload.m) do
-        if type(e) == "table" and type(e.n) == "string" then
-            members[#members + 1] = { name = e.n, class = e.c, level = e.l }
-        end
-    end
-    if #members == 0 then return end
-    GR:SetSisterRoster(key, members, { via = sender })
-    -- Persist (so it survives /reload) + refresh UI, WITHOUT re-broadcasting —
-    -- the suppression above keeps the relay from echoing around the guild.
-    if self.Scanner.PersistSisterRoster then self.Scanner:PersistSisterRoster(key) end
+-- A sister roster landed in the library -- our own pull, or a guildmate's
+-- relay. Cross-guild membership and attribution changed, so the guild-scoped
+-- views refresh. The library has already persisted it and, for a pull,
+-- scheduled the relay; nothing is owed back.
+function addon:OnSisterRosterUpdated(guildKey, source)
+    self:DebugPrint("Cross-guild: sister roster updated:", guildKey, "(", source, ")")
     if self.callbacks then
-        self.callbacks:Fire("GUILD_DATA_UPDATED", "sisterroster:relay",
+        self.callbacks:Fire("GUILD_DATA_UPDATED", "sister:" .. tostring(guildKey),
             { altgroups = true, roster = true })
     end
-    self:DebugPrint("Cross-guild: applied relayed sister roster", key, "from", sender, "(", #members, "members)")
 end
 
-function Ace:OnSisterRosterComm(prefix, message, distribution, sender)
-    addon:OnSisterRosterReceived(prefix, message, distribution, sender)
-end
+-- ---------------------------------------------------------------------------
+-- One-shot import of an older build's list and rosters
+-- ---------------------------------------------------------------------------
+-- v0.10.1 - v1.0.10 kept the list in TOGPM_Settings (profile.sisterGuilds +
+-- sisterGuildsTs) and the pulled rosters in TOGPM_GuildDB (guild.sisterRosters).
+-- Both move into the library's store once, so nobody re-types a list an officer
+-- already typed, and then the TOGPM copies are deleted so they can never feed
+-- the store again -- two feeders doing wipe-and-replace into one store is the
+-- exact thing the move exists to end.
+--
+-- Written DIRECTLY into the library's SavedVariables rather than through
+-- SetSisterGuildNames, because the importing character is usually not an
+-- officer (every member held the list by gossip) and a refused import would
+-- leave the copy in place forever. The library's own last-writer rule is kept:
+-- the older build's stamp is carried over, so a list the library already holds
+-- with a NEWER stamp wins and the old one is simply discarded. The library
+-- gossips whatever it holds on its own timer, so an imported list reaches the
+-- guild without a broadcast from here.
+--
+-- Runs from OnRosterReady, the first moment GetSisterDb can resolve the home
+-- guild. Idempotent: with nothing left to move it does nothing.
+function addon:MigrateSisterGuildsToLibrary()
+    local GR = sisterLib(self)
+    if not (GR and GR.GetSisterDb) then return false end
+    local db = GR:GetSisterDb()
+    if not db then return false end
+    local moved = false
 
--- The configured sister guilds as "Faction-GuildName" keys for the current
--- player's faction, excluding the player's own home guild (you never
--- sister-sync your own guild). Cross-faction confederations can't sync —
--- /who and whispers don't cross factions — so the current faction is assumed.
--- Returns an empty table when unconfigured or guildless.
-function addon:GetSisterGuildKeys()
-    local names = self:GetSisterGuilds()
-    if #names == 0 then return {} end
-    local faction = UnitFactionGroup("player") or "Neutral"
-    local homeKey = self:GetGuildKey()
-    local keys = {}
-    for _, name in ipairs(names) do
-        local key = faction .. "-" .. name
-        if key ~= homeKey then
-            keys[#keys + 1] = key
+    local profile = Ace.db and Ace.db.profile
+    local legacy  = profile and profile.sisterGuilds
+    if type(legacy) == "table" then
+        local legacyTs = tonumber(profile.sisterGuildsTs) or 0
+        if #legacy > 0 and legacyTs > (tonumber(db.sisterGuildsTs) or 0) then
+            local names = {}
+            for _, name in ipairs(legacy) do
+                if type(name) == "string" and name ~= "" then names[#names + 1] = name end
+            end
+            db.sisterGuilds   = names
+            db.sisterGuildsTs = legacyTs
+            moved = true
+            self:DebugPrint("Cross-guild: imported", #names, "allied guild(s) into LibGuildRoster (ts", legacyTs, ")")
         end
+        profile.sisterGuilds   = nil
+        profile.sisterGuildsTs = nil
     end
-    return keys
+
+    local gdb = self:GetGuildDb()
+    local rosters = gdb and rawget(gdb, "sisterRosters")
+    if type(rosters) == "table" then
+        for key, entry in pairs(rosters) do
+            if type(entry) == "table" and type(entry.members) == "table"
+               and GR:IsSisterGuildKey(key) and db.sisterRosters[key] == nil then
+                db.sisterRosters[key] = entry
+                moved = true
+            end
+        end
+        gdb.sisterRosters = nil
+    end
+
+    if moved and GR.RefeedSisterRosters then GR:RefeedSisterRosters() end
+    return moved
 end
 
--- A { guildKey -> true } set of our configured sister guilds. Used as the
--- "consent proof" we attach to outbound cross-guild requests and to gate
--- inbound traffic. O(1) membership test vs. the array form above.
+-- ---------------------------------------------------------------------------
+-- The configured sister guilds as keys -- what TOGPM's OWN data sync gates on
+-- ---------------------------------------------------------------------------
+-- The list gossip, the roster relay and the roster pull left this file for the
+-- library in v1.0.10 (they were here from v0.10.1: prefixes TOGPMxgc/TOGPMxgr,
+-- a 12-minute config timer, a 5-minute roster timer, a hash-suppressed relay,
+-- and a delivery-verdict callback into the Sync Log). What stays is the
+-- profession DATA exchange in Scanner.lua -- the "sister-pull" request, the
+-- consent proof on it, and the merge gate -- which is TOGPM's data and reads
+-- the library's list through these three.
+
+-- The configured sister guilds as "Faction-GuildName" keys, home excluded, in
+-- the library's spelling (the typed name under the player's faction). Empty
+-- when unconfigured, guildless, or under a library without the store.
+function addon:GetSisterGuildKeys()
+    local GR = sisterLib(self)
+    return (GR and GR.GetSisterGuildKeys and GR:GetSisterGuildKeys()) or {}
+end
+
+-- A { guildKey -> true } set of the same. The consent proof attached to an
+-- outbound sister-pull (Scanner:RequestSisterData), which the other side reads
+-- with a plain lookup of its OWN home key -- so the keys travel exactly as the
+-- library spells them.
 function addon:GetSisterGuildKeySet()
     local set = {}
     for _, key in ipairs(self:GetSisterGuildKeys()) do set[key] = true end
@@ -2223,12 +2261,14 @@ function addon:GetSisterGuildKeySet()
 end
 
 -- True if guildKey is one of our configured sister guilds. The single source of
--- truth for "may I exchange cross-guild data with this guild?" — every serve /
--- accept / roster gate calls this, so an unlisted guild (a stranger, an
--- accidental config, a malicious puller) is refused everywhere.
+-- truth for "may I exchange cross-guild data with this guild?" -- every serve /
+-- accept gate in Scanner.lua calls this. CASE-INSENSITIVE, because the library
+-- is: the list is typed by an officer and a key that arrives over the wire is
+-- spelled the way the provider's client spells its own guild.
 function addon:IsSisterGuildKey(guildKey)
     if not guildKey or guildKey == "" then return false end
-    return self:GetSisterGuildKeySet()[guildKey] == true
+    local GR = sisterLib(self)
+    return (GR and GR.IsSisterGuildKey and GR:IsSisterGuildKey(guildKey)) or false
 end
 
 -- The set of guild TAGS whose crafter data we are permitted to STORE and RELAY:
@@ -2654,7 +2694,9 @@ function addon:GetRecipeName(profId, recipeId)
     if m and m.name then return m.name end
     -- Fallback: WoW client APIs (may return localized name).
     if type(recipeId) == "number" then
-        local n = (GetSpellInfo and GetSpellInfo(recipeId)) or addon.Item.GetInfo(recipeId)
+        -- Both bare: GetSpellInfo is never nil on a supported flavour, and the
+        -- item resolver nil-checks internally (Compat.lua, THE GUARD RULE).
+        local n = GetSpellInfo(recipeId) or addon.Item.GetInfo(recipeId)
         if n then return n end
     end
     return tostring(recipeId)

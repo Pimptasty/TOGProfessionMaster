@@ -111,7 +111,9 @@ function RecipeGate:IsValidOnClient(profId, recipeId, meta)
 	if meta.minExpansion and meta.minExpansion > clientExp then
 		return false, "minExpansion"
 	end
-	if isEra and GetSpellInfo and not GetSpellInfo(recipeId) then
+	-- GetSpellInfo is called bare: it is the real function on every flavour
+	-- (Compat.lua, THE GUARD RULE), so a presence guard on it can never be false.
+	if isEra and not GetSpellInfo(recipeId) then
 		return false, "nospell"
 	end
 	if isEra then
@@ -122,10 +124,15 @@ function RecipeGate:IsValidOnClient(profId, recipeId, meta)
 		-- Untagged high-ID recipe on Era: require BOTH the spell and an item to
 		-- resolve. TBC recipes such as Crystal Throat Lozenge carry items in the
 		-- shared 1.15 tables while having no spell on an Era client.
-		local spellExists = GetSpellInfo and GetSpellInfo(recipeId) ~= nil
-		local itemExists  = GetItemInfoInstant and (
+		-- No `GetItemInfoInstant and` in front of the resolver calls: with the
+		-- deprecation-fallback CVar off that bare alias is nil while C_Item's
+		-- copy answers, and the guard gated every untagged high-ID Era recipe
+		-- out of the UI while the resolver could have resolved all of them
+		-- (finding 30, the site with teeth). The resolver answers nil itself.
+		local spellExists = GetSpellInfo(recipeId) ~= nil
+		local itemExists  =
 			(meta.itemId        and addon.Item.GetInfoInstant(meta.itemId)) or
-			(meta.craftedItemId and addon.Item.GetInfoInstant(meta.craftedItemId)))
+			(meta.craftedItemId and addon.Item.GetInfoInstant(meta.craftedItemId))
 		if not (spellExists and itemExists) then return false, "untagged" end
 	end
 	-- THE SKILL CAP IS NOT A GATE, and treating it as one hid twelve real TBC

@@ -175,7 +175,7 @@ function Engine:GetKnownProfessions()
         if not profId or NO_CRAFT_WINDOW[profId] or seen[profId] then return end
         seen[profId] = true
         local castName = name
-        if profId == 186 and GetSpellInfo then        -- Mining → cast Smelting (spell 2656)
+        if profId == 186 then                         -- Mining → cast Smelting (spell 2656)
             castName = GetSpellInfo(2656) or name
         end
         out[#out + 1] = {

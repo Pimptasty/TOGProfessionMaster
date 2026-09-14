@@ -198,89 +198,20 @@ local PROF_NAME_TO_ID = {
 }
 
 -- ---------------------------------------------------------------------------
--- Cross-guild sister-roster sync (v0.10.1)
+-- Cross-guild sister ROSTERS: LibGuildRoster's, not ours
 -- ---------------------------------------------------------------------------
--- RosterSync (in DeltaSync) pulls an allied guild's roster over whispers and
--- writes it into LibGuildRoster's sister-roster store, then fires
--- onSisterRosterUpdated. We persist a copy into SavedVariables so the data
--- survives /reload before the next live pull, and re-feed those copies on login.
+-- From v0.10.1 to v1.0.10 this file pulled an allied guild's roster over a
+-- DeltaSync RosterSync host, persisted a copy into TOGPM_GuildDB
+-- (gdb.sisterRosters) and re-fed it on login. LibGuildRoster MINOR 18 owns all
+-- of that -- the pull, the persistence in its own SavedVariables, the login
+-- re-feed and the relay to the guild -- so that every addon on the account
+-- reads one roster store instead of each keeping its own. TOGPM reads it
+-- through the same calls it always did (GetRoster, IsInAnyRoster,
+-- GetKnownRosters) and reacts to the library's OnSisterRosterUpdated in
+-- TOGProfessionMaster.lua. What this file still owns is the profession DATA
+-- exchange with a sister guild: the "sister-pull" request and its consent
+-- proof (RequestSisterData, the DELTA handler below) and the merge gate.
 
--- Snapshot a sister guild's roster from LibGuildRoster into SavedVariables.
-function Scanner:PersistSisterRoster(guildKey)
-    local GR = self.GuildRoster
-    if not GR or not GR.GetRoster then return end
-    local roster = GR:GetRoster(guildKey)
-    if not roster then return end
-    local members = {}
-    for charKey, m in pairs(roster) do
-        members[#members + 1] = {
-            name  = charKey,
-            class = m and m.class,
-            level = m and m.level,
-            rank  = m and m.rank,
-        }
-    end
-    local gdb = addon:GetGuildDb()
-    if not gdb then return end
-    gdb.sisterRosters = gdb.sisterRosters or {}
-    gdb.sisterRosters[guildKey] = {
-        members = members,
-        meta    = (GR.GetRosterMeta and GR:GetRosterMeta(guildKey)) or nil,
-        fedAt   = GetServerTime and GetServerTime() or nil,
-    }
-end
-
--- Fired by RosterSync after a sister roster lands in LibGuildRoster: persist a
--- copy and refresh the UI.
-function Scanner:OnSisterRosterUpdated(guildKey)
-    -- Accept gate: only federate rosters for guilds we have configured as
-    -- sisters. A roster pushed/served for an unlisted guild is rejected and
-    -- removed — nothing cross-guild happens without the guild being on the list.
-    if not addon:IsSisterGuildKey(guildKey) then
-        local GR = self.GuildRoster
-        if GR and GR.RemoveSisterRoster then GR:RemoveSisterRoster(guildKey) end
-        addon:DebugPrint("Scanner: rejected unlisted sister roster", guildKey)
-        return
-    end
-    self:PersistSisterRoster(guildKey)
-    addon:DebugPrint("Scanner: sister roster updated:", guildKey)
-    -- Part B: a fresh pull should reach the rest of the guild quickly rather
-    -- than waiting for the periodic tick. Suppression dedupes if others already
-    -- hold it. Gossip-relayed rosters apply via addon:OnSisterRosterReceived,
-    -- which does NOT route here, so this fires only for our own pulls — no echo.
-    if C_Timer and C_Timer.After then
-        C_Timer.After(10, function() addon:BroadcastSisterRosters() end)
-    end
-    if addon.callbacks then
-        -- A sister roster landing changes cross-guild membership/attribution.
-        addon.callbacks:Fire("GUILD_DATA_UPDATED", "sister:" .. tostring(guildKey),
-            { altgroups = true, roster = true })
-    end
-end
-
--- Re-feed persisted sister rosters into LibGuildRoster on login so cross-guild
--- queries / the visibility gate work before the first live /who-driven pull.
--- Skips (and forgets) any persisted roster whose guild is no longer on the
--- allied-guild list, so a de-configured guild can't be resurrected on login.
-function Scanner:RefeedSisterRosters()
-    local GR = self.GuildRoster
-    if not GR or not GR.SetSisterRoster then return end
-    local gdb = addon:GetGuildDb()
-    local stored = gdb and gdb.sisterRosters
-    if type(stored) ~= "table" then return end
-    local n = 0
-    for guildKey, entry in pairs(stored) do
-        if not addon:IsSisterGuildKey(guildKey) then
-            stored[guildKey] = nil   -- stale: dropped from the list since last save
-        elseif type(entry) == "table" and type(entry.members) == "table" then
-            GR:SetSisterRoster(guildKey, entry.members, entry.meta)
-            n = n + 1
-        end
-    end
-    if n > 0 then addon:DebugPrint("Scanner: re-fed", n, "persisted sister roster(s)") end
-end
-
--- ---------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------
 -- DeltaSync initialisation
 -- Called on PLAYER_ENTERING_WORLD (initial login or UI reload only).
@@ -497,20 +428,10 @@ function Scanner:InitDeltaSync()
             (realm and realm.guildMode) and true or false)
     end
 
-    -- Cross-guild ("sister roster") sync. Opt-in / feature-detected: a DeltaSync
-    -- build without RosterSync, or a LibGuildRoster without the sister API,
-    -- simply skips this and single-guild sync is unaffected. RosterSync owns the
-    -- wire and writes received rosters into LibGuildRoster itself; our callback
-    -- persists a copy and refreshes the UI. Discovery (/who) and the pull trigger
-    -- come in a later step — this wires the plumbing + login re-feed only.
-    if DS.InitRosterSync and GuildRoster.SetSisterRoster then
-        DS:InitRosterSync({
-            onSisterRosterUpdated = function(guildKey)
-                Scanner:OnSisterRosterUpdated(guildKey)
-            end,
-        })
-        self:RefeedSisterRosters()
-    end
+    -- No RosterSync host here any more (v1.0.10). The sister-roster pull is
+    -- LibGuildRoster's own exchange now, brought up by the library at
+    -- roster-ready; starting DeltaSync's RosterSync as well would make TOGPM a
+    -- second feeder into the one roster store, which is what the move ended.
 
     -- v0.2.0 hash migration: drop legacy v0.1.x leaf keys and ensure all
     -- expected v0.2.0 leaves exist.  Idempotent — safe to run on every PEW.
@@ -710,6 +631,20 @@ local function InstallChatFilter()
     end)
 end
 
+--- Wrap a login-timer body so its cost lands in /togpm perf when it runs past
+--- Perf.SLOW_MS. Every synchronous stage of the login path measures at a few
+--- milliseconds of Lua offline (Tests/openperf_spec.lua, "the login path");
+--- what these timers add that the suite cannot run is the client's item-cache
+--- calls per reagent and per recipe, so the number that matters is the one
+--- from the client.
+local function timedLogin(label, fn)
+    return function()
+        local t0 = addon.Perf.now()
+        fn()
+        addon.Perf.markIfSlow(label, addon.Perf.now() - t0)
+    end
+end
+
 function Scanner:Init()
     InstallChatFilter()
 
@@ -756,7 +691,7 @@ function Scanner:Init()
     Ace:RegisterEvent("TRAINER_UPDATE", function() Scanner:OnTrainerShow() end)
 
     -- Scan cooldowns on login after the server is ready
-    Ace:ScheduleTimer(function()
+    Ace:ScheduleTimer(timedLogin("Login +2s: cooldown / specialization / gathering scans + hash broadcast", function()
         Scanner:ScanCooldowns()
         Scanner:DetectSpecializations()
         Scanner:ScanGatheringProfessions()
@@ -773,7 +708,7 @@ function Scanner:Init()
                 DS:BroadcastItemHashes(hashes, "BULK")
             end
         end
-    end, 2)
+    end), 2)
 
     -- v0.2.0 periodic catch-up tick: every 10 minutes, force a non-differential
     -- L0 hash broadcast.  Without this, an idle peer (no scans triggering
@@ -805,6 +740,7 @@ end)
 -- silently bail when GetGuildDb() returned nil.
 hooksecurefunc(Ace, "OnPlayerEnteringWorld", function(_self, _event, isInitialLogin, isReloadingUi)
     if isInitialLogin or isReloadingUi then
+        local t0 = addon.Perf.now()
         Scanner:InitDeltaSync()
         -- One-time scrub of obsolete-marker names cached in gdb.recipes by
         -- pre-v0.5.5 versions of the addon (before the MergeCraftersIntoGdb /
@@ -815,18 +751,22 @@ hooksecurefunc(Ace, "OnPlayerEnteringWorld", function(_self, _event, isInitialLo
         -- Ring stored as "59 TEST Green Shaman Chest", JC designs stored as
         -- "ZZOLD Design: ...", etc.) persists in SavedVariables forever.
         Scanner:ScrubObsoleteRecipeNames()
+        addon.Perf.markIfSlow("Login: DeltaSync init + first-load hash rebuild + name scrub",
+            addon.Perf.now() - t0)
         -- Both backfills retry several times because GetItemInfo returns nil for
         -- items not yet in the client cache, and the cache fills lazily over the
         -- first ~couple minutes after login.  Each pass only logs when it
         -- actually had something to check, so silent retries don't spam chat.
         -- The reagent backfill's GetItemInfo call also kicks an async server-side
         -- load, so later passes pick up resolutions kicked by earlier passes.
-        Ace:ScheduleTimer(function() Scanner:BackfillReagentItemIds()    end, 3)
-        Ace:ScheduleTimer(function() Scanner:BackfillBogusRecipeNames()  end, 4)
-        Ace:ScheduleTimer(function() Scanner:BackfillReagentItemIds()    end, 30)
-        Ace:ScheduleTimer(function() Scanner:BackfillBogusRecipeNames()  end, 30)
-        Ace:ScheduleTimer(function() Scanner:BackfillReagentItemIds()    end, 120)
-        Ace:ScheduleTimer(function() Scanner:BackfillBogusRecipeNames()  end, 120)
+        local reagents = function() Scanner:BackfillReagentItemIds()   end
+        local names    = function() Scanner:BackfillBogusRecipeNames() end
+        Ace:ScheduleTimer(timedLogin("Login +3s: reagent item-id backfill",   reagents), 3)
+        Ace:ScheduleTimer(timedLogin("Login +4s: recipe-name backfill",       names),    4)
+        Ace:ScheduleTimer(timedLogin("Login +30s: reagent item-id backfill",  reagents), 30)
+        Ace:ScheduleTimer(timedLogin("Login +30s: recipe-name backfill",      names),    30)
+        Ace:ScheduleTimer(timedLogin("Login +120s: reagent item-id backfill", reagents), 120)
+        Ace:ScheduleTimer(timedLogin("Login +120s: recipe-name backfill",     names),    120)
     end
 end)
 
@@ -2051,7 +1991,12 @@ end
 -- Scheduled with retries (4s/30s/120s post-PEW) so async loads kicked in pass 1
 -- have a chance to resolve in pass 2/3.
 function Scanner:BackfillReagentItemIds()
-    if not GetItemInfoInstant then
+    -- Test what the pass actually depends on -- EITHER spelling of the API --
+    -- not the bare deprecation-fallback alias alone: with the
+    -- loadDeprecationFallbacks CVar off the alias is nil while C_Item's copy is
+    -- present, and the old `if not GetItemInfoInstant` aborted the whole pass
+    -- with a message that was false on the client printing it (finding 30).
+    if not ((C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant) then
         addon:Print("|cffff4444Backfill: GetItemInfoInstant unavailable|r")
         return
     end
@@ -2074,11 +2019,12 @@ function Scanner:BackfillReagentItemIds()
                         if (not rg.itemId or rg.itemId == 0) and rg.name then
                             rg.itemId = (addon.Item.GetInfoInstant(rg.name))
                         end
-                        if (not rg.itemId or rg.itemId == 0) and rg.name and GetItemInfo then
+                        if (not rg.itemId or rg.itemId == 0) and rg.name then
                             -- Cache-loading variant: returns nil on this call if
                             -- the item isn't cached yet, but issues a server-side
                             -- load.  Next retry picks up the result via the
                             -- GetItemInfoInstant path above once the load resolves.
+                            -- No presence guard: the resolver answers nil itself.
                             local _, link = addon.Item.GetInfo(rg.name)
                             if type(link) == "string" then
                                 rg.itemId = tonumber(link:match("item:(%d+)"))
@@ -2187,7 +2133,7 @@ function Scanner:BackfillBogusRecipeNames()
             -- resolution in BrowserTab uses SetSpellByID instead of falling
             -- through to "item:<id>" (which produces "Retrieving item
             -- information" for spell-only IDs).
-            if isBogusName(rd.name) and type(recipeId) == "number" and GetSpellInfo then
+            if isBogusName(rd.name) and type(recipeId) == "number" then
                 local sid = rd.spellId or recipeId
                 local nm, _, icon = GetSpellInfo(sid)
                 if nm then
@@ -2209,20 +2155,26 @@ end
 
 function Scanner:ScanSaltShaker(stored, now, itemId)
     if not itemId then return end
-    -- The item-cooldown API differs across Classic builds: newer clients expose
-    -- C_Container.GetItemCooldown, older ones the global GetItemCooldown, and some
-    -- recent Classic Era builds ship one but not the other (mirroring the
-    -- GetContainerItemInfo → C_Container move that forced the Compat shims). The
-    -- old code called ONLY the namespaced form, so a client where it's absent — or
-    -- present but returning nothing — never detected the cooldown and rendered
-    -- "Ready" forever. Try the namespaced call first, then FALL BACK ON THE RESULT
-    -- (not just existence) to the global, so either failure mode is covered.
+    -- THREE spellings of the item-cooldown API, and this reaches all of them
+    -- (audit finding 31 -- the old ladder reached two and its comment claimed
+    -- cover it did not have). From the Classic Era tree:
+    --   * C_Container.GetItemCooldown -- real and documented
+    --     (ContainerDocumentation.lua:292); a genuinely different function, so
+    --     it is the FIRST tier, not an alias.
+    --   * C_Item.GetItemCooldown -- also in GlobalAPI.lua, and the function the
+    --     bare name is a fallback FOR.
+    --   * GetItemCooldown -- Deprecated_ItemScript.lua:52, nil with the
+    --     loadDeprecationFallbacks CVar off.
+    -- The second tier goes through the Compat resolver, which prefers C_Item
+    -- and falls back to the bare name itself. FALL BACK ON THE RESULT (not just
+    -- existence): a client where the container copy is present but answers
+    -- nothing used to render "Ready" forever.
     local start, duration
     if C_Container and C_Container.GetItemCooldown then
         start, duration = C_Container.GetItemCooldown(itemId)
     end
-    if (not start or start == 0) and GetItemCooldown then
-        start, duration = GetItemCooldown(itemId)
+    if not start or start == 0 then
+        start, duration = addon.Item.GetCooldown(itemId)
     end
 
     if start and start > 0 and duration and duration > 1.5 then
@@ -2236,6 +2188,7 @@ function Scanner:ScanSaltShaker(stored, now, itemId)
     addon:DebugPrint("Scanner: salt shaker NOT on cooldown — start=",
         tostring(start), "duration=", tostring(duration),
         "hasC_Container=", tostring(C_Container and C_Container.GetItemCooldown ~= nil),
+        "hasC_Item=", tostring(C_Item and C_Item.GetItemCooldown ~= nil),
         "hasGlobal=", tostring(GetItemCooldown ~= nil))
 
     -- Not on cooldown (or bogus value). Seed to Ready if player owns item (incl. bank).
@@ -3295,6 +3248,12 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
         return
     end
 
+    -- Timed (see addon.Perf): a merge runs whenever a peer sends, with no
+    -- window open and nothing the player did -- so a slow one is felt as a
+    -- pause out of nowhere. Recorded only past Perf.SLOW_MS; the callbacks at
+    -- the end are inside the window, since their listeners run synchronously.
+    local mergeT0 = addon.Perf.now()
+
     -- Merge incoming lastScan timestamps first (max wins).  HashManager reads
     -- these when computing content-derived updatedAt for invalidated leaves.
     if type(data.lastScan) == "table" then
@@ -3704,4 +3663,9 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
             addon.callbacks:Fire("GUILD_DATA_UPDATED", senderKey, scopes)
         end
     end
+
+    local leafN = 0
+    for _ in pairs(data.leaves) do leafN = leafN + 1 end
+    addon.Perf.markIfSlow("Sync merge from " .. tostring(sender), addon.Perf.now() - mergeT0,
+        ("%d leaves, %d bytes"):format(leafN, bytes or 0))
 end

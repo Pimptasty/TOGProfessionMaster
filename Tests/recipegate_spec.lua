@@ -163,6 +163,17 @@ describe("RecipeGate:IsValidOnClient — Classic Era", function()
 		env.itemAPI("GetItemInfoInstant", function(id) return id end)
 		assert.is_true(gate(COOKING, 26000, { name = "Untagged but real", craftedItemId = 22645 }))
 	end)
+
+	it("still passes it with the bare GetItemInfoInstant ABSENT and C_Item present (finding 30)", function()
+		-- The CVar-off client. The old `GetItemInfoInstant and (...)` guard tested
+		-- the deprecation-fallback alias, went false, and gated every untagged
+		-- high-ID Era recipe out of the UI while the resolver could have
+		-- answered through C_Item -- the site with teeth.
+		env.spellsExist(26000)
+		env.itemAPI("GetItemInfoInstant", nil)
+		_G.C_Item.GetItemInfoInstant = function(id) return id end
+		assert.is_true(gate(COOKING, 26000, { name = "Untagged but real", craftedItemId = 22645 }))
+	end)
 end)
 
 -- The regression the drift produced. Each of these resolves as a spell AND as

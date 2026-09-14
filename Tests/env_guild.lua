@@ -38,8 +38,35 @@ end
 --- Order matters and is the harness's documented one: `wow.reset()` FIRST (it
 --- replaces C_ChatInfo wholesale), then the guild model. env_togpm.install()
 --- already calls wow.reset() before this, so this only owns the guild half.
+---
+--- Two MINOR-18 resets, copied from GuildRoster/Tests/env_guild.lua (the
+--- maintained copy) because the library now brings its sister-guild sync up
+--- inside the login build every spec drives:
+---   * `LibGuildRosterDB` is the library's SavedVariables and ONE global for the
+---     suite. Left alone, a list or roster one spec put there is re-fed by the
+---     next spec's login build and looks like a real roster there. Absent by
+---     default, exactly as a first login sees it. env.roster() runs this
+---     reset too, so a spec modelling a returning player fills the store
+---     AFTER env.roster() (through lib:GetSisterDb()) and calls
+---     lib:RefeedSisterRosters() itself -- the login build's own re-feed has
+---     already run by then, against an empty store.
+---   * ChatThrottleLib is one global too and QUEUES what it has no bandwidth
+---     for, draining on later ticks -- so a gossip the previous spec's library
+---     queued lands in THIS spec's wow.sent the first time it advances the
+---     clock. Its queues are thrown away and the gauge set to a full burst;
+---     `BlockedQueuesDelay` cleared because Init() only builds the Blocked
+---     rings while it is nil, and `HardThrottlingBeginTime` pushed into the
+---     past because Init() stamps it now and caps the gauge for five seconds.
 function M.resetState()
+	local CTL = _G.ChatThrottleLib
+	if CTL and CTL.Init then
+		CTL.Prio, CTL.avail, CTL.bQueueing, CTL.BlockedQueuesDelay = nil, nil, false, nil
+		CTL:Init()
+		CTL.avail = CTL.BURST
+		CTL.HardThrottlingBeginTime = GetTime() - 60
+	end
 	guild.reset()
+	_G.LibGuildRosterDB = nil
 	return M
 end
 
@@ -48,7 +75,24 @@ end
 --- LibStub:NewLibrary returns nil for an already-registered version — a second
 --- plain load would bail at `if not lib then return end` and hand back a stale
 --- library carrying the previous test's roster.
+---
+--- MINOR 18: a library instance that reached roster-ready registered its three
+--- sister-guild prefixes on AceComm-3.0, which is loaded ONCE for the suite. Left
+--- there, every previous instance still receives each replayed message and
+--- writes into the one shared SavedVariables global. Stale instances are found
+--- by the `owner` tag the library puts on its comm object and evicted first.
 function M.freshLib(path, major)
+	local AceComm = LibStub("AceComm-3.0", true)
+	local events = AceComm and AceComm.callbacks and AceComm.callbacks.events
+	if events then
+		local stale = {}
+		for _, handlers in pairs(events) do
+			for obj in pairs(handlers) do
+				if type(obj) == "table" and obj.owner == major then stale[obj] = true end
+			end
+		end
+		for obj in pairs(stale) do AceComm.UnregisterAllComm(obj) end
+	end
 	LibStub.libs[major], LibStub.minors[major] = nil, nil
 	local ns = wow.loadAddonFile(path, "GuildRoster")
 	local lib = LibStub(major)

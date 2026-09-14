@@ -73,16 +73,21 @@ local function BuildCrossGuildDiagnostics()
     local gdb = addon:GetGuildDb()
 
     -- Dependencies -----------------------------------------------------------
+    -- DeltaSync carries the profession DATA exchange; LibGuildRoster carries
+    -- the list, the roster pull and the relay (MINOR 18). "sister sync" is the
+    -- library's own answer to whether its pull path is up right now.
     lines[#lines + 1] = og("Dependencies")
     if DS then
-        lines[#lines + 1] = "  DeltaSync: loaded  (RosterSync: " ..
-            (DS.RequestRosterSync and "|cff00ff00yes|r" or "|cffff4040no|r") .. ")"
+        lines[#lines + 1] = "  DeltaSync: loaded"
     else
         lines[#lines + 1] = "  DeltaSync: |cffff4040not loaded|r"
     end
     if GR then
-        lines[#lines + 1] = "  LibGuildRoster: loaded  (multi-roster: " ..
-            (GR.SetSisterRoster and "|cff00ff00yes|r" or "|cffff4040no|r") .. ")"
+        local store = GR.GetSisterGuildNames and "|cff00ff00yes|r" or "|cffff4040no (0.7.0+ needed)|r"
+        local up    = (GR.IsSisterSyncAvailable and GR:IsSisterSyncAvailable())
+            and "|cff00ff00up|r" or "|cffff4040down|r"
+        lines[#lines + 1] = "  LibGuildRoster: loaded  (sister-guild store: " .. store ..
+            ", sister sync: " .. up .. ")"
     else
         lines[#lines + 1] = "  LibGuildRoster: |cffff4040not loaded|r"
     end
@@ -168,10 +173,13 @@ local function BuildCrossGuildDiagnostics()
     end
 
     -- Persisted sister rosters ----------------------------------------------
-    if gdb and type(gdb.sisterRosters) == "table" and next(gdb.sisterRosters) then
+    -- The library's SavedVariables (LibGuildRosterDB), not TOGPM's: since
+    -- v1.0.10 nothing of the roster is kept here.
+    local sdb = GR and GR.GetSisterDb and GR:GetSisterDb()
+    if sdb and type(sdb.sisterRosters) == "table" and next(sdb.sisterRosters) then
         lines[#lines + 1] = " "
-        lines[#lines + 1] = og("Persisted allied rosters (survive /reload)")
-        for key, entry in pairs(gdb.sisterRosters) do
+        lines[#lines + 1] = og("Persisted allied rosters (LibGuildRoster, survive /reload)")
+        for key, entry in pairs(sdb.sisterRosters) do
             local mc  = (type(entry) == "table" and type(entry.members) == "table") and #entry.members or 0
             local fed = (type(entry) == "table" and entry.fedAt) and date("%H:%M:%S", entry.fedAt) or "?"
             lines[#lines + 1] = string.format("  %s  \226\128\148  %d members (fed %s)", key, mc, fed)
@@ -1064,7 +1072,13 @@ local OPTIONS = {
             desc  = L["SettingsCrossGuildSyncNowDesc"],
             type  = "execute",
             order = 46,
-            func  = function() addon:BroadcastSisterConfig() end,
+            -- The library gossips the list and relays the held rosters; both
+            -- are no-ops while guildless or holding nothing, same as before.
+            func  = function()
+                local GR = addon.Scanner and addon.Scanner.GuildRoster
+                if GR and GR.BroadcastSisterConfig then GR:BroadcastSisterConfig() end
+                if GR and GR.BroadcastSisterRosters then GR:BroadcastSisterRosters() end
+            end,
         },
 
         -- ---- Diagnostics ---------------------------------------------------

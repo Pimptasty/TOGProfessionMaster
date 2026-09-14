@@ -175,6 +175,38 @@ function M.install()
 	-- `IsAddOnLoaded` is env.wow's now; only LoadAddOn is still ours.
 	_G.C_AddOns.LoadAddOn = function() end
 
+	-- C_AddOnProfiler -- the client's per-addon frame profiler, which /togpm
+	-- perf reads to say whether a pause was THIS addon's. Reference model,
+	-- staged here until the harness ships one: a spec sets `env.profiler`
+	-- (metric values keyed by Enum.AddOnProfilerMetric, per addon name) and the
+	-- API reads it back. Shapes and enum values are from the Classic Era
+	-- documentation (Blizzard_APIDocumentationGenerated/AddOnProfiler*.lua):
+	-- every metric is milliseconds, GetTopKAddOnsForMetric returns
+	-- { addOnName, metricValue } rows, highest first. ADD to Enum, never
+	-- assign it -- env.wow owns the table.
+	M.profiler = { enabled = true, addons = {}, application = {}, overall = {} }
+	_G.Enum.AddOnProfilerMetric = {
+		SessionAverageTime = 0, RecentAverageTime = 1, EncounterAverageTime = 2,
+		LastTime = 3, PeakTime = 4, CountTimeOver1Ms = 5, CountTimeOver5Ms = 6,
+		CountTimeOver10Ms = 7, CountTimeOver50Ms = 8, CountTimeOver100Ms = 9,
+		CountTimeOver500Ms = 10, CountTimeOver1000Ms = 11,
+	}
+	_G.C_AddOnProfiler = {
+		IsEnabled            = function() return M.profiler.enabled end,
+		GetAddOnMetric       = function(name, metric) return (M.profiler.addons[name] or {})[metric] or 0 end,
+		GetApplicationMetric = function(metric) return M.profiler.application[metric] or 0 end,
+		GetOverallMetric     = function(metric) return M.profiler.overall[metric] or 0 end,
+		GetTopKAddOnsForMetric = function(metric, k)
+			local rows = {}
+			for name, metrics in pairs(M.profiler.addons) do
+				rows[#rows + 1] = { addOnName = name, metricValue = metrics[metric] or 0 }
+			end
+			table.sort(rows, function(a, b) return a.metricValue > b.metricValue end)
+			while #rows > k do rows[#rows] = nil end
+			return rows
+		end,
+	}
+
 	-- Blank recipe universe (and its derived indexes) unless a spec installs one.
 	if booted then
 		M.setRecipeDB(nil)
@@ -230,9 +262,21 @@ M.CORE = {
 --- Load the real libraries + addon core once and return the addon namespace.
 --- Repeat calls return the same namespace: AceAddon:NewAddon errors on a second
 --- NewAddon for the same name, and every LibStub library is a singleton.
+--- The version string the booted addon reads from its "TOC". The main file
+--- resolves `addon.Version` ONCE, at load, from C_AddOns.GetAddOnMetadata --
+--- and AceAddon refuses a second NewAddon, so the main file cannot be reloaded
+--- to try the other branch. Seeding the harness's metadata BEFORE boot is what
+--- lets compat_spec pin the packaged-build branch of that line (a real version
+--- string, not the "dev" fallback an unpackaged copy renders). Finding 33.
+M.VERSION = "v9.9.9-test"
+
+--- Load the real libraries + addon core once and return the addon namespace.
+--- Repeat calls return the same namespace: AceAddon:NewAddon errors on a second
+--- NewAddon for the same name, and every LibStub library is a singleton.
 function M.boot()
 	if booted then return booted end
 	M.install()
+	wow.addonMetadata.TOGProfessionMaster = { Version = M.VERSION }
 
 	ace.load(unpack(M.ACE))
 	for _, name in ipairs(M.LIBS) do
@@ -269,9 +313,10 @@ end
 ---
 --- This is load-bearing, not decoration. On Vanilla the recipe browser drops
 --- any recipe whose spell the client does not have
---- (`GetSpellInfo and not GetSpellInfo(recipeId)` — GUI/BrowserTab.lua), which
---- is how recipes from later expansions are kept out of a Classic Era list.
---- Until the harness installed `GetSpellInfo` that guard short-circuited and the
+--- (`not GetSpellInfo(recipeId)` in Modules/RecipeGate.lua -- called bare since
+--- v1.0.10, per Compat.lua's guard rule), which is how recipes from later
+--- expansions are kept out of a Classic Era list. Until the harness installed
+--- `GetSpellInfo` the old `GetSpellInfo and ...` guard short-circuited and the
 --- filter had NEVER run offline; every spec was passing with it inert. A spec
 --- that puts a recipe in the DB and expects to see it must now say the spell
 --- exists, exactly as it would on a real client.
@@ -309,6 +354,7 @@ local ITEM_API_NAMESPACED = {
 	GetItemIcon         = "GetItemIconByID",
 	GetItemCount        = "GetItemCount",
 	GetItemQualityColor = "GetItemQualityColor",
+	GetItemCooldown     = "GetItemCooldown",
 }
 
 function M.itemAPI(bareName, fn)

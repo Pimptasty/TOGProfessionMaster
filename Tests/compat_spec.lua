@@ -155,6 +155,14 @@ describe("container shim", function()
 	end)
 end)
 
+-- Audit finding 33: `addon.GetAddOnMetadata`, `addon:GetSpellInfo` and
+-- `addon:GetItemInfo` were shims with NO production caller, and three cases
+-- here vouched for them -- a green spec about dead code. writ-cannot: those
+-- three cases are gone because the shims were deleted on purpose (the only
+-- GetAddOnMetadata resolution that runs is TOGProfessionMaster.lua's own,
+-- which loads before Compat; GetSpellInfo is the real function on every
+-- flavour and is called bare; the item path is addon.Item.GetInfo, specced
+-- below). What replaces them asserts the copy that actually runs.
 describe("addon-info shims", function()
 	it("prefers the C_AddOns namespace when present", function()
 		_G.C_AddOns = {
@@ -164,30 +172,29 @@ describe("addon-info shims", function()
 		local ns = compatAt(11508)
 		assert.is_true(ns:IsAddOnLoaded("Yes"))
 		assert.is_false(ns:IsAddOnLoaded("No"))
-		assert.equal("9.9.9", ns.GetAddOnMetadata())
 	end)
 
 	it("falls back to the bare globals on older clients", function()
 		_G.C_AddOns = nil
 		_G.IsAddOnLoaded    = function(n) return n == "Old" end
-		_G.GetAddOnMetadata = function() return "1.0.0" end
 		local ns = compatAt(11508)
 		assert.is_true(ns:IsAddOnLoaded("Old"))
-		assert.equal("1.0.0", ns.GetAddOnMetadata())
 	end)
 
-	it("wraps the spell and item info calls", function()
-		local ns = compatAt(11508)
-		_G.GetSpellInfo = function(id) return "Spell" .. id end
-		-- The item half now goes through addon.Item.GetInfo, which prefers the
-		-- C_Item namespace -- so stubbing ONLY the bare name would assert
-		-- nothing. Both spellings are set to the same answer here; which one
-		-- wins is the subject of the "item API" block below.
-		_G.GetItemInfo = function(id) return "Item" .. id end
-		_G.C_Item = _G.C_Item or {}
-		_G.C_Item.GetItemInfo = _G.GetItemInfo
-		assert.equal("Spell7", ns:GetSpellInfo(7))
-		assert.equal("Item7", ns:GetItemInfo(7))
+	it("addon.Version is the product of the main file's own resolution, not of a Compat shim", function()
+		-- The main file loads before Compat.lua, so it cannot use a shim here;
+		-- this pins that the value the /togpm version command prints is the one
+		-- the harness's TOC metadata carried at boot (env_togpm seeds it before
+		-- loading the core -- the PACKAGED branch of that line). The "dev"
+		-- fallback branch is NOT pinned: addon.Version is resolved once at load
+		-- and AceAddon refuses a second NewAddon, so the main file cannot be
+		-- booted again with the metadata absent. Said so it is not read as
+		-- covered.
+		local ns = env.boot()
+		assert.equal(env.VERSION, ns.Version)
+		assert.is_nil(ns.GetAddOnMetadata)
+		assert.is_nil(ns.GetSpellInfo)
+		assert.is_nil(ns.GetItemInfo)
 	end)
 end)
 
@@ -258,12 +265,16 @@ describe("item API resolver", function()
 			GetItemIconByID     = function() return "icon" end,
 			GetItemCount        = function() return "count" end,
 			GetItemQualityColor = function() return "quality" end,
+			GetItemCooldown     = function() return "cooldown" end,
 		}
-		assert.equal("info",    ns.Item.GetInfo(1))
-		assert.equal("instant", ns.Item.GetInfoInstant(1))
-		assert.equal("icon",    ns.Item.GetIcon(1))
-		assert.equal("count",   ns.Item.GetCount(1))
-		assert.equal("quality", ns.Item.GetQualityColor(1))
+		assert.equal("info",     ns.Item.GetInfo(1))
+		assert.equal("instant",  ns.Item.GetInfoInstant(1))
+		assert.equal("icon",     ns.Item.GetIcon(1))
+		assert.equal("count",    ns.Item.GetCount(1))
+		assert.equal("quality",  ns.Item.GetQualityColor(1))
+		-- Findings 29/31: the one name the sweep left out, and the one bare
+		-- unguarded call left in the addon (ScanSaltShaker's second tier).
+		assert.equal("cooldown", ns.Item.GetCooldown(1))
 	end)
 
 	it("passes every argument and return through untouched", function()

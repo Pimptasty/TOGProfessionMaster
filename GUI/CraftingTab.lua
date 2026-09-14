@@ -1471,7 +1471,7 @@ function CraftingTab:QueueEntryDisplay(e)
     if live then return live.name, live.icon end
     local meta = addon.recipeDB and addon.recipeDB[e.profId] and addon.recipeDB[e.profId][e.recipeId]
     local name = (meta and meta.name)
-              or (GetSpellInfo and GetSpellInfo(e.recipeId))
+              or GetSpellInfo(e.recipeId)
               or ("#" .. tostring(e.recipeId))
     local icon = (meta and meta.icon)
               or (meta and meta.craftedItemId and addon.Item.GetIcon(meta.craftedItemId))

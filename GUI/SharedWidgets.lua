@@ -560,7 +560,7 @@ function ItemLink.UnlearnedBy(profId, recipeId)
             -- Resolved at runtime, as the Guild tab does. Returns nil for a spell
             -- this client does not know, which is why the name is optional below
             -- rather than assumed.
-            if specId and GetSpellInfo then spec = (GetSpellInfo(specId)) end
+            if specId then spec = (GetSpellInfo(specId)) end
             out = out or {}
             out[#out + 1] = {
                 name  = charKey:match("^(.-)%-") or charKey,

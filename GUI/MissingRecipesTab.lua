@@ -1130,8 +1130,11 @@ function MissingRecipesTab:BuildPool(parent)
             -- an empty tooltip — fall back to spell or plain text. The
             -- cold-cache check via GetItemInfo doubles as an async
             -- prefetch trigger, so the next mouseover lands warm.
+            -- No presence guard on the bare name: the resolver owns the nil
+            -- check, and with the deprecation-fallback CVar off the bare alias
+            -- is nil while the call would have worked (finding 30).
             local useItem = false
-            if f._itemId and GetItemInfo then
+            if f._itemId then
                 local cachedName = addon.Item.GetInfo(f._itemId)
                 useItem = cachedName ~= nil
             end
@@ -1140,7 +1143,7 @@ function MissingRecipesTab:BuildPool(parent)
             elseif f._spellId and tip.SetSpellByID then
                 tip:SetSpellByID(f._spellId)
             else
-                local name = (f._spellId and GetSpellInfo and GetSpellInfo(f._spellId))
+                local name = (f._spellId and GetSpellInfo(f._spellId))
                              or (f._itemId and ("Item #" .. f._itemId))
                              or "?"
                 tip:SetText(name, 1, 1, 1, 1, true)
@@ -1292,7 +1295,7 @@ function MissingRecipesTab:UpdateVirtualRows()
                 itemLink = idb and idb:GetLink(itemId)
                 displayName = itemName
                               or entry.name
-                              or (GetSpellInfo and GetSpellInfo(entry.spellId))
+                              or GetSpellInfo(entry.spellId)
                               or ("|cffaaaaaaspell:" .. tostring(entry.spellId) .. "|r")
                 -- GetItemIcon reads static item file data (synchronous, fires no
                 -- cache event); fall back to the spell texture.
@@ -1303,7 +1306,7 @@ function MissingRecipesTab:UpdateVirtualRows()
                 -- Trainer-only recipe with no scroll item. Fall back to the
                 -- spell's name + icon. No item link / quality colour
                 -- available — recipes are uncoloured in this branch.
-                local spellName = (GetSpellInfo and GetSpellInfo(entry.spellId))
+                local spellName = GetSpellInfo(entry.spellId)
                                   or (entry.name)
                                   or ("|cffaaaaaaspell:" .. entry.spellId .. "|r")
                 displayName = spellName
@@ -1325,8 +1328,11 @@ function MissingRecipesTab:UpdateVirtualRows()
                 --      have no produced item, so they correctly fall here
                 --      and render the enchant scroll icon Blizzard
                 --      assigned the spell).
+                -- The guard used to test the bare `GetItemIcon`, a name that
+                -- never corresponded to what the resolver calls
+                -- (C_Item.GetItemIconByID) -- finding 30's sharpest site.
                 local craftedIcon
-                if entry.craftedItemId and GetItemIcon then
+                if entry.craftedItemId then
                     craftedIcon = addon.Item.GetIcon(entry.craftedItemId)
                 end
                 local spellIcon = craftedIcon
@@ -1457,7 +1463,7 @@ function MissingRecipesTab:SortList(list)
             if col == "recipe" then
                 local n = (e.itemId and idb and idb:GetName(e.itemId))
                           or (e.itemId and addon.Item.GetInfo(e.itemId))
-                          or (GetSpellInfo and GetSpellInfo(e.spellId))
+                          or GetSpellInfo(e.spellId)
                           or e.name or ""
                 key[e] = tostring(n):lower()
             else
@@ -1568,7 +1574,7 @@ function MissingRecipesTab:FillList()
             -- regardless of whether the recipe is taught by a pattern or
             -- only by a trainer.
             local name = (entry.itemId and addon.Item.GetInfo(entry.itemId))
-                         or (GetSpellInfo and GetSpellInfo(entry.spellId))
+                         or GetSpellInfo(entry.spellId)
             local nameHit = type(name) == "string" and name:lower():find(filter, 1, true)
             -- Also match the effect text ("+5 Weapon Damage", "+12 Agility")
             -- so e.g. "5 damage" / "agility" find the right recipes.

@@ -1,4 +1,4 @@
--- Scanner's send side, and the cross-guild roster persistence.
+-- Scanner's send side.
 --
 -- Every broadcast here is GUILD-WIDE, which is what makes the coalescing rules
 -- load-bearing: a leaf many peers want gets one request per peer, and without
@@ -268,79 +268,13 @@ describe("PeerSupportsSubSync", function()
 	end)
 end)
 
-describe("sister rosters", function()
-	local SISTER = "Horde-Sisterguild"
-
-	local function fakeRosterLib(rosters)
-		return {
-			GetRoster = function(_, key) return rosters[key] end,
-			RemoveSisterRoster = function(_, key) rosters[key] = nil end,
-			SetSisterRoster = function(_, key, members) rosters.fed = rosters.fed or {}; rosters.fed[key] = members end,
-			NormalizeName = function(_, n) return n end,
-			IsOnline = function() return true end,
-		}
-	end
-
-	before_each(function()
-		-- env.install() resets the settings database, so the allied-guild list has
-		-- to be re-declared per test rather than once.
-		ns.lib.db.profile.sisterGuilds = { "Sisterguild" }
-	end)
-
-	it("persists a fed roster with its members", function()
-		local rosters = { [SISTER] = { ["Sis-Testrealm"] = { class = "MAGE", level = 60, rank = 2 } } }
-		S.GuildRoster = fakeRosterLib(rosters)
-		S:PersistSisterRoster(SISTER)
-		local stored = gdb.sisterRosters[SISTER]
-		assert.equal(1, #stored.members)
-		assert.equal("Sis-Testrealm", stored.members[1].name)
-		assert.equal(NOW, stored.fedAt)
-	end)
-
-	it("does nothing without a roster library or a roster", function()
-		S.GuildRoster = nil
-		S:PersistSisterRoster(SISTER)
-		S.GuildRoster = fakeRosterLib({})
-		S:PersistSisterRoster(SISTER)
-		assert.is_nil(gdb.sisterRosters and gdb.sisterRosters[SISTER])
-	end)
-
-	it("rejects and removes a roster for a guild we have not allied with", function()
-		local rosters = { ["Horde-Strangers"] = { ["X-Testrealm"] = {} } }
-		S.GuildRoster = fakeRosterLib(rosters)
-		S:OnSisterRosterUpdated("Horde-Strangers")
-		assert.is_nil(rosters["Horde-Strangers"])
-		assert.is_nil(gdb.sisterRosters and gdb.sisterRosters["Horde-Strangers"])
-	end)
-
-	it("accepts a roster for a configured ally", function()
-		local rosters = { [SISTER] = { ["Sis-Testrealm"] = {} } }
-		S.GuildRoster = fakeRosterLib(rosters)
-		S:OnSisterRosterUpdated(SISTER)
-		assert.is_true(gdb.sisterRosters[SISTER] ~= nil)
-	end)
-
-	it("re-feeds persisted rosters on login", function()
-		local rosters = {}
-		S.GuildRoster = fakeRosterLib(rosters)
-		gdb.sisterRosters = { [SISTER] = { members = { { name = "Sis-Testrealm" } } } }
-		S:RefeedSisterRosters()
-		assert.is_true(rosters.fed[SISTER] ~= nil)
-	end)
-
-	it("forgets a persisted roster whose guild is no longer allied", function()
-		local rosters = {}
-		S.GuildRoster = fakeRosterLib(rosters)
-		gdb.sisterRosters = { ["Horde-Strangers"] = { members = { { name = "X-Testrealm" } } } }
-		S:RefeedSisterRosters()
-		assert.is_nil(gdb.sisterRosters["Horde-Strangers"])
-		assert.is_nil(rosters.fed)
-	end)
-
-	it("does nothing without a roster library", function()
-		S.GuildRoster = nil
-		gdb.sisterRosters = { [SISTER] = { members = {} } }
-		S:RefeedSisterRosters()
-		assert.is_true(gdb.sisterRosters[SISTER] ~= nil)
-	end)
-end)
+-- A "sister rosters" block of seven cases sat here until v1.0.10, pinning
+-- Scanner:PersistSisterRoster / OnSisterRosterUpdated / RefeedSisterRosters --
+-- TOGPM's own copy of the persisted sister roster in TOGPM_GuildDB.
+-- writ-cannot: that feature was removed on purpose; LibGuildRoster MINOR 18
+-- persists, re-feeds and gates the sister rosters itself, in its own
+-- SavedVariables, so that every addon on the account reads one store. The
+-- three functions no longer exist (Tests/sisterguild_spec.lua pins their
+-- absence, and pins the one-shot move of an older build's copy into the
+-- library); the persist / re-feed / accept-gate behaviour is the library's and
+-- is proved by GuildRoster's own suite.

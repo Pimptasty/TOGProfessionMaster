@@ -153,21 +153,11 @@ function addon:IsAddOnLoaded(name)
     return _IsAddOnLoaded(name)
 end
 
--- ---------------------------------------------------------------------------
--- GetAddOnMetadata
--- Same split as above.
--- ---------------------------------------------------------------------------
-addon.GetAddOnMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
-
--- ---------------------------------------------------------------------------
--- Spell info
--- GetSpellInfo was split into multiple C_Spell.* calls on retail 10.1 but the
--- old signature still works on all Classic builds, so no shim needed yet.
--- This placeholder keeps the pattern consistent if it ever changes.
--- ---------------------------------------------------------------------------
-function addon:GetSpellInfo(spellId)
-    return GetSpellInfo(spellId)
-end
+-- GetAddOnMetadata has no shim here. TOGProfessionMaster.lua loads BEFORE this
+-- file (.toc order) and resolves it itself for addon.Version; a copy here had
+-- no production caller and a spec vouching for it (audit finding 33). Same for
+-- GetSpellInfo: it is the real function on every flavour this addon supports
+-- (see the guard rule below), so there is nothing to shim.
 
 -- ---------------------------------------------------------------------------
 -- Item API -- ONE resolver, because every bare name here is a DEPRECATION
@@ -177,10 +167,11 @@ end
 --     if not GetCVarBool("loadDeprecationFallbacks") then return end
 -- and then assigns ~47 bare globals from their C_Item counterparts. Ours are at
 -- `:42` (GetItemInfo), `:10` (GetItemInfoInstant), `:16` (GetItemIcon), `:46`
--- (GetItemCount) and `:9` (GetItemQualityColor). With that CVar off, every one
--- of them is nil -- so an unguarded call raises, and a `if GetItemInfo then`
--- guard silently skips the branch instead. Both shapes were live here: the
--- raise in MissingRecipesTab and the silent skip in ItemLink.QualityHex.
+-- (GetItemCount), `:9` (GetItemQualityColor) and `:52` (GetItemCooldown). With
+-- that CVar off, every one of them is nil -- so an unguarded call raises, and
+-- a `if GetItemInfo then` guard silently skips the branch instead. Both shapes
+-- were live here: the raise in MissingRecipesTab and the silent skip in
+-- ItemLink.QualityHex.
 --
 -- WARNING: `GetItemIcon` maps to `C_Item.GetItemIconByID`, NOT
 -- `C_Item.GetItemIcon`. The names do not correspond one-to-one and a mechanical
@@ -189,6 +180,17 @@ end
 -- Every C_Item name below is confirmed present on Classic Era in
 -- `GlobalAPI.lua`. The bare tail is kept for a client that genuinely lacks the
 -- namespace; it is a fallback, not the preferred path.
+--
+-- THE GUARD RULE (audit findings 30 and 32), because the presence-guard idiom
+-- spread by NAME SHAPE and ended up on the wrong names: a bare global gets a
+-- presence guard IF AND ONLY IF it is a deprecation fallback, and a name routed
+-- through a resolver here NEVER gets one, because the resolver owns the nil
+-- check. So `GetSpellInfo(id)` is called bare -- it is in no `Deprecated_*`
+-- file in either Classic tree and Blizzard's own UI calls it bare -- and a
+-- guard on it can never be false, while `if GetItemInfo then` above a call to
+-- `addon.Item.GetInfo` is WRONG: with the CVar off the guard is false, the
+-- resolver would have answered through C_Item, and the branch is skipped
+-- anyway. Five such guards vetoed the very calls the resolver exists to make.
 --
 -- The previous wrapper here said "no API change on Classic -- plain wrapper for
 -- consistency", which was wrong in exactly the way that mattered.
@@ -219,10 +221,10 @@ addon.Item.GetInfoInstant  = itemAPI("GetItemInfoInstant",  "GetItemInfoInstant"
 addon.Item.GetIcon         = itemAPI("GetItemIconByID",     "GetItemIcon")
 addon.Item.GetCount        = itemAPI("GetItemCount",        "GetItemCount")
 addon.Item.GetQualityColor = itemAPI("GetItemQualityColor", "GetItemQualityColor")
-
-function addon:GetItemInfo(itemId)
-    return addon.Item.GetInfo(itemId)
-end
+-- The item-cooldown tier behind C_Container.GetItemCooldown (a genuinely
+-- different function, tried first by its caller). Audit findings 29/31: this
+-- name was on the deprecated list and was the one bare, unguarded call left.
+addon.Item.GetCooldown     = itemAPI("GetItemCooldown",     "GetItemCooldown")
 
 -- ---------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------

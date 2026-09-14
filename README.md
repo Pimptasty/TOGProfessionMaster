@@ -31,7 +31,7 @@ That's it. Within a minute or two you'll see your guildmates' recipes and cooldo
 
 **Profit Planner** — What's worth making right now, using auction prices from the built-in scanner. No other addon required, though it plays nicely with Auctionator.
 
-**Allied Guilds (cross-guild sharing)** — Share professions and cooldowns between two guilds. Set up under **Settings → Cross-Guild** by an officer or the guild leader; it is bilateral by design, so both sides opt in, and it shares the whole guild's data rather than just yours.
+**Allied Guilds (cross-guild sharing)** — Share professions and cooldowns between two guilds. Set up under **Settings → Cross-Guild** by an officer or the guild leader; it is bilateral by design, so both sides opt in, and it shares the whole guild's data rather than just yours. The allied-guild list and the allied rosters live in **GuildRoster** (also editable with `/guildroster sisters`), so every TOG addon on your account — this one, TOGTools, TOGBankClassic — reads one list and one set of rosters rather than each keeping its own. Pull an allied roster once from any online member of that guild (`/togpm pullroster <Name>`) and GuildRoster keeps it current from then on, for the whole guild.
 
 **Shopping List + Reagent Tracker** — Queue any recipe to your shopping list. The floating Reagent Tracker shows a live total of everything you need vs. what's in your bags. Chat alert when all reagents are available.
 
@@ -91,7 +91,7 @@ If sync isn't working, these are the ones worth running before opening a bug rep
 | `/togpm dsstatus` | Sync engine status: what's been sent, received, and refused |
 | `/togpm xgdiag` | Cross-guild diagnostics — why an allied guild's data isn't arriving |
 | `/togpm whyvisible <Name>` | Explains why a particular character is (or isn't) shown |
-| `/togpm perf` | How long each window open and tab draw took this session, and how large each part of your saved data is. If the window is slow to open, run this straight afterwards and paste it |
+| `/togpm perf` | How long each window open, tab draw, background build and incoming sync took this session; the game's own record of every addon's worst frame since login (so a pause is attributed to whichever addon owned it); and how large each part of your saved data is. If the game pauses, run this straight afterwards and paste it |
 | `/acq status` | The comm queue's own view: which sends are in flight, stalled, or refused |
 
 ## Requirements
@@ -100,7 +100,7 @@ Installing from CurseForge pulls these in automatically. Installing by hand mean
 
 **Ace3**, **DeltaSync**, **AceCommQueue-1.0**, **VersionCheck-1.0**, **GuildRoster**, **ProfessionDB**, **ItemDB**.
 
-Keep **AceCommQueue-1.0** current in particular — it is the layer that queues addon traffic, and older copies mistook ordinary server throttling for a fault and reported it as an error.
+Keep **AceCommQueue-1.0** current in particular — it is the layer that queues addon traffic, and older copies mistook ordinary server throttling for a fault and reported it as an error. **GuildRoster 0.7.0 or newer** is needed for cross-guild sharing: it holds the allied-guild list and rosters for every TOG addon; on an older copy the addon runs normally with cross-guild sharing off.
 
 ## Settings
 

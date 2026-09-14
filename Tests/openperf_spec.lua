@@ -269,6 +269,118 @@ describe("the alt-group visibility gate", function()
 	end)
 end)
 
+-- The LOGIN path, 2026-09-11 evening: "it 'glitched' on login. i told you,
+-- this happens ON LOGIN". The client's profiler charges everything an Ace
+-- addon does at login to whichever addon loaded Ace3 (an OnEvent script is
+-- blamed on the frame's creator, and AceEvent/AceAddon/AceTimer own one frame
+-- each), so it cannot say what TOGPM's share of the login frame is. This can:
+-- each synchronous stage of the login path, run in the order the client runs
+-- it, against the real database, timed. The budget is per stage: a stage over
+-- ~100 ms is a hitch on its own, and the stages run back to back.
+describe("the login path on the real database", function()
+	local STAGE_BUDGET_MS = 100
+
+	it("REPORT + budget: every synchronous login stage, in order", function()
+		if not sv then return pending("SavedVariables not found at " .. SV_PATH) end
+		local S  = ns.Scanner
+		-- The real library's hashing under a recorder for the sends: the wire is
+		-- DeltaSync's cost and has its own suite; the Lua that builds what goes on
+		-- it is ours and is what is timed here.
+		local real = env.deltaSync()
+		local DS = {
+			BroadcastItemHashes = function() return true, 0 end,
+			BroadcastData       = function() return true, 0 end,
+			p2p = { OnItemCompleted = function() end },
+			ComputeHash           = function(_, t) return real:ComputeHash(t) end,
+			ComputeStructuredHash = function(_, t) return real:ComputeStructuredHash(t) end,
+		}
+		S.DS = DS
+		S._lastBroadcastHashes, S._lastBroadcastAt = nil, 0
+		local stages = {
+			-- OnInitialize
+			{ "OnInitialize: MigrateGuildDb",          function() ns:MigrateGuildDb() end },
+			{ "OnInitialize: RemapItemKeysToSpellIds", function() ns:RemapItemKeysToSpellIds() end },
+			{ "OnInitialize: RemoveBogusCooldowns",    function() ns:RemoveBogusCooldowns() end },
+			-- OnEnable -> Scanner:Init
+			{ "Scanner:Init: RebuildAltGroups",        function() S:RebuildAltGroups(gdb) end },
+			-- PLAYER_ENTERING_WORLD -> InitDeltaSync's first-load hash rebuild + scrub
+			{ "PEW: HashManager:RebuildOnFirstLoad",   function() ns.HashManager:RebuildOnFirstLoad(DS, gdb) end },
+			{ "PEW: ScrubObsoleteRecipeNames",         function() S:ScrubObsoleteRecipeNames() end },
+			-- +2 s timer
+			{ "+2s: ScanCooldowns",                    function() S:ScanCooldowns() end },
+			{ "+2s: ScanGatheringProfessions",         function() S:ScanGatheringProfessions() end },
+			{ "+2s: BroadcastHashes (payload build)",  function() S:BroadcastHashes() end },
+			-- +3 s / +4 s timers
+			-- Guarded on the BARE global (audit finding 30, site 4), which the
+			-- harness does not install -- so without this the stage measures the
+			-- bail, not the walk. Installed for the stage and removed after.
+			{ "+3s: BackfillReagentItemIds",           function()
+				_G.GetItemInfoInstant = function() return nil end
+				S:BackfillReagentItemIds()
+				_G.GetItemInfoInstant = nil
+			end },
+			{ "+4s: BackfillBogusRecipeNames",         function() S:BackfillBogusRecipeNames() end },
+			-- What a peer's first contact after our login makes us build, in one go.
+			{ "on request: BuildFullGuildPayload",     function() S:BuildFullGuildPayload() end },
+		}
+		local total, worst, worstMs = 0, nil, 0
+		for _, stage in ipairs(stages) do
+			local label, fn = stage[1], stage[2]
+			local t0 = os.clock()
+			fn()
+			local elapsed = ms(os.clock() - t0)
+			total = total + elapsed
+			if elapsed > worstMs then worst, worstMs = label, elapsed end
+			io.write(("  [openperf] login %-40s %6.0f ms\n"):format(label, elapsed))
+		end
+		io.write(("  [openperf] login stages total: %.0f ms of Lua; worst: %s at %.0f ms (budget %d ms per stage)\n")
+			:format(total, tostring(worst), worstMs, STAGE_BUDGET_MS))
+		assert.is_true(worstMs <= STAGE_BUDGET_MS,
+			("login stage '%s' took %.0f ms; budget %d ms"):format(tostring(worst), worstMs, STAGE_BUDGET_MS))
+	end)
+
+	-- The login hash broadcast makes every online peer compare and then send
+	-- us the leaves we differ on, and serve them ours. Each leaf crosses the
+	-- wire through DeltaSync's SerializeWithChecksum (AceSerializer plus a
+	-- byte-by-byte Lua checksum over the whole string) and back through
+	-- DeserializeWithChecksum. That is Lua running on the receiving client's
+	-- main thread, charged to Ace3 by the profiler, and this is what it costs
+	-- for the largest leaf in the real database.
+	it("REPORT + budget: the wire cost of each crafters leaf, serialized and deserialized", function()
+		if not sv then return pending("SavedVariables not found at " .. SV_PATH) end
+		local S    = ns.Scanner
+		local real = env.deltaSync()
+		S.DS = real
+		local WIRE_BUDGET_MS = 100
+		local worst, worstMs, worstBytes = nil, 0, 0
+		for profId in pairs(gdb.recipes or {}) do
+			local key = "crafters:" .. profId
+			local t0 = os.clock()
+			local payload = S:BuildLeafPayload(key)
+			local buildMs = ms(os.clock() - t0)
+			if payload then
+				t0 = os.clock()
+				local wire = real:SerializeWithChecksum(payload)
+				local serMs = ms(os.clock() - t0)
+				t0 = os.clock()
+				local ok = real:DeserializeWithChecksum(wire)
+				local deserMs = ms(os.clock() - t0)
+				assert.is_true(ok, "round trip failed for " .. key)
+				local pairsN = 0
+				for _, set in pairs(payload.leaves[key].data or {}) do pairsN = pairsN + count(set) end
+				io.write(("  [openperf] wire %-16s %6d pairs %8d bytes  build %4.0f ms  serialize+checksum %4.0f ms  "
+					.. "checksum+deserialize %4.0f ms\n"):format(key, pairsN, #wire, buildMs, serMs, deserMs))
+				if deserMs > worstMs then worst, worstMs, worstBytes = key, deserMs, #wire end
+			end
+		end
+		io.write(("  [openperf] wire worst receive: %s at %.0f ms for %d bytes (budget %d ms)\n")
+			:format(tostring(worst), worstMs, worstBytes, WIRE_BUDGET_MS))
+		assert.is_truthy(worst, "no crafters leaf was built; the fixture is wrong")
+		assert.is_true(worstMs <= WIRE_BUDGET_MS,
+			("receiving %s costs %.0f ms of Lua; budget %d ms"):format(tostring(worst), worstMs, WIRE_BUDGET_MS))
+	end)
+end)
+
 --- Lines the client's SV writer would emit for a value: one per scalar, and
 --- for a table one open, one close, plus its contents.
 local function svLines(v)

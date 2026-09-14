@@ -69,6 +69,9 @@ read_globals = {
 	-- ------------------------------------------------------------------
 	-- Lua and utility functions WoW hoists into _G.
 	"bit", "date", "wipe", "strtrim", "tinsert", "debugprofilestop",
+	-- The unresettable clock Perf.now prefers; C_AddOnProfiler is the client's
+	-- own per-addon frame profiler that /togpm perf reads (both feature-detected).
+	"GetTimePreciseSec", "C_AddOnProfiler",
 	-- Tooltip surfaces. TooltipDataProcessor and Enum are the modern
 	-- (Cata/MoP+) hook API, absent on Vanilla/TBC/Wrath and feature-detected
 	-- in Tooltip.lua; the four frames are the shopping/compare tooltips.

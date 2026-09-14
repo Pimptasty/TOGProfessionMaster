@@ -192,35 +192,60 @@ end)
 describe("ScanSaltShaker", function()
 	local SHAKER = 15846
 
+	-- The second tier is `addon.Item.GetCooldown` (findings 29/31), which
+	-- prefers C_Item.GetItemCooldown and falls back to the bare name -- so a
+	-- stub of the bare name ALONE would be ignored in favour of whatever
+	-- C_Item holds. env.itemAPI writes both spellings.
 	before_each(function()
 		_G.C_Container = nil
-		_G.GetItemCooldown = function() return 0, 0 end
+		env.itemAPI("GetItemCooldown", function() return 0, 0 end)
 		env.itemAPI("GetItemCount", function() return 0 end)
 	end)
 
 	it("records the item's cooldown as an absolute expiry", function()
-		_G.GetItemCooldown = function() return cooldownPair(3600) end
+		env.itemAPI("GetItemCooldown", function() return cooldownPair(3600) end)
 		local stored = {}
 		S:ScanSaltShaker(stored, NOW, SHAKER)
 		assert.equal(NOW + 3600, stored[SHAKER])
 	end)
 
-	it("prefers the namespaced API where the client has it", function()
+	it("prefers the container API where the client has it", function()
 		_G.C_Container = { GetItemCooldown = function() return cooldownPair(1800) end }
-		_G.GetItemCooldown = function() return cooldownPair(9999) end
+		env.itemAPI("GetItemCooldown", function() return cooldownPair(9999) end)
 		local stored = {}
 		S:ScanSaltShaker(stored, NOW, SHAKER)
 		assert.equal(NOW + 1800, stored[SHAKER])
 	end)
 
-	it("falls back to the global when the namespaced one answers nothing", function()
+	it("falls back to the item API when the container one answers nothing", function()
 		-- Some Classic Era builds ship one but not the other; falling back on the
 		-- RESULT (not just existence) is what covers both failure modes.
 		_G.C_Container = { GetItemCooldown = function() return 0, 0 end }
-		_G.GetItemCooldown = function() return cooldownPair(600) end
+		env.itemAPI("GetItemCooldown", function() return cooldownPair(600) end)
 		local stored = {}
 		S:ScanSaltShaker(stored, NOW, SHAKER)
 		assert.equal(NOW + 600, stored[SHAKER])
+	end)
+
+	it("reaches C_Item.GetItemCooldown with the bare fallback ABSENT (finding 31)", function()
+		-- The CVar-off client: no C_Container copy, no bare global, only C_Item.
+		-- The old two-tier ladder never called this spelling and seeded Ready.
+		_G.C_Container = nil
+		_G.GetItemCooldown = nil
+		_G.C_Item.GetItemCooldown = function() return cooldownPair(900) end
+		local stored = {}
+		S:ScanSaltShaker(stored, NOW, SHAKER)
+		assert.equal(NOW + 900, stored[SHAKER])
+	end)
+
+	it("seeds Ready, not an error, when no spelling of the API exists", function()
+		_G.C_Container = nil
+		_G.GetItemCooldown = nil
+		_G.C_Item.GetItemCooldown = nil
+		env.itemAPI("GetItemCount", function() return 1 end)
+		local stored = {}
+		S:ScanSaltShaker(stored, NOW, SHAKER)
+		assert.equal(NOW - 1, stored[SHAKER])
 	end)
 
 	it("seeds Ready when the item is owned but off cooldown", function()
@@ -274,6 +299,29 @@ describe("BackfillReagentItemIds", function()
 		env.itemAPI("GetItemInfoInstant", nil)
 		local ok, err = pcall(function() S:BackfillReagentItemIds() end)
 		assert.is_true(ok, tostring(err))
+	end)
+
+	it("still runs with the bare fallback ABSENT and C_Item present (finding 30)", function()
+		-- The CVar-off client. The old guard tested the bare alias alone and
+		-- aborted the whole pass with "GetItemInfoInstant unavailable" -- false
+		-- on the client printing it, since C_Item's copy was there all along.
+		gdb.recipes[171] = { [2330] = { reagents = { { name = "Peacebloom" } } } }
+		env.itemAPI("GetItemInfoInstant", nil)
+		env.itemAPI("GetItemInfo", nil)
+		_G.C_Item.GetItemInfoInstant = function(name) return name == "Peacebloom" and 2447 or nil end
+		S:BackfillReagentItemIds()
+		assert.equal(2447, gdb.recipes[171][2330].reagents[1].itemId)
+	end)
+
+	it("takes the cache-loading name lookup with the bare GetItemInfo ABSENT (finding 30)", function()
+		gdb.recipes[171] = { [2330] = { reagents = { { name = "Peacebloom" } } } }
+		env.itemAPI("GetItemInfoInstant", function() return nil end)
+		env.itemAPI("GetItemInfo", nil)
+		_G.C_Item.GetItemInfo = function() return "Peacebloom", "|cffffffff|Hitem:2447|h[Peacebloom]|h|r" end
+		S:BackfillReagentItemIds()
+		local rg = gdb.recipes[171][2330].reagents[1]
+		assert.equal(2447, rg.itemId)
+		assert.is_string(rg.itemLink)
 	end)
 end)
 

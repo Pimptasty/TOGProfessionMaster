@@ -621,6 +621,44 @@ function M.professionDB()
 	return profDB or nil
 end
 
+--- The REAL LibItemDB-1.0 WITH ITS PRICE API -- `Price/Sources.lua` (the source
+--- ladder, the settings, the scan store) and `Price/Scanner.lua` (the AH
+--- scanner) from the sibling ItemDB install -- wired as the addon's ItemDB
+--- (`ns._itemDB`) over a brand-new, empty `LibItemDB_PriceDB`, with no
+--- third-party price addon present.
+---
+--- FORGET-THEN-LOAD, every call: `libs.load` is a no-op once anything has
+--- loaded the library, other specs swap fakes into LibStub, and the Price/
+--- files bail at `if not lib then return end` on a second load of the same
+--- MINOR -- so a bare load would hand back someone else's stub or an older
+--- copy, silently. Asserted rather than assumed. NOT `Price/Window.lua`: the
+--- window is ItemDB's own UI (LibAceGUIWidgets), nothing in this addon reads
+--- it, and `pricewindow_spec` there is its home.
+---
+--- WHY THE REAL FILES, not a stub of `GetPrice`: every price this addon shows is
+--- the library's answer, so a stub here would test the stub author's idea of
+--- the ladder. ItemDB's `Tests/env_price.lua` is the same load; this is the
+--- consumer's copy of it because a harness spec cannot require a sibling
+--- addon's test env.
+function M.priceDB()
+	M.boot()
+	libs.forget("LibItemDB-1.0")
+	libs.load("LibItemDB-1.0")
+	local DB = assert(LibStub("LibItemDB-1.0", true),
+		"the real LibItemDB did not load; refusing to test against a stub")
+	-- CallbackHandler is in the Ace chain boot() already loaded; the Price files
+	-- take `lib.callbacks` from it.
+	local folder = libs.pathsOf("LibItemDB-1.0")[1]:gsub("[^/\\]+$", "")
+	wow.loadAddonFile(folder .. "Price/Sources.lua", "ItemDB")
+	wow.loadAddonFile(folder .. "Price/Scanner.lua", "ItemDB")
+	assert(type(DB.GetPrice) == "function" and type(DB.StartTargetedScan) == "function",
+		"ItemDB's Price/ files did not install on the library (MINOR 25+ expected)")
+	_G.LibItemDB_PriceDB = {}
+	_G.Auctionator, _G.AucAdvanced, _G.TSM_API = nil, nil, nil
+	M.boot()._itemDB = DB
+	return DB
+end
+
 --- Install a recipe universe for the test, dropping every index derived from it.
 ---
 --- In the game `addon.recipeDB` is set ONCE at load (Data/RecipeDB.lua points it

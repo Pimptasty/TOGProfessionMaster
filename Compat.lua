@@ -297,17 +297,6 @@ local function altItemTotal(TOG, altName, alt, itemId)
     return total
 end
 
---- Returns the total item count held across all banker alts.
-function addon.Bank.GetStock(itemId)
-    local TOG = _G["TOGBankClassic_Guild"]
-    if not TOG or not TOG.Info or not TOG.Info.alts then return 0 end
-    local total = 0
-    for altName, alt in pairs(TOG.Info.alts) do
-        total = total + altItemTotal(TOG, altName, alt, itemId)
-    end
-    return total
-end
-
 --- Returns sorted array of { name, count } for bankers that hold itemId.
 -- The per-banker count SUMS every matching entry, because a bank holds an item
 -- as one entry per stack -- 60 Copper Bars in a 20-stack bank is three entries,
@@ -330,11 +319,143 @@ function addon.Bank.GetBanksWithItem(itemId)
         local altName = (TOG.NormalizeName and TOG:NormalizeName(bankName)) or bankName
         local total = altItemTotal(TOG, altName, alts[altName] or alts[bankName], itemId)
         if total > 0 then
-            table.insert(result, { name = bankName, count = total })
+            -- How current OUR COPY of that banker's inventory is -- TOGBank's
+            -- own per-banker verdict (Guild:GetAltStaleness, the dot beside
+            -- every banker in its Browse list). nil against a TOGBank that
+            -- predates the accessor, and the callers below draw no dot then.
+            local state = TOG.GetAltStaleness and TOG:GetAltStaleness(altName) or nil
+            table.insert(result, { name = bankName, count = total, state = state })
         end
     end
     table.sort(result, function(a, b) return a.name < b.name end)
     return result
+end
+
+-- ---------------------------------------------------------------------------
+-- Banker staleness -- the dot on every [Bank] button
+-- ---------------------------------------------------------------------------
+-- The user, 2026-09-14, of TOGBank's green dots: "i would like to add those
+-- dots next to the items in TOGPM as well if they have the bank button
+-- available, so folks can tell at a glance if it's stale or not."
+--
+-- The STATES are TOGBank's (`Guild:GetAltStaleness`): "current" -- nobody has
+-- mentioned anything newer; "behind" -- a newer copy is published and being
+-- fetched; "offered" -- a peer has offered a newer copy; "refused" -- the only
+-- peer with a newer copy cannot send it to this release; "v1" -- an old-format
+-- copy; "none" -- nothing held. The COLOURS are read from TOGBank's own
+-- `TOGBankClassic_UI_Browse.STATE_COLOR` / `STATE_TEXT` when that table exists,
+-- so a palette change there reaches these dots without an edit here; the
+-- local copy below is the fallback for a TOGBank that has the accessor but
+-- predates the Browse window, and it is TOGBank's values verbatim.
+local STATE_COLOR = {
+    current = "ff00ff00", behind = "ffff0000", offered = "ffffff00",
+    refused = "ffa0a0a0", v1 = "ffff0000", none = "ff808080",
+}
+local STATE_TEXT = {
+    current = "Current", behind = "Behind", offered = "Update offered",
+    refused = "Newer copy unreachable", v1 = "Old format", none = "No data",
+}
+-- Worst first. A [Bank] button stands for EVERY banker holding the item, so
+-- its one dot is the worst of theirs: a red among greens is the thing the
+-- glance is for.
+local STATE_RANK = { behind = 1, v1 = 1, offered = 2, refused = 3, none = 4, current = 5 }
+
+local function bankPalette()
+    local B = _G["TOGBankClassic_UI_Browse"]
+    return (B and B.STATE_COLOR) or STATE_COLOR, (B and B.STATE_TEXT) or STATE_TEXT
+end
+
+--- The colour code (without the leading `|c`) TOGBank paints a state in.
+function addon.Bank.StateColor(state)
+    local colors = bankPalette()
+    return colors[state] or colors.none or STATE_COLOR.none
+end
+
+--- The word TOGBank uses for a state ("Current", "Behind", ...).
+function addon.Bank.StateText(state)
+    local _, texts = bankPalette()
+    return texts[state] or STATE_TEXT[state] or tostring(state)
+end
+
+--- The worst staleness state across every banker holding `itemId`, or nil when
+--- nobody holds it or the TOGBank in play cannot say.
+function addon.Bank.ItemState(itemId)
+    if not itemId then return nil end
+    local worst, worstRank
+    for _, b in ipairs(addon.Bank.GetBanksWithItem(itemId)) do
+        local rank = b.state and (STATE_RANK[b.state] or STATE_RANK.none)
+        if rank and (not worstRank or rank < worstRank) then
+            worst, worstRank = b.state, rank
+        end
+    end
+    return worst
+end
+
+-- The bullet TOGBank draws (U+2022), coloured; the [Bank] label is the one
+-- every site used to hard-code.
+local BANK_LABEL = "|cFF88FF88[Bank]|r"
+local DOT = "\226\128\162"
+
+--- The [Bank] button's text for `itemId`: TOGBank's staleness dot, then the
+--- label -- or the bare label when there is no state to show (no TOGBank,
+--- an older one, or no stock). `labelText` replaces the default green
+--- "[Bank]" (the Shopping List's AceGUI buttons carry the localised word).
+function addon.Bank.ButtonText(itemId, labelText)
+    labelText = labelText or BANK_LABEL
+    local state = addon.Bank.ItemState(itemId)
+    if not state then return labelText end
+    return "|c" .. addon.Bank.StateColor(state) .. DOT .. "|r " .. labelText
+end
+
+--- Label a [Bank] button for `itemId` and remember the item on it, so its
+--- OnEnter can add the per-banker status lines (`AddStatusLines`).
+--- `fontString` is the FontString to write when the button does not carry its
+--- own text (the Cooldowns tab's main row); a raw frame or an AceGUI widget
+--- otherwise. `labelText` as in `ButtonText`.
+function addon.Bank.Decorate(btn, itemId, fontString, labelText)
+    if not btn then return end
+    local text = addon.Bank.ButtonText(itemId, labelText)
+    if fontString then fontString:SetText(text) elseif btn.SetText then btn:SetText(text) end
+    -- Only a raw frame keeps the id: an AceGUI widget is pooled account-wide
+    -- and a field left on it would ride into its next owner.
+    if not btn.frame then btn._bankItemId = itemId end
+end
+
+--- Append one line per banker holding the button's item -- its name, count and
+--- TOGBank's status word in TOGBank's colour -- to the open GameTooltip. Nothing
+--- is added for a button with no item, or when TOGBank reports no state.
+function addon.Bank.AddStatusLines(btn)
+    local itemId = btn and btn._bankItemId
+    if not itemId then return end
+    local banks = addon.Bank.GetBanksWithItem(itemId)
+    local any = false
+    for _, b in ipairs(banks) do if b.state then any = true break end end
+    if not any then return end
+    GameTooltip:AddLine(" ")
+    for _, b in ipairs(banks) do
+        local state = b.state or "none"
+        GameTooltip:AddDoubleLine(
+            ("|c%s%s|r %s (%d)"):format(addon.Bank.StateColor(state), DOT, b.name, b.count),
+            "|c" .. addon.Bank.StateColor(state) .. addon.Bank.StateText(state) .. "|r")
+    end
+end
+
+--- Returns the total item count held across all banker alts.
+--
+-- The sum of GetBanksWithItem, so the two cannot disagree. Until v1.1.0 this
+-- walked EVERY record in `TOG.Info.alts` -- which carries ex-bankers whose
+-- stored inventory TOGBank keeps after their bank note is removed (its
+-- TOOLTIP-002 class) -- so a character taken off bank duty still holding 20
+-- Linen Cloth lit the [Bank] button and reported 20 in stock, against a
+-- request nobody could fill. GetBanksWithItem walks `GetBanks()`, the current
+-- banker list, and this now composes it. TOGBankClassic's peer review,
+-- thread 5eef0788, finding F2.
+function addon.Bank.GetStock(itemId)
+    local total = 0
+    for _, b in ipairs(addon.Bank.GetBanksWithItem(itemId)) do
+        total = total + b.count
+    end
+    return total
 end
 
 --- Returns true if charKey belongs to a TOGBankClassic banker alt.

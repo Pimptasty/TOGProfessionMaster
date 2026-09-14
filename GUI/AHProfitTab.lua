@@ -1,8 +1,11 @@
 -- TOG Profession Master -- AH Profit tab
 -- Profit planner across your own characters' known recipes.
 -- Subtabs:
---   1) Live AH: items currently priced from Auctionator / TSM / TOGPM AH scan.
---   2) Historical: Auctionator / TSM historical-style sources.
+--   1) Live AH: items currently priced by any ItemDB price source (Auctionator,
+--      Auctioneer, TSM, the ItemDB scan) -- the "best" statistic.
+--   2) Historical: only the sources that carry a "historical" statistic.
+-- The source list, which of them are on and their precedence all come from
+-- ItemDB (`/itemdb`); this tab reads `DB:GetPriceSources()` and never decides.
 
 local _, addon = ...
 local AceGUI = LibStub("AceGUI-3.0")
@@ -78,80 +81,43 @@ local SUBTABS = {
 ProfitTab._subTab = ProfitTab._subTab or "live"
 ProfitTab._filters = ProfitTab._filters or {}
 
-local SOURCE_ORDER = {
-    "togpm-ah",
-    "auctionator",
-    "auctionator-history",
-    "auctioneer-live",
-    "auctioneer-cached",
-    "auctioneer-app",
-    "tsm-live",
-    "tsm-history",
-}
-
-local function tsmApiReady()
-    local tsm = _G.TSM_API
-    return type(tsm) == "table" and type(tsm.GetCustomPriceValue) == "function"
+--- ItemDB's price-source registry -- `{ { id, name, detected, enabled,
+--- precedence, statistics }, ... }` in the user's precedence -- or an empty
+--- list against an ItemDB that predates the price API (the tab then shows
+--- whatever sources its rows carry and nothing is pre-ticked).
+local function priceSources()
+    local DB = addon.GetItemDB and addon:GetItemDB()
+    if DB and type(DB.GetPriceSources) == "function" then
+        local ok, list = pcall(DB.GetPriceSources, DB)
+        if ok and type(list) == "table" then return list end
+    end
+    return {}
 end
 
-local function auctionatorApiReady()
-    local auc = _G.Auctionator
-    return auc and auc.API and auc.API.v1
-       and type(auc.API.v1.GetAuctionPriceByItemID) == "function"
+--- Source ids in the library's precedence -- the order the Source dropdown
+--- lists them in.
+local function librarySourceOrder()
+    local out = {}
+    for _, src in ipairs(priceSources()) do out[#out + 1] = src.id end
+    return out
 end
 
-local function auctioneerApiReady()
-    local auc = _G.AucAdvanced
-    return type(auc) == "table"
-       and type(auc.API) == "table"
-       and type(auc.API.GetMarketValue) == "function"
-end
-
+--- The sources that can answer a lookup right now (present on this machine
+--- AND turned on in ItemDB), as a set. The Historical subtab is answered only
+--- by sources carrying a "historical" statistic, which is exactly the rule
+--- `Price.GetSaleHistorical` follows, so the filter never pre-ticks a source
+--- the rows can never come from.
 local function enabledSourcesForMode(mode)
     local out = {}
-    local profile = addon.lib and addon.lib.db and addon.lib.db.profile or {}
-    local tsmEnabled = (profile.useTSM == true or profile.useTSMAppHelper == true) and tsmApiReady()
-    local auctioneerEnabled = (profile.useAuctioneer == true) and auctioneerApiReady()
-    local auctioneerCachedEnabled = auctioneerEnabled and (profile.useAuctioneerCached ~= false)
-    local auctionatorEnabled = (profile.useAuctionator == true) and auctionatorApiReady()
-    local auctionatorHistoryEnabled = auctionatorEnabled and (profile.useAuctionatorHistorical ~= false)
-    local togpmEnabled = (profile.useTOGPMAH ~= false)
-    if mode == "history" then
-        if auctionatorHistoryEnabled then
-            out["auctionator-history"] = true
-        end
-        if auctionatorEnabled then
-            out["auctionator"] = true
-        end
-        if auctioneerEnabled then
-            out["auctioneer-live"] = true
-        end
-        if auctioneerCachedEnabled then
-            out["auctioneer-cached"] = true
-        end
-        if tsmEnabled then
-            out["tsm-history"] = true
-            out["tsm-live"] = true
-        end
-    else
-        if togpmEnabled then
-            out["togpm-ah"] = true
-        end
-        if auctionatorEnabled then
-            out["auctionator"] = true
-        end
-        if auctionatorHistoryEnabled then
-            out["auctionator-history"] = true
-        end
-        if auctioneerEnabled then
-            out["auctioneer-live"] = true
-        end
-        if auctioneerCachedEnabled then
-            out["auctioneer-cached"] = true
-        end
-        if tsmEnabled then
-            out["tsm-live"] = true
-            out["tsm-history"] = true
+    for _, src in ipairs(priceSources()) do
+        if src.detected and src.enabled then
+            local usable = mode ~= "history"
+            if not usable then
+                for _, stat in ipairs(src.statistics or {}) do
+                    if stat == "historical" then usable = true break end
+                end
+            end
+            if usable then out[src.id] = true end
         end
     end
     return out
@@ -286,7 +252,7 @@ function ProfitTab:BuildFilterOptions(rows)
 
     local enabled = enabledSourcesForMode(self._mode)
     for src in pairs(enabled) do sourceSet[src] = true end
-    for _, src in ipairs(SOURCE_ORDER) do
+    for _, src in ipairs(librarySourceOrder()) do
         if sourceSet[src] then sourceOrder[#sourceOrder + 1] = src end
     end
     for src in pairs(sourceSet) do
@@ -308,16 +274,30 @@ end
 function ProfitTab:SyncSourceSelection(filter, options)
     filter.sources = filter.sources or {}
 
-    -- Back-compat for existing SavedVariables that stored the old single
-    -- Auctioneer key before live/cached source split.
-    if filter.sources["auctioneer-app"] ~= nil then
-        if filter.sources["auctioneer-live"] == nil then
-            filter.sources["auctioneer-live"] = filter.sources["auctioneer-app"] and true or false
+    -- Back-compat for SavedVariables written before v1.1.0, when this addon
+    -- keyed sources by its own per-statistic ids. ItemDB keys by PROVIDER
+    -- (one id per addon, the statistic is provenance on the row), so the old
+    -- keys fold into their provider: a provider is ticked if ANY of its old
+    -- keys was. The old keys are then dropped so they cannot re-fold.
+    local FOLD = {
+        ["togpm-ah"]            = "scan",
+        ["auctionator-history"] = "auctionator",
+        ["auctioneer-live"]     = "auctioneer",
+        ["auctioneer-cached"]   = "auctioneer",
+        ["auctioneer-app"]      = "auctioneer",
+        ["tsm-live"]            = "tsm",
+        ["tsm-history"]         = "tsm",
+    }
+    for old, new in pairs(FOLD) do
+        local v = filter.sources[old]
+        if v ~= nil then
+            if v then
+                filter.sources[new] = true
+            elseif filter.sources[new] == nil then
+                filter.sources[new] = false
+            end
+            filter.sources[old] = nil
         end
-        if filter.sources["auctioneer-cached"] == nil then
-            filter.sources["auctioneer-cached"] = filter.sources["auctioneer-app"] and true or false
-        end
-        filter.sources["auctioneer-app"] = nil
     end
 
     local enabled = options.enabledSources or {}

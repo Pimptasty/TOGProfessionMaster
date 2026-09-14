@@ -300,9 +300,6 @@ L["SettingsCooldownReminderIntervalDesc"]  = "Muling magpapatupad ng bawat naka-
 L["SettingsCooldownReminderInvalid"]       = "Magpasok ng buong numero mula 0 hanggang 1440, o 'off'."
 
 L["SettingsAHHeader"]                      = "Auction House"
-L["SettingsAHScanDelay"]                   = "AH scan delay (segundo)"
-L["SettingsAHScanDelayDesc"]               = "Mga segundo sa pagitan ng mga query ng AH scan. Walang laman / 0 / 'off' ay gumagamit ng default ng bersyon (1.5s sa Classic Era at Anniversary; 3.0s sa TBC, Wrath, Cata, MoP — mas mahigpit ang throttle ng mga server na iyon). Bawasan upang mas mabilis na scan, dagdagan kung huminto ang scan. Wastong saklaw: 0.5–10 segundo."
-L["SettingsAHScanDelayInvalid"]            = "Magpasok ng numero mula 0.5 hanggang 10, o 'off'."
 
 -- ---------------------------------------------------------------------------
 -- Tooltips & button hover-text
@@ -330,12 +327,10 @@ L["TooltipClickDetailsFallback"] = "mga detalye"
 -- ---------------------------------------------------------------------------
 L["MailSubjectFormat"]      = "Suplay ng cooldown: %s"
 L["MailBodyFormat"]         = "Hi %s! Mangyaring gamitin ang mga materyales na ito upang gawin ang %s. Mangyaring ipadala sa akin ang %s kapag may panahon kang gawin ito. Salamat!"
-L["MailMsgNoEmptyBag"]      = "Walang bakanteng slot ng bag para sa paghahati."
 L["MailMsgOpenMailbox"]     = "Magbukas muna ng mailbox."
 L["MailMsgHasItems"]        = "May nakalakip nang mga item sa sulat — ipadala o tanggalin muna ang mga ito."
 L["MailMsgCannotFulfill"]   = "Hindi kayang tuparin."
 L["MailMsgCouldNotAttach"]  = "Hindi maikabit ang mga item."
-L["MailMsgAttachedFormat"]  = "Naikabit ang %dx %s para kay %s."
 
 -- ---------------------------------------------------------------------------
 -- Minimap button tooltip (LDB)
@@ -451,4 +446,3 @@ L["CraftIncrease"]        = "Increase quantity"
 L["CraftDecrease"]        = "Decrease quantity"
 L["CraftButtonDesc"]      = "Craft the selected recipe now."
 L["CraftQueueDesc"]       = "Add the selected recipe to the queue."
-L["SettingsUseAuctionator"]                = "Use Auctionator pricing"

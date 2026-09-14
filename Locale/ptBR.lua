@@ -292,9 +292,6 @@ L["SettingsCooldownReminderIntervalDesc"]  = "Redispara cada alerta de recarga a
 L["SettingsCooldownReminderInvalid"]       = "Digite um número inteiro de 0 a 1440, ou 'off'."
 
 L["SettingsAHHeader"]                      = "Casa de leilões"
-L["SettingsAHScanDelay"]                   = "Atraso de escaneamento da LE (segundos)"
-L["SettingsAHScanDelayDesc"]               = "Segundos entre requisições de escaneamento da LE. Vazio / 0 / 'off' usa o valor padrão da versão (1.5s em Classic Era e Anniversary; 3.0s em TBC, Wrath, Cata, MoP — esses servidores limitam mais). Diminua o valor para escaneamentos mais rápidos, aumente se travarem. Faixa válida: 0.5–10 segundos."
-L["SettingsAHScanDelayInvalid"]            = "Digite um número de 0.5 a 10, ou 'off'."
 
 -- ---------------------------------------------------------------------------
 -- Tooltips & button hover-text
@@ -322,12 +319,10 @@ L["TooltipClickDetailsFallback"] = "detalhes"
 -- ---------------------------------------------------------------------------
 L["MailSubjectFormat"]      = "Suprimentos de recarga: %s"
 L["MailBodyFormat"]         = "Olá %s! Use estes materiais para fazer %s. Mande-me o %s quando tiver tempo de fabricar. Obrigado!"
-L["MailMsgNoEmptyBag"]      = "Sem espaço vazio na mochila para dividir."
 L["MailMsgOpenMailbox"]     = "Abra uma caixa de correio primeiro."
 L["MailMsgHasItems"]        = "O correio já tem itens anexados — envie ou remova-os primeiro."
 L["MailMsgCannotFulfill"]   = "Não é possível completar."
 L["MailMsgCouldNotAttach"]  = "Não foi possível anexar os itens."
-L["MailMsgAttachedFormat"]  = "Anexados %dx %s para %s."
 
 -- ---------------------------------------------------------------------------
 -- Minimap button tooltip (LDB)
@@ -443,4 +438,3 @@ L["CraftIncrease"]        = "Increase quantity"
 L["CraftDecrease"]        = "Decrease quantity"
 L["CraftButtonDesc"]      = "Craft the selected recipe now."
 L["CraftQueueDesc"]       = "Add the selected recipe to the queue."
-L["SettingsUseAuctionator"]                = "Use Auctionator pricing"

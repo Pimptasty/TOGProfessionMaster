@@ -291,9 +291,6 @@ L["SettingsCooldownReminderIntervalDesc"]  = "재사용 대기시간이 준비�
 L["SettingsCooldownReminderInvalid"]       = "0에서 1440 사이의 정수 또는 'off'를 입력하세요."
 
 L["SettingsAHHeader"]                      = "경매장"
-L["SettingsAHScanDelay"]                   = "경매장 검색 지연(초)"
-L["SettingsAHScanDelayDesc"]               = "경매장 검색 쿼리 사이의 초입니다. 비워두기 / 0 / 'off'는 버전 기본값을 사용합니다(Classic Era 및 Anniversary에서 1.5초; TBC, Wrath, Cata, MoP에서 3.0초 — 해당 서버는 더 엄격하게 제한). 더 빠른 검색을 위해 값을 낮추고, 검색이 멈추면 올리세요. 유효 범위: 0.5–10초."
-L["SettingsAHScanDelayInvalid"]            = "0.5에서 10 사이의 숫자 또는 'off'를 입력하세요."
 
 -- ---------------------------------------------------------------------------
 -- Tooltips & button hover-text
@@ -321,12 +318,10 @@ L["TooltipClickDetailsFallback"] = "세부 정보"
 -- ---------------------------------------------------------------------------
 L["MailSubjectFormat"]      = "재사용 대기시간 보급: %s"
 L["MailBodyFormat"]         = "안녕하세요 %s님! 이 재료들을 사용하여 %s을(를) 만들어 주세요. 제작할 시간이 있을 때 %s을(를) 보내주세요. 감사합니다!"
-L["MailMsgNoEmptyBag"]      = "분할할 빈 가방 슬롯이 없습니다."
 L["MailMsgOpenMailbox"]     = "먼저 우편함을 여세요."
 L["MailMsgHasItems"]        = "우편에 이미 첨부된 아이템이 있습니다 — 먼저 보내거나 제거하세요."
 L["MailMsgCannotFulfill"]   = "이행할 수 없습니다."
 L["MailMsgCouldNotAttach"]  = "아이템을 첨부할 수 없습니다."
-L["MailMsgAttachedFormat"]  = "%s에게 %dx %s 첨부됨."
 
 -- ---------------------------------------------------------------------------
 -- Minimap button tooltip (LDB)
@@ -442,4 +437,3 @@ L["CraftIncrease"]        = "Increase quantity"
 L["CraftDecrease"]        = "Decrease quantity"
 L["CraftButtonDesc"]      = "Craft the selected recipe now."
 L["CraftQueueDesc"]       = "Add the selected recipe to the queue."
-L["SettingsUseAuctionator"]                = "Use Auctionator pricing"

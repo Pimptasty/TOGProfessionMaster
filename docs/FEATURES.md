@@ -145,8 +145,8 @@ Built with `AceGUI-3.0`:
 - Spell tooltip on cooldown name hover (`GameTooltip:SetSpellByID`)
 - Item tooltip on reagent name hover (`GameTooltip:SetItemByID`)
 - Right-click row → whisper context menu (pre-fills `/w CharacterName`)
-- **[Bank] button** per row — visible when `TOGBankClassic` is loaded and has the reagent in stock; opens bank request dialog
-- **[Mail] button** per row — visible when at a mailbox; opens pre-composed supply mail to cooldown owner with reagent attached from bags
+- **[Bank] button** per row — visible when `TOGBankClassic` is loaded and has the reagent in stock; opens bank request dialog. Since v1.1.0 every [Bank] button in the addon (this tab, the Professions detail/recipe/shopping rows, Crafting reagents, Missing Recipes scrolls, Reagent Tracker, Shopping List) carries TOGBank's staleness dot in front of the label -- `TOGBankClassic_Guild:GetAltStaleness` per banker, worst state across the bankers holding the item, colours read from `TOGBankClassic_UI_Browse.STATE_COLOR` -- and its tooltip lists each banker with count and status. One implementation: `addon.Bank.Decorate` / `AddStatusLines` in `Compat.lua`; no dot against a TOGBank without the accessor
+- **[Mail] button** per cooldown — one per cooldown per character (on the first reagent row of a multi-reagent transmute, so each reagent row keeps its own [Bank] request); needs a mailbox open. One click plans EVERY reagent of the cooldown against the bags, splits each stack that needs it (staggered, into pre-chosen empty slots), then attaches them all to ONE mail and pre-fills recipient / subject / body. All-or-nothing: a reagent that cannot be covered blocks the send and every shortfall is reported together; a stack that moved between the click and the attach puts everything back off the mail. Planner + executor: `GUI/CooldownsTab.lua` (`CdMail_PlanSupplyMail` / `CdMail_PrepareSupplyMail`), specs `Tests/cooldownmail_spec.lua`
 - **TODO: Sort indicator on active column header** — show a sort arrow (▲/▼) next to the active sort column label. Attempted via `|T|t` inline texture and Unicode characters; both failed in Classic Era. Needs a working WoW Classic–compatible approach (e.g. a Blizzard sort-arrow texture that actually exists in the Classic client, or a FontString texture approach).
 
 ---
@@ -215,6 +215,18 @@ Built with `AceGUI-3.0`:
   - **Purge All Data** button (with confirmation dialog)
   - **Purge My Data** button (with confirmation dialog)
   - Link to Sync Log
+  - **Price sources (ItemDB)...** button -- opens ItemDB's own price window (`/itemdb`). Since v1.1.0 the price sources (Auctionator / Auctioneer / TSM / the ItemDB scan), their precedence, statistic and scan delay are ItemDB's per-account settings, shared by every TOG addon; the nine toggles that used to live here were carried over once on first login (`addon:MigratePriceSettingsToItemDB`, stamped per account in `db.global`)
+
+---
+
+## 12a. Prices and the Auction House (via ItemDB)
+
+- Every price this addon shows comes from **LibItemDB-1.0 MINOR 25** (`Price/Sources.lua`, `Price/Scanner.lua`): the Auctionator / Auctioneer / TSM adapters, the realm+faction scan store, the merchant-price capture and the source toggles all live there. `Modules/Price.lua` is a facade -- `Get` / `GetSaleLive` / `GetSaleHistorical` -> `DB:GetPrice(id, "best" | "historical")`, `GetVendorBuy` -> `DB:GetVendorBuyPrice`, `Money` -> `DB:FormatMoney` -- keeping the three-return shape `(copper, source, age)`
+- What stays TOGPM's is policy: **a vendor-sold reagent is costed at the vendor price** whatever the AH says (`GetReagentCost`), the crafting-cost sum with BoP exclusion and lower-bound / stale flags (`CraftCost`, `CraftCostForReagents`), the vendor SELL row (`GetVendorSell`), and the source labels / colours (`addon.PriceSourceLabels` / `PriceSourceColors`, keyed by ItemDB's ids `scan` / `auctionator` / `auctioneer` / `tsm` / `auctionator-vendor` / `merchant` / `vendor-static`)
+- `Modules/AHScanner.lua` is the `addon.AH` facade over ItemDB's scanner (`IsOpen`, `SearchFor`, `StartScan`, `StartFullScan`, `CancelScan`, `IsScanning`, `GetScanProgress`, `GetListingsFor`), installed only when the ItemDB in play carries `StartTargetedScan` -- so the per-row **[AH]** buttons gate on ItemDB's scan results and search through ItemDB, and the shared **Scan AH** button drives ItemDB's targeted scan. The addon events `AH_OPEN_STATE_CHANGED` / `AH_SCAN_COMPLETE` are re-fired from `LibItemDB_AuctionHouse` / `LibItemDB_ScanComplete`
+- Every read is feature-gated on the METHOD, never a MINOR: an older ItemDB answers nil for the AH tiers, still answers the static vendor tier (`GetVendorBasePrice`), and gets no [AH] buttons
+- The Profit Planner's source filter reads `DB:GetPriceSources()`; the Historical subtab offers only sources carrying a `historical` statistic. A filter saved before v1.1.0 is folded onto the provider ids on load
+- Specs: `Tests/price_spec.lua` and `Tests/pricefacade_spec.lua`, both over the REAL ItemDB price files (`env.priceDB()`)
 
 ---
 

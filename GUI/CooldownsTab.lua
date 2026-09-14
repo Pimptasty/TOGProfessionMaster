@@ -224,7 +224,9 @@ CooldownsTab.WINDOW_SIZE = { width = 720, height = 500, locked = true }
 local C2_ICON      = 18
 local C2_MAIL      = 20
 local C2_AH_BTN    = 40
-local C2_BANK_BTN  = 40
+-- 50, was 40: the label carries TOGBank's staleness dot in front of [Bank]
+-- since v1.1.0 (a bullet and a space at GameFontNormalSmall).
+local C2_BANK_BTN  = 50
 local C2_MIN_NAME  = 80
 local C2_MIN_RGNT  = 80
 
@@ -706,11 +708,11 @@ end
 -- Supply mail helpers (ported from reference cooldowns-panel.lua)
 -- ---------------------------------------------------------------------------
 
---- Scan bags 0-4 for all stacks of itemId.
+--- Scan the carried bags for all stacks of itemId.
 -- Returns total (number), stacks ({ {bag,slot,count}, ... })
 local function CdMail_CountItemInBags(itemId)
     local total, stacks = 0, {}
-    for bag = 0, 4 do
+    for bag = 0, addon:GetNumBagSlots() do
         local numSlots = addon:GetContainerNumSlots(bag)
         for slot = 1, (numSlots or 0) do
             local info = addon:GetContainerItemInfo(bag, slot)
@@ -801,6 +803,15 @@ local function CdMail_CalculateFulfillmentPlan(items, qtyNeeded, totalInBags)
         end
         accumulated, attachList = bestAcc, bestList
     end
+    -- Split the remainder off a stack not already in the list. Such a stack is
+    -- always STRICTLY larger than the remainder: the greedy pass takes any stack
+    -- that fits the remaining need at the moment it is visited, and the need
+    -- only shrinks after that, so a stack equal to the final remainder would
+    -- already be in the list. Tests/cooldownrows_spec.lua pins that property
+    -- over every small bag layout, because the split call refuses amount >=
+    -- count and nothing downstream guards it again. This branch also covers
+    -- the nothing-taken case (every stack bigger than the need), so the
+    -- separate `accumulated == 0` branch that used to follow it was dead.
     if accumulated < qtyNeeded and totalInBags >= qtyNeeded then
         local remaining = qtyNeeded - accumulated
         for _, item in ipairs(items) do
@@ -818,14 +829,6 @@ local function CdMail_CalculateFulfillmentPlan(items, qtyNeeded, totalInBags)
                 end
             end
         end
-    end
-    if accumulated == 0 and totalInBags >= qtyNeeded then
-        local s = items[1]
-        return { canFulfill = true,
-                 reason = string.format("Split from stack of %d.", s.count),
-                 stacksToAttach = {},
-                 splitStack = { bag = s.bag, slot = s.slot, count = s.count, amount = qtyNeeded },
-                 totalAttachable = 0 }
     end
     return { canFulfill = false,
              reason = string.format("Need %d more.", qtyNeeded - totalInBags),
@@ -848,100 +851,169 @@ CooldownsTab._ProfessionMatchesRow      = ProfessionMatchesRow
 CooldownsTab._CountItemInBags           = CdMail_CountItemInBags
 CooldownsTab._CalculateFulfillmentPlan  = CdMail_CalculateFulfillmentPlan
 
-if not StaticPopupDialogs["TOGPM_SPLIT_STACK"] then
-    StaticPopupDialogs["TOGPM_SPLIT_STACK"] = {
-        text = "%s",
-        button1 = "Split",
-        button2 = "Cancel",
-        OnAccept = function(_, data)
-            if not data then return end
-            ClearCursor()
-            local emptyBag, emptySlot
-            for bag = 0, 4 do
-                local n = addon:GetContainerNumSlots(bag)
-                for slot = 1, (n or 0) do
-                    if not addon:GetContainerItemInfo(bag, slot) then
-                        emptyBag, emptySlot = bag, slot; break
-                    end
-                end
-                if emptyBag then break end
-            end
-            if not emptyBag then
-                DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. L["MailMsgNoEmptyBag"])
-                return
-            end
-            if C_Container then
-                C_Container.SplitContainerItem(data.bag, data.slot, data.amount)
-                C_Timer.After(0.1, function()
-                    C_Container.PickupContainerItem(emptyBag, emptySlot)
-                    C_Timer.After(0.05, function()
-                        DEFAULT_CHAT_FRAME:AddMessage(string.format(
-                            "|cFF88CCCCTOG Profession Master:|r Split %d x %s — click Mail again to attach.",
-                            data.amount, (data.itemName or "items")))
-                    end)
-                end)
-            else
-                SplitContainerItem(data.bag, data.slot, data.amount)
-                C_Timer.After(0.1, function()
-                    PickupContainerItem(emptyBag, emptySlot)
-                end)
-            end
-        end,
-        OnCancel = function() end,
-        timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
-    }
+local function CdMail_Say(msg)
+    DEFAULT_CHAT_FRAME:AddMessage("|cFF88CCCCTOG Profession Master:|r " .. msg)
+end
+local function CdMail_Complain(msg)
+    DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. msg)
 end
 
---- Open mailbox, attach reagents, pre-fill recipient/subject/body.
-local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, reagentId, reagentQty)
-    if not MailFrame or not MailFrame:IsShown() then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. L["MailMsgOpenMailbox"])
-        return
+--- Whether ANY send slot already holds something. `HasSendMailItem` is the
+--- client's own occupancy test (Classic Era MailFrame.lua:881/:1087); the old
+--- `if GetSendMailItem(1)` read the NAME, which is the one return an item the
+--- client has not cached yet leaves nil. Every slot, not slot 1: a player who
+--- detaches slot 1 by hand leaves slots 2+ loaded (TOGBankClassic's
+--- MULTIFILL-001 finding).
+local function CdMail_MailHasItems()
+    for i = 1, (ATTACHMENTS_MAX_SEND or 12) do
+        if HasSendMailItem(i) then return true end
     end
-    if GetSendMailItem(1) then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. L["MailMsgHasItems"])
-        return
-    end
-    local reagentName = addon.Item.GetInfo(reagentId) or ("item:" .. reagentId)
-    local totalInBags, stacks = CdMail_CountItemInBags(reagentId)
-    if totalInBags == 0 then
-        DEFAULT_CHAT_FRAME:AddMessage(string.format(
-            "|cFFFF4444TOG Profession Master:|r You have no %s in your bags.", reagentName))
-        return
-    end
-    local plan = CdMail_CalculateFulfillmentPlan(stacks, reagentQty, totalInBags)
-    if not plan.canFulfill then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r "
-            .. (plan.reason or L["MailMsgCannotFulfill"]))
-        return
-    end
-    if plan.splitStack then
-        local s = plan.splitStack
-        local dialog = StaticPopup_Show("TOGPM_SPLIT_STACK",
-            string.format("Split %d from stack of %d %s?", s.amount, s.count, reagentName))
-        if dialog then
-            dialog.data = { bag = s.bag, slot = s.slot, amount = s.amount, itemName = reagentName }
+    return false
+end
+
+--- The first `n` empty carried-bag slots, as { {bag, slot}, ... } -- fewer when the
+--- bags have fewer. Enumerated UP FRONT because a split that has not been picked
+--- up yet is invisible to the container API, so a per-split search would hand
+--- every split the same slot (TOGBankClassic's MULTIFILL-002 finding).
+local function CdMail_EmptyBagSlots(n)
+    local out = {}
+    for bag = 0, addon:GetNumBagSlots() do
+        for slot = 1, (addon:GetContainerNumSlots(bag) or 0) do
+            if #out >= n then return out end
+            if not addon:GetContainerItemInfo(bag, slot) then
+                out[#out + 1] = { bag = bag, slot = slot }
+            end
         end
-        return
     end
-    local attached, attachSlot = 0, 1
-    local maxSlots = ATTACHMENTS_MAX_SEND or 12
-    for _, stack in ipairs(plan.stacksToAttach) do
-        if attached >= reagentQty or attachSlot > maxSlots then break end
-        ClearCursor()
-        if C_Container then
-            C_Container.PickupContainerItem(stack.bag, stack.slot)
+    return out
+end
+
+--- Plan ONE mail carrying EVERY reagent of a cooldown, decided before anything
+--- in the bags is touched. `reagents` is { { id=, qty= }, ... }.
+---
+--- All-or-nothing on purpose: a supply mail that carries the Thorium Bars but
+--- not the Arcane Crystal is not a supply mail, it is a puzzle for the
+--- recipient -- so a reagent that cannot be covered blocks the whole send and
+--- every shortfall is reported together, not just the first. The per-reagent
+--- arithmetic is CdMail_CalculateFulfillmentPlan, unchanged; this only sums it
+--- across reagents and checks the result fits in one mail's attachment slots.
+---
+--- Returns { ok, problems = {msg...}, stacks = {{bag,slot,count,itemId}...},
+---           splits = {{bag,slot,count,amount,itemId,name}...}, lines = {{qty,name}...} }.
+local function CdMail_PlanSupplyMail(reagents)
+    local plan = { ok = true, problems = {}, stacks = {}, splits = {}, lines = {} }
+    local slotsUsed = 0
+    for _, r in ipairs(reagents or {}) do
+        -- At least one: a zero would "fulfil" with nothing attached.
+        local qty  = math.max(1, tonumber(r.qty) or 1)
+        local name = addon.Item.GetInfo(r.id) or ("item:" .. tostring(r.id))
+        local total, stacks = CdMail_CountItemInBags(r.id)
+        if total == 0 then
+            plan.problems[#plan.problems + 1] = string.format(L["MailMsgNoneInBags"], name)
         else
-            PickupContainerItem(stack.bag, stack.slot)
+            local p = CdMail_CalculateFulfillmentPlan(stacks, qty, total)
+            if not p.canFulfill then
+                plan.problems[#plan.problems + 1] = name .. ": " .. (p.reason or L["MailMsgCannotFulfill"])
+            else
+                for _, s in ipairs(p.stacksToAttach) do
+                    plan.stacks[#plan.stacks + 1] = { bag = s.bag, slot = s.slot, count = s.count, itemId = r.id }
+                    slotsUsed = slotsUsed + 1
+                end
+                local s = p.splitStack
+                if s then
+                    -- amount < count always -- see the planner's split branch.
+                    plan.splits[#plan.splits + 1] = { bag = s.bag, slot = s.slot, count = s.count,
+                                                      amount = s.amount, itemId = r.id, name = name }
+                    slotsUsed = slotsUsed + 1
+                end
+                plan.lines[#plan.lines + 1] = { qty = qty, name = name }
+            end
         end
-        ClickSendMailItemButton(attachSlot)
-        attached = attached + stack.count
-        attachSlot = attachSlot + 1
     end
-    if attached == 0 then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. L["MailMsgCouldNotAttach"])
+    local maxSlots = ATTACHMENTS_MAX_SEND or 12
+    if slotsUsed > maxSlots then
+        plan.problems[#plan.problems + 1] = string.format(L["MailMsgTooManyStacks"], slotsUsed, maxSlots)
+    end
+    if #plan.lines == 0 and #plan.problems == 0 then
+        plan.problems[#plan.problems + 1] = L["MailMsgCannotFulfill"]
+    end
+    plan.ok = #plan.problems == 0
+    return plan
+end
+
+--- "1x Arcane Crystal, 1x Thorium Bar" -- the attached list, in reagent order.
+local function CdMail_DescribeLines(lines)
+    local parts = {}
+    for _, l in ipairs(lines) do parts[#parts + 1] = string.format("%dx %s", l.qty, l.name) end
+    return table.concat(parts, ", ")
+end
+
+--- The ATTACH half: every split stack (now sitting in the bag slot it was
+--- placed into) and every whole stack goes into the send-mail slots, then the
+--- recipient, subject and body are filled in. Runs straight from the click when
+--- nothing needed splitting, or from a timer once the splits have landed --
+--- so it re-checks the mailbox and the slots rather than trusting what the
+--- click saw. A split that has not committed to its bag slot yet (the place is
+--- deferred a frame, matching the manual-split timing) is waited for a few
+--- ticks, then given up on with a message rather than attaching half a mail.
+local function CdMail_AttachSupplyMail(plan, playerName, cooldownName, outputName, tries)
+    for _, s in ipairs(plan.splits) do
+        local info = addon:GetContainerItemInfo(s.dstBag, s.dstSlot)
+        if not (info and (info.itemID or info.itemId) == s.itemId) then
+            if (tries or 0) < 5 then
+                C_Timer.After(0.2, function()
+                    CdMail_AttachSupplyMail(plan, playerName, cooldownName, outputName, (tries or 0) + 1)
+                end)
+            else
+                CdMail_Complain(L["MailMsgSplitNotLanded"])
+            end
+            return
+        end
+    end
+    if not MailFrame or not MailFrame:IsShown() then
+        CdMail_Complain(L["MailMsgOpenMailbox"])
         return
     end
+    if CdMail_MailHasItems() then
+        CdMail_Complain(L["MailMsgHasItems"])
+        return
+    end
+    -- The Send Mail tab, so the attachments are in front of the player when
+    -- the mailbox opened on the inbox -- the same step TOGBankClassic's fulfil
+    -- path takes before it attaches.
+    if MailFrameTab2 and MailFrameTab2.Click then MailFrameTab2:Click() end
+
+    -- All or nothing here too: a stack the plan counted on that is no longer
+    -- where it was (moved between the click and the attach) fails its pickup,
+    -- and rather than mail the rest and describe the whole plan as sent,
+    -- everything already attached is put back (the client's right-click
+    -- detach, ClickSendMailItemButton(i, true)) and the click is reported as
+    -- failed -- the next click re-plans against the bags as they are now.
+    local attachSlot = 1
+    local function attach(bag, slot)
+        ClearCursor()
+        C_Container.PickupContainerItem(bag, slot)
+        ClickSendMailItemButton(attachSlot)
+        if HasSendMailItem(attachSlot) then
+            attachSlot = attachSlot + 1
+            return true
+        end
+        ClearCursor()
+        return false
+    end
+    local ok = true
+    for _, s in ipairs(plan.splits) do
+        if ok then ok = attach(s.dstBag, s.dstSlot) end
+    end
+    for _, s in ipairs(plan.stacks) do
+        if ok then ok = attach(s.bag, s.slot) end
+    end
+    if not ok then
+        for i = attachSlot - 1, 1, -1 do ClickSendMailItemButton(i, true) end
+        CdMail_Complain(L["MailMsgCouldNotAttach"])
+        return
+    end
+
     local baseName = playerName:match("^([^%-]+)") or playerName
     if SendMailNameEditBox then SendMailNameEditBox:SetText(baseName) end
     if SendMailSubjectEditBox then
@@ -951,9 +1023,71 @@ local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, re
     if bodyBox then
         bodyBox:SetText(string.format(L["MailBodyFormat"], baseName, outputName, outputName))
     end
-    DEFAULT_CHAT_FRAME:AddMessage("|cFF88CCCCTOG Profession Master:|r " ..
-        string.format(L["MailMsgAttachedFormat"], attached, reagentName, baseName))
+    CdMail_Say(string.format(L["MailMsgAttachedListFormat"], CdMail_DescribeLines(plan.lines), baseName))
 end
+
+--- ONE click, ONE mail, EVERY reagent of the cooldown (v1.1.0). Before this,
+--- each reagent row in the transmute popup had its own mail button, so an
+--- Arcanite transmute (Thorium Bar + Arcane Crystal) cost the sender two
+--- mails; the user's words: "split ALL the components for the cooldown and
+--- attach ALL the components to the mail ... ONE mail/order fulfill button".
+---
+--- Splits run from THIS click rather than behind a confirmation popup, all of
+--- them, 0.25s apart with each split's placement 0.1s after it -- so a
+--- placement has cleared the cursor before the next split loads it (the
+--- client refuses a split onto a loaded cursor). The attach step is scheduled
+--- after the last placement and verifies every split landed before it
+--- touches a send slot. Whole stacks with nothing to split attach immediately.
+--- The sequence is TOGBankClassic's FulfillStep, which is in players' hands.
+local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, reagents)
+    if not MailFrame or not MailFrame:IsShown() then
+        CdMail_Complain(L["MailMsgOpenMailbox"])
+        return
+    end
+    if CdMail_MailHasItems() then
+        CdMail_Complain(L["MailMsgHasItems"])
+        return
+    end
+    local plan = CdMail_PlanSupplyMail(reagents)
+    if not plan.ok then
+        for _, msg in ipairs(plan.problems) do CdMail_Complain(msg) end
+        return
+    end
+    if #plan.splits == 0 then
+        CdMail_AttachSupplyMail(plan, playerName, cooldownName, outputName, 0)
+        return
+    end
+    local empties = CdMail_EmptyBagSlots(#plan.splits)
+    if #empties < #plan.splits then
+        CdMail_Complain(string.format(L["MailMsgNeedEmptySlots"], #plan.splits))
+        return
+    end
+    local pieces = {}
+    for i, s in ipairs(plan.splits) do
+        local dst = empties[i]
+        s.dstBag, s.dstSlot = dst.bag, dst.slot
+        pieces[#pieces + 1] = string.format("%dx %s", s.amount, s.name)
+        local at = (i - 1) * 0.25
+        local function doSplit()
+            ClearCursor()
+            C_Container.SplitContainerItem(s.bag, s.slot, s.amount)
+        end
+        if i == 1 then doSplit() else C_Timer.After(at, doSplit) end
+        C_Timer.After(at + 0.1, function()
+            C_Container.PickupContainerItem(dst.bag, dst.slot)
+        end)
+    end
+    C_Timer.After(#plan.splits * 0.25, function()
+        CdMail_AttachSupplyMail(plan, playerName, cooldownName, outputName, 0)
+    end)
+    CdMail_Say(string.format(L["MailMsgSplittingFormat"], table.concat(pieces, ", ")))
+end
+
+-- Offline-test seam for the mail path (same reasoning as the block above; these
+-- are defined after it). See Tests/cooldownmail_spec.lua.
+CooldownsTab._EmptyBagSlots     = CdMail_EmptyBagSlots
+CooldownsTab._PlanSupplyMail    = CdMail_PlanSupplyMail
+CooldownsTab._PrepareSupplyMail = CdMail_PrepareSupplyMail
 
 -- ---------------------------------------------------------------------------
 -- Draw
@@ -1796,7 +1930,9 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
             bankBtn:SetPoint("LEFT", col2, "LEFT", x2, 0)
             local bankLbl = NewText(nil, bankBtn, bankW, "LEFT")
             bankLbl:SetPoint("LEFT", bankBtn, "LEFT", 0, 0)
-            bankLbl:SetText("|cFF88FF88[Bank]|r")
+            -- The staleness dot + label, and the item remembered for the
+            -- tooltip's per-banker lines.
+            addon.Bank.Decorate(bankBtn, itemId, bankLbl)
             bankBtn:SetScript("OnClick", function()
                 local name = addon.Item.GetInfo(itemId)
                 local link = select(2, addon.Item.GetInfo(itemId))
@@ -1806,6 +1942,7 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
                 addon.Tooltip.Owner(bankBtn)
                 GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
                 GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
+                addon.Bank.AddStatusLines(bankBtn)
                 GameTooltip:Show()
             end)
             bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1824,7 +1961,8 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
         mailBtn:SetScript("OnClick", function()
             local cdName    = row.isTransmuteGroup and L["Transmute"] or row.cdName
             local outputName = row.outputName or cdName
-            CdMail_PrepareSupplyMail(row.charKey, cdName, outputName, itemId, row.reagentQty or 1)
+            CdMail_PrepareSupplyMail(row.charKey, cdName, outputName,
+                { { id = itemId, qty = row.reagentQty or 1 } })
         end)
         mailBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(mailBtn)
@@ -1916,6 +2054,28 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
     end
     local charKey = row.charKey
 
+    -- One mail per COOLDOWN, not per reagent row (v1.1.0). A multi-reagent
+    -- transmute is emitted as one entry per reagent (so each keeps its own
+    -- [AH] / [Bank] request), all sharing the cooldown's spellId. The mail
+    -- button goes on the FIRST row of each such group and carries the whole
+    -- group's reagent list, so Arcanite's Thorium Bar + Arcane Crystal leave
+    -- in one mail instead of two. Sibling rows keep the mail column's space
+    -- for alignment and draw nothing in it. Keyed on spellId, falling back to
+    -- the display name for an entry the spellId backfill could not resolve.
+    local groupReagents, mailEntry = {}, {}
+    for _, e in ipairs(entries) do
+        if e.reagentId then
+            local key = e.spellId or e.name or e
+            local list = groupReagents[key]
+            if not list then
+                list = {}
+                groupReagents[key] = list
+                mailEntry[e] = list
+            end
+            list[#list + 1] = { id = e.reagentId, qty = e.reagentQty or 1 }
+        end
+    end
+
     local rowH   = 14
     local pad    = 6
     -- popupW = 500: name + reagent + [AH]/[Bank]/mail + time all tile inside this
@@ -1994,7 +2154,7 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
     end)
 
     local mailW    = hasReagents and 20 or 0
-    local bankW    = hasReagents and 48 or 0
+    local bankW    = hasReagents and 58 or 0   -- +10 for the staleness dot
     -- AH button column. 40px matches the per-row [AH] width used in the
     -- main cooldown row (C2_AH_BTN). Sits to the LEFT of [Bank], to the
     -- RIGHT of the reagent label — same ordering as the main row.
@@ -2168,7 +2328,7 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
                 bankBtn:SetSize(bankW, rowH)
                 bankBtn:SetPoint("RIGHT", rowFrame, "RIGHT", -(mailW + 2), 0)
                 bankBtn:SetNormalFontObject(GameFontNormalSmall)
-                bankBtn:SetText("|cFF88FF88[Bank]|r")
+                bankBtn:SetText(addon.Bank.ButtonText(nil))
                 bankBtn:Hide()  -- starts hidden; refresher reveals when stock > 0
                 bankBtn:SetScript("OnClick", function()
                     local name = addon.Item.GetInfo(reagentId)
@@ -2179,11 +2339,13 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
                     addon.Tooltip.Owner(bankBtn)
                     GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
                     GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
+                    addon.Bank.AddStatusLines(bankBtn)
                     showAbovePopup()
                 end)
                 bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
                 rowRefreshers[#rowRefreshers + 1] = function()
                     if addon.Bank.GetStock(reagentId) > 0 then
+                        addon.Bank.Decorate(bankBtn, reagentId)
                         bankBtn:Show()
                     else
                         bankBtn:Hide()
@@ -2191,44 +2353,49 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
                 end
             end
 
-            -- Mail icon button
-            local mailBtn = CreateFrame("Button", nil, rowFrame)
-            mailBtn:SetSize(16, 16)
-            mailBtn:SetPoint("RIGHT", rowFrame, "RIGHT", 0, 0)
-            mailBtn:SetNormalTexture("Interface\\Icons\\INV_Letter_15")
-            mailBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-            mailBtn:SetScript("OnClick", function()
-                local spellName = (spellId and GetSpellInfo(spellId)) or entryName
-                -- Resolve the crafted-output name for the mail body. This popup
-                -- has no single "output name" field like the main rows do, so
-                -- pick the best available on ANY client version: the row's
-                -- display name first, then the spell name, then the output item
-                -- (recipeId IS the output itemId for non-spell recipes), else a
-                -- blank. Without this the body would show a blank or raw id.
-                local outputName
-                if entryName and entryName ~= "" then
-                    outputName = entryName
-                elseif spellName and spellName ~= "" then
-                    outputName = spellName
-                elseif recipeId then
-                    outputName = addon.Item.GetInfo(recipeId) or spellName or ""
-                else
-                    outputName = spellName or ""
-                end
-                -- 5-arg call: (playerName, cooldownName, outputName, reagentId,
-                -- reagentQty). The earlier 4-arg call dropped outputName, which
-                -- shifted reagentQty(=1) into reagentId and produced the
-                -- "no item:1 in your bags" error.
-                CdMail_PrepareSupplyMail(charKey, spellName, outputName, reagentId, reagentQty)
-            end)
-            mailBtn:SetScript("OnEnter", function()
-                addon.Tooltip.Owner(mailBtn)
-                GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1, 1, true)
-                GameTooltip:AddLine(L["MailBtnTooltipDesc"]
-                    or "Open a mailbox, then click to mail reagents to this player.", nil, nil, nil, true)
-                showAbovePopup()
-            end)
-            mailBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            -- Mail icon button -- on the first row of the cooldown only, and it
+            -- mails EVERY reagent in the group (see groupReagents above).
+            local mailReagents = mailEntry[e]
+            if mailReagents then
+                local mailBtn = CreateFrame("Button", nil, rowFrame)
+                mailBtn:SetSize(16, 16)
+                mailBtn:SetPoint("RIGHT", rowFrame, "RIGHT", 0, 0)
+                mailBtn:SetNormalTexture("Interface\\Icons\\INV_Letter_15")
+                mailBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+                mailBtn:SetScript("OnClick", function()
+                    local spellName = (spellId and GetSpellInfo(spellId)) or entryName
+                    -- Resolve the crafted-output name for the mail body. The
+                    -- PRODUCT first -- "Arcanite Bar", from the recipe's crafted
+                    -- item, so the body does not read "make Transmute: Arcanite ...
+                    -- send me the Transmute: Arcanite" (which is what the user's
+                    -- first in-game mail said, 2026-09-14). Then the fallbacks for
+                    -- an entry with no recipe: the row's display name, the spell
+                    -- name, the output item (recipeId IS the output itemId for
+                    -- non-spell recipes), else a blank rather than a raw id.
+                    local craftedId = recipeId and addon:GetRecipeCraftedItemId(171, recipeId)
+                    local craftedName = craftedId and addon.Item.GetInfo(craftedId)
+                    local outputName
+                    if craftedName and craftedName ~= "" then
+                        outputName = craftedName
+                    elseif entryName and entryName ~= "" then
+                        outputName = entryName
+                    elseif spellName and spellName ~= "" then
+                        outputName = spellName
+                    elseif recipeId then
+                        outputName = addon.Item.GetInfo(recipeId) or spellName or ""
+                    else
+                        outputName = spellName or ""
+                    end
+                    CdMail_PrepareSupplyMail(charKey, spellName, outputName, mailReagents)
+                end)
+                mailBtn:SetScript("OnEnter", function()
+                    addon.Tooltip.Owner(mailBtn)
+                    GameTooltip:SetText(L["MailBtnTooltip"], 1, 1, 1, 1, true)
+                    GameTooltip:AddLine(L["MailBtnTooltipDesc"], nil, nil, nil, true)
+                    showAbovePopup()
+                end)
+                mailBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            end
         end
     end
 

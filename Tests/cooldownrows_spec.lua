@@ -330,7 +330,8 @@ describe("column widths", function()
 	it("reserves space for the buttons that are actually shown", function()
 		local _, _, _, ah, bank, mail = CD._ComputeCol2InnerWidths(360, true, true, true)
 		assert.equal(40, ah)
-		assert.equal(40, bank)
+		-- 50: the label carries TOGBank's staleness dot in front of [Bank].
+		assert.equal(50, bank)
 		assert.equal(20, mail)
 	end)
 
@@ -401,6 +402,45 @@ describe("supply-mail planner", function()
 		local plan = CD._CalculateFulfillmentPlan(bags({ 5 }), 20, 5)
 		assert.is_false(plan.canFulfill)
 		assert.is_true(plan.reason:find("15", 1, true) ~= nil)
+	end)
+
+	it("never asks to split a whole stack, and every fulfilled plan adds up exactly", function()
+		-- The supply mail relies on this: SplitContainerItem refuses amount >=
+		-- count and nothing downstream checks it again. Every layout of up to
+		-- four stacks of 1..6 against every need up to 12, so the claim in the
+		-- planner's comment is checked rather than believed.
+		local checked = 0
+		local function layouts(n, prefix, out)
+			if n == 0 then out[#out + 1] = prefix; return out end
+			for c = 1, 6 do
+				local grown = { unpack(prefix) }
+				grown[#grown + 1] = c
+				layouts(n - 1, grown, out)
+			end
+			return out
+		end
+		for n = 1, 4 do
+			for _, counts in ipairs(layouts(n, {}, {})) do
+				local sum = 0
+				for _, c in ipairs(counts) do sum = sum + c end
+				for need = 1, 12 do
+					local plan = CD._CalculateFulfillmentPlan(bags(counts), need, sum)
+					if plan.canFulfill then
+						local got = total(plan.stacksToAttach)
+						if plan.splitStack then
+							assert.is_true(plan.splitStack.amount >= 1)
+							assert.is_true(plan.splitStack.amount < plan.splitStack.count)
+							got = got + plan.splitStack.amount
+						end
+						assert.equal(need, got)
+					else
+						assert.is_true(sum < need)
+					end
+					checked = checked + 1
+				end
+			end
+		end
+		assert.is_true(checked > 10000)
 	end)
 end)
 

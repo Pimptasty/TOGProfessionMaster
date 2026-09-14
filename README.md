@@ -21,7 +21,7 @@ That's it. Within a minute or two you'll see your guildmates' recipes and cooldo
 
 **Profession Browser** — Every recipe known by anyone in your guild, with a list of crafters per recipe. Filter by profession, search by name, see who's online, right-click to whisper the crafter.
 
-**Cooldowns Tab** — Every guildmate's active and ready profession cooldowns in one view: transmutes, Mooncloth, Salt Shaker, Northrend Research, Icy Prism, Truegold, Living Steel, JC daily cuts, and more. Hit the one-click **[Mail]** button to send the crafter a pre-composed supply mail with the right reagent. The reagent column is white when your bags hold enough of it to fill that mail and grey when they don't, so a glance down the list tells you which cooldowns you can actually feed — and it recolours as you loot or send things, without a tab switch.
+**Cooldowns Tab** — Every guildmate's active and ready profession cooldowns in one view: transmutes, Mooncloth, Salt Shaker, Northrend Research, Icy Prism, Truegold, Living Steel, JC daily cuts, and more. Hit the one-click **[Mail]** button to send the crafter a pre-composed supply mail with every reagent of that cooldown on it — one mail per cooldown, even for a two-reagent transmute like Arcanite; the click splits whatever stacks need splitting, attaches them all and fills in the recipient, and it sends nothing at all if you are short of any reagent. The reagent column is white when your bags hold enough of it to fill that mail and grey when they don't, so a glance down the list tells you which cooldowns you can actually feed — and it recolours as you loot or send things, without a tab switch.
 
 **Missing Recipes Tab** — Pick a character and a profession and see every recipe scroll they haven't learned yet, with where to obtain it (vendor, drop, quest, container, fishing). Filter to a single profession or search by name. A **Guild** view shows recipes *nobody* in the guild knows, which is the coverage gap worth acting on. Rank-up books (Expert, Artisan and so on) drop off the list once you have outgrown them. On TBC there is an optional filter to hide recipes from content phases that are not live yet — it ships off, so by default nothing is hidden from you.
 
@@ -29,15 +29,15 @@ That's it. Within a minute or two you'll see your guildmates' recipes and cooldo
 
 **Crafting Tab** — A full crafting screen in TOGPM's own style, including a craft queue and a cost-to-craft with profit preview (a reagent a vendor sells is costed at the vendor price, never an auction listing). Optionally takes over the default profession window (`/togpm craft`). Enchanting is supported, recipe tooltips included. A hunter's Beast Training shares Enchanting's window on Classic and TBC; the takeover leaves it to the game, so pets can always be trained.
 
-**Profit Planner** — What's worth making right now, using auction prices from the built-in scanner. No other addon required, though it plays nicely with Auctionator.
+**Profit Planner** — What's worth making right now, using auction prices from **ItemDB**: its own Auction House scan, or Auctionator, Auctioneer and TradeSkillMaster if you run them. Which sources are used, and in what order, is set once in ItemDB (`/itemdb`, or the **Price sources** button in TOGPM's settings) and applies to every TOG addon; the Historical view uses only the sources that keep a history. No other pricing addon required.
 
 **Allied Guilds (cross-guild sharing)** — Share professions and cooldowns between two guilds. Set up under **Settings → Cross-Guild** by an officer or the guild leader; it is bilateral by design, so both sides opt in, and it shares the whole guild's data rather than just yours. The allied-guild list and the allied rosters live in **GuildRoster** (also editable with `/guildroster sisters`), so every TOG addon on your account — this one, TOGTools, TOGBankClassic — reads one list and one set of rosters rather than each keeping its own. Pull an allied roster once from any online member of that guild (`/togpm pullroster <Name>`) and GuildRoster keeps it current from then on, for the whole guild.
 
 **Shopping List + Reagent Tracker** — Queue any recipe to your shopping list. The floating Reagent Tracker shows a live total of everything you need vs. what's in your bags. Chat alert when all reagents are available.
 
-**Scan AH** — One click scans the auction house for whatever's relevant to the current tab (shopping-list reagents, cooldown reagents, missing recipes). Rows that have live listings get an **[AH]** button you can click to jump straight to the AH browse search.
+**Scan AH** — One click scans the auction house (through ItemDB's scanner) for whatever's relevant to the current tab (shopping-list reagents, cooldown reagents, missing recipes). Rows that have live listings get an **[AH]** button you can click to jump straight to the AH browse search.
 
-**TOGBankClassic integration** — When TOGBankClassic is loaded, every reagent shows a **[Bank]** button when the guild bank has stock. One click opens a request dialog.
+**TOGBankClassic integration** — When TOGBankClassic is loaded, every reagent shows a **[Bank]** button when the guild bank has stock. One click opens a request dialog. The button carries TOG Bank's own status dot — green when your copy of that bank is current, red or yellow when a newer copy is on its way, grey when the only newer copy can't reach your client — so you can tell at a glance whether the stock behind it is current; hover for each banker's count and status.
 
 **Crafter Online Alerts** — Chat ping when a guildmate who can craft something on your shopping list comes online.
 
@@ -51,7 +51,7 @@ That's it. Within a minute or two you'll see your guildmates' recipes and cooldo
 
 **Sell** is what a vendor pays you, the same figure TradeSkillMaster labels "Vendor Sell Price". **Buy** is what a vendor charges, which is a different number entirely — the two differ by roughly 4x, and cost-to-craft totals elsewhere in the addon deliberately use the buy price, because that is what a reagent actually costs you.
 
-Buy comes from a three-tier lookup: Auctionator's vendor cache, then prices TOGPM captured live from vendors *you* have opened, then ItemDB's base price. Where you have met the vendor yourself the figure reflects your reputation discount rather than a book value. Sell asks the client first and falls back to ItemDB, so unlike most vendor-price lines it still answers for an item your client has never cached.
+Buy comes from ItemDB's three-tier lookup: Auctionator's vendor cache, then prices captured live from vendors *you* have opened, then ItemDB's base price. Where you have met the vendor yourself the figure reflects your reputation discount rather than a book value. Sell asks the client first and falls back to ItemDB, so unlike most vendor-price lines it still answers for an item your client has never cached.
 
 Nobody else shows both: TSM and Leatrix Plus show sell only, AllTheThings shows neither, and the game itself shows neither in your bags.
 
@@ -100,13 +100,13 @@ Installing from CurseForge pulls these in automatically. Installing by hand mean
 
 **Ace3**, **DeltaSync**, **AceCommQueue-1.0**, **VersionCheck-1.0**, **GuildRoster**, **ProfessionDB**, **ItemDB**.
 
-Keep **AceCommQueue-1.0** current in particular — it is the layer that queues addon traffic, and older copies mistook ordinary server throttling for a fault and reported it as an error. **GuildRoster 0.7.0 or newer** is needed for cross-guild sharing: it holds the allied-guild list and rosters for every TOG addon; on an older copy the addon runs normally with cross-guild sharing off.
+Keep **AceCommQueue-1.0** current in particular — it is the layer that queues addon traffic, and older copies mistook ordinary server throttling for a fault and reported it as an error. **GuildRoster 0.7.0 or newer** is needed for cross-guild sharing: it holds the allied-guild list and rosters for every TOG addon; on an older copy the addon runs normally with cross-guild sharing off. **ItemDB carrying LibItemDB 25 or newer** is needed for any auction price: since v1.1.0 the Auction House scanner, the Auctionator / Auctioneer / TSM connections and the price-source settings all live there; on an older ItemDB you get vendor prices only, and no [AH] or Scan AH buttons.
 
 ## Settings
 
 All settings live in WoW's standard Options panel: **ESC → Options → AddOns → TOG Profession Master**. Or click the gear icon on the main window, or use `/togpm` and then the gear.
 
-Settings include cooldown-ready alarms, crafter-online alerts, instance-mute toggle, periodic reminder cadence, window scale and background opacity (turn the window see-through without fading its text), and more — every option has a hover tooltip explaining what it does.
+Settings include cooldown-ready alarms, crafter-online alerts, instance-mute toggle, periodic reminder cadence, window scale and background opacity (turn the window see-through without fading its text), and more — every option has a hover tooltip explaining what it does. Price sources (which of Auctionator / Auctioneer / TSM / the ItemDB scan are used, and in what order) are set in ItemDB's own window; the **Price sources (ItemDB)...** button here opens it, and the choices you had made in TOGPM before v1.1.0 were carried over on your first login.
 
 ## Need Help?
 

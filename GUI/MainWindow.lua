@@ -274,14 +274,19 @@ function MainWindow:Open(tabKey)
         cOnline  .. "Online|r \194\183 " ..
         cOffline .. "Offline|r"
 
+    -- Price-source legend, keyed by ItemDB's source ids (one per provider) and
+    -- coloured from addon.PriceSourceColors so the tags match every tab.
     local srcCol = addon.PriceSourceColors or {}
+    local srcLbl = addon.PriceSourceLabels or {}
+    local function srcTag(id, fallbackColor, fallbackLabel)
+        return "|c" .. (srcCol[id] or fallbackColor) .. "[" .. (srcLbl[id] or fallbackLabel) .. "]|r "
+    end
     local sourceLegend = brand .. "Price sources:|r "
-        .. "|c" .. (srcCol["togpm-ah"] or (addon.BrandColor or "ffFF8000")) .. "[TOGPM]|r "
-        .. "|c" .. (srcCol["auctionator"] or "ff6da9ff") .. "[Auctionator]|r "
-        .. "|c" .. (srcCol["auctioneer-live"] or srcCol["auctioneer-app"] or "ff8fcf7f") .. "[Auctioneer Live]|r "
-        .. "|c" .. (srcCol["auctioneer-cached"] or "ff6fae61") .. "[Auctioneer Cached]|r "
-        .. "|c" .. (srcCol["tsm-live"] or "ff63d2ff") .. "[TSM Live]|r "
-        .. "|c" .. (srcCol["tsm-history"] or "ffe0b85a") .. "[TSM App]|r"
+        .. srcTag("scan",        addon.BrandColor or "ffFF8000", "ItemDB Scan")
+        .. srcTag("auctionator", "ff6da9ff", "Auctionator")
+        .. srcTag("auctioneer",  "ff8fcf7f", "Auctioneer")
+        .. srcTag("tsm",         "fff0c44f", "TSM")
+        .. "(set in ItemDB: " .. brand .. "/itemdb|r)"
 
     -- Help text: one sentence per entry, as the player reads it. Wrapping these
     -- into concatenations would hide the prose behind string plumbing, so the
@@ -341,7 +346,7 @@ function MainWindow:Open(tabKey)
                 " ",
                 "Craft your known recipes, queue batches, and compare cost vs sale value.",
                 " ",
-                brand .. "Cost rows:|r Reagent and output pricing now include source badges (e.g. [TOGPM], [Auctionator], [TSM]).",
+                brand .. "Cost rows:|r Reagent and output prices carry a source badge (e.g. [SCAN], [AUC], [TSM]); a vendor-sold reagent is costed at the vendor price.",
                 " ",
                 sourceLegend,
             },
@@ -353,9 +358,9 @@ function MainWindow:Open(tabKey)
                 " ",
                 "Profit ranking across recipes your own characters can craft.",
                 " ",
-                brand .. "Live AH Profit:|r Uses currently-available sale prices (Auctionator / TSM / TOGPM AH scan).",
+                brand .. "Live AH Profit:|r Uses the best current sale price from every price source you have turned on in ItemDB (Auctionator, Auctioneer, TSM, the ItemDB scan).",
                 " ",
-                brand .. "Historical Profit:|r Uses historical-style pricing (Auctionator / TSM AppHelper-backed data).",
+                brand .. "Historical Profit:|r Uses only sources that keep a history (Auctionator's 14-day mean, Auctioneer's cached stat, TSM's historical figure).",
                 " ",
                 sourceLegend,
             },

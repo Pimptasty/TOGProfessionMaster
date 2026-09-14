@@ -233,9 +233,11 @@ function ShoppingListTab:FillShoppingList(container)
             local reagent = data.reagents[spellId] or data.transReagents[spellId]
             if reagent then
                 local bankBtn = AceGUI:Create("Button")
-                bankBtn:SetText(L["BankBtn"])
-                bankBtn:SetWidth(60)
                 local itemId = reagent.id
+                -- TOGBank's staleness dot in front of the word, when it holds
+                -- the reagent.
+                addon.Bank.Decorate(bankBtn, itemId, nil, L["BankBtn"])
+                bankBtn:SetWidth(70)
                 bankBtn:SetCallback("OnClick", function()
                     -- Routed through addon.Bank, which we own. The old call
                     -- went to a field on `_G.TOGBankClassic` -- that addon's UI
@@ -327,8 +329,8 @@ function ShoppingListTab:FillMissingReagents(container)
         -- [Bank] button
         if addon:IsAddOnLoaded("TOGBankClassic") then
             local bankBtn = AceGUI:Create("Button")
-            bankBtn:SetText(L["BankBtn"])
-            bankBtn:SetWidth(60)
+            addon.Bank.Decorate(bankBtn, itemId, nil, L["BankBtn"])
+            bankBtn:SetWidth(70)
             bankBtn:SetCallback("OnClick", function()
                 -- See the note on the other [Bank] button above: the old guard
                 -- keyed on another addon's global and could never be true.

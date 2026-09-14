@@ -376,9 +376,25 @@ describe("TOGBankClassic integration", function()
 		installBank({
 			Bank1 = { items = { { ID = 2589, Count = 20 }, { ID = 999, Count = 5 } } },
 			Bank2 = { items = { { ID = 2589, Count = 12 } } },
-		})
+		}, { "Bank1", "Bank2" })
 		assert.equal(32, ns.Bank.GetStock(2589))
 		assert.equal(0, ns.Bank.GetStock(4444))
+	end)
+
+	it("does not count an EX-banker whose stored inventory TOGBank still holds", function()
+		-- TOGBank keeps a record for a character whose bank note was removed
+		-- (its TOOLTIP-002 class); it is in Info.alts but not in GetBanks().
+		-- Counting it lit the [Bank] button against stock nobody could send.
+		-- TOGBankClassic's finding, thread 5eef0788 F2.
+		installBank({
+			Bank1 = { items = { { ID = 2589, Count = 20 } } },
+			Retired = { items = { { ID = 2589, Count = 20 } } },
+		}, { "Bank1" })
+		assert.equal(20, ns.Bank.GetStock(2589))
+		installBank({
+			Retired = { items = { { ID = 2589, Count = 20 } } },
+		}, {})
+		assert.equal(0, ns.Bank.GetStock(2589))
 	end)
 
 	it("lists the bankers holding an item, sorted by name", function()
@@ -412,7 +428,8 @@ describe("TOGBankClassic integration", function()
 	end)
 
 	it("agrees with GetStock when every alt is a banker", function()
-		-- The two walk different tables; nothing else asserts they compose.
+		-- GetStock IS the sum of GetBanksWithItem since v1.1.0; this pins that
+		-- the composition holds rather than two walks happening to agree.
 		installBank({
 			Abe = { items = { { ID = 2589, Count = 20 }, { ID = 2589, Count = 7 } } },
 			Zed = { items = { { ID = 2589, Count = 12 } } },
@@ -467,7 +484,7 @@ describe("TOGBankClassic integration", function()
 		end
 
 		it("totals stock through the accessor when the rows are gone", function()
-			installV2({ Bank1 = { [2589] = 20 }, Bank2 = { [2589] = 12 } })
+			installV2({ Bank1 = { [2589] = 20 }, Bank2 = { [2589] = 12 } }, { "Bank1", "Bank2" })
 			assert.equal(32, ns.Bank.GetStock(2589))
 			assert.equal(0,  ns.Bank.GetStock(4444))
 		end)
@@ -541,5 +558,134 @@ describe("TOGBankClassic integration", function()
 		_G.DEFAULT_CHAT_FRAME = { AddMessage = function(_, msg) said = msg end }
 		ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
 		assert.is_nil(said)
+	end)
+
+	-- The user, 2026-09-14, of TOGBank's green dots: "i would like to add those
+	-- dots next to the items in TOGPM as well if they have the bank button
+	-- available, so folks can tell at a glance if it's stale or not." The
+	-- state per banker is TOGBank's `Guild:GetAltStaleness`; the colours are
+	-- read from its Browse window's tables when present.
+	describe("the staleness dot on [Bank]", function()
+		local DOT = "\226\128\162"
+
+		--- TOGBank with the staleness accessor: `states[altName] = state`.
+		local function installStale(alts, banks, states)
+			installBank(alts, banks)
+			_G.TOGBankClassic_Guild.GetAltStaleness = function(_, norm)
+				return states[norm], 0, 0
+			end
+		end
+
+		after_each(function() _G.TOGBankClassic_UI_Browse = nil end)
+
+		it("carries each banker's state on GetBanksWithItem", function()
+			installStale({ Abe = { items = { { ID = 2589, Count = 1 } } },
+			               Zed = { items = { { ID = 2589, Count = 1 } } } },
+			             { "Abe", "Zed" }, { Abe = "current", Zed = "behind" })
+			local out = ns.Bank.GetBanksWithItem(2589)
+			assert.equal("current", out[1].state)
+			assert.equal("behind",  out[2].state)
+		end)
+
+		it("carries no state against a TOGBank that predates the accessor, and draws no dot", function()
+			installBank({ Abe = { items = { { ID = 2589, Count = 1 } } } }, { "Abe" })
+			assert.is_nil(ns.Bank.GetBanksWithItem(2589)[1].state)
+			assert.is_nil(ns.Bank.ItemState(2589))
+			assert.equal("|cFF88FF88[Bank]|r", ns.Bank.ButtonText(2589))
+		end)
+
+		it("is the WORST state across the bankers holding the item", function()
+			-- One dot stands for every banker; a red among greens is what the
+			-- glance is for.
+			installStale({ Abe = { items = { { ID = 2589, Count = 1 } } },
+			               Bob = { items = { { ID = 2589, Count = 1 } } },
+			               Zed = { items = { { ID = 2589, Count = 1 } } } },
+			             { "Abe", "Bob", "Zed" }, { Abe = "current", Bob = "offered", Zed = "current" })
+			assert.equal("offered", ns.Bank.ItemState(2589))
+			_G.TOGBankClassic_Guild.GetAltStaleness = function(_, n)
+				return ({ Abe = "current", Bob = "offered", Zed = "behind" })[n], 0, 0
+			end
+			assert.equal("behind", ns.Bank.ItemState(2589))
+		end)
+
+		it("is green for a banker whose copy is current, and nothing for an item nobody holds", function()
+			installStale({ Abe = { items = { { ID = 2589, Count = 1 } } } }, { "Abe" }, { Abe = "current" })
+			assert.equal("|cff00ff00" .. DOT .. "|r |cFF88FF88[Bank]|r", ns.Bank.ButtonText(2589))
+			assert.is_nil(ns.Bank.ItemState(4444))
+			assert.is_nil(ns.Bank.ItemState(nil))
+		end)
+
+		it("paints the dot in TOGBank's own colour when its Browse window publishes one", function()
+			-- The palette is read from TOGBankClassic_UI_Browse.STATE_COLOR so a
+			-- change there reaches these dots; the local table is only the
+			-- fallback for a TOGBank that has the accessor but not the window.
+			installStale({ Abe = { items = { { ID = 2589, Count = 1 } } } }, { "Abe" }, { Abe = "current" })
+			_G.TOGBankClassic_UI_Browse = {
+				STATE_COLOR = { current = "ff123456" },
+				STATE_TEXT  = { current = "Up to date" },
+			}
+			assert.equal("ff123456", ns.Bank.StateColor("current"))
+			assert.equal("Up to date", ns.Bank.StateText("current"))
+			assert.is_truthy(ns.Bank.ButtonText(2589):find("|cff123456" .. DOT, 1, true))
+		end)
+
+		it("falls back to TOGBank's shipped palette, verbatim, and to grey for a state it does not know", function()
+			assert.equal("ffff0000", ns.Bank.StateColor("behind"))
+			assert.equal("ffffff00", ns.Bank.StateColor("offered"))
+			assert.equal("ffa0a0a0", ns.Bank.StateColor("refused"))
+			assert.equal("ff808080", ns.Bank.StateColor("something-new"))
+			assert.equal("Behind",   ns.Bank.StateText("behind"))
+			assert.equal("something-new", ns.Bank.StateText("something-new"))
+		end)
+
+		it("labels a raw button and remembers its item; an AceGUI widget gets the text only", function()
+			installStale({ Abe = { items = { { ID = 2589, Count = 1 } } } }, { "Abe" }, { Abe = "current" })
+			local raw = { SetText = function(self, t) self.text = t end }
+			ns.Bank.Decorate(raw, 2589)
+			assert.equal(ns.Bank.ButtonText(2589), raw.text)
+			assert.equal(2589, raw._bankItemId)
+			-- A widget is pooled account-wide: no field may ride into its next owner.
+			local widget = { frame = {}, SetText = function(self, t) self.text = t end }
+			ns.Bank.Decorate(widget, 2589, nil, "Bank")
+			assert.equal("|cff00ff00" .. DOT .. "|r Bank", widget.text)
+			assert.is_nil(widget._bankItemId)
+			-- A button whose text lives on a separate FontString.
+			local fs, btn = { SetText = function(self, t) self.text = t end }, {}
+			ns.Bank.Decorate(btn, 2589, fs)
+			assert.equal(ns.Bank.ButtonText(2589), fs.text)
+			assert.equal(2589, btn._bankItemId)
+			ns.Bank.Decorate(nil, 2589)   -- tolerated
+		end)
+
+		it("adds one tooltip line per banker, name, count and status, in TOGBank's colour", function()
+			installStale({ Abe = { items = { { ID = 2589, Count = 7 } } },
+			               Zed = { items = { { ID = 2589, Count = 3 } } } },
+			             { "Abe", "Zed" }, { Abe = "current", Zed = "behind" })
+			local lines = {}
+			_G.GameTooltip = {
+				AddLine = function(_, t) lines[#lines + 1] = t end,
+				AddDoubleLine = function(_, l, r) lines[#lines + 1] = l .. " | " .. r end,
+			}
+			local btn = {}
+			ns.Bank.Decorate(btn, 2589)
+			ns.Bank.AddStatusLines(btn)
+			assert.equal(3, #lines)
+			assert.equal(" ", lines[1])
+			assert.equal("|cff00ff00" .. DOT .. "|r Abe (7) | |cff00ff00Current|r", lines[2])
+			assert.equal("|cffff0000" .. DOT .. "|r Zed (3) | |cffff0000Behind|r",  lines[3])
+		end)
+
+		it("adds nothing for a button with no item, or when TOGBank reports no state", function()
+			local lines = {}
+			_G.GameTooltip = {
+				AddLine = function(_, t) lines[#lines + 1] = t end,
+				AddDoubleLine = function(_, l, r) lines[#lines + 1] = l .. r end,
+			}
+			ns.Bank.AddStatusLines({})
+			ns.Bank.AddStatusLines(nil)
+			installBank({ Abe = { items = { { ID = 2589, Count = 7 } } } }, { "Abe" })
+			ns.Bank.AddStatusLines({ _bankItemId = 2589 })
+			assert.same({}, lines)
+		end)
 	end)
 end)

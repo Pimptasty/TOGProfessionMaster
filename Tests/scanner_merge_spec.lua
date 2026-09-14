@@ -11,7 +11,7 @@
 package.path = "./Tests/?.lua;" .. package.path
 local env = require("env_togpm")
 
-local ns, Scanner, HashManager
+local ns, Scanner
 local HOME, PERSONAL
 
 -- A tag for a guild we are NOT federated with.
@@ -20,7 +20,7 @@ local FOREIGN = "ffffff"
 setup(function()
 	ns = env.initDb()
 	env.loadModule("Data/CooldownIds.lua")
-	HashManager = env.loadModule("Modules/HashManager.lua").HashManager
+	env.loadModule("Modules/HashManager.lua")
 	Scanner     = env.loadModule("Scanner.lua").Scanner
 	HOME        = ns:GetCurrentGuildTag()
 	PERSONAL    = ns.PersonalTag

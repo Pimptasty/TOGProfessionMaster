@@ -171,23 +171,23 @@ describe("hand-maintained cooldown reagents agree with ProfessionDB", function()
 		-- item 22454, which does not exist) did NOT fail, because TBC Alchemy
 		-- was not loaded. A guard with a silent hole is worse than none.
 		if not lib then return pending("ProfessionDB is not installed alongside") end
-		local index = reagentIndex()
+		local known = reagentIndex()
 		local uncovered = {}
 		for spellId in pairs(parseIdMap(src, "FEATURED_REAGENT")) do
-			if not index[spellId] then uncovered[#uncovered + 1] = "FEATURED " .. spellId end
+			if not known[spellId] then uncovered[#uncovered + 1] = "FEATURED " .. spellId end
 		end
 		for spellId in pairs(parseIdQty(src, "REAGENT_FALLBACK")) do
-			if not index[spellId] then uncovered[#uncovered + 1] = "FALLBACK " .. spellId end
+			if not known[spellId] then uncovered[#uncovered + 1] = "FALLBACK " .. spellId end
 		end
 		assert.same({}, uncovered)
 	end)
 
 	it("features only a reagent the recipe actually uses", function()
 		if not lib then return pending("ProfessionDB is not installed alongside") end
-		local index = reagentIndex()
+		local known = reagentIndex()
 		local bad = {}
 		for spellId, itemId in pairs(parseIdMap(src, "FEATURED_REAGENT")) do
-			local real = index[spellId]
+			local real = known[spellId]
 			if real and not real[itemId] then
 				local have = {}
 				for i in pairs(real) do have[#have + 1] = i end
@@ -204,10 +204,10 @@ describe("hand-maintained cooldown reagents agree with ProfessionDB", function()
 		-- wrong QUANTITY shows the right item and the wrong number, which is
 		-- harder to notice and just as wrong on a shopping list.
 		if not lib then return pending("ProfessionDB is not installed alongside") end
-		local index = reagentIndex()
+		local known = reagentIndex()
 		local bad = {}
 		for spellId, rg in pairs(parseIdQty(src, "REAGENT_FALLBACK")) do
-			local real = index[spellId]
+			local real = known[spellId]
 			if real then
 				if not real[spellId] and not real[rg.id] then
 					bad[#bad + 1] = ("spell %d falls back to item %d, which the recipe does not use")

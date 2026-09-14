@@ -17,12 +17,13 @@ read_globals = {
 	"ChatEdit_InsertLink", "ChatEdit_GetActiveWindow", "UIDropDownMenu_SetWidth",
 	"ChatFrame_OpenChat", "DEFAULT_CHAT_FRAME",
 	-- Bag/mail/cursor APIs behind the Cooldowns tab's supply-mail button, and
-	-- the frames it reads. `C_Container` is the modern namespace and is
-	-- feature-detected against the bare globals at every call site.
-	"C_Container", "ClearCursor", "SplitContainerItem", "PickupContainerItem",
-	"MailFrame", "GetSendMailItem", "ClickSendMailItemButton", "ATTACHMENTS_MAX_SEND",
+	-- the frames it reads. The container family is `C_Container` ONLY on every
+	-- supported flavour (Compat.lua's note); the bare split/pickup globals are
+	-- not declared so a call to one is reported.
+	"C_Container", "ClearCursor",
+	"MailFrame", "MailFrameTab2", "HasSendMailItem", "ClickSendMailItemButton", "ATTACHMENTS_MAX_SEND",
 	"SendMailNameEditBox", "SendMailSubjectEditBox", "SendMailBodyEditBox", "MailEditBox",
-	"StaticPopup_Show", "BackdropTemplateMixin",
+	"BackdropTemplateMixin",
 	"SPELL_REAGENTS", "Item", "C_Timer", "C_ChatInfo",
 	-- GetScreenHeight is a first-class bare global (GlobalAPI.lua:5509).
 	-- C_Item is the modern item namespace. GetItemQualityColor is declared
@@ -44,18 +45,19 @@ read_globals = {
 	"UIDropDownMenu_Initialize", "UIDropDownMenu_CreateInfo",
 	"UIDropDownMenu_SetText", "UIDropDownMenu_AddButton",
 	-- WoW hoists these into _G: `time`/`floor` are the Lua library functions,
-	-- and the merchant/coin calls are the vendor-capture path in Modules/Price.lua.
+	-- GetCoinTextureString is Price.Money's fallback against an ItemDB with no
+	-- FormatMoney. (The merchant-capture globals left with the capture itself,
+	-- to ItemDB, in v1.1.0.)
 	"time", "floor", "GetCoinTextureString",
-	"GetMerchantNumItems", "GetMerchantItemInfo", "GetMerchantItemLink",
 	-- WorldFrame is the engine-side root frame (used for cursor position);
 	-- Menu is Blizzard's modern context-menu namespace, present on the
 	-- flavours whose branch reads it and feature-detected at every call site.
 	"WorldFrame", "Menu",
-	-- Optional third-party price addons. TOGPM never depends on any of them:
-	-- Modules/Price.lua feature-detects each global at every call site and the
-	-- tier simply answers nothing when the addon is absent. Declared here so the
-	-- deliberate absence does not read as 55 warnings.
-	"Auctionator", "AucAdvanced", "TSM_API",
+	-- TradeSkillMaster's API, feature-detected at every call site: the
+	-- crafting-UI hand-off in Modules/Crafting/CraftingEngine.lua. (Auctionator
+	-- and AucAdvanced were declared here for the price bridges, which moved to
+	-- ItemDB in v1.1.0; nothing in this addon reads either global now.)
+	"TSM_API",
 
 	-- ------------------------------------------------------------------
 	-- Added 2026-08-19. The header above says "extend as luacheck complains"
@@ -78,14 +80,10 @@ read_globals = {
 	"TooltipDataProcessor", "Enum", "ItemRefTooltip",
 	"ShoppingTooltip1", "ShoppingTooltip2", "ShoppingTooltip3",
 	"FrameUtil",
-	-- Auction house. C_AuctionHouse + AuctionHouseFrame are the modern pair;
-	-- AuctionFrame and the Browse* widgets are the pre-Cata UI. Modules/AHScanner.lua
-	-- picks one at runtime -- both halves are read behind that branch.
-	"C_AuctionHouse", "AuctionHouseFrame", "AuctionFrame", "AuctionFrameTab1",
-	"AuctionFrameBrowse_Search", "BrowseDropDown", "BrowseMaxLevel", "BrowseMinLevel",
-	"BrowseName", "BrowseSearchButton", "CanSendAuctionQuery", "QueryAuctionItems",
-	"GetAuctionItemInfo", "GetNumAuctionItems",
-	"IsUsableCheckButton", "ShowOnPlayerCheckButton", "UIDropDownMenu_SetSelectedValue",
+	-- Auction house. The scanner that read C_AuctionHouse / AuctionFrame / the
+	-- Browse* widgets / QueryAuctionItems moved to ItemDB in v1.1.0 and the
+	-- names went with it; Modules/AHScanner.lua is a facade over the library
+	-- and touches no AH global.
 	-- Trade skill / craft / trainer. The Craft* family is Vanilla-only
 	-- (Enchanting), the TradeSkill* family is everything else.
 	"CloseTradeSkill", "CloseCraft", "DoTradeSkill", "ExpandTradeSkillSubClass",
@@ -112,10 +110,8 @@ read_globals = {
 	"UIErrorsFrame", "UIFrameFlash", "HideUIPanel", "UIParent_OnEvent",
 	"GetCursorPosition", "GetFramesRegisteredForEvent", "WOW_PROJECT_CLASSIC",
 }
--- Written to, not just read. `StaticPopupDialogs` is Blizzard's registry and
--- every addon adds its own keys to it.
+-- Written to, not just read.
 globals = { "UISpecialFrames", "SLASH_TOGPM1", "SlashCmdList", "TOGPM_GuildDB", "TOGPM_Settings",
-	"StaticPopupDialogs",
 	-- The addon's own public table (`TOGPM = TOGPM or {}`, TOGProfessionMaster.lua:13).
 	"TOGPM",
 	-- Blizzard's quality-colour registry, and we genuinely WRITE one key into it:

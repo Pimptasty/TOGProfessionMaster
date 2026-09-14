@@ -81,7 +81,8 @@ local function singleWithReagent()
 end
 
 local function anyTransmute()
-	for spellId in pairs(data.transmutes) do return spellId end
+	-- `next` rather than a one-iteration `for`: "any key from this set".
+	return (next(data.transmutes))
 end
 
 --- Draw the tab and hand back every fontstring's text, in creation order.
@@ -397,5 +398,84 @@ describe("the transmute popup", function()
 		assert.is_truthy(lbl)
 		local r = lbl:GetTextColor()
 		assert.equal(1, r)
+	end)
+
+	-- One mail per COOLDOWN (v1.1.0). A two-reagent transmute draws a row per
+	-- reagent -- each with its own [Bank] request -- but the mail button is on
+	-- the first row only, and it carries every reagent of that transmute.
+	describe("with a two-reagent transmute", function()
+		local ARCANITE_RECIPE = 20201   -- Recipe: Transmute Arcanite
+		local THORIUM, CRYSTAL, ARCANITE = 12359, 12360, 12655
+
+		local function setUpArcaniteRow()
+			local t = assert(anyTransmute())
+			env.wow.items[THORIUM]  = { name = "Thorium Bar",    stackCount = 20 }
+			env.wow.items[CRYSTAL]  = { name = "Arcane Crystal", stackCount = 20 }
+			env.wow.items[ARCANITE] = { name = "Arcanite Bar" }
+			env.setRecipeDB({
+				[171] = {
+					[ARCANITE_RECIPE] = {
+						name = "Transmute: Arcanite", icon = 1,
+						teaches = t,
+						reagents = { [THORIUM] = 1, [CRYSTAL] = 1 },
+						craftedItemId = ARCANITE,
+					},
+				},
+			})
+			gdb.recipes[171] = {
+				[ARCANITE_RECIPE] = {
+					name = "Transmute: Arcanite",
+					crafters = { [MATE] = ns:GetCurrentGuildTag() },
+				},
+			}
+			give(MATE, t, NOW + HOUR)
+			return t
+		end
+
+		local function mailButtons(popup)
+			return frames.findAll(popup, function(o)
+				local tex = o._type == "Button" and o.GetNormalTexture and o:GetNormalTexture()
+				return tex and tex:GetTexture() == "Interface\\Icons\\INV_Letter_15" or false
+			end)
+		end
+
+		it("draws a row per reagent but ONE mail button", function()
+			setUpArcaniteRow()
+			local popup = openPopup()
+			local texts = popupText(popup)
+			assert.is_truthy(anyMatching(texts, "Thorium Bar"))
+			assert.is_truthy(anyMatching(texts, "Arcane Crystal"))
+			assert.equal(1, #mailButtons(popup))
+		end)
+
+		it("puts BOTH reagents on one mail when that button is clicked", function()
+			env.wow.bags[0] = {
+				slots = 4,
+				[1] = { itemID = THORIUM, count = 1, link = "|Hitem:" .. THORIUM .. "|h" },
+				[2] = { itemID = CRYSTAL, count = 1, link = "|Hitem:" .. CRYSTAL .. "|h" },
+			}
+			MailFrame:Show()
+			-- The body box is the client's MailEditBox, not modelled by the
+			-- harness; a one-method stand-in captures the text and is removed
+			-- again below (not env-owned, so it would leak into later files).
+			local body
+			_G.MailEditBox = { SetText = function(_, t) body = t end }
+			setUpArcaniteRow()
+			local popup = openPopup()
+			local btn = mailButtons(popup)[1]
+			btn:GetScript("OnClick")(btn)
+			_G.MailEditBox = nil
+			local onMail = {}
+			for i = 1, ATTACHMENTS_MAX_SEND do
+				local it = env.wow.sendMailItems[i]
+				if it then onMail[it.itemID] = (onMail[it.itemID] or 0) + it.count end
+			end
+			assert.same({ [THORIUM] = 1, [CRYSTAL] = 1 }, onMail)
+			assert.equal("Bob", SendMailNameEditBox:GetText())
+			-- The body names the PRODUCT, not the spell: "make Arcanite Bar",
+			-- not "make Transmute: Arcanite" (the user's first in-game mail).
+			assert.is_true(body:find("make Arcanite Bar", 1, true) ~= nil)
+			assert.is_nil(body:find("make Transmute", 1, true))
+		end)
 	end)
 end)

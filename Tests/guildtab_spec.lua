@@ -22,7 +22,6 @@ local env = require("env_togpm")
 
 local ns, gdb, savedSkillCap
 local BS, ALCHEMY, HERB = 164, 171, 182
-local ME    = "Testchar-Testrealm"
 local MATE  = "Bob-Testrealm"
 local OTHER = "Stranger-Testrealm"
 

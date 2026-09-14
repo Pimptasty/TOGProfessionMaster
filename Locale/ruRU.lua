@@ -292,9 +292,6 @@ L["SettingsCooldownReminderIntervalDesc"]  = "Повторно запускае�
 L["SettingsCooldownReminderInvalid"]       = "Введите целое число от 0 до 1440 или 'off'."
 
 L["SettingsAHHeader"]                      = "Аукцион"
-L["SettingsAHScanDelay"]                   = "Задержка сканирования АД (секунды)"
-L["SettingsAHScanDelayDesc"]               = "Секунды между запросами сканирования АД. Пусто / 0 / 'off' использует значение по умолчанию для версии (1.5с на Classic Era и Anniversary; 3.0с на TBC, Wrath, Cata, MoP — там серверы строже). Уменьшите для более быстрого сканирования, увеличьте, если сканирование зависает. Допустимый диапазон: 0.5–10 секунд."
-L["SettingsAHScanDelayInvalid"]            = "Введите число от 0.5 до 10 или 'off'."
 
 -- ---------------------------------------------------------------------------
 -- Tooltips & button hover-text
@@ -322,12 +319,10 @@ L["TooltipClickDetailsFallback"] = "подробности"
 -- ---------------------------------------------------------------------------
 L["MailSubjectFormat"]      = "Материалы для восстановления: %s"
 L["MailBodyFormat"]         = "Привет, %s! Используй эти материалы, чтобы сделать %s. Пришли мне %s, когда будет время на изготовление. Спасибо!"
-L["MailMsgNoEmptyBag"]      = "Нет пустого слота сумки для разделения."
 L["MailMsgOpenMailbox"]     = "Сначала откройте почтовый ящик."
 L["MailMsgHasItems"]        = "К письму уже прикреплены предметы — отправьте или удалите их сначала."
 L["MailMsgCannotFulfill"]   = "Невозможно выполнить."
 L["MailMsgCouldNotAttach"]  = "Не удалось прикрепить предметы."
-L["MailMsgAttachedFormat"]  = "Прикреплено %dx %s для %s."
 
 -- ---------------------------------------------------------------------------
 -- Minimap button tooltip (LDB)
@@ -443,4 +438,3 @@ L["CraftIncrease"]        = "Increase quantity"
 L["CraftDecrease"]        = "Decrease quantity"
 L["CraftButtonDesc"]      = "Craft the selected recipe now."
 L["CraftQueueDesc"]       = "Add the selected recipe to the queue."
-L["SettingsUseAuctionator"]                = "Use Auctionator pricing"

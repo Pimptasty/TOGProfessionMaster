@@ -572,7 +572,7 @@ function HashManager:RebuildOnFirstLoad(DS, gdb)
         end
     end
     if gdb.lastScan then
-        for _ck, scopes in pairs(gdb.lastScan) do
+        for _, scopes in pairs(gdb.lastScan) do
             if type(scopes) == "table" and scopes.professions ~= nil
                and scopes.professions <= 0 then
                 scopes.professions = nil

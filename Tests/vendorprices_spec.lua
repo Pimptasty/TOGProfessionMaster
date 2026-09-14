@@ -17,8 +17,9 @@
 --   * SELL  — `Price.GetVendorSell`, two tiers: `GetItemInfo`'s eleventh return,
 --             then LibItemDB's static `GetVendorSellPrice`. The client tier is
 --             nil on a cache-cold item; the static one has no such state.
---   * BUY   — `Price.GetVendorBuy`, three tiers: Auctionator's vendor cache, our
---             own MERCHANT_SHOW capture, then LibItemDB's static base price.
+--   * BUY   — `Price.GetVendorBuy`, LibItemDB's `GetVendorBuyPrice` (Auctionator's
+--             vendor cache, the merchant capture, then the static base price --
+--             all three tiers the library's since v1.1.0).
 
 ---@diagnostic disable: duplicate-set-field, redundant-parameter
 package.path = "./Tests/?.lua;" .. package.path

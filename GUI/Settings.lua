@@ -619,152 +619,24 @@ local OPTIONS = {
             order = 19.7,
         },
 
-        ahDataSourceNote = {
-            name  = "|cffFFD100Note:|r Changes to the data source checkboxes below"
-                .. " require a |cffFF4040/reload|r to take effect.",
-            type  = "header",
-            order = 19.705,
-        },
-
-        -- Off by default: the full getAll scan is a shared, ~once-per-15-min,
-        -- client-wide budget, so auto-firing it would starve a dedicated AH
-        -- addon's own scan. Opt-in only; tooltip spells out the trade-off.
-        autoScanAH = {
-            name  = L["SettingsAutoScanAH"],
-            desc  = L["SettingsAutoScanAHDesc"],
-            type  = "toggle",
-            width = "full",
+        -- The nine price-source toggles that sat here until v1.1.0 (own scan,
+        -- auto-scan, scan delay, Auctionator / Auctioneer / TSM and their
+        -- fallbacks) are ItemDB's now, with the ladder they controlled, and are
+        -- set in ItemDB's own window for every TOG addon at once. This button
+        -- opens it; a player's earlier choices were carried over on first login.
+        ahPriceSources = {
+            name  = L["SettingsAHPriceSources"],
+            desc  = L["SettingsAHPriceSourcesDesc"],
+            type  = "execute",
+            width = "double",
             order = 19.72,
-            get   = function() return Ace.db.profile.autoScanAH == true end,
-            set   = function(_, val) Ace.db.profile.autoScanAH = val and true or false end,
-        },
-
-        useTOGPMAH = {
-            name  = L["SettingsUseTOGPMAH"],
-            desc  = L["SettingsUseTOGPMAHDesc"],
-            type  = "toggle",
-            width = "full",
-            order = 19.735,
-            get   = function()
-                if Ace.db.profile.useTOGPMAH == nil then return true end
-                return Ace.db.profile.useTOGPMAH == true
+            disabled = function()
+                local DB = addon:GetItemDB()
+                return not (DB and DB.OpenPriceWindow)
             end,
-            set   = function(_, val) Ace.db.profile.useTOGPMAH = val and true or false end,
-        },
-
-        useAuctionator = {
-            name  = L["SettingsUseAuctionator"],
-            desc  = L["SettingsUseAuctionatorDesc"],
-            type  = "toggle",
-            width = "full",
-            order = 19.75,
-            get   = function() return Ace.db.profile.useAuctionator == true end,
-            set   = function(_, val)
-                Ace.db.profile.useAuctionator = val and true or false
-                if not val then
-                    Ace.db.profile.useAuctionatorHistorical = false
-                end
-            end,
-        },
-
-        useAuctionatorHistorical = {
-            name  = L["SettingsUseAuctionatorHistorical"],
-            desc  = L["SettingsUseAuctionatorHistoricalDesc"],
-            type  = "toggle",
-            width = "full",
-            order = 19.752,
-            disabled = function() return Ace.db.profile.useAuctionator ~= true end,
-            get   = function() return Ace.db.profile.useAuctionatorHistorical ~= false end,
-            set   = function(_, val) Ace.db.profile.useAuctionatorHistorical = val and true or false end,
-        },
-
-        useAuctioneer = {
-            name  = L["SettingsUseAuctioneer"],
-            desc  = L["SettingsUseAuctioneerDesc"],
-            type  = "toggle",
-            width = "full",
-            order = 19.755,
-            get   = function() return Ace.db.profile.useAuctioneer == true end,
-            set   = function(_, val)
-                Ace.db.profile.useAuctioneer = val and true or false
-                if not val then
-                    Ace.db.profile.useAuctioneerCached = false
-                end
-            end,
-        },
-
-        useAuctioneerCached = {
-            name  = L["SettingsUseAuctioneerCached"],
-            desc  = L["SettingsUseAuctioneerCachedDesc"],
-            type  = "toggle",
-            width = "full",
-            order = 19.757,
-            disabled = function() return Ace.db.profile.useAuctioneer ~= true end,
-            get   = function() return Ace.db.profile.useAuctioneerCached ~= false end,
-            set   = function(_, val) Ace.db.profile.useAuctioneerCached = val and true or false end,
-        },
-
-        useTSM = {
-            name  = "Use TSM pricing",
-            desc  = "When TradeSkillMaster is installed, allow TOGPM to use TSM live"
-                .. " price sources for profit views. Off by default.",
-            type  = "toggle",
-            width = "full",
-            order = 19.76,
-            get   = function() return Ace.db.profile.useTSM == true end,
-            set   = function(_, val) Ace.db.profile.useTSM = val and true or false end,
-        },
-
-        useTSMAppHelper = {
-            name  = "Use TSM App Helper pricing",
-            desc  = "Requires TradeSkillMaster_AppHelper. Enables TSM historical-style"
-                .. " price sources for profit views. Off by default.",
-            type  = "toggle",
-            width = "full",
-            order = 19.77,
-            get   = function() return Ace.db.profile.useTSMAppHelper == true end,
-            set   = function(_, val) Ace.db.profile.useTSMAppHelper = val and true or false end,
-        },
-
-        ahScanDelay = {
-            name  = L["SettingsAHScanDelay"],
-            desc  = L["SettingsAHScanDelayDesc"],
-            type  = "input",
-            order = 19.8,
-            -- Stored as a number (seconds). Display layer shows it as a
-            -- string with one decimal; empty / 0 means "use the version
-            -- default" (1.5s on Classic Era / Anniversary, 3.0s elsewhere).
-            -- Resolved at scan time in Modules/AHScanner.lua so changes to
-            -- this setting take effect immediately on the next query.
-            get = function()
-                local n = tonumber(Ace.db.profile.ahScanDelay) or 0
-                if n <= 0 then return "" end
-                return tostring(n)
-            end,
-            validate = function(_, val)
-                local trimmed = strtrim(val or "")
-                if trimmed == "" or trimmed:lower() == "off" then return true end
-                local n = tonumber(trimmed)
-                if not n then
-                    return L["SettingsAHScanDelayInvalid"]
-                end
-                if n < 0.5 or n > 10 then
-                    return L["SettingsAHScanDelayInvalid"]
-                end
-                return true
-            end,
-            set = function(_, val)
-                local trimmed = strtrim(val or "")
-                if trimmed == "" or trimmed:lower() == "off" then
-                    Ace.db.profile.ahScanDelay = 0
-                    return
-                end
-                local n = tonumber(trimmed)
-                if n then
-                    if n < 0.5 then n = 0.5 end
-                    if n > 10  then n = 10  end
-                    Ace.db.profile.ahScanDelay = n
-                end
+            func  = function()
+                local DB = addon:GetItemDB()
+                if DB and DB.OpenPriceWindow then DB:OpenPriceWindow() end
             end,
         },
 

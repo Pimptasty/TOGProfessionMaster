@@ -63,7 +63,6 @@ L["CraftDecrease"]        = "Decrease quantity"
 L["CraftButtonDesc"]      = "Craft the selected recipe now."
 L["CraftQueueDesc"]       = "Add the selected recipe to the queue."
 L["CraftedBy"]              = "Crafted by:"
-L["SettingsUseAuctionator"]                = "Use Auctionator pricing"
 L["CraftersColHeader"]           = "Crafters"
 
 -- Skill-tier filter (Browser toolbar)

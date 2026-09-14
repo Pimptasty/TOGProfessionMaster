@@ -6,7 +6,7 @@
 package.path = "./Tests/?.lua;" .. package.path
 local env = require("env_togpm")
 
-local ns, CT, PT, Ace, gdb
+local ns, CT, PT, Ace, gdb, DB
 
 setup(function()
 	ns = env.initDb()
@@ -32,9 +32,11 @@ before_each(function()
 	-- C_Item exactly as the client does. See env.itemAPI.
 	env.itemAPI("GetItemInfo", function() return nil end)
 	_G.GetCoinTextureString = nil
-	local fr = Ace.db.factionrealm
-	fr.ahPrices, fr.vendorPrices = {}, {}
+	-- Prices come from the real ItemDB price API over an empty store.
+	DB = env.priceDB()
 end)
+
+after_each(function() ns._itemDB = nil end)
 
 describe("CraftingTab filter", function()
 	local function tab(search, haveOnly)
@@ -144,9 +146,21 @@ end)
 
 describe("price-source tag", function()
 	it("abbreviates a known source in its own colour", function()
-		local tag = CT._PriceSourceTag("togpm-ah")
-		assert.is_true(tag:find("TOGPM", 1, true) ~= nil)
-		assert.is_true(tag:find(ns.PriceSourceColors["togpm-ah"], 1, true) ~= nil)
+		local tag = CT._PriceSourceTag("scan")
+		assert.is_true(tag:find("[SCAN]", 1, true) ~= nil)
+		assert.is_true(tag:find(ns.PriceSourceColors["scan"], 1, true) ~= nil)
+	end)
+
+	it("has a short tag for every id the library can answer with", function()
+		-- An id with no abbreviation falls back to the raw id, which is
+		-- "auctionator-vendor" in a 12px cost cell. Checked against the
+		-- library's own registry plus the vendor ids, not a list typed here.
+		for _, src in ipairs(DB:GetPriceSources()) do
+			assert.is_nil(CT._PriceSourceTag(src.id):find(src.id, 1, true), "raw id for " .. src.id)
+		end
+		for _, id in ipairs({ "auctionator-vendor", "merchant", "vendor-static" }) do
+			assert.is_nil(CT._PriceSourceTag(id):find(id, 1, true), "raw id for " .. id)
+		end
 	end)
 
 	it("falls back to the raw source name", function()
@@ -229,22 +243,23 @@ describe("Profit Planner rows", function()
 		gdb.accountChars["Bob-Testrealm"] = true
 		gdb.recipes[171] = { [2330] = { crafters = { ["Bob-Testrealm"] = ns:GetCurrentGuildTag() } } }
 		for itemId in pairs(lib:GetReagents(171, 2330)) do
-			ns.Price.StoreVendorPrice(itemId, 50)
+			DB:StoreVendorPrice(itemId, 50)
 		end
 	end
 
 	it("builds a row for a craftable with a price on both sides", function()
 		myAlchemist()
-		ns.Price.StoreAHPrice(118, 100000)     -- sells for far more than it costs
+		DB:StoreScannedPrice(118, 100000)     -- sells for far more than it costs
 		local rows = PT:BuildRows("live")
 		assert.equal(1, #rows)
 		assert.equal(118, rows[1].itemId)
+		assert.equal("scan", rows[1].source)
 		assert.is_true(rows[1].profit > 0)
 	end)
 
 	it("reports a loss when the mats cost more than the sale", function()
 		myAlchemist()
-		ns.Price.StoreAHPrice(118, 1)
+		DB:StoreScannedPrice(118, 1)
 		assert.is_true(PT:BuildRows("live")[1].profit < 0)
 	end)
 

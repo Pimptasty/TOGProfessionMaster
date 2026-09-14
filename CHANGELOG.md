@@ -6,6 +6,224 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # TOG Profession Master Changelog
 
+## [v1.1.0] (2026-09-14) - Prices and the Auction House scan move to ItemDB; one mail per cooldown, every reagent split and attached from one click
+
+### New Features
+
+- **Every [Bank] button carries TOGBank's staleness dot.** The user, of the
+  green dots beside each banker in TOGBank's own Browse list: *"i would like
+  to add those dots next to the items in TOGPM as well if they have the bank
+  button available, so folks can tell at a glance if it's stale or not."* The
+  dot in front of [Bank] is TOGBank's own per-banker verdict
+  (`TOGBankClassic_Guild:GetAltStaleness`, the accessor its Browse and Bankers
+  lists read): green when our copy of that bank is current, red when a newer
+  copy is published and being fetched (or the copy is in the old format),
+  yellow when a peer has offered a newer copy, grey when the only newer copy
+  is on a client that cannot send it. One button stands for every banker
+  holding the item, so its dot is the WORST of theirs -- a red among greens
+  is what the glance is for -- and hovering the button lists each banker with
+  its count and status word. The colours are read from TOGBank's
+  `TOGBankClassic_UI_Browse.STATE_COLOR` / `STATE_TEXT` when that window is
+  present, so a palette change there reaches these dots without an edit here;
+  against a TOGBank that predates the accessor the button reads exactly as
+  before, with no dot. Every site that used to hard-code the green `[Bank]`
+  label now goes through one `addon.Bank.Decorate` (the Professions detail and
+  recipe rows, the shopping-list reagent rows, the Cooldowns main row and its
+  transmute popup, the Crafting tab's reagents, the Missing Recipes scrolls,
+  the Reagent Tracker, and the Shopping List's two AceGUI buttons); the
+  buttons are ~10px wider for the bullet. Location: `Compat.lua`
+  (`GetBanksWithItem` now carries `state`; `ItemState`, `StateColor`,
+  `StateText`, `ButtonText`, `Decorate`, `AddStatusLines`), the eight GUI
+  files above. Specs: `Tests/compat_spec.lua` ("the staleness dot on [Bank]",
+  nine examples -- worst-wins, the palette read-through and its fallback, the
+  no-dot degrade, that an AceGUI widget is never left carrying the item id,
+  and the tooltip rows).
+
+### Improvements
+
+- **The Cooldowns tab's mail button sends ONE mail per cooldown per character,
+  with every reagent of that cooldown on it.** The user's report: an Arcanite
+  transmute (Thorium Bar + Arcane Crystal) cost the sender two mails, because
+  the transmute popup drew a mail button on every reagent row and each one
+  mailed its own reagent. The reagent rows stay -- each keeps its own [AH] and
+  [Bank] request, which is what the rows are for -- but the mail button now
+  sits on the first row of each cooldown only and carries the whole reagent
+  list; the main (single-reagent) rows go through the same path with a
+  one-item list. In the user's words: *"split ALL the components for the
+  cooldown and attach ALL the components to the mail ... ONE mail/order
+  fulfill button"*, then *"it's the one shot button, but per character"*.
+
+  **One click does the whole thing.** The click plans every reagent against
+  the bags first and touches nothing until the plan is whole: a reagent that
+  cannot be covered blocks the send and EVERY shortfall is printed together
+  (not just the first), and a plan needing more stacks than a mail's twelve
+  slots is refused up front. Then every stack that needs splitting is split
+  from that click -- 0.25s apart, each piece placed into an empty bag slot
+  chosen before the first split (a placed piece is invisible to the container
+  API until its deferred pickup fires, so choosing per split would hand every
+  piece the same slot), 0.1s after its split so the cursor has cleared before
+  the next split loads it. The attach step runs after the last placement,
+  waits a few ticks for any piece that has not committed to its slot, and
+  then attaches the pieces and the whole stacks in order. The confirmation
+  popup ("Split N from stack of M?") and its "click Mail again" second click
+  are gone. The sequence is TOGBankClassic's fulfil path (MULTIFILL-002),
+  which is in players' hands.
+
+  **All-or-nothing at the attach too.** A stack the plan counted on that is no
+  longer where it was (moved between the click and the attach) fails its
+  pickup; rather than send the rest under a summary naming the whole plan,
+  everything already attached is taken back off the mail (the client's
+  right-click detach) and the click is reported as failed, so the next click
+  re-plans against the bags as they are. The occupancy test is
+  `HasSendMailItem` over every slot -- the client's own (Classic Era
+  `MailFrame.lua:881`); the old `if GetSendMailItem(1)` read the item NAME,
+  which is nil for an item the client has not cached, and read slot 1 only.
+  Locations: `GUI/CooldownsTab.lua` (`CdMail_PlanSupplyMail`,
+  `CdMail_PrepareSupplyMail`, `CdMail_AttachSupplyMail`, `ShowGroupPopup`),
+  `Locale/enUS.lua`, `docs/FEATURES.md`. Specs: `Tests/cooldownmail_spec.lua`
+  (new, 23 examples over the harness's real bags, cursor and send-mail
+  slots), `Tests/cooldowndraw_spec.lua` (a two-reagent transmute draws two
+  reagent rows and ONE mail button, and clicking it puts both on one mail).
+
+### Bug Fixes
+
+- **The mail body from the transmute popup named the spell where the product
+  belongs.** The user's first in-game mail read "Please use these materials to
+  make Transmute: Arcanite. Please send me the Transmute: Arcanite" -- the
+  popup handed the row's display name (the spell) to the body. It now resolves
+  the recipe's crafted item first ("Arcanite Bar") and falls back to the old
+  chain only for an entry with no recipe. Pinned in `Tests/cooldowndraw_spec.lua`.
+  Location: `GUI/CooldownsTab.lua` (`ShowGroupPopup`).
+- **The [Bank] button counted stock held by EX-bankers.** `addon.Bank.GetStock`
+  walked every record in TOGBankClassic's `Info.alts`, which keeps a
+  character's stored inventory after their bank note is removed -- so a
+  retired banker still holding 20 Linen Cloth lit the button and reported 20
+  in stock against a request nobody could fill. `GetBanksWithItem` already
+  walked `GetBanks()` (the current bankers); `GetStock` is now the sum of it,
+  one implementation. TOGBankClassic's peer review (thread 5eef0788, F2);
+  its F1 -- read through `GetAltItemTotal` rather than the legacy rows -- was
+  already in place since v1.0.10. Location: `Compat.lua`, `Tests/compat_spec.lua`.
+- **The planner's "nothing fits, split the largest" branch was dead, and
+  nothing pinned the property the split call depends on.** The branch before
+  it already returns for every case it handled (any stack larger than the
+  need qualifies there), so it could never run; removed. The split call
+  refuses `amount >= count`, and the mail path now leans on the planner never
+  asking for that -- so a spec walks every layout of up to four stacks of
+  1..6 against every need up to 12 (10,000+ cases) and asserts the split, when
+  there is one, is strictly inside its stack and the fulfilled total is exact.
+  Location: `GUI/CooldownsTab.lua` (`CdMail_CalculateFulfillmentPlan`),
+  `Tests/cooldownrows_spec.lua`.
+- **The "Attached ..." chat line was erroring on the zhTW, zhCN and koKR
+  clients.** Those three translations had the `%s` and `%dx %s` arguments in
+  the other order, so `string.format` was handed a name where it expected a
+  number. The line is now one list string ("Attached 1x Thorium Bar, 1x Arcane
+  Crystal for Bob.") under a new key that every locale falls back to enUS
+  for; the old key and the unused "no empty bag slot" key are removed from
+  all 13 locale files. Location: `Locale/*.lua`.
+
+- **The Crafting tab's "AH price" line for the crafted item ignored Auctioneer
+  and TSM.** It read `Price.Get` and then accepted the answer only when its
+  source id was Auctionator's or the own scan's, so a player whose only price
+  source was Auctioneer or TSM never saw a sale price or a profit there, while
+  the Profit Planner (which reads `GetSaleLive`) showed both. Found while
+  porting the ladder; the line now reads `GetSaleLive` like the planner does.
+  Location: `GUI/CraftingTab.lua` (`RefreshDetail`).
+
+### Price sources move to ItemDB
+
+- **Pricing, the AH scanner and every third-party price bridge now live in
+  ItemDB (LibItemDB-1.0 MINOR 25), and this addon reads them from there.**
+  The user's directive: *"we need to move those 3rd party integrations into
+  itemDB now"*, then, once ItemDB was tested in game (its scan priced 524
+  items; `/itemdb price` answered "Item 8952: 20 (TradeSkillMaster, Market
+  value)" on Old Blanchy), *"i think you can get the pricing data from ItemDB
+  now. also, the [AH] button funcitonality needs to tie into that for pricing
+  and seaching as well"*. One copy of the Auctionator / Auctioneer / TSM
+  adapters, one realm+faction scan store and one set of source toggles now
+  serve every TOG addon; TOGBankClassic's storefront reads the same numbers.
+  What this addon keeps is its POLICY over those numbers, which the library
+  deliberately does not carry: a vendor-sold reagent is costed at the vendor
+  price whatever the AH says (the 2026-09-11 directive), the crafting-cost
+  sum with its BoP exclusion and lower-bound / stale flags, the vendor SELL
+  row, and the source labels and colours every tab paints provenance with.
+  - `Modules/Price.lua` is a facade: `Get` / `GetSaleLive` /
+    `GetSaleHistorical` read `DB:GetPrice(id, "best" | "historical")`,
+    `GetVendorBuy` reads `DB:GetVendorBuyPrice`, `Money` uses
+    `DB:FormatMoney`. The three-return shape (copper, source, age) is
+    unchanged, so the ~20 call sites across the tabs did not move. Everything
+    is feature-gated on the METHOD, never a MINOR: against an older ItemDB the
+    AH tiers answer nil, the static vendor tier still answers through
+    `GetVendorBasePrice`, and nothing raises.
+  - `Modules/AHScanner.lua` is the `addon.AH` facade over ItemDB's scanner --
+    `IsOpen`, `SearchFor`, `StartScan`, `StartFullScan`, `CancelScan`, the
+    progress reads and `GetListingsFor` -- installed only when the ItemDB in
+    play carries `StartTargetedScan`, which is what every tab's `if addon.AH`
+    degrade was written for. **The per-row [AH] buttons therefore gate on
+    ItemDB's scan results and search through ItemDB**, and the shared Scan AH
+    button drives ItemDB's targeted scan. The two addon events the tabs
+    subscribe to (`AH_OPEN_STATE_CHANGED`, `AH_SCAN_COMPLETE`) are re-fired
+    from the library's `LibItemDB_AuctionHouse` / `LibItemDB_ScanComplete`
+    callbacks in one place. The "TOGPM Scan" button on the AH frame is gone
+    (ItemDB draws its own at the same anchor; the two had rendered on top of
+    each other in the user's screenshot). Two defects ItemDB's suite found
+    while porting went with the code: a cancelled targeted scan left its
+    next-item timer armed, and the Auctionator "historical" read reached for
+    an API that does not exist and silently fell back to the live price.
+  - **Settings: the nine price-source toggles and the scan delay are one
+    button, "Price sources (ItemDB)...", which opens ItemDB's own window
+    (`/itemdb`)** -- sources, precedence and statistic are set there once for
+    every TOG addon. **A player's earlier choices carry over on first login**:
+    `addon:MigratePriceSettingsToItemDB` writes each profile value that
+    differs from ItemDB's default into `DB:SetPriceSetting` (parents before
+    their fallbacks, since ItemDB turns a fallback off with its parent; never
+    a `false` for the TSM App Helper toggle, whose ItemDB default is ON and
+    which gates TSM's region-wide figures -- this addon's old default was
+    OFF, so a stored false was the default, not a choice), ONCE PER ACCOUNT
+    (stamped in `db.global`; ItemDB's settings are per account and ours were
+    per profile, so the first character to log in after the update is the
+    one whose choices carry), then clears the profile's copies and drops the
+    orphaned `factionrealm.ahPrices` / `vendorPrices` scan store. Scanned
+    prices are not migrated -- one scan refills ItemDB's store.
+  - The Profit Planner's source filter reads `DB:GetPriceSources()` -- the
+    library's registry, detection and enablement -- instead of probing the
+    third-party globals itself; the Historical subtab offers only sources that
+    carry a `historical` statistic. A filter saved by an older build folds its
+    per-statistic keys onto ItemDB's provider ids (`togpm-ah` -> `scan`,
+    `auctioneer-live` / `-cached` / `-app` -> `auctioneer`, `tsm-live` /
+    `-history` -> `tsm`, `auctionator-history` -> `auctionator`).
+    `addon.PriceSourceLabels` / `PriceSourceColors`, the Crafting tab's
+    `[SCAN]` / `[AUC]` / `[AUCN]` / `[TSM]` badges and the help-panel legend are
+    keyed by the same ids.
+  - Locations: `Modules/Price.lua`, `Modules/AHScanner.lua`,
+    `TOGProfessionMaster.lua` (source tables, `dumpprice`,
+    `MigratePriceSettingsToItemDB`), `GUI/Settings.lua`, `GUI/AHProfitTab.lua`,
+    `GUI/CraftingTab.lua`, `GUI/MainWindow.lua`, `Locale/*.lua` (sixteen
+    settings keys retired, two added), `docs/FEATURES.md`. Specs:
+    `Tests/price_spec.lua` (rewritten over the REAL ItemDB price files via the
+    new `env.priceDB()`; the bridge, store and merchant-capture cases moved to
+    ItemDB's `Tests/price_spec.lua` with the code), `Tests/pricefacade_spec.lua`
+    (new: the `addon.AH` facade, the migration, the Profit Planner's filter, the
+    Settings button), `Tests/craftingtab_spec.lua`; `Tests/ahfullscan_spec.lua`
+    and `Tests/ahscanner_spec.lua` deleted (65 examples in ItemDB's
+    `Tests/pricescan_spec.lua`). 100% line coverage on both modules.
+  - Requires ItemDB carrying LibItemDB-1.0 MINOR 25 for any auction price;
+    the [AH] buttons and the Scan AH button do not appear against an older
+    one. Contract threads with ItemDB: 6b52f51f (the trigger, quoting the
+    user's in-game test), 5bb73440 (the per-account stamp).
+
+### Test harness
+
+- **`Tests/wowapi` moves from `813f3d2` to `82eb99e`** (a month of Adoption
+  log). What it cost here: the harness now dispatches `OnSizeChanged`, so
+  `craftscroll_spec.lua`'s fixture -- which set a content height by hand on
+  an AceGUI ScrollFrame with no children -- had AceGUI's own layout reset the
+  height to 0 and four examples went red. The fixture now installs the no-op
+  `LayoutFinished` exactly as `CraftingTab:Draw` does before `FillList`; the
+  addon code was already right. The pin is what makes the cursor and send-mail
+  slots above available offline. Location: `Tests/craftscroll_spec.lua`.
+
+---
+
 ## [v1.0.10] (2026-09-14) - The allied-guild list and rosters move into GuildRoster, and the pause came back intermittently; /togpm perf now says whose it is
 
 ### Improvements
@@ -1051,306 +1269,4 @@
 
 ---
 
-## [v1.0.6] (2026-08-06) - Recipe details on every tooltip, the scroll data source moves, and item links unified
-
-The recipe browser's tooltips are meant to open like the game's own scroll —
-`Schematic: Biznicks 247x128 Accurascope` — and fall back to a scroll-*shaped*
-one for the third of recipes that are trainer-taught and have no scroll at all.
-That data now comes from ProfessionDB rather than ItemDB, the ids behind it are
-no longer derived by matching names, and the recipe detail a player wants —
-difficulty, where it comes from, which of your alts could still learn it — now
-appears on every tooltip in the game rather than only inside this window.
-
-This release also carries the item-link and comm-queue work originally written
-up under v1.0.6: AceCommQueue-1.0 MINOR 5 turned sending from fire-and-forget
-into a two-way contract, where every accepted send ends in exactly one callback
-carrying the delivery verdict for the whole message. TOGProfessionMaster had
-adopted that contract for its sync traffic (through DeltaSync) but not for the
-three sends it makes directly, and had never registered the library's own
-diagnostic command. Both gaps are closed here, plus MINOR 6's fifth verdict.
-
-**On the `queue STALLED — 74s with no progress` errors:** they were **AceCommQueue misreading ordinary client throttling**, and the fix is in that library at MINOR 6, not here. ChatThrottleLib moves a throttled send into its blocked ring and retries it several times a second while firing no callback at all, which from the queue's side is indistinguishable from a callback that was lost — so the 60-second timeout reported normal whisper throttling on a busy realm as a bug in the host addon. The library now asks ChatThrottleLib before reporting anything, waits 300 seconds instead of 60, and **recovers** rather than staying blocked. Nothing in TOGPM caused those errors and nothing in TOGPM had to change to stop them; **update the standalone AceCommQueue-1.0 addon and they go away.** What this release owes that contract is reading its new verdict correctly, below.
-
-### Bug Fixes
-
-- **Recipe tooltips showed the pre-move `Engineering: …` header instead of
-  `Schematic: …` for every recipe.** ProfessionDB's 26 shipped data files were
-  still registering against `LibItemDB-1.0`, the handle they were generated with
-  before the move, so every scroll query returned nil and this addon fell through
-  to its oldest fallback. Fixed in ProfessionDB v1.5.0 — **update that addon**;
-  no change was needed here. Location: `ProfessionDB/Data/`.
-
-- **The teaching-item ids were built by matching recipe names against item
-  names.** That 57-line matcher is gone, replaced by the authoritative DBC join
-  `ItemEffect.SpellID → SpellEffect[Effect=36].EffectTriggerSpell` — the same
-  relationship the client uses. Cross-checking the two found **42
-  disagreements**, and then a second bug only the cross-check could surface: the
-  candidate list included ids for items that do not exist in the client's item
-  table. With an existence filter the two extractions agree on **all 1,073**.
-  Location: `tools/build_authoritative_data.py`.
-
-- **Both `[Bank]` buttons in the Shopping List did nothing.** They called
-  `TOGBankClassic.RequestItem(itemId)` behind a guard that tested for that
-  function first — but `_G.TOGBankClassic` is that addon's UI controller
-  *frame*, which has never carried such a field, so the guard was never once
-  true. The buttons looked enabled and silently did nothing for their whole
-  life; the guard is what hid it. Now routed through
-  `addon.Bank.ShowRequestDialog`, which every other surface already used, and
-  which says so in chat when no banker stocks the item instead of opening an
-  empty dialog. Location: `GUI/ShoppingListTab.lua`.
-
-- **Recipe-list name colours depended on what the client had cached.** The
-  quality colour was read only from the crafted item's cached `itemLink`, so
-  the same recipe rendered coloured on one login and plain on the next. Now
-  falls back to ItemDB's shipped quality, which answers offline for every item;
-  `GetItemInfo` is consulted last, because it returns nil for a cold item and
-  asking it first would discard a perfectly good shipped answer. Both row pools
-  were affected. Location: `GUI/SharedWidgets.lua`, `GUI/BrowserTab.lua`.
-
-- **The `Requires <Profession> (N)` line was missing from every browser recipe
-  tooltip.** Rows are built per profession and consumers only ever read
-  `profName`, so the row never recorded `profId` — and without it `ScrollHeader`
-  could not look the recipe up, so it dropped the line silently. The same
-  omission made `TeachingItem`'s `meta.itemId` fallback unreachable, which is
-  the **only** teaching-item source on Wrath, Cata and Mists. Location:
-  `GUI/BrowserTab.lua`.
-
-- **`Requires Mining (1)` on a recipe that needs 230.** The skill number came
-  from a field that is a floor of 1 on eight of twelve skill lines, so it was
-  wrong for roughly 313 records. The header now reads the correct per-recipe
-  value ProfessionDB has always carried, and **omits the line entirely** when
-  there is no number worth standing behind. Location: `GUI/SharedWidgets.lua`.
-
-- **Shift-click ignored your keybindings on seven of the ten surfaces that offer it.** There were three implementations of the same gesture: `HandleModifiedItemClick` (Cooldowns, Crafting, Profit Planner), `ChatEdit_InsertLink` (recipe browser ×3, Reagent Tracker, the bank dialog) and a raw `editBox:Insert` (Missing Recipes, Shopping List). Only the first is Blizzard's own router, and only it asks `IsModifiedClick("CHATLINK")` — the other two hard-code a shift check, so anyone who has rebound the link modifier got nothing from those seven surfaces, and ctrl-click for the dressing room existed on three tabs and not the rest. The raw `editBox:Insert` sites also skipped the auction-house search box and macro-frame handling that Blizzard's insert does. All ten now share one router. Location: `Compat.lua`, `GUI/BrowserTab.lua`, `GUI/ReagentTracker.lua`, `GUI/MissingRecipesTab.lua`, `GUI/ShoppingListTab.lua`, `GUI/SharedWidgets.lua`.
-
-- **A TOGPM mouse handler could keep firing inside another addon's window.** `AceGUIFrameScripts` exists to put a raw frame script on an AceGUI widget without leaking it — AceGUI pools widgets account-wide and recycles them into whatever addon asks next, so it saves the widget's prior script and restores it on release. It saved the prior script into a table keyed by event name, and when there **was** no prior script that store was `saved[event] = nil` — which writes no key at all, so the restore loop never visited that event and **our** handler stayed on the widget. The leak therefore happened in the commonest case of all: a widget with no existing handler for the event we wanted, which is every current caller. A released widget kept our `OnMouseDown` and fired it for its next owner. Now recorded with an explicit "there was nothing here" sentinel, so the event is restored to genuinely empty. Found by the new GUI specs, not by a report. Location: `GUI/MainWindow.lua`.
-
-- **`/togpm commtest` gave no verdict in the one case it exists for.** The probe's whole job is answering "does this server core relay guild addon traffic?", and its conclusion is printed by comparing each probe against `== false` — but a probe that never came back was left as **nil**, which satisfies neither branch. So on a server that works you got "GUILD addon relay works"; on a server that drops guild addon traffic you got the word `Verdict:` followed by nothing at all. Every user who ran the tool because sync was broken saw the empty case. Probes now start as `recv = false` so "demonstrably did not arrive" is a state the report can actually read. Found by writing the first tests for this file, which had none. Location: `Modules/CommTest.lua`.
-
-### New Features
-
-- **ATT, TOGBankClassic and price lines now appear on trainer-taught recipe
-  tooltips too.** They never did, and the reason is structural: those addons all
-  attach through `OnTooltipSetItem`, and a tooltip built from `AddLine` calls
-  carries no item, so the hook never fires. Recipes with a real scroll went
-  through `SetHyperlink` and got all three for free; the trainer-taught third
-  got none of them, which is why the two looked like different addons.
-
-  AllTheThings and prices now come from **ItemDB's `Integrations.lua`
-  registry** — one place owning every third-party bridge, so this addon asks
-  once and renders whatever providers the player actually has (TSM,
-  Auctionator, or neither) instead of duplicating each one's labels and layout.
-  Provider formatting is preferred where offered, because showing a different
-  number to the one TSM shows everywhere else is worse than showing none.
-
-  TOGBankClassic's block is still rebuilt here, because its renderer is a
-  file-local closure with no callable form. That is duplicated layout and it
-  will drift if that addon restyles; a contract asking it to expose
-  `AppendTo(tooltip, itemId)` is raised in its
-  `docs/DEPENDENCY_CONTRACTS.md`. Location: `GUI/SharedWidgets.lua`,
-  `GUI/BrowserTab.lua`.
-
-- **Recipe details — skill-up difficulty and where the recipe comes from — now
-  appear on tooltips everywhere, not just in our window.** Bags, bank, chat
-  links, the auction house, trainers, vendors: hovering a recipe scroll *or the
-  item it makes* adds a block in the shape RecipeMaster uses.
-
-  ```text
-  TOGPM
-  Difficulty
-    275 300 310 320      <- orange / yellow / green / grey
-  Sources
-    Trainer
-  Unlearned:                    <- red
-    Bob (Skill 71, Elixir Master)
-  ```
-
-  **Where the source data comes from is the part that matters.** It is read from
-  this addon's own `Data/Sources/`, which is keyed by recipe **spell** — not from
-  an item-keyed lookup, which can only answer for a recipe that has a teaching
-  scroll. Measured against the shipped Vanilla set: item-keyed covers 44.6% of
-  recipes, spell-keyed covers **74.9%** (1172 of 1565), and its single largest
-  kind is `trainer` at 508 recipes — precisely the third of every profession that
-  has no scroll to inspect and most needs the line. The Sources heading is
-  omitted rather than shown empty for the ~25% with no data.
-
-  **`Unlearned:` lists which of your own characters could still learn it**, with
-  their skill rank and specialisation. This is the section where we are
-  structurally better placed than RecipeMaster rather than merely equal to it:
-  RM's spell path covers four skill lines — Mining, Poisons, Engineering,
-  Enchanting — and adds nothing on the other eight, silently. Ours reads the
-  addon's own synced store, which carries skills, specialisations and alt groups
-  for **every** profession, so the section answers everywhere. Scoped to your
-  characters rather than the guild on purpose: "who in the guild can make this"
-  is already the crafters line, and a guild-wide unlearned list would be forty
-  names nobody can act on. The heading is red — the same red as the
-  `Already known` line a few rows up (Blizzard's `RED_FONT_COLOR`) rather than a
-  second hand-picked one, since the two lines are exact opposites and should read
-  as one palette. The character rows stay white so only the heading carries the
-  warning.
-
-  **Coverage is decided by who built the tooltip, not by profession.** If we
-  built it, we render the block; if the game built it, RecipeMaster does — unless
-  RM is not installed, in which case we do that too. RM attaches through
-  `OnTooltipSetItem`, which never fires for a tooltip we assemble from `AddLine`
-  calls, so the two never overlap and no per-profession logic is needed.
-
-  A setting (*Interface → AddOns → TOG Profession Master → Recipe details on
-  tooltips*) forces it on or off, because *loaded* is not the same as
-  *contributing*: RM's own display switches are addon-private and unreadable, so
-  a player running RM with those turned off would otherwise get the block from
-  neither addon. Location: `GUI/SharedWidgets.lua`, `Tooltip.lua`,
-  `GUI/BrowserTab.lua`, `GUI/Settings.lua`.
-
-- **`Already known`, in red, on recipes this character knows** — between the
-  requirement and the Use line, where the game's scroll puts it. Keyed on the
-  `isYou` crafter, so it means what the game means: known to the character
-  reading it, not to the account. An alt knowing the recipe does not trigger it.
-  Location: `GUI/BrowserTab.lua`.
-
-- **The scroll's `Use: Teaches you how to craft X.` line.** The game's scroll
-  tooltip always carries one and ours did not. Localized, and derived at build
-  time from the teaching *spell's* description rather than the scroll item's —
-  the item field is populated for only 60 of 1,073 Vanilla scrolls against the
-  spell's 1,022. Location: `GUI/SharedWidgets.lua`.
-
-- **Shift-click any item in the addon to link it in chat — everywhere, the way the rest of WoW does.** Every item name, reagent row and recipe header now routes through Blizzard's own `HandleModifiedItemClick`, the same function the game's own bag and character panes use. It honours **your** modified-click bindings rather than assuming shift, posts to the social frame when that is what is open, and drops a link into the auction-house search box or an open macro when those have focus. Ctrl-click to preview in the dressing room comes along free, because it is the same router. Location: `GUI/SharedWidgets.lua` and every tab.
-
-- **Hold the compare modifier over an item to see it against what you're wearing.** The side-by-side comparison the game gives you from a bag slot, now on every item in the addon. It follows the modifier **while you hover** — pressing shift with the tooltip already open works — which is how the game behaves and is not free: Blizzard's own frames check the modifier once, when the tooltip is built, and never again. Gated on `IsModifiedClick("COMPAREITEMS")` and the `alwaysCompareItems` CVar, so a rebound compare key and the always-on setting are both respected. Location: `GUI/SharedWidgets.lua`.
-
-- **New setting: "Use the game's standard item tooltips"**, in Options → TOG Profession Master, **off by default**. TOGPM normally draws trimmed tooltips inside its own window so a long list stays readable — a full item tooltip can take half the screen. Turn this on and you get exactly what a chat link gives you instead, including the lines other addons contribute (All The Things and similar). Off by default for a stated reason, repeated in the setting's own description: the Missing Recipes list uses a private tooltip frame **specifically** so third-party `OnTooltipSetItem` hooks never run on it, because some of them error on recipe scrolls and take the tooltip down with them. Turning this on re-exposes you to that, and turning it back off is the fix. Requested on Discord. Location: `GUI/Settings.lua`, `GUI/SharedWidgets.lua`, `Locale/enUS.lua`.
-
-- **`/acq status` now works in game.** AceCommQueue ships the command but no loader that registers it, and nothing else in the addon did either — so the one tool that shows what the comm queues are actually doing did not exist. It prints, per (prefix, distribution, target) queue: whether a send is in flight, how many seconds it has been quiet, how many messages are waiting behind it, and how many the client has refused this session. That is what identifies **which** queue is stuck when a send stops progressing, instead of waiting for the stall report 60 seconds later. `/acq on` / `/acq off` toggle the library's debug tracing. Registered defensively (silent LibStub lookup, feature-detected command) so an older standalone copy degrades to simply not having it. Location: `TOGProfessionMaster.lua`.
-
-### Improvements
-
-- **`Tests/integrations_spec.lua`** — 12 specs pinning the shape of those
-  blocks, weighted toward the absent cases: no ATT, no bank addon, TSM installed
-  but switched off, no banker holding the item. Each must leave the tooltip
-  untouched rather than erroring or printing an empty heading.
-
-- **`Tests/scrollintegration_spec.lua` — the tooltip path is now tested against
-  the real shipped data**, not a fake ProfessionDB. Every other spec hands
-  `ItemLink` a fixture, which proves the branching and proves nothing about
-  whether the library answers on a live client; that gap is precisely what let
-  the header bug above ship green. This one loads the real library, executes the
-  real data files, and asserts a genuine Engineering recipe resolves to its
-  actual scroll. Verified by mutation: reintroducing the defect fails it.
-
-- Both halves of the teaching-item lookup are asserted independently — through
-  ProfessionDB with the fallback removed, and through the recipe's own `itemId`
-  with the library removed — so neither can rot unnoticed. The second is the
-  path Wrath, Cata and Mists rely on entirely, since no recipe-scroll data is
-  generated for those flavours yet.
-
-- **Two new spec files were corrupting later ones, and the suite was not
-  actually green.** `scrollintegration_spec.lua` overwrote `addon.GetProfessionDB`
-  to return the **real** shipped library, and `integrations_spec.lua` blanked
-  `addon.Bank` / `addon.Price` / `addon.GetItemDB` — neither restored what it
-  replaced. The whole suite shares one addon table, so both leaked into every
-  later spec file: 13 assertions in `teachingitem_spec.lua` silently read
-  shipped data instead of their own fixtures, and 2 in `shoppingbank_spec.lua`
-  died on `attempt to index field 'Bank'` with no visible connection to the file
-  that caused it. Every one of those files passes on its own, so only a
-  whole-suite run reproduces it. Both now restore in `after_each`; the suite is
-  **1190/1190** under the harness's own runner. This is the same discipline the
-  env follows for globals, and the one `teachingitem_spec.lua` already followed
-  for its own cached library handle.
-
-- **`Tests/recipedetails_spec.lua`** — 35 specs on the new block, weighted toward
-  the two things a reader would get wrong. That sources are keyed by recipe
-  **spell** and therefore answer for trainer-taught recipes, which is the whole
-  reason the block is worth having; and that the RecipeMaster gate is a
-  tooltip-**type** split, so our own windows render it unconditionally while
-  game-built tooltips defer. Verified by mutation: dropping the scroll half of
-  the item index, labelling a source kind whose npc list is empty, and dropping
-  the already-learned / is-mine filters from the Unlearned list each fail exactly
-  the specs that name them and no others.
-
-- **The recipe block could render twice on one tooltip, on the seven Vanilla
-  items that more than one recipe produces.** Gold Bar comes from Alchemy's
-  *Transmute Iron to Gold* **and** Mining's *Smelt Gold*; the Gordok Ogre Suit
-  from both Leatherworking and Tailoring. Two paths legitimately draw the block
-  for a single hover — the browser passes the row's own recipe, the global
-  tooltip hook independently resolves the first recipe indexed for that item —
-  and the guard against drawing twice was keyed on the **recipe id**, which on
-  those items differs between the two callers, so it matched neither. Now keyed
-  on whether a block has been drawn at all: a tooltip describes one thing.
-
-  Found by a method the test harness published today — *a spec per feature does
-  not test the PAIR, and coverage cannot see it*. Both appenders were specced
-  thoroughly in isolation and one of those specs was actively **ratifying** this
-  behaviour, asserting a second block should render. Its suggested diagnostic
-  ("grep each spec file for the other feature's vocabulary") returned zero in one
-  command. Location: `GUI/SharedWidgets.lua`.
-
-- **`profId` on browser rows is now actually tested**, in `browserlist_spec.lua`.
-  It had been recorded as "fixed but untestable", on the belief that the guild-db
-  fixture could not drive the real row builder — which was wrong; that spec file
-  has driven it all along. A stale commented-out attempt and a "NOT COVERED" note
-  were left in `scrollintegration_spec.lua` claiming otherwise, and have been
-  removed rather than left to mislead again. The field is load-bearing for three
-  things now, including the new tooltip block, so a written-down coverage hole
-  that did not need to exist was worth closing. Two specs: every row carries it,
-  and an **all-professions** build stamps each row's *own* profession rather than
-  the one that was requested — the second is the one that matters, because those
-  are the same number in a single-profession build, so the obvious test passes
-  against the wrong variable. Confirmed by mutation.
-
-- **Offline harness adopted, `2299e12` → `502e31b`** (40 commits). The relevant
-  ones for this addon: `time(dateTable)` had been dropping its argument, so any
-  date computation silently collapsed onto "now"; `wow.setBuild(flavour)` now
-  covers all six clients using the interface numbers from this addon's own
-  per-flavour TOCs, which lets a spec probe a version gate on every client
-  rather than only the one the shared env happens to be set to; and Classic
-  Era's default interface moved 11508 → 11509 to match what we ship.
-
-- **`docs/AUDIT.md`** — the standing peer-review conversation, the inverse of a
-  harness contract: findings are raised by a review session and answered here.
-  It exists now so that a review has somewhere to land. The first audit written
-  under this protocol went into a repo with no index entry and no pointer, and
-  no later session had any way to find it — a review nobody reads is worse than
-  no review, because it reads as work already done. `CLAUDE.md` points at it,
-  which is the part that fires unconditionally.
-
-- **A cross-guild broadcast that the queue gave up on was silently ignored.** AceCommQueue MINOR 6 adds a fifth terminal verdict, `reason = "lost"` — the callback never arrived, ChatThrottleLib had no record of the send, and the retry budget is spent. It arrives with `delivered == nil`, the same shape as a deliberate suppression, so the MINOR 5 test this addon shipped (`delivered == false`, or `"rejected"`, or `"error"`) walked straight past it. That made the **most** serious verdict the only one nobody logged: a send reported `"lost"` has already been released and re-sent once under the retry budget and failed again, so unlike a refusal it will *not* heal itself on the next periodic pass — an allied-guild link can be genuinely down with nothing in the Sync Log to say so. Both broadcasts now treat it as the failure it is, and `"suppressed"` is still deliberately not one. Location: `TOGProfessionMaster.lua`.
-- **`/togpm commtest` reported a lost send as "no delivery verdict".** Same root cause, opposite consequence: a `"lost"` probe *did* get a verdict, and it said the queue had given up — but with `delivered == nil` it fell into the "accepted, still waiting" branch and pointed the reader at `/acq status` to hunt a queue that had already moved on. It now prints `LOST — queue gave up after retries` as its own outcome, and the still-waiting message is reworded, because since MINOR 6 a genuinely silent send is usually ChatThrottleLib holding it — which is normal, not broken. Location: `Modules/CommTest.lua`.
-- **The two cross-guild broadcasts now take the delivery verdict, so failing federation traffic is visible.** `BroadcastSisterConfig` and `BroadcastSisterRosters` are the only sends TOGPM makes itself — everything else rides DeltaSync, which has its own delivery accounting behind `/togpm dsstatus`. These two passed no callback, which meant AceCommQueue reported a refusal through `geterrorhandler()` itself: correct behaviour by the library, but it lands in the player's bug catcher attributed to the comm layer, and the addon learned nothing about its own allied-guild propagation failing. Both now pass a callback and record a refusal to the **Sync Log** and the debug stream, naming what did not arrive (and, for a roster, **which** allied guild's). This is about visibility, not recovery: both broadcasts are periodic, so a refusal heals itself on the next pass — what was missing was any way to see it happening. A `"suppressed"` verdict is deliberately not treated as a failure, since that is one of our own wrappers dropping a send on purpose. Location: `TOGProfessionMaster.lua`.
-
-- **`/togpm commtest` no longer blames the server for a send the client refused.** The probe exists to answer one question — does this server core relay guild addon traffic? — and its AceComm probe reported a refused send as `NO REPLY`, which is the exact signature of a broken core. It now reads the delivery verdict: a send the client refused prints `NOT SENT — client refused it (reason)`, and the verdict block says plainly that this tells you nothing about the core and points at `/acq status`. A probe that was accepted but produced neither a receipt nor a verdict inside the listen window is now called out too, because that is what a blocked send queue looks like from the outside. Location: `Modules/CommTest.lua`.
-
-- **The offline suite can now test the GUI, and does** — that work took it to 1,087 specs and coverage from 43% to 71%, on the way to the 1,225 this release ships. Three fixtures did most of that: one that draws a tab into a real AceGUI container, one that fakes a live trade-skill session (the state that on Classic can only be reached by casting a profession, and without which none of the Crafting tab runs), and driving `/togpm` through its real dispatcher — **every one of its twenty-four commands, none of which had ever been executed outside the game**. Most of them are diagnostics a user is told to run when something is already broken, which is the worst possible moment for one to throw. The shared test harness gained a widget layer (`env/frames.lua`), so a spec can build a **real** AceGUI widget tree offline: factories return real objects, `SetParent` really re-parents, `GetScript` returns what was set, and an absent method answers `nil` rather than a truthy no-op — which is what makes a multi-flavour `if frame.SetResizeBounds then` feature test pick a real branch offline instead of always taking the retail one. Twelve new specs in `Tests/gui_pool_spec.lua` cover the two helpers written to survive AceGUI's account-wide widget recycling — `GUI.DetachPool` (pooled scroll rows must end up orphaned onto `UIParent`, hidden and unanchored, but still in the pool for the next attach) and `AceGUIFrameScripts` — which is what found the leak above. Nine more in `Tests/gui_scroll_spec.lua` cover `PersistentScroll.Acquire`, the one function five tabs get their scroll frame from and route their pooled-row cleanup through: that releasing the scroll really runs the tab's cleanup, that one tab's cleanup never fires for the next owner of the recycled widget, that a `LayoutFinished` a previous owner overrode **or nilled** is repaired (the v0.3.x regression that cost a tab its scrollbar after a few tab switches), and that a saved scroll position survives a rebuild per key. Eleven more in `Tests/minimap_spec.lua` take `GUI/MinimapButton.lua` from **0% to 91%**, against the real vendored LibDataBroker-1.1 and LibDBIcon-1.0: the click routing (plain left, shift+left, right, and a button with no binding), the tooltip documenting all three, and — the one with history — that LibDBIcon is handed the table that **persists**, seeded from the pre-v0.7.1 field, since LibDBIcon writes the new angle into it when the user drags the button and a throwaway table lost the position on every `/reload`. Eighteen more in `Tests/guildtab_spec.lua` take `GUI/GuildTab.lua` from **0% to 58%**, covering the two functions the Guild tab's claims about your guild rest on: that "who has this profession" is the **union** of recorded skills and known crafters (neither signal alone is complete — most crafters never open their window with the addon watching, and gathering professions have no recipes at all), that a cross-guild alt cannot inflate the headcount an officer recruits on, that a specialisation is inferred from the spec-gated recipes a crafter knows and that a sub-spec beats its parent, and that a skill reading can never render the impossible `375/300` the v1.0.1 fix removed. The whole suite runs on the widget layer rather than a per-spec opt-in, because every AceGUI widget file captures `CreateFrame` as a file-scope local at load, so the model has to be in place before Ace3 loads or no widget is testable at all. Every pre-existing spec passed the switch unchanged.
-
-  Thirteen more in `Tests/shoppinglist_spec.lua` cover the reagent arithmetic behind "what do I still need to buy" — the quantity multiplier, summing a reagent shared by two queued crafts into one line, what the bags already hold across several stacks, and that the shortfall is never negative, because "buy -6 Thorium Bars" is not a shopping list. `BuildReagentList` was made a method to make it reachable; everything around it is rendering.
-
-  Sixteen more in `Tests/reagentwatch_spec.lua` take `Modules/ReagentWatch.lua` from **0% to 78%**, driven through the real `BAG_UPDATE` and `PLAYER_LOGIN` events rather than by calling the internals, so the event wiring is under test too. The subject is the craft-ready alert's latch: it fires **once** when the reagents arrive, stays silent while they are still there (BAG_UPDATE fires constantly — without the latch that is a line of chat every time anything moves in your bags), re-arms only after the bags drop below the requirement, and — a separate code path written for exactly this — does **not** announce on login something that was already sitting in your bags.
-
-  Twenty-four more in `Tests/ahscanner_spec.lua` take `Modules/AHScanner.lua` from **0% to 29%** without needing an auction house: the scan-delay resolution (a configured `0` must not be honoured — that would mean no gap between queries at all), every guard that refuses to start, the queue the scan is built from, and the lowest-buyout selection every cost-to-craft figure rests on. Two of those have field history: a call site once passed `GetItemInfoInstant`'s first return — the item **id**, not the name — and the scanner died on the first `:lower()`; and a bid-only listing carries a buyout of `0`, which counted as a price would report every item as free. A wrong lowest-buyout is invisible in a way a crash is not: it produces a plausible number that simply is not the cheapest listing.
-
-  Twenty-four more in `Tests/cooldownalerts_spec.lua` take `Modules/CooldownAlerts.lua` from **0% to 88%**. Every rule in that module is about not annoying you, and all of them are silent when broken because the code only runs on a timer nobody watches: ding once on the transition to ready, stay quiet afterwards unless a reminder interval was asked for, say nothing in an instance if that setting is on — but **defer** rather than swallow, so it still fires when you leave — and reset cleanly when the cooldown is re-cast so the next expiry gets a fresh first alert. Group rows resolve to the **latest** expiry among their members, matching what the Cooldowns tab counts down to, so the ding lands the moment the row the user is watching reaches zero. Stale entries for characters that are no longer yours are dropped rather than sitting armed forever, never firing and never cleaned up.
-
-  Seventeen more in `Tests/reagenttracker_spec.lua` take `GUI/ReagentTracker.lua` from **0% to 31%** — the two numbers that window exists to show. "Have" is deliberately richer than the shopping list's: it counts the **bank and the mailbox** as well as your bags, because a stack sitting in the bank is not a reason to buy more. "Need" consolidates every reagent across the list, and resolves a reagent's item id from its item **link** when it carries no usable numeric id — reagents arrive from trade-skill scans in exactly that shape, and the failure it prevents is one reagent rendering as two rows that each show part of the requirement.
-
-  Sixteen more in `Tests/settings_spec.lua` take `GUI/Settings.lua` from **0% to 63%**. The headline assertion is that the whole options table passes **AceConfigRegistry's own validator** — the same check the game runs before drawing the panel, across 908 lines of options, where a missing `type` or a nil name anywhere means the Settings panel throws the moment a player opens it and nothing else in the suite would notice. Alongside it, the handlers that actually decide behaviour: the two defaults written as `~= false` / `== true` (invert either and every existing user's crafting UI changes on upgrade), the window-scale coercion that keeps a stale string out of arithmetic, and guild mode — whose `get` must report the **live** DeltaSync state rather than the saved one, so the checkbox cannot claim something the addon is not doing.
-
-  **One branch had never executed offline in the whole history of this suite.** The recipe browser drops any recipe whose spell does not exist on a Vanilla client — that is what keeps a synced later-expansion recipe out of a Classic Era list — but the guard reads `GetSpellInfo and not GetSpellInfo(recipeId)`, and the test harness had no `GetSpellInfo` at all, so it short-circuited and the filter was inert. Every browser spec had been passing with it switched off. The harness now installs it (raised from here), the specs declare which recipes exist on the simulated client, and the filter itself finally has a test.
-
-  Nine more in `Tests/craftscroll_spec.lua` cover `CraftingTab:ScrollToRow` — the first piece of this addon's virtual-scroll code that has ever been testable, because it needs `GetHeight()` to return what was set and the old hollow frame model could not do that. Scroll up with context, scroll down with context, clamp at both ends, and do **nothing at all** when the row is already visible, which if it fired anyway would yank the list out from under the user every time they clicked a recipe they could already see.
-
-  Twenty-one more in `Tests/ahprofit_spec.lua` cover the Profit Planner's `ApplyFilters`, where a wrong answer costs in both directions — a row wrongly hidden is a craft you never make, a row wrongly shown is one you make at a loss. Professions, crafter, price source, search and profitable-only, each alone and combined (they must **all** pass, not any). The rule most at risk is the empty profession set: "nothing ticked" has to match **nothing**, and the natural `if next(set) then` tidy-up inverts it into "show everything" — which looks entirely plausible on screen, because a full list is what you saw before touching the filter.
-
-  Eleven more in `Tests/cooldownfilter_spec.lua` cover the Cooldowns tab's profession filter, which is the **only** place the cooldown taxonomy's expansion gating is applied — so it is all that stands between a Classic Era player and a filter offering Northrend Alchemy Research. Because the suite runs as Classic Era, those are real multi-version assertions rather than a restatement of the table: every later-expansion entry must be inert here while the Vanilla ones still match, and the spec says so out loud by asserting the flavour first, so the "must not match" cases cannot quietly become vacuous if that ever changes.
-
-  Twelve more in `Tests/browservirtual_spec.lua` cover the recipe browser's virtual scroll against the **real** 35-frame pool and a real scroll frame. The trick that makes a list of thousands cheap is that pooled frame `i` shows recipe `firstIdx + i` and is anchored at that recipe's **absolute** place in the content — the frames stay put and the content moves. Position a row by its pool slot instead and the list still looks plausible while showing the wrong thing, which reads as a data bug rather than a scroll bug. Also pinned: a partial row of scroll must not skip an entry, frames past the end of a filtered list are hidden rather than left showing stale recipes, and the tail of a short list renders correctly.
-
-  Fifteen more in `Tests/ahfullscan_spec.lua` cover the full auction scan that builds the local price DB — the source of every cost-to-craft figure in the addon, and arithmetic that goes wrong **silently and by a plausible factor**. An auction is a stack, so the price that matters is `ceil(buyout / count)`; forget the division and a stack of 20 prices the item at twenty times its worth, every craft in the Profit Planner reads as a loss, and nothing errors. The corollary is worth stating out loud because it is what a naive scanner gets backwards: **the cheapest listing is not the cheapest item** — a single bar at 60 is dearer per unit than a stack of 20 at 1000. Also pinned: bid-only auctions (buyout 0) contribute no price rather than a free one, a claimed stack of zero cannot divide by zero, and an item whose only listings are bid-only reaches the price DB not at all rather than as a zero. The **Cata/MoP** scan path gets its own cases rather than sharing the Classic ones, because the API it reads is **0-indexed** while the loop is 1-based: lose that correction and the first listing of every scan silently vanishes from the price DB while the rest of it looks perfectly healthy. A Classic Era player never runs that branch, which is exactly why it is the one nobody would notice breaking.
-
-  Every one of these specs was **mutation-tested**: the behaviour it names was deleted from the source and the spec had to fail. That found **two** of them asserting nothing. One was a sub-spec test that passed with the rule removed, because it was measuring Lua table iteration order rather than the rule; rewritten to control visit order (small contiguous recipe ids land in the table's array part) and asserted in **both** orders, since the rule has to hold whichever recipe the scan reaches first. The other was subtler: two scroll-clamp tests survived deleting the clamp entirely, because AceGUI wires the scrollbar's `OnValueChanged` back into `SetScroll` and the slider clamps to its own 0..1000 range — so the value the test read back was the scrollbar's re-clamp, not what the addon had computed. They were asserting AceGUI's clamping. Fixed by reading the **first** `SetScroll` call rather than the last.
-
-- **Offline suite: eight new specs in `Tests/purge_spec.lua`** covering the delivery contract on both cross-guild broadcasts: that a callback is passed at all, that a delivered message logs nothing, that a refusal is logged naming the payload and the allied guild, that all three `nil` verdicts are told apart (`"suppressed"` is success; `"rejected"` and `"error"` are losses), and that a verdict arriving before the guild DB exists cannot take the callback down. Location: `Tests/purge_spec.lua`.
-
-- **`docs/DEPENDENCY_CONTRACTS.md` records the AceCommQueue adoption at MINOR 5** rather than at the original embed, so a later session can see what is taken up and what is deliberately left.
-
----
-
-> Releases v1.0.5 and earlier are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
+> Releases v1.0.6 and earlier are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).

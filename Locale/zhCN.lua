@@ -291,9 +291,6 @@ L["SettingsCooldownReminderIntervalDesc"]  = "在冷却时间保持就绪状态�
 L["SettingsCooldownReminderInvalid"]       = "输入 0 到 1440 之间的整数,或 'off'。"
 
 L["SettingsAHHeader"]                      = "拍卖行"
-L["SettingsAHScanDelay"]                   = "拍卖行扫描延迟(秒)"
-L["SettingsAHScanDelayDesc"]               = "拍卖行扫描查询之间的秒数。空 / 0 / 'off' 使用版本默认值(Classic Era 和 Anniversary 上为 1.5 秒;TBC、Wrath、Cata、MoP 上为 3.0 秒 — 这些服务器限制更严格)。降低值以加快扫描,如果扫描停滞则提高。有效范围:0.5–10 秒。"
-L["SettingsAHScanDelayInvalid"]            = "输入 0.5 到 10 之间的数字,或 'off'。"
 
 -- ---------------------------------------------------------------------------
 -- Tooltips & button hover-text
@@ -321,12 +318,10 @@ L["TooltipClickDetailsFallback"] = "详情"
 -- ---------------------------------------------------------------------------
 L["MailSubjectFormat"]      = "冷却时间补给:%s"
 L["MailBodyFormat"]         = "你好 %s!请使用这些材料制作 %s。请在有时间制造时给我寄回 %s。谢谢!"
-L["MailMsgNoEmptyBag"]      = "没有空的背包格用于拆分。"
 L["MailMsgOpenMailbox"]     = "请先打开邮箱。"
 L["MailMsgHasItems"]        = "邮件已附加物品 — 请先发送或移除它们。"
 L["MailMsgCannotFulfill"]   = "无法完成。"
 L["MailMsgCouldNotAttach"]  = "无法附加物品。"
-L["MailMsgAttachedFormat"]  = "已为 %s 附加 %dx %s。"
 
 -- ---------------------------------------------------------------------------
 -- Minimap button tooltip (LDB)
@@ -442,4 +437,3 @@ L["CraftIncrease"]        = "Increase quantity"
 L["CraftDecrease"]        = "Decrease quantity"
 L["CraftButtonDesc"]      = "Craft the selected recipe now."
 L["CraftQueueDesc"]       = "Add the selected recipe to the queue."
-L["SettingsUseAuctionator"]                = "Use Auctionator pricing"

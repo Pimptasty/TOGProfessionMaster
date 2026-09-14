@@ -46,6 +46,9 @@ end
 -- Floors are set below the measured count so ordinary editing does not trip them.
 local SOURCES = {
 	{ path = "Tooltip.lua",                 min = 2 },
+	-- v1.1.0: the [Bank] button's per-banker status lines (a blank spacer and
+	-- an AddDoubleLine per banker) live on addon.Bank.AddStatusLines.
+	{ path = "Compat.lua",                  min = 2 },
 	{ path = "GUI/SharedWidgets.lua",       min = 8 },
 	{ path = "GUI/BrowserTab.lua",          min = 22 },
 	{ path = "GUI/CooldownsTab.lua",        min = 14 },
@@ -56,7 +59,11 @@ local SOURCES = {
 	{ path = "GUI/ReagentTracker.lua",      min = 2 },
 	{ path = "GUI/MainWindow.lua",          min = 3 },
 	{ path = "GUI/MinimapButton.lua",       min = 4 },
-	{ path = "Modules/AHScanner.lua",       min = 3 },
+	-- v1.1.0: the scan button and its tooltip moved to ItemDB with the scanner;
+	-- this file is a facade with no tooltip of its own. Kept in the list (rather
+	-- than removed) so the shipped-file sweep below still names it if a tooltip
+	-- ever comes back here.
+	{ path = "Modules/AHScanner.lua",       min = 0 },
 }
 
 --- Every `.lua` the addon SHIPS, taken from the TOCs rather than from disk.
@@ -180,6 +187,11 @@ local DOUBLELINE_EXEMPT = {
 	-- (`row.label` + value). The label comes from TSM / Auctionator via ItemDB,
 	-- so it is the one string here not bounded by inspection.
 	["GUI/SharedWidgets.lua"] = 2,
+	-- The [Bank] button's per-banker status rows: "<dot> Name (count)" on the
+	-- left, TOGBank's one-word status on the right -- both bounded (a
+	-- character name and a word from a six-entry table), the same shape as
+	-- SharedWidgets' banker rows.
+	["Compat.lua"]            = 1,
 }
 
 --- The ONE line that must NOT wrap, per file, and why.
@@ -238,7 +250,7 @@ end
 
 describe("every tooltip line this addon appends opts into the wrap preset", function()
 	it("enumerates the sources", function()
-		assert.equal(12, #SOURCES)
+		assert.equal(13, #SOURCES)
 		for _, src in ipairs(SOURCES) do
 			assert.is_truthy(#code(src.path) > 0, "empty source: " .. src.path)
 		end

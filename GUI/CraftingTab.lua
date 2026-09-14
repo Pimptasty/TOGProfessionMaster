@@ -74,18 +74,18 @@ local function Brand(text) return addon.UI.Brand(text) end
 local function Color(hex, text) return "|c" .. hex .. text .. "|r" end
 local function PriceSourceTag(src)
     if not (src and addon.Price and addon.Price.GetSourceColor) then return "" end
+    -- ItemDB's source ids (one per provider; the statistic is provenance the
+    -- tag does not carry), plus this addon's own two vendor-sell ids.
     local short = {
-        ["togpm-ah"] = "TOGPM",
+        ["scan"] = "SCAN",
         ["auctionator"] = "AUC",
-        ["auctioneer-live"] = "AUCN-L",
-        ["auctioneer-cached"] = "AUCN-C",
-        ["auctioneer-app"] = "AUCN-C",
-        ["tsm-live"] = "TSM",
-        ["auctionator-history"] = "AUC-H",
-        ["tsm-history"] = "TSM-H",
+        ["auctioneer"] = "AUCN",
+        ["tsm"] = "TSM",
         ["auctionator-vendor"] = "AUC-V",
-        ["togpm-vendor"] = "VEND",
+        ["merchant"] = "VEND",
         ["vendor-static"] = "VEND",
+        ["vendor-sell-client"] = "SELL",
+        ["vendor-sell-static"] = "SELL",
     }
     local col = addon.Price.GetSourceColor(src)
     return " " .. "|c" .. col .. "[" .. (short[src] or src) .. "]|r"
@@ -881,7 +881,8 @@ function CraftingTab:BuildDetailPanel(parent)
 
     -- Crafting cost — sits on the recipe-name row, right-aligned directly above
     -- the Missing Materials column label. Filled by RefreshDetail from
-    -- addon.Price (Auctionator → TOGPM AH scan → vendor).
+    -- addon.Price (vendor price for a vendor-sold reagent, else ItemDB's
+    -- price ladder in the order the user set in /itemdb).
     local cost = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     cost:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(DCTRL_W + 16), -8)
     cost:SetJustifyH("RIGHT")
@@ -948,15 +949,16 @@ function CraftingTab:BuildDetailPanel(parent)
         row.ahBtn = ahBtn
 
         local bankBtn = CreateFrame("Button", nil, row)
-        bankBtn:SetSize(44, 13)
+        bankBtn:SetSize(54, 13)   -- room for the staleness dot
         bankBtn:SetPoint("RIGHT", ahBtn, "LEFT", -2, 0)
         bankBtn:SetNormalFontObject(GameFontNormalSmall)
-        bankBtn:SetText("|cFF88FF88[Bank]|r")
+        bankBtn:SetText(addon.Bank.ButtonText(nil))
         bankBtn:Hide()
         bankBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(bankBtn)
             GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
             GameTooltip:AddLine(L["CraftBankReagentDesc"], nil, nil, nil, true)
+            addon.Bank.AddStatusLines(bankBtn)
             GameTooltip:Show()
         end)
         bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1273,6 +1275,7 @@ function CraftingTab:RefreshDetail()
             -- shared addon.Bank / addon.AH integrations.
             local id = r.itemId
             if id and addon.Bank and addon.Bank.GetStock and addon.Bank.GetStock(id) > 0 then
+                addon.Bank.Decorate(row.bankBtn, id)
                 row.bankBtn:SetScript("OnClick", function()
                     if addon.Bank.ShowRequestDialog then addon.Bank.ShowRequestDialog(id, r.name, r.link) end
                 end)
@@ -1321,19 +1324,18 @@ function CraftingTab:RefreshDetail()
                 segs[#segs + 1] = label .. money
             end
 
-            -- AH sale price of the CRAFTED item (lowest buyout) + profit/loss vs the
-            -- crafting cost. Only when there's an actual AH price for the product
-            -- (a vendor price isn't a sale price), and — for profit — the craft cost
-            -- is fully known. Profit = sell price − craft cost: green = you'd make
-            -- coin, red = you'd lose it. (Assumes one craft yields one item and
-            -- ignores the AH cut — a first cut; refine later.)
+            -- AH sale price of the CRAFTED item + profit/loss vs the crafting
+            -- cost. `GetSaleLive` is the auction ladder only -- every enabled
+            -- ItemDB source, never a vendor price, because a vendor price isn't
+            -- a sale price. (Until v1.1.0 this read `Pr.Get` and then accepted
+            -- only Auctionator's or the own scan's id, so an Auctioneer or TSM
+            -- price never showed here.) Profit only when the craft cost is fully
+            -- known: sell − cost, green = you'd make coin, red = you'd lose it.
+            -- (Assumes one craft yields one item and ignores the AH cut.)
             local craftedId = sel.link and tonumber(sel.link:match("item:(%d+)"))
             local ah, ahSrc
-            if craftedId and Pr.Get then
-                local p, src = Pr.Get(craftedId)
-                if p and (src == "auctionator" or src == "togpm-ah") then
-                    ah, ahSrc = p, src
-                end
+            if craftedId and Pr.GetSaleLive then
+                ah, ahSrc = Pr.GetSaleLive(craftedId)
             end
             if ah then
                 segs[#segs + 1] = Color("ffaaaaaa", L["CraftAHPriceLabel"] .. ": ")

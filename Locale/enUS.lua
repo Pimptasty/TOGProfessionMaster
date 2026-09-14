@@ -475,21 +475,8 @@ L["SettingsCooldownReminderIntervalDesc"]  = "Re-fire each armed cooldown alert 
 L["SettingsCooldownReminderInvalid"]       = "Enter a whole number from 0 to 1440, or 'off'."
 
 L["SettingsAHHeader"]                      = "Auction House"
-L["SettingsAutoScanAH"]                    = "Auto-scan the Auction House on open"
-L["SettingsAutoScanAHDesc"]                = "Off by default. When on, TOGPM scans the entire Auction House (a single getAll query) each time you open the AH, to price reagents for cost-to-craft and light up the [AH] buttons. |cffff4040WARNING:|r that getAll scan is limited by the server to roughly ONCE EVERY 15 MINUTES for your whole game client, and that limit is shared across all addons. So if you rely on another Auction House addon (Auctionator, TradeSkillMaster, etc.) running its own full scan, turning this on will consume that budget and block theirs. Leave it off if another addon is your main scanner. (The per-tab [Scan AH] buttons do small targeted lookups instead and are unaffected by this setting.)"
-L["SettingsUseTOGPMAH"]                    = "Use TOGPM scanned AH pricing"
-L["SettingsUseTOGPMAHDesc"]                = "Independent source toggle. When on, TOGPM can use its own scanned lowest-buyout AH cache for sell and craft-cost calculations. Turn this off to fully exclude TOGPM AH data (for example when testing Auctioneer-only). This is NOT tied to auto-scan."
-L["SettingsUseAuctionator"]                = "Use Auctionator pricing"
-L["SettingsUseAuctionatorDesc"]            = "When Auctionator is installed, use its Auction House price database for crafting cost. Off by default — TOGPM uses its own prices (from the Auction House scan, if you've enabled Auto-scan above or used a [Scan AH] button) plus the built-in vendor prices. Turn this on to prefer Auctionator's data instead."
-L["SettingsUseAuctionatorHistorical"]      = "Use Auctionator cached historical fallback"
-L["SettingsUseAuctionatorHistoricalDesc"]  = "When enabled, TOGPM uses Auctionator's cached historical price only when Auctionator live price is unavailable for an item (mirrors live-then-helper fallback behavior)."
-L["SettingsUseAuctioneer"]                 = "Use Auctioneer pricing"
-L["SettingsUseAuctioneerDesc"]             = "When Auctioneer (Auc-Advanced) is installed, allow TOGPM to use Auctioneer market values for profit and crafting costs."
-L["SettingsUseAuctioneerCached"]           = "Use Auctioneer cached pricing fallback"
-L["SettingsUseAuctioneerCachedDesc"]       = "When enabled, TOGPM uses Auctioneer's cached stat-engine values only if Auctioneer's primary market value is unavailable for an item (mirrors live-then-helper style fallback behavior)."
-L["SettingsAHScanDelay"]                   = "AH scan delay (seconds)"
-L["SettingsAHScanDelayDesc"]               = "Seconds between AH scan queries. Empty / 0 / 'off' uses the version default (1.5s on Classic Era and Anniversary; 3.0s on TBC, Wrath, Cata, MoP — those servers throttle stricter). Lower it for faster scans, raise it if scans stall. Valid range: 0.5–10 seconds."
-L["SettingsAHScanDelayInvalid"]            = "Enter a number from 0.5 to 10, or 'off'."
+L["SettingsAHPriceSources"]                = "Price sources & AH scan (ItemDB)..."
+L["SettingsAHPriceSourcesDesc"]            = "Which price sources are used (Auctionator, Auctioneer, TradeSkillMaster, ItemDB's own Auction House scan), their order, auto-scan and the scan delay are set once in ItemDB, for every TOG addon. Opens ItemDB's price window (also /itemdb)."
 
 -- ---------------------------------------------------------------------------
 -- Tooltips & button hover-text (column headers, action buttons)
@@ -517,12 +504,16 @@ L["TooltipClickDetailsFallback"] = "details"
 -- ---------------------------------------------------------------------------
 L["MailSubjectFormat"]      = "Cooldown supply: %s"
 L["MailBodyFormat"]         = "Hi %s! Please use these materials to make %s. Please send me the %s when you have time to craft it. Thanks!"
-L["MailMsgNoEmptyBag"]      = "No empty bag slot to split into."
+L["MailMsgNeedEmptySlots"]  = "Need %d free bag slot(s) to split into \226\128\148 make room, then click Mail again."
 L["MailMsgOpenMailbox"]     = "Open a mailbox first."
 L["MailMsgHasItems"]        = "Mail already has items attached \226\128\148 send or clear them first."
 L["MailMsgCannotFulfill"]   = "Cannot fulfill."
 L["MailMsgCouldNotAttach"]  = "Could not attach items."
-L["MailMsgAttachedFormat"]  = "Attached %dx %s for %s."
+L["MailMsgNoneInBags"]      = "You have no %s in your bags."
+L["MailMsgTooManyStacks"]   = "This would take %d stacks and a mail holds %d \226\128\148 tidy the stacks and try again."
+L["MailMsgSplittingFormat"] = "Splitting %s \226\128\148 attaching in a moment."
+L["MailMsgSplitNotLanded"]  = "The split stacks did not land in your bags \226\128\148 click Mail again."
+L["MailMsgAttachedListFormat"] = "Attached %s for %s."
 
 -- ---------------------------------------------------------------------------
 -- Minimap button tooltip (LDB)

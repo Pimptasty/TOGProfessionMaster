@@ -1373,15 +1373,17 @@ function BrowserTab:FillShoppingListSection(container)
         f.countLbl = countLbl
 
         local bankBtn = CreateFrame("Button", nil, f)
-        bankBtn:SetSize(52, 14)
+        -- Wide enough for the staleness dot in front of the label.
+        bankBtn:SetSize(62, 14)
         bankBtn:SetPoint("LEFT", countLbl, "RIGHT", 4, 0)
         bankBtn:SetNormalFontObject(GameFontNormalSmall)
-        bankBtn:SetText("|cFF88FF88[Bank]|r")
+        bankBtn:SetText(addon.Bank.ButtonText(nil))
         bankBtn:Hide()
         bankBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(bankBtn)
             GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
             GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
+            addon.Bank.AddStatusLines(bankBtn)
             GameTooltip:Show()
         end)
         bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1580,6 +1582,7 @@ function BrowserTab:FillShoppingListSection(container)
                 local hasAH   = ahData and (ahData.count or 0) > 0 and r.name and r.name ~= ""
 
                 if hasBank then
+                    addon.Bank.Decorate(rf.bankBtn, rItemId)
                     rf.bankBtn:SetScript("OnClick", function()
                         addon.Bank.ShowRequestDialog(rItemId, r.name or "", rItemLink)
                     end)
@@ -1931,17 +1934,18 @@ function BrowserTab:BuildPool(parent)
         crafterLbl:SetWordWrap(false)
         f.crafterLbl = crafterLbl
 
-        -- Bank button at far right
+        -- Bank button at far right (wide enough for the staleness dot)
         local bankBtn = CreateFrame("Button", nil, f)
-        bankBtn:SetSize(50, 12)
+        bankBtn:SetSize(60, 12)
         bankBtn:SetPoint("RIGHT", f, "RIGHT", -2, 0)
         bankBtn:SetNormalFontObject(GameFontNormalSmall)
-        bankBtn:SetText("|cFF88FF88[Bank]|r")
+        bankBtn:SetText(addon.Bank.ButtonText(nil))
         bankBtn:Hide()
         bankBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(bankBtn)
             GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
             GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
+            addon.Bank.AddStatusLines(bankBtn)
             GameTooltip:Show()
         end)
         bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -2438,15 +2442,16 @@ function BrowserTab:GetDetailReagRow(idx)
     f.countLbl = countLbl
 
     local bankBtn = CreateFrame("Button", nil, f)
-    bankBtn:SetSize(46, 12)
+    bankBtn:SetSize(56, 12)   -- room for the staleness dot
     bankBtn:SetPoint("LEFT", countLbl, "RIGHT", 4, 0)
     bankBtn:SetNormalFontObject(GameFontNormalSmall)
-    bankBtn:SetText("|cFF88FF88[Bank]|r")
+    bankBtn:SetText(addon.Bank.ButtonText(nil))
     bankBtn:Hide()
     bankBtn:SetScript("OnEnter", function()
         addon.Tooltip.Owner(bankBtn)
         GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
         GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
+        addon.Bank.AddStatusLines(bankBtn)
         GameTooltip:Show()
     end)
     bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -2664,6 +2669,7 @@ function BrowserTab:DrawDetail(entry)
             local hasAH   = ahData and (ahData.count or 0) > 0 and r.name and r.name ~= ""
 
             if hasBank then
+                addon.Bank.Decorate(rf.bankBtn, rItemId)
                 rf.bankBtn:SetScript("OnClick", function()
                     addon.Bank.ShowRequestDialog(rItemId, r.name or "", rLink)
                 end)
@@ -2894,6 +2900,7 @@ function BrowserTab:UpdateVirtualRows()
             -- stock of whatever item shares that number.
             local craftedId = entry.craftedItemId
             if addon.Bank and craftedId and addon.Bank.GetStock(craftedId) > 0 then
+                addon.Bank.Decorate(f.bankBtn, craftedId)
                 f.bankBtn:SetScript("OnClick", function()
                     addon.Bank.ShowRequestDialog(craftedId, entry.name or "", entry.itemLink)
                 end)

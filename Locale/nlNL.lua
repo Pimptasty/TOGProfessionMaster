@@ -300,9 +300,6 @@ L["SettingsCooldownReminderIntervalDesc"]  = "Vuurt elke geactiveerde hersteltij
 L["SettingsCooldownReminderInvalid"]       = "Voer een geheel getal in van 0 tot 1440, of 'off'."
 
 L["SettingsAHHeader"]                      = "Auction House"
-L["SettingsAHScanDelay"]                   = "AH-scanvertraging (seconden)"
-L["SettingsAHScanDelayDesc"]               = "Seconden tussen AH-scanverzoeken. Leeg / 0 / 'off' gebruikt de versiestandaard (1,5s op Classic Era en Anniversary; 3,0s op TBC, Wrath, Cata, MoP — die servers beperken strenger). Verlaag voor snellere scans, verhoog als scans vastlopen. Geldig bereik: 0,5–10 seconden."
-L["SettingsAHScanDelayInvalid"]            = "Voer een getal in van 0,5 tot 10, of 'off'."
 
 -- ---------------------------------------------------------------------------
 -- Tooltips & button hover-text
@@ -330,12 +327,10 @@ L["TooltipClickDetailsFallback"] = "details"
 -- ---------------------------------------------------------------------------
 L["MailSubjectFormat"]      = "Cooldown-bevoorrading: %s"
 L["MailBodyFormat"]         = "Hallo %s! Zou je deze materialen willen gebruiken om %s te maken wanneer je tijd hebt? Bedankt!"
-L["MailMsgNoEmptyBag"]      = "Geen lege plek meer in je tassen om te splitsen."
 L["MailMsgOpenMailbox"]     = "Open eerst een brievenbus."
 L["MailMsgHasItems"]        = "Post heeft al items bijgevoegd — verstuur of verwijder ze eerst."
 L["MailMsgCannotFulfill"]   = "Kan niet voltooien."
 L["MailMsgCouldNotAttach"]  = "Kan items niet bijvoegen."
-L["MailMsgAttachedFormat"]  = "%dx %s voor %s bijgevoegd."
 
 -- ---------------------------------------------------------------------------
 -- Minimap button tooltip (LDB)
@@ -451,4 +446,3 @@ L["CraftIncrease"]        = "Increase quantity"
 L["CraftDecrease"]        = "Decrease quantity"
 L["CraftButtonDesc"]      = "Craft the selected recipe now."
 L["CraftQueueDesc"]       = "Add the selected recipe to the queue."
-L["SettingsUseAuctionator"]                = "Use Auctionator pricing"

@@ -7,7 +7,6 @@
 -- The Settings panel calls SyncLog:GetEntries() to populate the scroll list.
 
 local _, addon = ...
-local Ace = addon.lib
 
 local LOG_CAP = 200
 

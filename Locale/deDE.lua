@@ -296,9 +296,6 @@ L["SettingsCooldownReminderIntervalDesc"]  = "Feuert jeden scharfgestellten Abkl
 L["SettingsCooldownReminderInvalid"]       = "Gebt eine ganze Zahl von 0 bis 1440 oder 'off' ein."
 
 L["SettingsAHHeader"]                      = "Auktionshaus"
-L["SettingsAHScanDelay"]                   = "AH-Scan-Verz\195\182gerung (Sekunden)"
-L["SettingsAHScanDelayDesc"]               = "Sekunden zwischen AH-Scan-Anfragen. Leer / 0 / 'off' verwendet den Versions-Standard (1.5s auf Classic Era und Anniversary; 3.0s auf TBC, Wrath, Cata, MoP \226\128\148 diese Server drosseln st\195\164rker). Senkt den Wert f\195\188r schnellere Scans, erh\195\182ht ihn, wenn Scans stocken. G\195\188ltiger Bereich: 0.5-10 Sekunden."
-L["SettingsAHScanDelayInvalid"]            = "Gebt eine Zahl von 0.5 bis 10 oder 'off' ein."
 
 -- ---------------------------------------------------------------------------
 -- Tooltips & button hover-text
@@ -326,12 +323,10 @@ L["TooltipClickDetailsFallback"] = "Details"
 -- ---------------------------------------------------------------------------
 L["MailSubjectFormat"]      = "Abklingzeit-Versorgung: %s"
 L["MailBodyFormat"]         = "Hallo %s! Bitte benutzt diese Materialien, um %s herzustellen. Bitte sendet mir %s, sobald ihr Zeit habt, es zu fertigen. Danke!"
-L["MailMsgNoEmptyBag"]      = "Kein leerer Taschenplatz zum Aufteilen."
 L["MailMsgOpenMailbox"]     = "Zuerst einen Briefkasten \195\182ffnen."
 L["MailMsgHasItems"]        = "Post hat bereits angeh\195\164ngte Gegenst\195\164nde \226\128\148 sendet oder entfernt sie zuerst."
 L["MailMsgCannotFulfill"]   = "Kann nicht erf\195\188llt werden."
 L["MailMsgCouldNotAttach"]  = "Konnte keine Gegenst\195\164nde anh\195\164ngen."
-L["MailMsgAttachedFormat"]  = "%dx %s f\195\188r %s angeh\195\164ngt."
 
 -- ---------------------------------------------------------------------------
 -- Minimap button tooltip (LDB)
@@ -447,4 +442,3 @@ L["CraftIncrease"]        = "Increase quantity"
 L["CraftDecrease"]        = "Decrease quantity"
 L["CraftButtonDesc"]      = "Craft the selected recipe now."
 L["CraftQueueDesc"]       = "Add the selected recipe to the queue."
-L["SettingsUseAuctionator"]                = "Use Auctionator pricing"

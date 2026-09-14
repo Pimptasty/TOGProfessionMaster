@@ -17,7 +17,7 @@
 package.path = "./Tests/?.lua;" .. package.path
 local env = require("env_togpm")
 
-local ns, GUI, frames
+local ns, GUI
 
 setup(function()
 	ns = env.initDb()
@@ -29,7 +29,7 @@ before_each(function()
 	-- installFrames() INSTEAD of install(): install() ends in wow.reset(),
 	-- which puts the hollow frame back and every assertion below would then be
 	-- measuring a no-op that returns nothing.
-	frames = env.installFrames()
+	env.installFrames()
 	GUI = env.aceGUI()
 end)
 

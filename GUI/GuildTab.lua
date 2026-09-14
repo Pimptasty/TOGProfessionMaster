@@ -79,11 +79,15 @@ do
     if addon.isVanilla or addon.isTBC or addon.isWrath then
         ALL_SPECS[202] = { 20219, 20222 }                     -- Engineering: Gnomish / Goblin
         ALL_SPECS[165] = { 10656, 10658, 10660 }              -- Leatherworking: Dragonscale / Elemental / Tribal
-        ALL_SPECS[164] = { 9788, 9787, 17039, 17040, 17041 }  -- Blacksmithing: Armorsmith / Weaponsmith / Swordsmith / Hammersmith / Axesmith
+        -- Blacksmithing: Armorsmith / Weaponsmith / Swordsmith / Hammersmith / Axesmith
+        ALL_SPECS[164] = { 9788, 9787, 17039, 17040, 17041 }
     end
     if addon.isTBC or addon.isWrath then
-        ALL_SPECS[171] = { 28672, 28675, 28677 }              -- Alchemy: Transmutation / Potion / Elixir Master (TBC+; DBC-verified)
-        ALL_SPECS[197] = { 26797, 26798, 26801 }              -- Tailoring: Spellfire / Mooncloth / Shadoweave (TBC+; 26802 was "Detect Amore", 26798 is Mooncloth)
+        -- Alchemy: Transmutation / Potion / Elixir Master (TBC+; DBC-verified)
+        ALL_SPECS[171] = { 28672, 28675, 28677 }
+        -- Tailoring: Spellfire / Mooncloth / Shadoweave (TBC+; 26802 was
+        -- "Detect Amore", 26798 is Mooncloth)
+        ALL_SPECS[197] = { 26797, 26798, 26801 }
     end
 end
 

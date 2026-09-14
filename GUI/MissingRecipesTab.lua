@@ -1065,15 +1065,16 @@ function MissingRecipesTab:BuildPool(parent)
         -- of [AH] so the on-row order reads [Bank] [AH] left-to-right (Bank
         -- first, AH after), matching BrowserTab's reagent-row order.
         local bankBtn = CreateFrame("Button", nil, f)
-        bankBtn:SetSize(50, 12)
+        bankBtn:SetSize(60, 12)   -- room for the staleness dot
         bankBtn:SetPoint("RIGHT", f, "RIGHT", -42, 0)  -- right edge of [Bank] sits left of [AH]
         bankBtn:SetNormalFontObject(GameFontNormalSmall)
-        bankBtn:SetText("|cFF88FF88[Bank]|r")
+        bankBtn:SetText(addon.Bank.ButtonText(nil))
         bankBtn:Hide()
         bankBtn:SetScript("OnEnter", function()
             addon.Tooltip.Owner(bankBtn)
             GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
             GameTooltip:AddLine(L["TooltipBankDescScroll"], nil, nil, nil, true)
+            addon.Bank.AddStatusLines(bankBtn)
             GameTooltip:Show()
         end)
         bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1401,6 +1402,7 @@ function MissingRecipesTab:UpdateVirtualRows()
                 local rowItemId   = itemId
                 local rowItemName = itemName or ("Item #" .. itemId)
                 local rowItemLink = itemLink
+                addon.Bank.Decorate(f.bankBtn, rowItemId)
                 f.bankBtn:SetScript("OnClick", function()
                     addon.Bank.ShowRequestDialog(rowItemId, rowItemName, rowItemLink)
                 end)

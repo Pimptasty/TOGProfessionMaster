@@ -18,7 +18,8 @@ local env = require("env_togpm")
 
 local ns, GUI, CT
 
-local ROW  = 16     -- ROW_HEIGHT in GUI/CraftingTab.lua
+-- Row height is 16 (ROW_HEIGHT in GUI/CraftingTab.lua); the examples state
+-- their arithmetic in that number directly.
 local VIEW = 100    -- visible height
 local TALL = 500    -- content height; scrollable range is TALL - VIEW = 400
 
@@ -41,9 +42,19 @@ end)
 --- keeps ScrollFrame methods as instance fields and does not reset them on
 --- release, so leaving it would follow the pooled widget into its next owner.
 --- That is the same hazard Tests/gui_scroll_spec.lua covers for LayoutFinished.
+---
+--- LayoutFinished is no-op'd exactly as CraftingTab:Draw does before FillList
+--- sets the content height by hand (GUI/CraftingTab.lua:318). Without it,
+--- content:SetHeight fires AceGUI's ContentResize -> DoLayout -> the class
+--- LayoutFinished, which sets the empty container's content back to 0 and
+--- ScrollToRow sees nothing to scroll. The suite never saw that until the
+--- harness started dispatching OnSizeChanged (587a439) -- offline, the
+--- fixture had been modelling a scroll the addon never builds.
 local function fixture(opts)
 	opts = opts or {}
 	local scroll = GUI:Create("ScrollFrame")
+	local origLayoutFinished = scroll.LayoutFinished
+	scroll.LayoutFinished = function() end
 	scroll.scrollframe:SetHeight(opts.view or VIEW)
 	scroll.content:SetHeight(opts.total or TALL)
 
@@ -65,6 +76,7 @@ local function fixture(opts)
 		value   = function() return calls[1] end,
 		release = function()
 			scroll.SetScroll = origSetScroll
+			scroll.LayoutFinished = origLayoutFinished
 			GUI:Release(scroll)
 		end,
 	}

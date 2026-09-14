@@ -109,18 +109,18 @@ describe("which tooltip frames get hooked", function()
 		-- are the comparison panes. Missing them means the crafters line appears
 		-- on a bag hover and vanishes on a linked item, which reads as the data
 		-- being wrong rather than the hook being absent.
-		local frames = installTooltipFrames()
+		local tips = installTooltipFrames()
 		login()
-		for name, tt in pairs(frames) do
+		for name, tt in pairs(tips) do
 			assert.is_truthy(tt.scripts["OnTooltipSetItem"],
 				name .. " never got an OnTooltipSetItem hook")
 		end
 	end)
 
 	it("hooks OnTooltipCleared too, on every frame", function()
-		local frames = installTooltipFrames()
+		local tips = installTooltipFrames()
 		login()
-		for name, tt in pairs(frames) do
+		for name, tt in pairs(tips) do
 			assert.is_truthy(tt.scripts["OnTooltipCleared"], name .. " never got a cleared hook")
 		end
 	end)
@@ -141,12 +141,12 @@ describe("the legacy hook registers UNCONDITIONALLY", function()
 		-- the PostCall on an item hover. Put this in an else and the entire
 		-- tooltip extension goes silent there, with every content spec still
 		-- green.
-		local frames = installTooltipFrames()
+		local tips = installTooltipFrames()
 		_G.TooltipDataProcessor = { AddTooltipPostCall = function() end }
 		_G.Enum = _G.Enum or {}
 		_G.Enum.TooltipDataType = { Item = 1 }
 		login()
-		assert.is_truthy(frames.GameTooltip.scripts["OnTooltipSetItem"],
+		assert.is_truthy(tips.GameTooltip.scripts["OnTooltipSetItem"],
 			"legacy hook was skipped because the modern path looked available")
 	end)
 

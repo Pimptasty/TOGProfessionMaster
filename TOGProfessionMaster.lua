@@ -22,32 +22,34 @@ addon.ColorOnline      = "ffffffff"   -- white for online guild members
 addon.ColorOffline     = "ff888888"   -- dark gray for offline guild members
 
 -- Price-source metadata (labels + colors) shared by any UI that surfaces where
--- a number came from (TOGPM scan vs Auctionator vs TSM vs vendor fallback).
+-- a number came from. KEYED BY LibItemDB's SOURCE IDS (v1.1.0): the ladder
+-- lives in ItemDB now and every price it answers carries one of these in its
+-- provenance -- "auctionator" / "auctioneer" / "tsm" / "scan" for the auction
+-- sources, "auctionator-vendor" / "merchant" / "vendor-static" for what a
+-- vendor charges (Modules/Price.lua). The two "vendor-sell-*" ids are this
+-- addon's own (Price.GetVendorSell) and are painted on the tooltip's SELL row.
+-- One table for the presentation; the ids themselves are the library's.
 addon.PriceSourceLabels = {
-    ["togpm-ah"]            = "TOGPM Live AH",
-    ["auctionator"]         = "Auctionator Live",
-    ["auctioneer-live"]     = "Auctioneer Live",
-    ["auctioneer-cached"]   = "Auctioneer Cached",
-    ["auctioneer-app"]      = "Auctioneer Cached",
-    ["tsm-live"]            = "TSM Live",
-    ["auctionator-history"] = "Auctionator History",
-    ["tsm-history"]         = "TSM App",
-    ["auctionator-vendor"]  = "Auctionator Vendor",
-    ["togpm-vendor"]        = "TOGPM Vendor",
-    ["vendor-static"]       = "Static Vendor",
+    ["scan"]               = "ItemDB Scan",
+    ["auctionator"]        = "Auctionator",
+    ["auctioneer"]         = "Auctioneer",
+    ["tsm"]                = "TSM",
+    ["auctionator-vendor"] = "Auctionator Vendor",
+    ["merchant"]           = "Merchant",
+    ["vendor-static"]      = "Static Vendor",
+    ["vendor-sell-client"] = "Vendor",
+    ["vendor-sell-static"] = "Vendor",
 }
 addon.PriceSourceColors = {
-    ["togpm-ah"]            = addon.BrandColor,
-    ["auctionator"]         = "ff6da9ff",
-    ["auctioneer-live"]     = "ff8fcf7f",
-    ["auctioneer-cached"]   = "ff6fae61",
-    ["auctioneer-app"]      = "ff6fae61",
-    ["tsm-live"]            = "fff0c44f",
-    ["auctionator-history"] = "ff3f7bd1",
-    ["tsm-history"]         = "ffe39a3b",
-    ["auctionator-vendor"]  = "ff4f8fe8",
-    ["togpm-vendor"]        = "ff9a9a9a",
-    ["vendor-static"]       = "ff777777",
+    ["scan"]               = addon.BrandColor,
+    ["auctionator"]        = "ff6da9ff",
+    ["auctioneer"]         = "ff8fcf7f",
+    ["tsm"]                = "fff0c44f",
+    ["auctionator-vendor"] = "ff4f8fe8",
+    ["merchant"]           = "ff9a9a9a",
+    ["vendor-static"]      = "ff777777",
+    ["vendor-sell-client"] = "ff9a9a9a",
+    ["vendor-sell-static"] = "ff777777",
 }
 
 -- Version (resolved from .toc, works on all Classic builds)
@@ -431,37 +433,15 @@ local SETTINGS_DEFAULTS = {
         cooldownAlertSuppressProtected = true,
         cooldownAlertReminderMinutes   = 0,
 
-        -- Auction House scan delay (seconds between QueryAuctionItems calls).
-        -- 0 = use the version-appropriate default (1.5s on Classic Era /
-        -- Anniversary where the server throttle is loose, 3.0s on TBC /
-        -- Wrath / Cata / MoP where it's stricter). User-tunable via Settings
-        -- so guilds on unusual server configurations can dial it up or down.
-        -- Resolved at scan time in Modules/AHScanner.lua so the version flag
-        -- (set by Compat.lua, which loads AFTER this defaults table) is
-        -- guaranteed populated before we read it.
-        ahScanDelay = 0,
-
-        -- Cost-to-craft price source. OFF by default: TOGPM uses its OWN
-        -- auto-scanned AH prices (Modules/AHScanner full scan on AH open) plus
-        -- the shipped vendor table. Tick this to ALSO read Auctionator's price
-        -- DB (preferred over our scan when present). Read in Modules/Price.lua.
-        useTOGPMAH = true,
-        useAuctionator = false,
-        useAuctionatorHistorical = true,
-
-        -- Optional Auctioneer pricing bridge. When enabled and Auctioneer is
-        -- installed, TOGPM can use Auctioneer's market-value estimate.
-        -- `useAuctioneerCached` adds a second-stage fallback to Auctioneer
-        -- stat engines when no market value exists.
-        useAuctioneer = false,
-        useAuctioneerCached = true,
-
-        -- TSM integrations are explicit opt-in, mirroring Auctionator's default.
-        -- `useTSM` enables direct reads from TradeSkillMaster's in-game API.
-        -- `useTSMAppHelper` enables historical-style TSM sources that depend on
-        -- desktop-app-fed data. Both are off by default.
-        useTSM = false,
-        useTSMAppHelper = false,
+        -- The nine price-source toggles (useTOGPMAH, autoScanAH, ahScanDelay,
+        -- useAuctionator(+Historical), useAuctioneer(+Cached), useTSM(+AppHelper))
+        -- lived here until v1.1.0. They are ItemDB's per-account settings now
+        -- (`/itemdb`, DB:GetPriceSetting), moved with the ladder. Deliberately
+        -- NOT re-declared with defaults: AceDB would recreate them on every
+        -- profile and the one-shot migration in MigratePriceSettingsToItemDB
+        -- could no longer tell "the user set this" from "the default". A
+        -- profile that still carries a value gets it carried over once, then
+        -- cleared.
 
         -- Global item tooltip lines. Independent toggles so users can keep just
         -- the crafters list, just the IDs (for troubleshooting), both, or
@@ -758,6 +738,10 @@ function Ace:OnInitialize()
         self.db.profile.crafterAlertSuppressVisual = true
         self.db.profile.crafterAlertSuppressAV     = false
     end
+
+    -- v1.1.0: the price-source toggles moved to ItemDB; carry a player's
+    -- choices over once and drop the orphaned scan store.
+    addon:MigratePriceSettingsToItemDB()
 
     -- Apply UI Language Override (if any) before any GUI module reads L.
     -- This mutates the AceLocale table in place; all subsequent reads pick
@@ -1661,33 +1645,104 @@ function addon:DumpPrice(args)
     local itemName = addon.Item.GetInfo(itemId) or ("item:" .. tostring(itemId))
     Ace:Print(("|cffda8cffPrice diagnostic|r for %s (%d)"):format(tostring(itemName), itemId))
 
-    local p, src, age = addon.Price.Get(itemId)
-    Ace:Print(("  Get: %s  src=%s  age=%s"):format(
-        p and addon.Price.Money(p) or "nil",
-        tostring(src),
-        tostring(age)))
-
-    local liveP, liveSrc = addon.Price.GetSaleLive(itemId)
-    Ace:Print(("  GetSaleLive: %s  src=%s"):format(
-        liveP and addon.Price.Money(liveP) or "nil",
-        tostring(liveSrc)))
-
-    local histP, histSrc = addon.Price.GetSaleHistorical(itemId)
-    Ace:Print(("  GetSaleHistorical: %s  src=%s"):format(
-        histP and addon.Price.Money(histP) or "nil",
-        tostring(histSrc)))
-
-    local diag = addon.Price.GetAuctioneerDiagnostics and addon.Price.GetAuctioneerDiagnostics(itemId)
-    if diag then
-        Ace:Print(("  Auctioneer toggles: useAuctioneer=%s useAuctioneerCached=%s"):format(
-            tostring(diag.useAuctioneer), tostring(diag.useAuctioneerCached)))
-        Ace:Print(("  Auctioneer API: ready=%s hasAlgorithmAPI=%s hasModuleRegistry=%s serverKey=%s"):format(
-            tostring(diag.ready), tostring(diag.hasAlgorithmAPI),
-            tostring(diag.hasModuleRegistry), tostring(diag.serverKey)))
-        Ace:Print(("  Auctioneer values: live=%s cached=%s"):format(
-            diag.live and addon.Price.Money(diag.live) or "nil",
-            diag.cached and addon.Price.Money(diag.cached) or "nil"))
+    -- The readers the tabs use, each with its provenance. The ladder itself is
+    -- ItemDB's: `/itemdb price <id> [statistic]` prints every source's own
+    -- answer, and `/itemdb` shows which sources are detected and enabled.
+    local function line(label, p, src, age)
+        Ace:Print(("  %s: %s  src=%s%s"):format(label,
+            p and addon.Price.Money(p) or "nil", tostring(src),
+            age and ("  age=" .. tostring(age)) or ""))
     end
+    line("Get (worth)",       addon.Price.Get(itemId))
+    line("GetReagentCost",    addon.Price.GetReagentCost(itemId))
+    line("GetVendorBuy",      addon.Price.GetVendorBuy(itemId))
+    line("GetVendorSell",     addon.Price.GetVendorSell(itemId))
+    line("GetSaleLive",       addon.Price.GetSaleLive(itemId))
+    line("GetSaleHistorical", addon.Price.GetSaleHistorical(itemId))
+    local DB = self:GetItemDB()
+    if not (DB and DB.GetPrice) then
+        Ace:Print("  ItemDB carries no price API (older than MINOR 25): AH sources answer nothing.")
+    else
+        Ace:Print("  Sources and toggles: /itemdb   Per-source answers: /itemdb price " .. itemId)
+    end
+end
+
+--- One-shot, on first login after v1.1.0: carry the price-source toggles a
+--- player had set in TOGPM's profile into ItemDB's per-account settings, then
+--- drop them from the profile. The choices were the player's -- "use
+--- Auctionator", a scan delay tuned for their server -- and ItemDB's defaults
+--- are verbatim TOGPM's, so a value that DIFFERS from the default is a choice
+--- worth keeping. Only differing values are written (ItemDB's setter fires a
+--- settings-changed callback per write).
+---
+--- ONCE PER ACCOUNT, not per profile (ItemDB's contract 5bb73440, 2026-09-14):
+--- TOGPM's settings are per PROFILE and ItemDB's per ACCOUNT, so stamped per
+--- profile a second character's login would overwrite the first's import and
+--- a third could re-run it later. The stamp lives in `db.global`; the first
+--- character to log in after the update is the one whose choices carry, and
+--- every later profile only has its orphaned keys cleared. The scanned prices
+--- themselves are NOT migrated (ItemDB's call: a scan refills its store).
+--- @return number written  how many settings were carried over
+function addon:MigratePriceSettingsToItemDB()
+    local profile = Ace and Ace.db and Ace.db.profile
+    if not profile then return 0 end
+    local DB = self:GetItemDB()
+    local canWrite = DB and DB.SetPriceSetting and DB.GetPriceSetting
+    local global = Ace.db.global
+    local stamped = global and global.priceSettingsMigrated == true
+    local MAP = {
+        useTOGPMAH               = "useOwnScan",
+        autoScanAH               = "autoScan",
+        ahScanDelay              = "scanDelay",
+        useAuctionator           = "useAuctionator",
+        useAuctionatorHistorical = "useAuctionatorHistorical",
+        useAuctioneer            = "useAuctioneer",
+        useAuctioneerCached      = "useAuctioneerCached",
+        useTSM                   = "useTSM",
+        useTSMAppHelper          = "useTSMAppHelper",
+    }
+    local written = 0
+    -- Parents before their fallbacks: ItemDB's setter turns a fallback off
+    -- with its parent, so writing the child first would be undone.
+    local ORDER = { "useTOGPMAH", "autoScanAH", "ahScanDelay",
+                    "useAuctionator", "useAuctionatorHistorical",
+                    "useAuctioneer", "useAuctioneerCached",
+                    "useTSM", "useTSMAppHelper" }
+    for _, oldKey in ipairs(ORDER) do
+        local value = profile[oldKey]
+        if value ~= nil then
+            if canWrite then
+                if not stamped then
+                    local newKey = MAP[oldKey]
+                    local ok, current = pcall(DB.GetPriceSetting, DB, newKey)
+                    -- ItemDB's App Helper toggle defaults ON and gates TSM's
+                    -- REGION figures -- the one complete picture of the AH
+                    -- (the user's directive in ItemDB's session, 2026-09-14).
+                    -- This addon's old default was OFF, so a stored `false`
+                    -- here is the old default, not a choice; carrying it would
+                    -- switch the region data off. Only an explicit opt-in
+                    -- travels.
+                    if oldKey == "useTSMAppHelper" and value == false then ok = false end
+                    if ok and current ~= value then
+                        local okSet, accepted = pcall(DB.SetPriceSetting, DB, newKey, value)
+                        if okSet and accepted then written = written + 1 end
+                    end
+                end
+                -- Carried or superseded by an earlier character's import,
+                -- the profile's copy is orphaned either way.
+                profile[oldKey] = nil
+            end
+            -- Against an older ItemDB the values stay in the profile, so a
+            -- later login with a newer one still carries them over.
+        end
+    end
+    if canWrite and global then global.priceSettingsMigrated = true end
+    -- The scan store this addon kept under factionrealm is orphaned by the
+    -- move; ItemDB keeps its own. Dropped so the SavedVariables stop carrying
+    -- data nothing reads.
+    local fr = Ace.db.factionrealm
+    if fr then fr.ahPrices, fr.vendorPrices = nil, nil end
+    return written
 end
 
 --- /togpm itemgaps [profId] — list crafted items whose stats LibItemDB is
@@ -1934,10 +1989,10 @@ function Ace:PrintPerf()
     self:Print(("  altClaims %d entries | altGroups %d entries (%s)")
         :format(entries(gdb.altClaims), entries(gdb.altGroups),
                 rawget(gdb, "altGroups") and "WRITTEN to disk" or "derived, not written"))
-    local sv = addon.lib and addon.lib.db and addon.lib.db.factionrealm
-    if sv then
-        self:Print(("  ahPrices %d | vendorPrices %d"):format(n(sv.ahPrices), n(sv.vendorPrices)))
-    end
+    -- Prices are ItemDB's since v1.1.0 (LibItemDB_PriceDB); this addon's
+    -- factionrealm ahPrices/vendorPrices tables are gone, so there is nothing
+    -- of ours to count here -- `/itemdb` reports the scan store.
+    self:Print("  prices: ItemDB's store (/itemdb) -- nothing price-related is saved by this addon")
 end
 
 -- ---------------------------------------------------------------------------

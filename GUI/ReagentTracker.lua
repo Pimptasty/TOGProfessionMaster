@@ -23,7 +23,7 @@ local ROW_H   = 16
 local ICON_SZ = 13
 local HDR_H   = 20
 local COUNT_W = 90       -- room for "30/30 +99999" worst case
-local BANK_W  = 48
+local BANK_W  = 58   -- [Bank] plus TOGBank's staleness dot in front of it
 
 -- ---------------------------------------------------------------------------
 -- Data helpers
@@ -109,12 +109,13 @@ function RT:GetRow(idx)
     bankBtn:SetSize(BANK_W, 12)
     bankBtn:SetPoint("RIGHT", f, "RIGHT", -(COUNT_W + 6), 0)
     bankBtn:SetNormalFontObject(GameFontNormalSmall)
-    bankBtn:SetText("|cFF88FF88[Bank]|r")
+    bankBtn:SetText(addon.Bank.ButtonText(nil))
     bankBtn:Hide()
     bankBtn:SetScript("OnEnter", function()
         addon.Tooltip.Owner(bankBtn)
         GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
         GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
+        addon.Bank.AddStatusLines(bankBtn)
         GameTooltip:Show()
     end)
     bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -170,6 +171,7 @@ function RT:Refresh()
         -- Bank button
         if bankCount > 0 then
             local iId, iName, iLink = item.id, item.name, item.itemLink
+            addon.Bank.Decorate(row.bankBtn, iId)
             row.bankBtn:SetScript("OnClick", function()
                 addon.Bank.ShowRequestDialog(iId, iName, iLink)
             end)

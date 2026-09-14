@@ -292,9 +292,6 @@ L["SettingsCooldownReminderIntervalDesc"]  = "Riattiva ogni avviso di recupero a
 L["SettingsCooldownReminderInvalid"]       = "Inserisci un numero intero da 0 a 1440, o 'off'."
 
 L["SettingsAHHeader"]                      = "Casa d'aste"
-L["SettingsAHScanDelay"]                   = "Ritardo scansione CA (secondi)"
-L["SettingsAHScanDelayDesc"]               = "Secondi tra le richieste di scansione della CA. Vuoto / 0 / 'off' usa il valore predefinito della versione (1.5s su Classic Era e Anniversary; 3.0s su TBC, Wrath, Cata, MoP — questi server limitano di più). Riduci il valore per scansioni più rapide, aumentalo se le scansioni si bloccano. Intervallo valido: 0.5–10 secondi."
-L["SettingsAHScanDelayInvalid"]            = "Inserisci un numero da 0.5 a 10, o 'off'."
 
 -- ---------------------------------------------------------------------------
 -- Tooltips & button hover-text
@@ -322,12 +319,10 @@ L["TooltipClickDetailsFallback"] = "dettagli"
 -- ---------------------------------------------------------------------------
 L["MailSubjectFormat"]      = "Rifornimento di recupero: %s"
 L["MailBodyFormat"]         = "Ciao %s! Per favore usa questi materiali per fare %s. Mandami il %s quando hai tempo di crearlo. Grazie!"
-L["MailMsgNoEmptyBag"]      = "Nessuno slot di borsa vuoto per dividere."
 L["MailMsgOpenMailbox"]     = "Apri prima una cassetta postale."
 L["MailMsgHasItems"]        = "La posta ha già oggetti allegati — invia o rimuovi prima quelli."
 L["MailMsgCannotFulfill"]   = "Non si può completare."
 L["MailMsgCouldNotAttach"]  = "Impossibile allegare gli oggetti."
-L["MailMsgAttachedFormat"]  = "Allegati %dx %s per %s."
 
 -- ---------------------------------------------------------------------------
 -- Minimap button tooltip (LDB)
@@ -443,4 +438,3 @@ L["CraftIncrease"]        = "Increase quantity"
 L["CraftDecrease"]        = "Decrease quantity"
 L["CraftButtonDesc"]      = "Craft the selected recipe now."
 L["CraftQueueDesc"]       = "Add the selected recipe to the queue."
-L["SettingsUseAuctionator"]                = "Use Auctionator pricing"

@@ -560,6 +560,223 @@ describe("TOGBankClassic integration", function()
 		assert.is_nil(said)
 	end)
 
+	-- TOGBank SETTINGS-CANON-001 (peer-review thread 17a1f2c9): Guild:AddRequest
+	-- ENFORCES the officer's maximum request %, per bank, less the requester's open
+	-- orders there. The dialog used to offer a percent of the WHOLE GUILD's stock,
+	-- so it offered quantities Send was then refused for, and printed "Check that
+	-- TOGBankClassic is synced" in place of the reason AddRequest gave.
+	describe("the request dialog against TOGBank's enforced allowance", function()
+		local said, added
+
+		after_each(function() _G.TOGBankClassic_Options = nil end)
+
+		--- Two bankers (Abe 10, Zed 30) at `pct`, with `open[bank]` already on order,
+		--- modelled on TOGBank's own RequestAllowance/RequestLimitText shapes.
+		local function installLimited(pct, open, addResult, addWhy)
+			installBank({
+				Abe = { items = { { ID = 2589, Count = 10 } } },
+				Zed = { items = { { ID = 2589, Count = 30 } } },
+			}, { "Abe", "Zed" })
+			local G = _G.TOGBankClassic_Guild
+			G.GetNormalizedPlayer = function() return "Me-Testrealm" end
+			G.RequestAllowance = function(_, requester, bank, itemID, count)
+				assert.equal("Me-Testrealm", requester)
+				assert.equal(2589, itemID)
+				local cap = math.floor(count * pct / 100)
+				local o = (open and open[bank]) or 0
+				return math.max(0, cap - o), cap, o, pct, count
+			end
+			G.RequestLimitText = function(_, left, cap, o)
+				return ("LIMIT left=%d cap=%d open=%d"):format(left, cap, o)
+			end
+			G.AddRequest = function(_, req)
+				added = req
+				return addResult, addWhy
+			end
+			said = {}
+			added = nil
+			_G.DEFAULT_CHAT_FRAME = { AddMessage = function(_, msg) said[#said + 1] = msg end }
+		end
+
+		local function dialog() return _G.TOGPMBankRequestDialog end
+		local function send(qty)
+			dialog().qtyBox:SetText(tostring(qty))
+			dialog().sendBtn:GetScript("OnClick")(dialog().sendBtn)
+		end
+
+		it("offers the selected bank's allowance, not a percent of the guild's stock", function()
+			installLimited(50, { Abe = 2 }, true)
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			-- Abe (sorted first) holds 10: 50% is 5, less 2 on order. The old
+			-- whole-guild figure was floor(40 * 50%) = 20.
+			assert.equal(3, dialog().maxRequestable)
+			assert.equal("/ max 3", dialog().maxLbl:GetText())
+		end)
+
+		it("recomputes the allowance when the player picks another banker", function()
+			installLimited(50, { Abe = 2 }, true)
+			_G.UIDROPDOWNMENU_ADDED = {}
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			local zed
+			for _, b in ipairs(_G.UIDROPDOWNMENU_ADDED) do
+				if b.info.value == "Zed" then zed = b.info end
+			end
+			assert(zed, "the banker dropdown lists Zed")
+			zed.func()
+			assert.equal("Zed", dialog().selectedBank)
+			assert.equal(15, dialog().maxRequestable)
+			assert.equal("/ max 15", dialog().maxLbl:GetText())
+		end)
+
+		it("refuses over the allowance with TOGBank's sentence and never places the order", function()
+			installLimited(50, { Abe = 2 }, true)
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			send(4)
+			assert.is_nil(added)
+			assert.is_truthy(said[#said]:find("LIMIT left=3 cap=5 open=2", 1, true))
+		end)
+
+		it("says why when the open orders have used the whole allowance", function()
+			installLimited(50, { Abe = 5 }, true)
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			assert.equal(0, dialog().maxRequestable)
+			send(1)
+			assert.is_nil(added)
+			assert.is_truthy(said[#said]:find("LIMIT left=0 cap=5 open=5", 1, true))
+		end)
+
+		it("places an order within the allowance", function()
+			installLimited(50, nil, true)
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			send(5)
+			assert.equal(5, added.quantity)
+			assert.equal("Abe", added.bank)
+			assert.is_truthy(said[#said]:find("Bank request sent", 1, true))
+		end)
+
+		it("prints the reason AddRequest refused with, not a guess about syncing", function()
+			installLimited(50, nil, false, "Ordering is closed.")
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			send(1)
+			assert.is_truthy(added)
+			assert.is_truthy(said[#said]:find("Ordering is closed.", 1, true))
+			assert.is_nil(said[#said]:find("synced", 1, true))
+		end)
+
+		it("keeps the old message when AddRequest gives no reason", function()
+			installLimited(50, nil, false)
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			send(1)
+			assert.is_truthy(said[#said]:find("Check that TOGBankClassic is synced", 1, true))
+		end)
+
+		it("caps at the bank's own stock when the officer sets no limit", function()
+			-- At 100% AddRequest gates nothing; the order is from one bank.
+			installLimited(100, { Abe = 9 }, true)
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			assert.equal(10, dialog().maxRequestable)
+			assert.equal("Bank stock: 10", dialog().stockLbl:GetText())
+		end)
+
+		it("pairs the selected banker's stock with that banker's cap on the stock line", function()
+			-- Independent review, finding 3: "Bank stock: 40 | Max requestable: 5
+			-- (50%)" read as a wrong sum -- 5 is 50% of Abe's 10, not of the guild's 40.
+			installLimited(50, nil, true)
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			assert.equal("Bank stock: 10  |  Max requestable: 5 (50%)", dialog().stockLbl:GetText())
+		end)
+
+		it("re-checks the allowance at Send, keeping the quantity typed", function()
+			-- Independent review, finding 2: an open order filled while the dialog
+			-- sat open raised the allowance, and the stale figure refused an order
+			-- TOGBank would have taken.
+			local open = { Abe = 2 }
+			installLimited(50, open, true)
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			assert.equal(3, dialog().maxRequestable)
+			open.Abe = 0
+			send(5)
+			assert(added, "the order was placed")
+			assert.equal(5, added.quantity)
+			assert.equal("5", dialog().qtyBox:GetText())
+		end)
+
+		it("never offers a view-only banker, even as the alphabetical first", function()
+			-- Independent review, finding 4: VIEWBANK-001 refuses them in AddRequest.
+			installLimited(50, nil, true)
+			_G.TOGBankClassic_Guild.IsViewOnlyBank = function(_, n) return n == "Abe" end
+			_G.UIDROPDOWNMENU_ADDED = {}
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			assert.equal("Zed", dialog().selectedBank)
+			assert.equal(15, dialog().maxRequestable)
+			send(1)
+			assert.equal("Zed", added.bank)
+		end)
+
+		it("says so when only view-only bankers hold the item", function()
+			installLimited(50, nil, true)
+			_G.TOGBankClassic_Guild.IsViewOnlyBank = function() return true end
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			assert.is_truthy(said[#said]:find("view-only", 1, true))
+		end)
+
+		describe("while TOGBank's shop is on", function()
+			-- Independent review, finding 1: AddRequest refuses any order without
+			-- shopOrder = true while the shop sells (SHOP-NOFREE-001), so every
+			-- [Bank] order failed. Guild:ShopOrderFields is TOGBank's builder for
+			-- other addons: merge every field but `prompt`, show `prompt`.
+			local function installShop(fields)
+				installLimited(50, nil, true)
+				_G.TOGBankClassic_Guild.ShopOrderFields = function(_, itemID)
+					assert.equal(2589, itemID)
+					return fields
+				end
+			end
+
+			it("marks the order a shop order carrying the estimate, without the prompt", function()
+				installShop({ shopOrder = true, estimate = 1234, estimateBase = 2468, discount = 50,
+					estimateSource = "min buyout, Auctionator", prompt = "Shop order -- estimated ~12s 34c each." })
+				ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+				send(2)
+				assert.is_true(added.shopOrder)
+				assert.equal(1234, added.estimate)
+				assert.equal(2468, added.estimateBase)
+				assert.equal(50, added.discount)
+				assert.equal("min buyout, Auctionator", added.estimateSource)
+				assert.is_nil(added.prompt)
+				assert.equal(2, added.quantity)
+			end)
+
+			it("shows TOGBank's shop line in the dialog", function()
+				installShop({ shopOrder = true, prompt = "Shop order -- no estimate for this item yet." })
+				ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+				assert.equal("Shop order -- no estimate for this item yet.", dialog().shopLbl:GetText())
+				assert.is_true(dialog().shopLbl:IsShown())
+				assert.equal(205, dialog():GetHeight())
+			end)
+
+			it("adds nothing and hides the line when the shop is off", function()
+				installShop(nil)
+				ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+				assert.is_false(dialog().shopLbl:IsShown())
+				assert.equal(165, dialog():GetHeight())
+				send(1)
+				assert.is_nil(added.shopOrder)
+			end)
+		end)
+
+		it("keeps the whole-guild percent against a TOGBank without the accessor", function()
+			installBank({
+				Abe = { items = { { ID = 2589, Count = 10 } } },
+				Zed = { items = { { ID = 2589, Count = 30 } } },
+			}, { "Abe", "Zed" })
+			_G.TOGBankClassic_Options = { GetMaxRequestPercent = function() return 50 end }
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			assert.equal(20, dialog().maxRequestable)
+			assert.equal("Bank stock: 40  |  Max requestable: 20 (50%)", dialog().stockLbl:GetText())
+		end)
+	end)
+
 	-- The user, 2026-09-14, of TOGBank's green dots: "i would like to add those
 	-- dots next to the items in TOGPM as well if they have the bank button
 	-- available, so folks can tell at a glance if it's stale or not." The

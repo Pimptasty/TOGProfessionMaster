@@ -476,6 +476,37 @@ function addon.Bank.IsBanker(charKey)
     return TOG:IsBank(charKey)
 end
 
+--- How many of `itemId` this player may still order from `bankName`, the
+-- percent behind it, and the sentence TOGBank refuses a larger order with.
+--
+-- Since TOGBank's SETTINGS-CANON-001 (peer-review thread 17a1f2c9),
+-- `Guild:AddRequest` ENFORCES the officer's maximum request %: per bank, less
+-- this player's OPEN orders of the item from that bank. `Guild:RequestAllowance`
+-- is that exact number, so the dialog offers no more than it -- a percent of the
+-- whole guild's stock (what this used to compute) offers quantities Send is then
+-- refused for. At 100% AddRequest gates nothing, so the ceiling is simply what
+-- that bank holds, the same as TOGBank's own request dialog. Against a TOGBank
+-- without the accessor nothing enforces anything and the old whole-guild
+-- percent stays the only cap.
+--
+-- Returns max, pct, why, base -- `base` is the stock the percent is OF (that
+-- banker's on the enforced path, the whole guild's on the old one), so the
+-- dialog's "stock | max (pct)" line never pairs one banker's cap with the
+-- guild's total.
+function addon.Bank.RequestAllowance(itemId, bankName, bankCount, totalStock)
+    local TOG = _G["TOGBankClassic_Guild"]
+    if TOG and TOG.RequestAllowance and TOG.GetNormalizedPlayer then
+        local left, cap, open, pct = TOG:RequestAllowance(TOG:GetNormalizedPlayer(), bankName, itemId, bankCount)
+        pct = pct or 100
+        if pct >= 100 then return bankCount, 100, nil, bankCount end
+        local why = TOG.RequestLimitText and TOG:RequestLimitText(left, cap, open, pct) or nil
+        return left or 0, pct, why, bankCount
+    end
+    local opts = _G["TOGBankClassic_Options"]
+    local pct  = (opts and opts.GetMaxRequestPercent and opts:GetMaxRequestPercent()) or 100
+    return math.max(1, math.floor(totalStock * pct / 100)), pct, nil, totalStock
+end
+
 -- Persistent bank-request dialog shared across all UI callers (lazy-created).
 local _bankDialog
 
@@ -492,14 +523,24 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
         DEFAULT_CHAT_FRAME:AddMessage("|cFFDA8CFF[TOGPM]|r No bankers currently have this item in stock.")
         return
     end
+    -- A view-only banker's stock is shown (tooltips, the [Bank] dot) but
+    -- cannot be requested -- TOGBank's AddRequest refuses it (VIEWBANK-001) --
+    -- so it is never offered here, least of all as the pre-selected default.
+    if TOG.IsViewOnlyBank then
+        local requestable = {}
+        for _, b in ipairs(banksWithItem) do
+            if not TOG:IsViewOnlyBank(b.name) then requestable[#requestable + 1] = b end
+        end
+        if #requestable == 0 then
+            DEFAULT_CHAT_FRAME:AddMessage(
+                "|cFFDA8CFF[TOGPM]|r Only view-only bankers hold this item, and they do not take requests.")
+            return
+        end
+        banksWithItem = requestable
+    end
 
     local totalStock = 0
     for _, b in ipairs(banksWithItem) do totalStock = totalStock + b.count end
-
-    local opts = _G["TOGBankClassic_Options"]
-    local pct  = (opts and opts.GetMaxRequestPercent and opts:GetMaxRequestPercent()) or 100
-    local maxRequestable = math.max(1, math.floor(totalStock * pct / 100))
-    local defaultQty     = math.min(1, maxRequestable)
 
     if not _bankDialog then
         local d = CreateFrame("Frame", "TOGPMBankRequestDialog", UIParent,
@@ -593,6 +634,15 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
         maxLbl:SetTextColor(0.6, 0.6, 0.6)
         d.maxLbl = maxLbl
 
+        -- TOGBank's shop-order line (estimate and who sets the final price),
+        -- shown only while its shop is on; the dialog grows to fit it.
+        local shopLbl = d:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        shopLbl:SetPoint("TOPLEFT", 18, -128)
+        shopLbl:SetWidth(244)
+        shopLbl:SetJustifyH("LEFT")
+        shopLbl:SetTextColor(0.9, 0.85, 0.55)
+        d.shopLbl = shopLbl
+
         local sendBtn = CreateFrame("Button", nil, d, "UIPanelButtonTemplate")
         sendBtn:SetSize(120, 22)
         sendBtn:SetPoint("BOTTOMLEFT", 18, 14)
@@ -613,18 +663,49 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
     d.currentItemName = itemName
     d.currentBanks    = banksWithItem
     d.selectedBank    = banksWithItem[1].name
-    d.maxRequestable  = maxRequestable
+
+    -- The allowance is per bank, so it is recomputed whenever the banker changes
+    -- -- and again at Send (keepQty), since an order filled or placed elsewhere
+    -- while the dialog sat open moves it, exactly as TOGBank's own dialog
+    -- re-checks on submit.
+    local function applyLimit(keepQty)
+        local bankCount = 0
+        for _, b in ipairs(banksWithItem) do
+            if b.name == d.selectedBank then bankCount = b.count end
+        end
+        local max, pct, why, base = addon.Bank.RequestAllowance(itemId, d.selectedBank, bankCount, totalStock)
+        d.maxRequestable = max
+        d.limitWhy       = why
+        if not keepQty then d.qtyBox:SetText(tostring(math.min(1, max))) end
+        if pct < 100 then
+            d.stockLbl:SetText(string.format("Bank stock: %d  |  Max requestable: %d (%d%%)",
+                base, max, pct))
+        else
+            d.stockLbl:SetText(string.format("Bank stock: %d", base))
+        end
+        d.maxLbl:SetText("/ max " .. max)
+    end
 
     d.currentItemLink = itemLink
     d.itemLbl:SetText(itemLink or itemName or ("Item #" .. tostring(itemId)))
-    d.qtyBox:SetText(tostring(defaultQty))
-    if pct < 100 then
-        d.stockLbl:SetText(string.format("Bank stock: %d  |  Max requestable: %d (%d%%)",
-            totalStock, maxRequestable, pct))
+    applyLimit()
+
+    -- SHOP-NOFREE-001: while TOGBank's shop is on, AddRequest refuses any order
+    -- not marked as a shop order. `Guild:ShopOrderFields` (SHOP-ORDER-API-001,
+    -- built for this button on thread 17a1f2c9) is TOGBank's one builder: merge
+    -- every field but `prompt` into the request, show `prompt`. Taken at open so
+    -- the estimate written is the one the player was shown, as TOGBank's dialog
+    -- does; nil while the shop is off or on a TOGBank without the API.
+    d.shopFields = TOG.ShopOrderFields and TOG:ShopOrderFields(itemId) or nil
+    if d.shopFields and d.shopFields.prompt then
+        d.shopLbl:SetText(d.shopFields.prompt)
+        d.shopLbl:Show()
+        d:SetHeight(205)
     else
-        d.stockLbl:SetText(string.format("Bank stock: %d", totalStock))
+        d.shopLbl:SetText("")
+        d.shopLbl:Hide()
+        d:SetHeight(165)
     end
-    d.maxLbl:SetText("/ max " .. maxRequestable)
 
     if #banksWithItem == 1 then
         local n = banksWithItem[1].name:match("^([^%-]+)") or banksWithItem[1].name
@@ -643,6 +724,7 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
                 info.func   = function()
                     d.selectedBank = b.name
                     UIDropDownMenu_SetText(d.bankDropdown, info.text)
+                    applyLimit()
                 end
                 UIDropDownMenu_AddButton(info, level)
             end
@@ -656,13 +738,16 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
         local reqTOG = _G["TOGBankClassic_Guild"]
         if not reqTOG then return end
         local qty = tonumber(d.qtyBox:GetText()) or 0
-        if qty < 1 then
-            DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444[TOGPM] Quantity must be at least 1.|r")
+        applyLimit(true)
+        -- Over the allowance (including none left at all) says TOGBank's own
+        -- sentence when it has one: it names the open orders that used it up.
+        if d.maxRequestable < 1 or qty > d.maxRequestable then
+            DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444[TOGPM] " .. (d.limitWhy or string.format(
+                "Maximum requestable quantity is %d.", d.maxRequestable)) .. "|r")
             return
         end
-        if qty > d.maxRequestable then
-            DEFAULT_CHAT_FRAME:AddMessage(string.format(
-                "|cFFFF4444[TOGPM] Maximum requestable quantity is %d.|r", d.maxRequestable))
+        if qty < 1 then
+            DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444[TOGPM] Quantity must be at least 1.|r")
             return
         end
         if not d.selectedBank or d.selectedBank == "" then
@@ -672,21 +757,28 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
         local reqName = d.currentItemName
             or (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(d.currentItemId))
             or "Unknown"
-        local ok = reqTOG:AddRequest({
+        local request = {
             item      = reqName,
             itemID    = d.currentItemId,
             quantity  = qty,
             requester = reqTOG:GetNormalizedPlayer(),
             bank      = d.selectedBank,
             notes     = "",
-        })
+        }
+        for k, v in pairs(d.shopFields or {}) do
+            if k ~= "prompt" then request[k] = v end
+        end
+        local ok, why = reqTOG:AddRequest(request)
         if ok then
             local dispBank = d.selectedBank:match("^([^%-]+)") or d.selectedBank
             DEFAULT_CHAT_FRAME:AddMessage(string.format(
                 "|cFFDA8CFF[TOGPM]|r Bank request sent: %dx %s \226\134\146 %s", qty, reqName, dispBank))
             d:Hide()
         else
-            DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444[TOGPM] Request failed. Check that TOGBankClassic is synced.|r")
+            -- AddRequest returns `false, <sentence>` for every gate it refuses on
+            -- (limit, shop closed, view-only bank...), written for the player.
+            DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444[TOGPM] Request failed. "
+                .. (why or "Check that TOGBankClassic is synced.") .. "|r")
         end
     end)
 

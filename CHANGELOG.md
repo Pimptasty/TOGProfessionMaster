@@ -6,6 +6,51 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # TOG Profession Master Changelog
 
+## [v1.1.1] (2026-09-16) - The [Bank] request dialog follows TOGBank's enforced request limit and places shop orders
+
+### Bug Fixes
+
+- **The [Bank] dialog offered more than TOGBank would accept, then blamed
+  syncing.** TOGBank's `Guild:AddRequest` now ENFORCES the officer's maximum
+  request % (its SETTINGS-CANON-001, peer-review thread 17a1f2c9): per bank,
+  less the requester's OPEN orders of that item from that bank. Our dialog
+  capped at that percent of the WHOLE GUILD's stock and ignored open orders, so
+  with Abe holding 10 and Zed 30 at 50% it offered 20 from Abe, where TOGBank
+  allows 5 (fewer with orders open), and Send printed "Request failed. Check
+  that TOGBankClassic is synced." in place of the reason. The ceiling is now
+  `TOGBankClassic_Guild:RequestAllowance` for the selected banker, recomputed
+  when the banker dropdown changes; an order over it is refused in the dialog
+  with TOGBank's own `RequestLimitText` sentence; and any refusal from
+  `AddRequest` (limit, ordering closed, not for sale) prints the sentence it
+  returned. At 100% the ceiling is that banker's stock. Against a TOGBank
+  without `RequestAllowance` the old whole-guild percent is kept, since nothing
+  there enforces one. New `addon.Bank.RequestAllowance`. Location: `Compat.lua`.
+- **Every [Bank] order was refused while TOGBank's shop was selling.**
+  `AddRequest` refuses an order not marked `shopOrder = true` while the shop
+  sells (TOGBank SHOP-NOFREE-001), and this dialog never marked one. It now
+  merges `TOGBankClassic_Guild:ShopOrderFields(itemId)` (TOGBank's
+  SHOP-ORDER-API-001, built for this button) into the request -- the mark and
+  the estimate -- and shows its `prompt` line in the dialog, which grows to fit.
+  The fields are taken when the dialog opens, so the estimate written is the one
+  the player was shown. Found by an independent review of the change above.
+  Location: `Compat.lua`.
+- **Three smaller dialog defects from the same review.** (a) The allowance was
+  computed only at open; an order filled while the dialog sat open raised it,
+  and the stale figure refused an order TOGBank would take -- it is re-checked
+  at Send now, keeping the typed quantity. (b) The stock line read "Bank stock:
+  40 | Max requestable: 5 (50%)", pairing the whole guild's stock with one
+  banker's cap; it shows the stock the percent is of. (c) A view-only banker
+  (visible, not requestable -- TOGBank VIEWBANK-001) could be the pre-selected
+  banker and every Send refused; view-only bankers are no longer offered, and
+  when only they hold the item the dialog says so instead of opening.
+  Location: `Compat.lua`.
+- Sixteen specs in `Tests/compat_spec.lua` drive the real dialog (open, pick a
+  banker, type, Send, read chat). Mutation runs: with the allowance and the
+  reason switched off 6 go red; with the four review fixes switched off 6 go
+  red; the rest pin behaviour that was already right and stay green by design.
+
+---
+
 ## [v1.1.0] (2026-09-14) - Prices and the Auction House scan move to ItemDB; one mail per cooldown, every reagent split and attached from one click
 
 ### New Features

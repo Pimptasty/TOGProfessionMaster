@@ -33,46 +33,35 @@ addon.MainWindow = MainWindow
 -- scripts on widget.frame themselves (Button's `frame:SetScript("OnEnter",
 -- Control_OnEnter)` is the canonical example — that's what fires the
 -- widget:SetCallback("OnEnter", ...) handlers). Naively nilling those on
--- release would break the widget for whoever recycles it next. So this
--- helper SAVES the prior script and RESTORES it on release rather than
--- nilling.
+-- release would break the widget for whoever recycles it next.
 --
 -- Prefer widget:SetCallback("OnEnter", fn) when the widget supports it
 -- (Button, Dropdown, EditBox, etc. all do — Control_OnEnter fires the
 -- registry). Use this helper only for widgets without native dispatch
 -- (e.g. SimpleGroup) or for events the widget doesn't expose (OnMouseDown).
 --
+-- Delegates to LibAceGUIWidgets' WidgetFrameScripts (MINOR 36, TOGPM's own
+-- contract afb62bf8), which restores the EXACT prior script (a constructor's
+-- dispatcher, or none) on Release. Unlike the hand-rolled version it replaced,
+-- it chains through the widget's OnRelease METHOD, so the widget's single
+-- SetCallback("OnRelease") slot stays free for the caller.
+--
 -- Usage:
 --   addon.AceGUIFrameScripts(widget, {
 --       OnMouseDown = function(f, button) ... end,
 --   })
--- Sentinel for "this event had NO handler before we touched it". A plain nil
--- cannot express that: `saved[evt] = nil` stores no key at all, so the restore
--- loop below never visits the event and OUR script stays on the widget — which
--- is precisely the leak this helper exists to prevent, in the commonest case of
--- all (a widget with no prior handler for the event). Found by
--- Tests/gui_pool_spec.lua.
-local NO_PRIOR_SCRIPT = {}
-
 function addon.AceGUIFrameScripts(widget, scripts)
-    if not (widget and widget.frame and scripts) then return end
-    local saved = {}
-    for evt, fn in pairs(scripts) do
-        saved[evt] = widget.frame:GetScript(evt) or NO_PRIOR_SCRIPT
-        widget.frame:SetScript(evt, fn)
-    end
-    widget:SetCallback("OnRelease", function(self)
-        if not self.frame then return end
-        for evt, prior in pairs(saved) do
-            if prior == NO_PRIOR_SCRIPT then prior = nil end
-            self.frame:SetScript(evt, prior)
-        end
-    end)
+    if not (widget and widget.frame and scripts and addon.W) then return end
+    addon.W:WidgetFrameScripts(widget, scripts)
 end
 
 MainWindow.frame     = nil   -- root AceGUI Frame
 MainWindow.tabs      = nil   -- AceGUI TabGroup
 MainWindow.activeTab = "browser"
+
+-- The size profile the resizable tabs (Professions, Crafting) share; the
+-- locked tabs each use their own tab key. See ApplyTabSize.
+local RESIZABLE_PROFILE = "browse"
 
 -- v0.7.0: function (not table) so the L["..."] reads happen at tab-build
 -- time, after ApplyLocaleOverride has had a chance to mutate the AceLocale
@@ -95,53 +84,33 @@ local function getTabDefs()
 end
 
 -- ---------------------------------------------------------------------------
--- ESC proxy
+-- Escape: popups first, then the window
 -- ---------------------------------------------------------------------------
--- An invisible frame registered in UISpecialFrames at load time intercepts
--- every ESC press while the main window is open.  UIParent_HandleEscape
--- iterates UISpecialFrames FORWARD and stops after hiding the first visible
--- entry — so this proxy (registered before the later-created AceGUI frame)
--- always fires first, giving us full control over close priority.
+-- LibAceGUIWidgets' EscapeLayer (MINOR 36, TOGPM contract d8f15682): the first
+-- Escape closes the most recently shown popup the window owns, the next one
+-- closes the window. The library read the client's CloseSpecialWindows
+-- (UIParentPanelManager.lua:1041): it hides EVERY shown entry of
+-- UISpecialFrames in `pairs` order, so the old proxy's premise -- that the walk
+-- stops at the first entry -- was wrong, and one press could close a popup and
+-- the window together. The layer ends on its own when the window is released.
 --
---   First ESC  → close ALL open popups simultaneously, then re-arm
---   Second ESC → close the main window
+-- The popups: the Cooldowns tab's group/transmute popup and the [Bank] request
+-- dialog. Each registers itself when it opens (AddEscapeChild); ArmEscape
+-- re-adds whichever already exist when the layer is rebuilt.
+function MainWindow:AddEscapeChild(frame)
+    if not (frame and self.frame and addon.W) then return end
+    addon.W:EscapeLayer(self.frame, { frame })
+end
 
-local _escProxy = CreateFrame("Frame", "TOGPMEscProxy", UIParent)
-_escProxy:SetSize(1, 1)
-_escProxy:SetAlpha(0)
-_escProxy:SetPoint("CENTER")
-_escProxy:Hide()
-tinsert(UISpecialFrames, "TOGPMEscProxy")
-
-_escProxy:SetScript("OnHide", function()
-    if not MainWindow.frame then return end
-
-    local closedAny = false
-
-    -- Group / transmute popup (CooldownsTab) — raw frame, not in UISpecialFrames
+function MainWindow:ArmEscape()
+    if not (self.frame and addon.W) then return end
+    local children = {}
     local ct = addon.CooldownsTab
-    if ct and ct._groupPopup and ct._groupPopup:IsShown() then
-        ct._groupPopup:Hide()
-        ct._groupPopup = nil
-        closedAny = true
-    end
-
-    -- Bank request dialog (Compat.lua)
+    if ct and ct._groupPopup then children[#children + 1] = ct._groupPopup end
     local bd = _G["TOGPMBankRequestDialog"]
-    if bd and bd:IsShown() then
-        bd:Hide()
-        closedAny = true
-    end
-
-    if closedAny then
-        -- Re-arm after one frame so the next ESC closes the main window.
-        C_Timer.After(0, function()
-            if MainWindow.frame then _escProxy:Show() end
-        end)
-    else
-        MainWindow:Close()
-    end
-end)
+    if bd then children[#children + 1] = bd end
+    addon.W:EscapeLayer(self.frame, children)
+end
 
 -- ---------------------------------------------------------------------------
 -- Open / Close
@@ -159,73 +128,59 @@ function MainWindow:Open(tabKey)
     f:SetTitle(L["WindowTitle"])
     f:SetStatusText(addon.Version)
     f:SetLayout("Fill")
-    -- Resize is enabled/disabled per-tab in ApplyTabSize below. Start
-    -- enabled (matches AceGUI default; ApplyTabSize will tighten it
-    -- after the initial tab is selected).
-    f:EnableResize(true)
-
-    -- AceGUI position/size persistence. It writes top/left/width/height
-    -- into this sub-table on every move/resize. The per-tab size policy
-    -- below means width/height get overwritten whenever the user is on
-    -- a locked tab, so we keep the user's last Browser size separately
-    -- in browserWidth/browserHeight — restored when switching back to
-    -- Browser. Position (top/left) is shared across all tabs.
-    --
-    -- Declared BEFORE the OnSizeChanged hook below because that hook
-    -- captures `frames` as an upvalue (used to persist Browser's resized
-    -- dimensions); the hook's closure is created at registration time
-    -- and the upvalue must already exist by then.
+    -- Position and size persistence through LibAceGUIWidgets' PersistWindow
+    -- (MINOR 36): the saved table is ours (db.char.frames.mainWindow) and is
+    -- handed to AceGUI's SetStatusTable, and the restored window is clamped
+    -- onto the screen -- the fix for a title bar left above the screen after a
+    -- UI-scale change (Discord, 2026-08-30), which the hand-rolled version did
+    -- with SetClampedToScreen on the pooled frame and never turned back off.
+    -- Per-tab sizes are profiles (ApplyTabSize): the locked tabs snap, and the
+    -- two resizable tabs (Professions, Crafting) share one remembered size.
     local frames = Ace.db.char.frames
     frames.mainWindow = frames.mainWindow or { width = 720, height = 500 }
-    frames.mainWindow.browserWidth  = frames.mainWindow.browserWidth  or 720
-    frames.mainWindow.browserHeight = frames.mainWindow.browserHeight or 500
-    -- SetStatusTable triggers SetSize internally → fires our OnSizeChanged
-    -- hook with whatever size was last persisted (which might be a locked
-    -- tab's size if the user last left on Cooldowns/Missing). Suppress
-    -- the browserWidth/Height save during this call so the saved Browser
-    -- size isn't overwritten with a locked tab's dimensions.
-    self._suppressBrowserSize = true
-    f:SetStatusTable(frames.mainWindow)
-    self._suppressBrowserSize = false
-
-    -- The status table restores top/left verbatim. A position saved under a
-    -- different UI scale or resolution (the coordinate space is 768/uiScale
-    -- units tall) can land the title bar above the screen, where it cannot
-    -- be dragged back. Reported on Discord 2026-08-30 -- the reporter's
-    -- workaround was lowering UI scale to 65%, which enlarges the space
-    -- until the saved top fits again. Clamping keeps the frame on screen
-    -- for restored positions as well as drags (Blizzard's FrameUtil.lua
-    -- has to switch it off to animate a frame out of view).
+    local saved = frames.mainWindow
+    -- One-time move of the size the older builds kept in browserWidth /
+    -- browserHeight into the shared resizable profile.
+    if saved.browserWidth or saved.browserHeight then
+        saved.profiles = saved.profiles or {}
+        saved.profiles[RESIZABLE_PROFILE] = saved.profiles[RESIZABLE_PROFILE] or {
+            width = saved.browserWidth, height = saved.browserHeight,
+        }
+        saved.browserWidth, saved.browserHeight = nil, nil
+    end
+    if addon.W then
+        addon.W:PersistWindow(f, saved, { width = 720, height = 500 })
+    else
+        f:SetStatusTable(saved)
+    end
+    -- PersistWindow clamps only when it restores a position, so a title bar
+    -- dragged past the top edge mid-session would stay there. Clamp for the
+    -- life of the window, and put the pooled frame's own setting back in
+    -- _ReleaseFrame so the flag never reaches the next addon.
+    self._priorClamp = f.frame:IsClampedToScreen()
     f.frame:SetClampedToScreen(true)
 
     -- Fire a cross-tab WINDOW_RESIZED callback (debounced ~150ms) on every
-    -- user-driven resize so tabs that compute responsive layouts can re-
-    -- render. HookScript chains rather than overriding, so AceGUI's own
-    -- size handling continues to run. Also persist Browser's resized
-    -- dimensions here — only when Browser is the active tab AND the
-    -- resize wasn't programmatic (ApplyTabSize sets _suppressBrowserSize
-    -- so the locked-tab SetSize / initial-Open SetStatusTable size
-    -- doesn't overwrite Browser's user-chosen size).
+    -- resize so tabs that compute responsive layouts can re-render. Set
+    -- through the library's WidgetFrameScripts, which puts the frame's
+    -- original script back on Release; the old HookScript could not be
+    -- removed, so every open stacked another copy on the pooled frame and
+    -- they kept firing inside whichever addon AceGUI gave that frame to next.
+    -- AceGUI's own OnSizeChanged runs first.
+    local origSizeChanged = f.frame:GetScript("OnSizeChanged")
     local _resizeTimer
-    f.frame:HookScript("OnSizeChanged", function(_self, w, h)
-        -- Persist the user-chosen size for the resizable tabs (Browser AND
-        -- Crafting). Both share the one browserWidth/browserHeight slot — the
-        -- locked tabs never reach here (suppressed via _suppressBrowserSize
-        -- during their programmatic snap), so a resizable tab's size is never
-        -- clobbered by a locked tab's dimensions.
-        if (self.activeTab == "browser" or self.activeTab == "crafting") and w and h
-           and not self._suppressBrowserSize then
-            frames.mainWindow.browserWidth  = math.floor(w + 0.5)
-            frames.mainWindow.browserHeight = math.floor(h + 0.5)
-        end
-        if _resizeTimer then _resizeTimer:Cancel() end
-        _resizeTimer = C_Timer.NewTimer(0.15, function()
-            _resizeTimer = nil
-            if addon.callbacks then
-                addon.callbacks:Fire("WINDOW_RESIZED", w, h)
-            end
-        end)
-    end)
+    addon.AceGUIFrameScripts(f, {
+        OnSizeChanged = function(frame, w, h, ...)
+            if origSizeChanged then origSizeChanged(frame, w, h, ...) end
+            if _resizeTimer then _resizeTimer:Cancel() end
+            _resizeTimer = C_Timer.NewTimer(0.15, function()
+                _resizeTimer = nil
+                if addon.callbacks then
+                    addon.callbacks:Fire("WINDOW_RESIZED", w, h)
+                end
+            end)
+        end,
+    })
 
     f:SetCallback("OnClose", function(widget)
         -- Browser's last user-chosen size is already persisted by the
@@ -236,31 +191,11 @@ function MainWindow:Open(tabKey)
         self:_ReleaseFrame(widget)
     end)
 
-    -- Shrink the default status bar right edge to create room for the help
-    -- icon AND the new settings gear icon. Strip layout, left to right:
-    --   [ status text ......(-183) ]-6-[ help 24 ]-3-[ gear 20 ]-3-[ Close 100 (-27) ]
-    -- The 24-px help icon keeps its size + tooltip behaviour; the gear is
-    -- a 20-px Button anchored to its BOTTOMRIGHT, mirroring FastGuildInvite's
-    -- bottom-row icon strip. statusbg's right edge moves from -163 to -183
-    -- to make room for the 20-px gear + 3-px gap between gear and helpIcon.
-    local statusbg = f.statustext:GetParent()
-    statusbg:ClearAllPoints()
-    statusbg:SetPoint("BOTTOMLEFT",  f.frame, "BOTTOMLEFT",   15, 15)
-    statusbg:SetPoint("BOTTOMRIGHT", f.frame, "BOTTOMRIGHT", -183, 15)
-
-    -- Help "i" icon
-    local helpIcon = CreateFrame("Frame", nil, f.frame)
-    self._helpIcon = helpIcon
-    helpIcon:SetSize(24, 24)
-    helpIcon:SetPoint("BOTTOMRIGHT", f.frame, "BOTTOMRIGHT", -153, 15)
-    helpIcon:EnableMouse(true)
-    -- Above AceGUI's bottom resize strips, or the lower 10px of this 24px icon
-    -- is dead to clicks and tooltips. See addon.GUI.LiftAboveSizers.
-    addon.GUI.LiftAboveSizers(helpIcon)
-    local helpTex = helpIcon:CreateTexture(nil, "OVERLAY")
-    helpTex:SetAllPoints(helpIcon)
-    helpTex:SetTexture("Interface\\Common\\help-i")
-
+    -- The help "i" and settings gear sit left of AceGUI's Close button, and the
+    -- status bar is shortened to clear them: LibAceGUIWidgets' DressBottomRow,
+    -- built below once the help text exists, and UndressBottomRow in
+    -- _ReleaseFrame (both icons hidden and the status bar re-anchored, so the
+    -- pooled frame reaches the next addon clean).
     local brand   = "|c" .. (addon.BrandColor  or "ffFF8000")
     local cYou    = "|c" .. (addon.ColorYou    or addon.BrandColor or "ffFF8000")
     local cOnline = "|c" .. (addon.ColorOnline  or "ffffffff")
@@ -334,7 +269,7 @@ function MainWindow:Open(tabKey)
                 " ",
                 brand .. "Trainer toggle:|r By default trainer-only recipes are hidden (can't be bought). Tick " .. brand .. "Include trainer-only|r to also see those.",
                 " ",
-                brand .. "Row actions:|r Hover the recipe name for an item tooltip, shift-click to link in chat. Click " .. brand .. "+|r to add the scroll to your Reagent Watch \226\128\148 you'll be alerted the moment it lands in your bags.",
+                brand .. "Row actions:|r Hover the recipe name for an item tooltip, shift-click to link in chat. " .. brand .. "[Bank]|r requests the scroll from the guild bank when it has one; " .. brand .. "[AH]|r (after a Scan AH) jumps to its auction listing.",
                 " ",
                 brand .. "Sources:|r Each row tags how the recipe is obtained: " .. brand .. "Vendor|r, " .. brand .. "Drop|r, " .. brand .. "Quest|r, " .. brand .. "Crafted|r, " .. brand .. "Container|r, " .. brand .. "Fishing|r, or " .. brand .. "Trainer|r when shown.",
             },
@@ -383,121 +318,50 @@ function MainWindow:Open(tabKey)
     }
     -- luacheck: pop
 
-    -- `icon`, not `self`: this handler's first argument is the icon frame, and
-    -- inside Open() a bare `self` is the MainWindow table. A lint rename on
-    -- 2026-09-11 dropped the parameter and left the body reading `self`, and
-    -- SetOwner raised "Wrong object type" on the first hover. The parameter is
-    -- what the body needs, so it stays named.
-    helpIcon:SetScript("OnEnter", function(icon)
-        local tab  = MainWindow.activeTab or "browser"
-        local help = TAB_HELP[tab] or TAB_HELP.browser
-        -- ANCHOR_TOP (centered above) is intentional here; the helper's
-        -- TOPLEFT/BOTTOMLEFT picks look worse for this fixed-position icon.
-        GameTooltip:SetOwner(icon, "ANCHOR_TOP")
-        -- 280 keeps the help text readable as paragraphs without forcing a
-        -- tooltip far wider than the game's own. It MUST be put back in
-        -- OnLeave — see below.
-        --
-        -- NOTHING RESETS A MINIMUM WIDTH AUTOMATICALLY. Hiding is not a reset:
-        -- `GameTooltip_OnHide` (Blizzard_GameTooltip/Classic/GameTooltip.lua:413)
-        -- clears money frames, status bars, inserted frames and the backdrop
-        -- style, and sets `needsReset` — which is only read at :541 for the
-        -- secondary compare item. Minimum width is untouched by all of it. So
-        -- setting it here and only calling Hide() pinned the SHARED GameTooltip
-        -- to a 480px floor for the rest of the session — every tooltip in the
-        -- game, ours and every other addon's, from one hover of our help icon.
-        --
-        -- Blizzard DOES lower it; it just always does so explicitly. Its own
-        -- idiom is `SetMinimumWidth(N, true)` on show paired with
-        -- `SetMinimumWidth(0, false)` on hide (Blizzard_AchievementUI.xml:724,
-        -- Mists/InspectTalentFrame.lua:189, Mists/Blizzard_TalentUI.lua:1133).
-        -- We restore instead of zeroing, for the reason in OnLeave.
-        --
-        -- Both return values are captured: `GetMinimumWidth` returns
-        -- `width, forced` (FrameAPITooltipDocumentation.lua:24-35) and `force`
-        -- is a real second argument (:52-59, Default = false), so restoring the
-        -- width alone would silently clear another addon's forced flag.
-        if GameTooltip.GetMinimumWidth then
-            MainWindow._helpTipMinWidth,
-            MainWindow._helpTipMinForced = GameTooltip:GetMinimumWidth()
+    -- The help tooltip follows the active tab, so its title and body are
+    -- functions DressBottomRow reads at hover. tipMinWidth = 280 keeps the
+    -- help readable as paragraphs; the library saves GameTooltip's minimum
+    -- width (both halves GetMinimumWidth returns) and puts it back on hide,
+    -- which the hand-rolled version had to do itself because nothing in the
+    -- client resets it (GameTooltip_OnHide, Blizzard_GameTooltip/Classic/
+    -- GameTooltip.lua:413, leaves it alone). The body is one string, so the
+    -- old per-line grey is carried by a colour escape around each line.
+    local function helpFor()
+        return TAB_HELP[MainWindow.activeTab or "browser"] or TAB_HELP.browser
+    end
+    local function helpTitle()
+        return "|c" .. (addon.BrandColor or "ffFF8000") .. helpFor().title .. "|r"
+    end
+    local function helpBody()
+        local out = {}
+        for _, line in ipairs(helpFor().lines) do
+            out[#out + 1] = (line == " ") and " " or ("|cffe6e6e6" .. line .. "|r")
         end
-        MainWindow._helpTipMinWidth  = MainWindow._helpTipMinWidth or 0
-        MainWindow._helpTipMinForced = MainWindow._helpTipMinForced or false
-        GameTooltip:SetMinimumWidth(280)
-        GameTooltip:ClearLines()
-        GameTooltip:AddLine(help.title, 1, 0.82, 0, true)
-        for _, line in ipairs(help.lines) do
-            GameTooltip:AddLine(line, 0.9, 0.9, 0.9, true)
-        end
-        GameTooltip:Show()
-    end)
-    helpIcon:SetScript("OnLeave", function()
-        -- Restore what was there rather than assuming a default: another addon
-        -- may legitimately have raised it, and clobbering that to 0 would be
-        -- the same bug pointed the other way.
-        if GameTooltip.SetMinimumWidth and MainWindow._helpTipMinWidth then
-            GameTooltip:SetMinimumWidth(MainWindow._helpTipMinWidth,
-                                        MainWindow._helpTipMinForced)
-            MainWindow._helpTipMinWidth  = nil
-            MainWindow._helpTipMinForced = nil
-        end
-        GameTooltip:Hide()
-    end)
+        return out
+    end
 
-    -- Settings gear icon — opens the AceConfig dialog (same target as
-    -- /togpm settings and Shift+left-click on the minimap button).
-    -- Anchored to helpIcon's BOTTOMRIGHT + (3, 2): 3-px horizontal gap to
-    -- match FastGuildInvite's bottom-row spacing, +2 y to vertically
-    -- centre a 20-tall gear against the 24-tall help icon (both bottoms
-    -- align with the AceGUI close button's centre y=27). Stashed on self
-    -- so OnClose can DetachPool it alongside the help icon — without
-    -- that, this gear would ride along when AceGUI recycles the Frame
-    -- to another addon (same widget-bleed trap helpIcon had).
-    local gearIcon = CreateFrame("Button", nil, f.frame)
-    self._gearIcon = gearIcon
-    gearIcon:SetSize(20, 20)
-    gearIcon:SetPoint("BOTTOMLEFT", helpIcon, "BOTTOMRIGHT", 3, 2)
-    gearIcon:SetNormalTexture("Interface\\Icons\\Trade_Engineering")
-    gearIcon:SetPushedTexture("Interface\\Icons\\Trade_Engineering")
-    -- Same fix as helpIcon: 8 of this button's 20px sit inside sizer_s, so
-    -- without the lift its lower two-fifths are dead to clicks.
-    addon.GUI.LiftAboveSizers(gearIcon)
-    local gearPushed = gearIcon:GetPushedTexture()
-    if gearPushed then gearPushed:SetVertexColor(0.7, 0.7, 0.7) end
-    gearIcon:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-    gearIcon:SetScript("OnEnter", function(self_)
-        addon.Tooltip.Owner(self_)
-        local brandColor = addon.BrandColor or "ffFF8000"
-        GameTooltip:SetText("|c" .. brandColor .. L["TooltipSettingsTitle"] .. "|r", 1, 1, 1, 1, true)
-        GameTooltip:AddLine(L["TooltipSettingsDesc"], nil, nil, nil, true)
-        GameTooltip:Show()
-    end)
-    gearIcon:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    gearIcon:SetScript("OnClick", function()
-        if not addon.OpenSettings then return end
-        -- Opening the Blizzard Settings panel triggers CloseSpecialWindows()
-        -- on the way in, which hides every entry in UISpecialFrames — including
-        -- our TOGPMEscProxy, whose OnHide handler closes the main window when
-        -- nothing else is on top. End result without this workaround: the main
-        -- window slams shut every time the gear is clicked.
-        --
-        -- Workaround (mirrors FGI's gear-click pattern): temporarily clear the
-        -- proxy's OnHide handler so the proxy can be hidden silently, open
-        -- settings, then restore the handler and re-show the proxy on the next
-        -- frame so ESC still closes the main window on subsequent presses.
-        local proxy = _G["TOGPMEscProxy"]
-        local origOnHide = proxy and proxy:GetScript("OnHide")
-        if proxy then proxy:SetScript("OnHide", nil) end
-
-        addon:OpenSettings()
-
-        if proxy then
-            C_Timer.After(0, function()
-                proxy:SetScript("OnHide", origOnHide)
-                if MainWindow.frame then proxy:Show() end
-            end)
-        end
-    end)
+    if addon.W then
+        local icons = addon.W:DressBottomRow(f, {
+            { key = "help", texture = "Interface\\Common\\help-i",
+              tipTitle = helpTitle, tipBody = helpBody, tipMinWidth = 280 },
+            -- The settings gear opens the options panel (same target as
+            -- /togpm settings and Shift+click on the minimap button). That
+            -- panel is an AceConfigDialog window. The start of
+            -- AceConfigDialog:Open (Ace3 AceConfigDialog-3.0.lua:1853-1860)
+            -- wraps CloseSpecialWindows rather than calling it; the rest of
+            -- Open was NOT read, and the gear has not been clicked in game
+            -- since the old proxy-clearing workaround (written for the
+            -- Blizzard Settings panel) was removed. If the window closes on a
+            -- gear click, that assumption was wrong.
+            { key = "gear", texture = "Interface\\Icons\\Trade_Engineering",
+              texCoord = { 0.08, 0.92, 0.08, 0.92 },
+              tipTitle = "|c" .. (addon.BrandColor or "ffFF8000") .. L["TooltipSettingsTitle"] .. "|r",
+              tipBody = L["TooltipSettingsDesc"],
+              onClick = function() if addon.OpenSettings then addon:OpenSettings() end end },
+        })
+        self._helpIcon = icons and icons.help
+        self._gearIcon = icons and icons.gear
+    end
 
     -- TabGroup
     local tg = AceGUI:Create("TabGroup")
@@ -507,9 +371,8 @@ function MainWindow:Open(tabKey)
     tg:SetFullHeight(true)
 
     tg:SetCallback("OnGroupSelected", function(widget, _event, group)
-        -- Browser's last size is kept current by the OnSizeChanged hook
-        -- above (it persists w/h whenever activeTab == "browser"), so by
-        -- the time we leave Browser the saved value is already correct.
+        -- The resizable tabs' size is saved by SetWindowProfile when the
+        -- profile is left (ApplyTabSize), and by _ReleaseFrame on close.
         self.activeTab = group
         -- A tab SELECTION is a user navigation (hardware event), so it's the one
         -- safe moment to let the Crafting tab auto-cast/open the selected
@@ -537,7 +400,7 @@ function MainWindow:Open(tabKey)
 
     self:ApplyScale()
     self:ApplyOpacity()
-    _escProxy:Show()
+    self:ArmEscape()
     -- Apply size BEFORE selecting the tab so the first Draw sees the
     -- correct frame dimensions (some tabs read frame width during Draw).
     -- Load saved tab from db.char, falling back to "browser" if none saved
@@ -561,30 +424,26 @@ end
 -- than the resize floor allows without the layout overlapping. Independent of
 -- size: SetResizeBounds / the persisted width/height are in the frame's own
 -- coordinate space, so a scaled window still resizes and remembers its size; the
--- on-screen footprint is size × scale. Clamped 0.5–1.5 (50%–150%).
+-- on-screen footprint is size × scale. Clamped 0.5–1.5 (50%–150%) by
+-- LibAceGUIWidgets' SetWindowScale (MINOR 36, TOGPM contract e5e1586a), which
+-- keeps the window's top-left on the same screen point, clamps it on screen
+-- and puts the pooled frame's scale back to 1 on Release -- the hand-rolled
+-- SetScale left the next addon given this frame at our scale.
 function MainWindow:ApplyScale()
-    if not (self.frame and self.frame.frame) then return end
-    local s = tonumber(Ace.db.profile.windowScale) or 1
-    if s < 0.5 then s = 0.5 elseif s > 1.5 then s = 1.5 end
-    self.frame.frame:SetScale(s)
+    if not (self.frame and self.frame.frame and addon.W) then return end
+    addon.W:SetWindowScale(self.frame, tonumber(Ace.db.profile.windowScale) or 1)
 end
 
 -- Background opacity (Settings → Display → "Background opacity"). Fades the
--- two fills a player sees through -- the AceGUI Frame's black backdrop and the
--- TabGroup pane's grey one -- and nothing else: text, borders, icons and rows
--- keep full alpha, so the window stays readable over the world behind it.
--- Frame alpha (SetAlpha) would fade the contents too, which is not the ask.
---
--- The stock values are AceGUI's own (Frame: 0,0,0,1; TabGroup border:
--- 0.1,0.1,0.1,0.5), and RestoreOpacity puts them back before the widgets go
--- to the pool -- both are recycled across addons, and neither widget's
--- OnRelease resets its backdrop colour, so a faded fill would otherwise
--- surface in the next addon that acquires the widget. Clamped 0.2-1.0: below
--- 20% the pane reads as bare text floating on the world.
-local FRAME_FILL = { 0, 0, 0 }
-local PANE_FILL  = { 0.1, 0.1, 0.1 }
-local PANE_ALPHA = 0.5
-
+-- background fills -- the window's backdrop and every pane backdrop inside it
+-- -- and nothing else: text, borders, icons and rows keep full alpha, so the
+-- window stays readable over the world behind it. LibAceGUIWidgets'
+-- SetWindowOpacity (MINOR 36, TOGPM contract ae090bd5) fades from the stock
+-- colour each time and restores every faded frame exactly when its widget is
+-- released, so nothing faded reaches another addon through the pool. It only
+-- reaches panes that exist when it runs, so DrawTab calls ApplyOpacity again
+-- after each tab draw. Clamped 0.2-1.0: below 20% the pane reads as bare text
+-- floating on the world.
 function MainWindow:GetOpacity()
     local a = tonumber(Ace.db.profile.windowOpacity) or 1
     if a < 0.2 then a = 0.2 elseif a > 1 then a = 1 end
@@ -592,26 +451,8 @@ function MainWindow:GetOpacity()
 end
 
 function MainWindow:ApplyOpacity()
-    local a = self:GetOpacity()
-    local f = self.frame and self.frame.frame
-    if f and f.SetBackdropColor then
-        f:SetBackdropColor(FRAME_FILL[1], FRAME_FILL[2], FRAME_FILL[3], a)
-    end
-    local pane = self.tabs and self.tabs.border
-    if pane and pane.SetBackdropColor then
-        pane:SetBackdropColor(PANE_FILL[1], PANE_FILL[2], PANE_FILL[3], PANE_ALPHA * a)
-    end
-end
-
-function MainWindow:RestoreOpacity()
-    local f = self.frame and self.frame.frame
-    if f and f.SetBackdropColor then
-        f:SetBackdropColor(FRAME_FILL[1], FRAME_FILL[2], FRAME_FILL[3], 1)
-    end
-    local pane = self.tabs and self.tabs.border
-    if pane and pane.SetBackdropColor then
-        pane:SetBackdropColor(PANE_FILL[1], PANE_FILL[2], PANE_FILL[3], PANE_ALPHA)
-    end
+    if not (self.frame and addon.W) then return end
+    addon.W:SetWindowOpacity(self.frame, self:GetOpacity())
 end
 
 -- ---------------------------------------------------------------------------
@@ -622,9 +463,13 @@ end
 --   { minWidth=W, minHeight=H }              — resizable, with a floor
 --
 -- Locked tabs (Cooldowns, Missing) use IDENTICAL dimensions so switching
--- between them produces no visible jump. Only switching to/from Browser
--- (the resizable tab) changes the window size, and Browser's last size
--- is restored from frames.mainWindow.browserWidth/browserHeight.
+-- between them produces no visible jump. Each spec becomes a LibAceGUIWidgets
+-- size profile (SetWindowProfile, MINOR 36, TOGPM contract 72e8dd4b): a locked
+-- tab is its own profile, and the resizable tabs (Professions, Crafting)
+-- share RESIZABLE_PROFILE, whose size the library saves when it is left and
+-- restores when it comes back. A locked tab's snapped size can never be
+-- written into that save, which is what the old _suppressBrowserSize flag was
+-- for. Every switch ends clamped to the screen.
 local _TAB_SIZE_LOOKUP = {
     browser   = function() return addon.BrowserTab        and addon.BrowserTab.WINDOW_SIZE        end,
     cooldowns = function() return addon.CooldownsTab      and addon.CooldownsTab.WINDOW_SIZE      end,
@@ -638,63 +483,18 @@ function MainWindow:ApplyTabSize(tabKey)
     if not (self.frame and self.frame.frame) then return end
     local lookup = _TAB_SIZE_LOOKUP[tabKey]
     local spec = lookup and lookup()
-    if not spec then return end
-    local f = self.frame
-    local frames = Ace.db.char.frames
-
-    -- Suppress the OnSizeChanged hook's browserWidth/Height save during
-    -- programmatic SetWidth/SetHeight below — when switching to a locked
-    -- tab the snap to spec.width/height fires OnSizeChanged with the
-    -- LOCKED size, which would otherwise overwrite Browser's saved size.
-    -- For the resizable branch we restore the saved size explicitly so
-    -- there's nothing useful for the hook to capture either; suppression
-    -- avoids a redundant save-of-the-same-value.
-    self._suppressBrowserSize = true
+    if not (spec and addon.W) then return end
 
     if spec.locked then
-        -- SetResizeBounds with min == max collapses the resize handle
-        -- range to zero — the user can still drag the corner but the
-        -- frame won't actually change size. Combined with EnableResize
-        -- (false) the grip itself is also hidden. Modern API takes
-        -- (minW, minH, maxW, maxH); legacy SetMinResize/SetMaxResize
-        -- needs both halves separately.
-        f:EnableResize(false)
-        if f.frame.SetResizeBounds then
-            f.frame:SetResizeBounds(spec.width, spec.height, spec.width, spec.height)
-        else
-            if f.frame.SetMinResize then f.frame:SetMinResize(spec.width, spec.height) end
-            if f.frame.SetMaxResize then f.frame:SetMaxResize(spec.width, spec.height) end
-        end
-        f.frame:SetWidth(spec.width)
-        f.frame:SetHeight(spec.height)
+        addon.W:SetWindowProfile(self.frame, tabKey, {
+            width = spec.width, height = spec.height, resizable = false,
+        })
     else
-        -- Resizable. Restore Browser's last size (saved separately from
-        -- AceGUI's status table — see Open() for why) and clamp the
-        -- minimum via SetResizeBounds. No max bound.
-        f:EnableResize(true)
-        local minW = spec.minWidth  or 600
-        local minH = spec.minHeight or 350
-        if f.frame.SetResizeBounds then
-            f.frame:SetResizeBounds(minW, minH)
-        elseif f.frame.SetMinResize then
-            f.frame:SetMinResize(minW, minH)
-        end
-        local w = math.max(minW, frames.mainWindow.browserWidth  or minW)
-        local h = math.max(minH, frames.mainWindow.browserHeight or minH)
-        -- A size saved under a larger coordinate space (lower UI scale, or
-        -- a bigger monitor) can be taller than the screen is now; clamping
-        -- then keeps the title bar on screen and pushes the bottom off
-        -- instead. Cap at the screen, in the frame's own scaled units.
-        local screenW, screenH = UIParent:GetWidth(), UIParent:GetHeight()
-        local s = f.frame:GetScale() or 1
-        if s <= 0 then s = 1 end
-        if screenH and screenH > 0 then h = math.min(h, math.floor(screenH / s)) end
-        if screenW and screenW > 0 then w = math.min(w, math.floor(screenW / s)) end
-        f.frame:SetWidth(w)
-        f.frame:SetHeight(h)
+        addon.W:SetWindowProfile(self.frame, RESIZABLE_PROFILE, {
+            width = 720, height = 500, resizable = true,
+            minWidth = spec.minWidth or 600, minHeight = spec.minHeight or 350,
+        })
     end
-
-    self._suppressBrowserSize = false
 end
 
 --- Shared release-and-cleanup path used by BOTH OnClose (X-button) and
@@ -704,18 +504,18 @@ end
 --- parented to f.frame and ride the recycled widget into the next
 --- AceGUI:Create("Frame") caller (TOGBank, PersonalShopper, Grouper).
 function MainWindow:_ReleaseFrame(widget)
-    -- DetachPool: Hide + reparent to UIParent + ClearAllPoints. Defined
-    -- in GUI/SharedWidgets.lua. Single-frame form, same helper used by
-    -- the row-pool detaches in BrowserTab / MissingRecipesTab.
-    addon.GUI.DetachPool(self._helpIcon)
-    self._helpIcon = nil
-    addon.GUI.DetachPool(self._gearIcon)
-    self._gearIcon = nil
-    -- Stock backdrop colours back before the pool gets these widgets.
-    self:RestoreOpacity()
+    -- The help and gear icons hidden and the status bar put back. Opacity,
+    -- scale, persistence, the Escape layer and the resize hook are all undone
+    -- by the library on Release -- which also saves the resizable profile's
+    -- size when the window closes on it (MINOR 36, the floor addon.W requires).
+    if widget and addon.W then addon.W:UndressBottomRow(widget) end
+    if widget and widget.frame then
+        widget.frame:SetClampedToScreen(self._priorClamp and true or false)
+    end
+    self._priorClamp = nil
+    self._helpIcon, self._gearIcon = nil, nil
     self.frame = nil
     self.tabs  = nil
-    _escProxy:Hide()
     if widget then AceGUI:Release(widget) end
 end
 
@@ -839,6 +639,9 @@ function MainWindow:DrawTab(group, container)
         end
     end
     addon.Perf.mark("Tab draw: " .. tostring(group), addon.Perf.now() - t0)
+    -- The panes this draw just built are faded to the window's opacity too;
+    -- SetWindowOpacity only reaches panes that exist when it runs.
+    self:ApplyOpacity()
 end
 
 -- ---------------------------------------------------------------------------

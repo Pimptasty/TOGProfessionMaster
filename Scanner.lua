@@ -212,6 +212,35 @@ local PROF_NAME_TO_ID = {
 -- exchange with a sister guild: the "sister-pull" request and its consent
 -- proof (RequestSisterData, the DELTA handler below) and the merge gate.
 
+-- Should we serve a "sister-pull" from `sender`? Returns (consentOk, identityOk).
+-- BILATERAL CONSENT: serve only when
+--   (a) WE list THEIR guild  (baseline.parent ∈ our sisters), and
+--   (b) THEY list OUR guild  (our home key ∈ baseline.keys, the sister-key set
+--       they attach as a consent proof).
+-- This makes a one-sided config inert and refuses any stranger / accidental /
+-- malicious puller from a guild we don't federate with.
+-- ANTI-SPOOF: if we ALREADY hold their claimed guild's roster, the requester
+-- must actually be a member of it — defeats a stranger forging parent/keys for
+-- a guild we list. On first contact (no roster yet) we trust the bilateral
+-- config claim; the roster is bootstrapped by the library's roster pull.
+-- The library's signature is IsInGuildScoped(guildKey, name) and it normalizes
+-- the name itself. Up to v1.1.1 this passed (name, guildKey), so once a sister
+-- roster was held every legitimate member's pull was refused as identity=false.
+function Scanner:SisterPullGate(sender, baseline)
+    local reqHome    = baseline and baseline.parent
+    local reqSisters = (type(baseline and baseline.keys) == "table") and baseline.keys or {}
+    local myHome     = addon:GetGuildKey()
+    local consentOk  = (myHome and reqHome
+        and addon:IsSisterGuildKey(reqHome)   -- we consent to them
+        and reqSisters[myHome] and true) or false  -- they consent to us
+    local identityOk = true
+    local GR = self.GuildRoster
+    if consentOk and GR and GR.GetRoster and GR.IsInGuildScoped and GR:GetRoster(reqHome) then
+        identityOk = GR:IsInGuildScoped(reqHome, sender) and true or false
+    end
+    return consentOk, identityOk
+end
+
 -- ---------------------------------------------------------------------------
 -- DeltaSync initialisation
 -- Called on PLAYER_ENTERING_WORLD (initial login or UI reload only).
@@ -347,32 +376,10 @@ function Scanner:InitDeltaSync()
                 end
             elseif baseline.type == "sister-pull" then
                 -- A sister-guild peer is requesting our full guild dataset for
-                -- cross-guild sharing. BILATERAL CONSENT GATE: serve only when
-                --   (a) WE list THEIR guild  (baseline.parent ∈ our sisters), and
-                --   (b) THEY list OUR guild  (our home key ∈ baseline.keys, the
-                --       sister-key set they attach as a consent proof).
-                -- This makes a one-sided config inert and refuses any stranger /
-                -- accidental / malicious puller from a guild we don't federate
-                -- with. Respond over WHISPER — they're not on our GUILD channel.
-                local reqHome    = baseline.parent
-                local reqSisters = (type(baseline.keys) == "table") and baseline.keys or {}
-                local myHome     = addon:GetGuildKey()
-                local consentOk  = myHome and reqHome
-                    and addon:IsSisterGuildKey(reqHome)   -- we consent to them
-                    and reqSisters[myHome] and true       -- they consent to us
-                -- Anti-spoof: if we ALREADY hold their claimed guild's roster,
-                -- the requester must actually be a member of it — defeats a
-                -- stranger forging parent/keys for a guild we list. On first
-                -- contact (no roster yet) we trust the bilateral-config claim;
-                -- the roster is bootstrapped by the (public) roster pull.
-                local identityOk = true
-                local GR = Scanner.GuildRoster
-                if consentOk and GR and GR.GetRoster and GR.IsInGuildScoped then
-                    if GR:GetRoster(reqHome) then
-                        local who = (GR.NormalizeName and GR:NormalizeName(sender)) or sender
-                        if not GR:IsInGuildScoped(who, reqHome) then identityOk = false end
-                    end
-                end
+                -- cross-guild sharing. Gate in Scanner:SisterPullGate. Respond
+                -- over WHISPER — they're not on our GUILD channel.
+                local reqHome = baseline.parent
+                local consentOk, identityOk = Scanner:SisterPullGate(sender, baseline)
                 if consentOk and identityOk then
                     local payload = Scanner:BuildFullGuildPayload()
                     if payload then DS:SendData(sender, payload, false) end
@@ -654,13 +661,24 @@ function Scanner:Init()
     local gdb = addon:GetGuildDb()
     if gdb then self:RebuildAltGroups(gdb) end
 
+    -- An event this client may not have. RegisterEvent RAISES on a name the
+    -- client does not know, and a raise here aborted the rest of Init -- every
+    -- registration and timer below -- on WoW Forever, which has no
+    -- TRADE_SKILL_UPDATE (reported in game 2026-09-27; its
+    -- TradeSkillUIDocumentation.lua declares TRADE_SKILL_LIST_UPDATE instead).
+    -- An unknown name is skipped; the classic clients never see the modern one.
+    local function tryRegister(event, fn)
+        pcall(Ace.RegisterEvent, Ace, event, fn)
+    end
+
     -- Trade skill window (TBC+/Wrath/Cata/MoP — most professions)
     Ace:RegisterEvent("TRADE_SKILL_SHOW",   function() Scanner:OnTradeSkillEvent() end)
-    Ace:RegisterEvent("TRADE_SKILL_UPDATE", function() Scanner:OnTradeSkillEvent() end)
+    tryRegister("TRADE_SKILL_UPDATE",      function() Scanner:OnTradeSkillEvent() end)
+    tryRegister("TRADE_SKILL_LIST_UPDATE", function() Scanner:OnTradeSkillEvent() end)
 
     -- Craft window (Vanilla enchanting and weapon crafting)
-    Ace:RegisterEvent("CRAFT_SHOW",   function() Scanner:OnCraftEvent() end)
-    Ace:RegisterEvent("CRAFT_UPDATE", function() Scanner:OnCraftEvent() end)
+    tryRegister("CRAFT_SHOW",   function() Scanner:OnCraftEvent() end)
+    tryRegister("CRAFT_UPDATE", function() Scanner:OnCraftEvent() end)
 
     -- Item-based cooldowns (Salt Shaker in Vanilla leatherworking)
     Ace:RegisterEvent("BAG_UPDATE_COOLDOWN", function() Scanner:OnBagCooldownEvent() end)
@@ -689,6 +707,22 @@ function Scanner:Init()
     -- the handler is idempotent (existing entries refresh their
     -- observedAt timestamp rather than double-counting).
     Ace:RegisterEvent("TRAINER_UPDATE", function() Scanner:OnTrainerShow() end)
+
+    -- A recipe learned from a pattern / plan / formula / trainer with the
+    -- profession window CLOSED. The trade-skill scan above only runs while that
+    -- window is open, so without these the new recipe stayed on the Missing
+    -- Recipes tab until the player next opened the profession (player report,
+    -- 2026-09-27). NEW_RECIPE_LEARNED(recipeID) is declared in Classic Era's
+    -- TradeSkillUIDocumentation.lua, but whether the server fires it for
+    -- profession recipes there is not verified, so the "You have learned how
+    -- to create a new item" system message is read as well. Both paths record
+    -- into the same crafter set and are idempotent.
+    tryRegister("NEW_RECIPE_LEARNED", function(_, recipeId)
+        Scanner:OnRecipeLearned(recipeId)
+    end)
+    Ace:RegisterEvent("CHAT_MSG_SYSTEM", function(_, message)
+        Scanner:OnLearnMessage(message)
+    end)
 
     -- Scan cooldowns on login after the server is ready
     Ace:ScheduleTimer(timedLogin("Login +2s: cooldown / specialization / gathering scans + hash broadcast", function()
@@ -992,6 +1026,10 @@ end
 
 function Scanner:OnTradeSkillEvent()
     if UnitAffectingCombat("player") then return end
+    -- WoW Forever: the recipe scan below is built on the classic trade-skill
+    -- API. A Forever scan on C_TradeSkillUI is NOT BUILT YET, so there the
+    -- event is ignored (Compat.lua, HasClassicTradeSkillAPI).
+    if not addon:HasClassicTradeSkillAPI() then return end
 
     local isLinked, linkedPlayer = IsTradeSkillLinked()
     if isLinked then
@@ -1024,6 +1062,94 @@ function Scanner:OnCraftEvent()
     self:ScanCraftSkillInto(charKey)
     self:ScanCooldowns()
     self:ScheduleBroadcast()
+end
+
+--- Add ONE recipe to the local character's crafter set, the way a full scan
+--- would have, and push it out. Used when the client tells us a recipe was
+--- learned while the profession window was closed, so no scan can run.
+--- Returns true when the recipe was newly recorded.
+function Scanner:RecordLearnedRecipe(profId, recipeId)
+    local gdb = addon:GetGuildDb()
+    if not (gdb and profId and recipeId) then return false end
+    local charKey = addon:GetCharacterKey()
+    if not gdb.recipes then gdb.recipes = {} end
+    if not gdb.recipes[profId] then gdb.recipes[profId] = {} end
+    local rd = gdb.recipes[profId][recipeId]
+    if not rd then
+        rd = { crafters = {} }
+        gdb.recipes[profId][recipeId] = rd
+    end
+    if not rd.crafters then rd.crafters = {} end
+    if rd.crafters[charKey] then return false end
+    rd.crafters[charKey] = addon:GetCurrentGuildTag()
+
+    if not gdb.lastScan then gdb.lastScan = {} end
+    if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
+    gdb.lastScan[charKey][profId] = GetServerTime()
+    if self.DS then
+        addon.HashManager:InvalidateProfession(self.DS, gdb, profId)
+    end
+    addon:DebugPrint("Scanner: learned recipe", recipeId, "in profession", profId)
+    self:RefreshAfterLocalScan(charKey)
+    self:ScheduleBroadcast()
+    return true
+end
+
+--- NEW_RECIPE_LEARNED(recipeID): the payload is the recipe's spell id, which is
+--- the key addon.recipeDB uses. An id no profession carries (a Season of
+--- Discovery engraving rune fires the same event) is ignored.
+function Scanner:OnRecipeLearned(recipeId)
+    if type(recipeId) ~= "number" or not addon.recipeDB then return false end
+    for profId, recipes in pairs(addon.recipeDB) do
+        if recipes[recipeId] then
+            return self:RecordLearnedRecipe(profId, recipeId)
+        end
+    end
+    return false
+end
+
+-- ERR_LEARN_RECIPE_S ("You have learned how to create a new item: %s.") turned
+-- into a Lua pattern with one capture, built from the client's own localised
+-- string and rebuilt only if that string changes. nil when the client has no
+-- such string.
+local learnRecipeFmt, learnRecipePattern
+local function getLearnRecipePattern()
+    local fmt = _G.ERR_LEARN_RECIPE_S
+    if type(fmt) ~= "string" or not fmt:find("%s", 1, true) then return nil end
+    if fmt ~= learnRecipeFmt then
+        local escaped = fmt:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+        learnRecipePattern = "^" .. escaped:gsub("%%%%s", "(.+)", 1) .. "$"
+        learnRecipeFmt = fmt
+    end
+    return learnRecipePattern
+end
+
+--- CHAT_MSG_SYSTEM: when the message is the "learned a new recipe" line, find
+--- the recipe by name among the professions this character has, and record it.
+--- Only the character's own professions are searched, so a name two
+--- professions share cannot be credited to one the character does not have.
+function Scanner:OnLearnMessage(message)
+    if type(message) ~= "string" then return false end
+    local pattern = getLearnRecipePattern()
+    if not pattern then return false end
+    local name = message:match(pattern)
+    if not name then return false end
+    name = extractNameFromLink(name) or name
+
+    local gdb = addon:GetGuildDb()
+    local mySkills = gdb and gdb.skills and gdb.skills[addon:GetCharacterKey()]
+    if not (mySkills and addon.recipeDB) then return false end
+    for profId in pairs(mySkills) do
+        local recipes = addon.recipeDB[profId]
+        if recipes then
+            for recipeId, data in pairs(recipes) do
+                if data.name == name then
+                    return self:RecordLearnedRecipe(profId, recipeId)
+                end
+            end
+        end
+    end
+    return false
 end
 
 --- Capture trainer-service skill requirements on TRAINER_SHOW.
@@ -1253,14 +1379,25 @@ end
 -- Only covers spells the local player knows; linked scans get spellId = nil.
 function Scanner:BuildSpellNameCache()
     local cache = {}
-    local numTabs = GetNumSpellTabs and GetNumSpellTabs() or 0
+    -- WoW Forever drops all three spellbook functions below
+    -- (11_0_0_SpellBookAPITransitionGuide.lua:94). The only caller is the
+    -- DumpSpellCache debug command, so the cache is simply empty there -- said
+    -- once in debug output so an empty dump is not mistaken for no spells.
+    if not (GetNumSpellTabs and GetSpellTabInfo and GetSpellBookItemInfo) then
+        if not self._noSpellbookNoted then
+            self._noSpellbookNoted = true
+            addon:DebugPrint("Scanner: this client has no classic spellbook API; the spell name cache is empty")
+        end
+        return cache
+    end
+    local numTabs = GetNumSpellTabs() or 0
     for tab = 1, numTabs do
         local _, _, offset, numSpells = GetSpellTabInfo(tab)
         for j = 1, numSpells do
             local idx = offset + j
             local _, spellId = GetSpellBookItemInfo(idx, "spell")
             if spellId then
-                local spellName = GetSpellInfo(spellId)
+                local spellName = addon.Spell.GetInfo(spellId)
                 if spellName then
                     cache[spellName] = spellId
                 end
@@ -1608,7 +1745,7 @@ function Scanner:DetectSpecializations()
     local specs = {}
     for profId, spellList in pairs(SPEC_SPELLS) do
         for _, spellId in ipairs(spellList) do
-            if IsSpellKnown and IsSpellKnown(spellId, false) then
+            if addon.Spell.IsKnown(spellId, false) then
                 specs[profId] = spellId
                 break
             end
@@ -1881,7 +2018,7 @@ function Scanner:ScanCooldowns()
 
     local transmuteExpiry, activeTransmuteId = nil, nil
     for spellId in pairs(data.transmutes) do
-        local start, duration = GetSpellCooldown(spellId)
+        local start, duration = addon.Spell.GetCooldown(spellId)
         if start and start > 0 and duration and duration > 1.5 then
             local remaining = (start + duration) - GetTime()
             if remaining > 0 and remaining < 691200 then
@@ -1907,7 +2044,7 @@ function Scanner:ScanCooldowns()
     end
 
     for spellId in pairs(data.transmutes) do
-        if knownTransmutes[spellId] or IsSpellKnown(spellId, false) then
+        if knownTransmutes[spellId] or addon.Spell.IsKnown(spellId, false) then
             if transmuteExpiry then
                 stored[spellId] = transmuteExpiry
             elseif not stored[spellId] or (stored[spellId] - now) > 691200 then
@@ -1919,7 +2056,7 @@ function Scanner:ScanCooldowns()
     -- ---- Non-transmute cooldowns -------------------------------------------
 
     for spellId in pairs(data.cooldowns) do
-        local start, duration = GetSpellCooldown(spellId)
+        local start, duration = addon.Spell.GetCooldown(spellId)
         if start and start > 0 and duration and duration > 1.5 then
             local remaining = GetCooldownLeft(start, duration)
             if remaining > 0 and remaining < 2592000 then
@@ -1930,7 +2067,7 @@ function Scanner:ScanCooldowns()
         else
             -- Spell is not on CD.  Seed "Ready" if the character knows it.
             if not stored[spellId] or (stored[spellId] - now) > 2592000 then
-                if IsSpellKnown(spellId, false) then
+                if addon.Spell.IsKnown(spellId, false) then
                     stored[spellId] = now - 1  -- past timestamp means Ready
                 end
             end
@@ -2135,7 +2272,7 @@ function Scanner:BackfillBogusRecipeNames()
             -- information" for spell-only IDs).
             if isBogusName(rd.name) and type(recipeId) == "number" then
                 local sid = rd.spellId or recipeId
-                local nm, _, icon = GetSpellInfo(sid)
+                local nm, _, icon = addon.Spell.GetInfo(sid)
                 if nm then
                     rd.name    = nm
                     rd.icon    = rd.icon or icon

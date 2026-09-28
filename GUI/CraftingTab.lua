@@ -4,16 +4,15 @@
 -- (see Modules/Crafting/CraftingEngine.lua for the window-hijack engine and
 -- Modules/Crafting/CraftQueue.lua for the queue model + completion tracking).
 --
--- Recipe list: virtual-scroll raw-frame pool (35 reused frames, manual content
--- height, no-op scroll LayoutFinished) like BrowserTab — near-instant, no
--- AceGUI relayout thrash. Columns: Recipe Name | Skill | Craft, all sortable
--- (click a header: none → asc → desc → none); recipe names are tinted by the
--- crafted item's QUALITY colour (white/green/blue/purple); hovering a row shows
--- the in-game item tooltip, shift-click links it in chat.
+-- Recipe list: a LibAceGUIWidgets RowList (MINOR 36) with the profession's own
+-- category rows as group headers. Columns: Recipe Name | Skill | Craft, all
+-- sortable (click a header: asc → desc → back to the category tree); recipe
+-- names are tinted by difficulty; shift-click links the item in chat.
 --
--- LAYOUT (TSM-style, manual anchoring via container.LayoutFinished — the
--- TabGroup container is not pool-recycled across tabs): toolbar on top; recipe
--- list (left) + Queue panel (right); detail panel pinned across the bottom.
+-- LAYOUT (TSM-style): toolbar on top; under it a LibAceGUIWidgets dock the tab
+-- owns for the session -- recipe list in the centre, Queue panel on the right,
+-- detail panel across the bottom, sized to its content. Each draw parks the
+-- dock under the toolbar; the dock follows a window resize through its anchors.
 
 local _, addon = ...
 local AceGUI = LibStub("AceGUI-3.0")
@@ -25,24 +24,14 @@ addon.CraftingTab = CraftingTab
 -- Resizable (shares the saved "resizable" size with the Browser tab via
 -- MainWindow). minWidth holds the known-good width so the recipe columns + the
 -- fixed-width queue panel never overlap; height can shrink a little and grow
--- freely. The layout itself is responsive — AnchorAll pins the detail panel to
+-- freely. The layout itself is responsive — the dock pins the detail panel to
 -- the bottom edge, the queue panel to the right edge, and lets the recipe list
--- fill the rest, so it reflows to any size (re-run via container.LayoutFinished
--- on the AceGUI resize cascade + the WINDOW_RESIZED handler below).
+-- fill the rest, so it reflows to any size.
 CraftingTab.WINDOW_SIZE = { minWidth = 820, minHeight = 540 }
 
--- Recipe list geometry — shared by the header and the row pool so columns line
--- up. Offsets are measured from the left edge of both (header frame and the
--- scroll content share that left edge), so the scrollbar on the right doesn't
--- affect alignment.
+-- Recipe list geometry (scale-1.0 values; the list scales them itself).
 local ROW_HEIGHT = 16
-local POOL_SIZE  = 35
-local ICON_X     = 4
-local NAME_X     = 22
-local NAME_W     = 250
-local SKILL_X    = 280     -- Skill column shows 4 colored tiers (orange/yellow/green/grey)
-local SKILL_W    = 104
-local COUNT_X    = 392
+local SKILL_W    = 104     -- Skill column shows 4 colored tiers (orange/yellow/green/grey)
 local COUNT_W    = 48
 
 local DETAIL_H    = 120   -- fallback; the panel auto-sizes to its content (self._detailH)
@@ -51,8 +40,8 @@ local QROW_H      = 18
 local Q_TITLE_H   = 24
 local Q_FOOTER_H  = 32
 local Q_PAD       = 8
-local QUEUE_POOL  = 60
-local GAP         = 8
+local GAP         = 8     -- between the list and the queue panel
+local PANEL_GAP   = 4     -- above and below the detail panel
 
 CraftingTab._search   = ""
 CraftingTab._haveOnly = false
@@ -299,215 +288,149 @@ function CraftingTab:Draw(container)
     end)
     toolbar:AddChild(blizBtn)
 
-    local cContent = container.content or container.frame
+    if not addon.W then return end
 
-    -- Column headers (raw, sortable, aligned with the row columns).
-    if not self._headerFrame then self:BuildHeaders(cContent) else
-        self._headerFrame:SetParent(cContent); self._headerFrame:Show()
-    end
-    self:UpdateHeaderText()
-
-    -- Recipe list (virtual scroll).
-    local scroll, savedScroll = addon.GUI.PersistentScroll.Acquire(self, {
-        key = "crafting",
-        layout = "List", fullWidth = true, fullHeight = true,
-        onRelease = function() self:DetachPool() end,
-    })
-    container:AddChild(scroll)
-    self._scroll = scroll
-    scroll.LayoutFinished = function() end
-
-    if not self._pool then
-        self:BuildPool(scroll.content)
-    else
-        for _, f in ipairs(self._pool) do f:SetParent(scroll.content) end
-    end
-    if scroll.scrollbar then
-        local bar = scroll.scrollbar
-        local prev = bar:GetScript("OnValueChanged")
-        bar:SetScript("OnValueChanged", function(bar2, value)
-            if bar2.obj and bar2.obj.SetScroll then bar2.obj:SetScroll(value) end
-            self:UpdateVirtualRows()
-        end)
-
-        local prevOnRelease = scroll.events and scroll.events.OnRelease
-        scroll:SetCallback("OnRelease", function(widget)
-            self:DetachPool()
-            if bar and bar.SetScript then
-                bar:SetScript("OnValueChanged", prev)
-            end
-            if prevOnRelease then prevOnRelease(widget) end
-        end)
-    end
-
-    -- Detail panel (bottom) — persistent raw frame for precise alignment.
-    if not self._detailPanel then self:BuildDetailPanel(cContent) else
-        self._detailPanel:SetParent(cContent); self._detailPanel:Show()
-    end
-
-    -- Queue panel (right).
-    if not self._queuePanel then self:BuildQueuePanel(cContent) else
-        self._queuePanel:SetParent(cContent); self._queuePanel:Show()
-    end
-
-    local function AnchorAll()
-        local cc = container.content or container.frame
-        if not (cc and self._scroll and self._scroll.frame and self._detailPanel
-                and self._headerFrame and self._queuePanel) then return end
-
-        local d = self._detailPanel
-        d:ClearAllPoints()
-        d:SetPoint("LEFT", cc, "LEFT", 0, 0); d:SetPoint("RIGHT", cc, "RIGHT", 0, 0)
-        d:SetPoint("BOTTOM", cc, "BOTTOM", 0, 4); d:SetHeight(self._detailH or DETAIL_H)
-
-        local qp = self._queuePanel
-        qp:ClearAllPoints()
-        qp:SetPoint("TOP", toolbar.frame, "BOTTOM", 0, -4)
-        qp:SetPoint("RIGHT", cc, "RIGHT", 0, 0)
-        qp:SetPoint("BOTTOM", d, "TOP", 0, 4)
-        qp:SetWidth(QUEUE_W)
-
-        local h = self._headerFrame
-        h:ClearAllPoints()
-        h:SetPoint("TOPLEFT", toolbar.frame, "BOTTOMLEFT", 0, -4)
-        h:SetPoint("RIGHT", qp, "LEFT", -GAP, 0)
-
-        local s = self._scroll.frame
-        s:ClearAllPoints()
-        s:SetPoint("TOP", h, "BOTTOM", 0, -2)
-        s:SetPoint("LEFT", cc, "LEFT", 0, 0)
-        s:SetPoint("RIGHT", qp, "LEFT", -GAP, 0)
-        s:SetPoint("BOTTOM", d, "TOP", 0, 4)
-    end
-    self._anchorAll = AnchorAll
-    container.LayoutFinished = function() AnchorAll() end
-
-    AnchorAll()
-    self:FillList()
-    addon.GUI.PersistentScroll.Restore(scroll, savedScroll, function()
-        self:UpdateVirtualRows()
+    -- The list, the detail panel and the queue live in a dock the tab owns for
+    -- the session (EnsureDock). Each draw parks the dock's host under the
+    -- toolbar; releasing the toolbar -- the next redraw or a tab switch -- hands
+    -- the host back to UIParent, so none of it rides the pooled TabGroup into
+    -- another addon's window. The dock follows a resize through its anchors, so
+    -- nothing here overrides a LayoutFinished.
+    local host = self:EnsureDock()
+    local cc = container.content or container.frame
+    host:SetParent(cc)
+    host:ClearAllPoints()
+    host:SetPoint("TOPLEFT", toolbar.frame, "BOTTOMLEFT", 0, -4)
+    host:SetPoint("BOTTOMRIGHT", cc, "BOTTOMRIGHT", 0, 0)
+    host:Show()
+    addon.W:AttachRawFrames(toolbar, host)
+    self._listLive = true
+    addon.W:OnWidgetRelease(toolbar, "togpm:craftList", function()
+        self._listLive = nil
+        self._rows = nil
+        GameTooltip:Hide()
     end)
+
+    -- The saved row is read before FillList: its SetData scrolls to the top,
+    -- and that move is reported through onScroll too.
+    local saved = addon.GUI.ListScroll.Get("crafting")
+    self._list:SetSort(self._sortCol, not self._sortAsc)
+    self:FillList(saved)
     self:RefreshDetail()
     self:RefreshQueue()
 end
 
 -- ===========================================================================
--- Column headers (raw, sortable)
+-- The dock, built once per session
 -- ===========================================================================
-function CraftingTab:BuildHeaders(parent)
-    local hf = CreateFrame("Frame", nil, parent)
-    hf:SetHeight(18)
-    self._headerFrame = hf
-    self._headerBtns  = {}
-
-    local function mk(x, w, justify, col, base)
-        local b = CreateFrame("Button", nil, hf)
-        b:SetPoint("TOPLEFT", hf, "TOPLEFT", x, 0)
-        b:SetSize(w, 18)
-        -- Brand-coloured hover glow behind the header (shared helper — same look
-        -- as the Profit/Cooldowns AceGUI headers). Created before the fontstring
-        -- so it sits on BACKGROUND beneath the OVERLAY text.
-        b._glow = addon.GUI.MakeHeaderHoverGlow(b)
-        local fs = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetAllPoints()
-        -- Centred header text with the sort arrow placed beside it (via
-        -- ConfigureCenteredHeaderIcon in UpdateHeaderText), matching the rest of
-        -- the addon. Data cells keep their own justification; `justify` is still
-        -- stored on the button as a record of the column's data alignment.
-        fs:SetJustifyH("CENTER")
-        b._fs, b._col, b._base, b._justify, b._width = fs, col, base, justify, w
-        b:SetScript("OnClick", function() CraftingTab:OnHeaderClick(col) end)
-        b:SetScript("OnEnter", function()
-            if b._glow then b._glow:Show() end
-            addon.Tooltip.Owner(b)
-            GameTooltip:SetText(base, 1, 1, 1, 1, true)
-            GameTooltip:AddLine(L["CraftSortHint"], nil, nil, nil, true)
-            GameTooltip:Show()
-        end)
-        b:SetScript("OnLeave", function()
-            if b._glow then b._glow:Hide() end
-            GameTooltip:Hide()
-        end)
-        self._headerBtns[#self._headerBtns + 1] = b
+-- A raw host of our own (never a pooled AceGUI frame: RowList and the dock hook
+-- scripts on their parents, and a HookScript cannot be removed) holding a
+-- LibAceGUIWidgets dock: recipe list in the centre, queue on the right, detail
+-- panel across the bottom at the height RefreshDetail measures. The panels are
+-- built lazily so a spec can drop one and have it rebuilt on the next draw.
+function CraftingTab:EnsureDock()
+    local dock = self._dock
+    if not dock then
+        local host = CreateFrame("Frame", nil, UIParent)
+        self._dockHost = host
+        dock = addon.W:NewDockLayout(host, { right = QUEUE_W + GAP, bottom = "auto", minCenter = 200 })
+        self._dock = dock
+        self._list = self:BuildList(dock.center)
     end
-
-    mk(NAME_X,  NAME_W,  "LEFT",  "name",  L["CraftColRecipe"])
-    mk(SKILL_X, SKILL_W, "LEFT",  "skill", L["CraftColSkill"])
-    mk(COUNT_X, COUNT_W, "RIGHT", "craft", L["CraftColCount"])
+    if not self._detailPanel then
+        self:BuildDetailPanel(dock.bottom)
+        self._detailPanel:SetPoint("TOPLEFT", dock.bottom, "TOPLEFT", 0, -PANEL_GAP)
+        self._detailPanel:SetPoint("BOTTOMRIGHT", dock.bottom, "BOTTOMRIGHT", 0, PANEL_GAP)
+    end
+    if not self._queuePanel then
+        self:BuildQueuePanel(dock.right)
+        self._queuePanel:SetPoint("TOPLEFT", dock.right, "TOPLEFT", GAP, 0)
+        self._queuePanel:SetPoint("BOTTOMRIGHT", dock.right, "BOTTOMRIGHT", 0, 0)
+    end
+    -- Shown on every draw, as they always were: a panel hidden once must not
+    -- stay hidden (the Craft button follows the detail panel's visibility).
+    self._detailPanel:Show()
+    self._queuePanel:Show()
+    self:ApplyDetailHeight()
+    return self._dockHost
 end
 
-function CraftingTab:UpdateHeaderText()
-    if not self._headerBtns then return end
-    for _, b in ipairs(self._headerBtns) do
-        b._fs:SetText(Brand(b._base))
-        addon.GUI.Sort.ConfigureCenteredHeaderIcon(b, self._sortCol == b._col, self._sortAsc, b._width)
+-- The bottom pane is the detail panel plus its gap above and below.
+function CraftingTab:ApplyDetailHeight()
+    if self._dock then
+        self._dock:SetBottomHeight((self._detailH or DETAIL_H) + 2 * PANEL_GAP)
     end
 end
 
-function CraftingTab:OnHeaderClick(col)
-    self._sortCol, self._sortAsc = addon.GUI.Sort.NextOrNone(self._sortCol, self._sortAsc, col)
-    self:UpdateHeaderText()
+-- ===========================================================================
+-- Recipe list (LibAceGUIWidgets RowList)
+-- ===========================================================================
+-- The list is externalSort: FillList builds either the category tree (no sort)
+-- or a flat sorted list, and the header only reports the click. sortCycle
+-- "three" gives the third click back to the tree, as NextOrNone always did.
+function CraftingTab:OnSortChanged(key, desc)
+    self._sortCol = key
+    self._sortAsc = not desc
     self:FillList()
 end
 
--- ===========================================================================
--- Recipe list (virtual-scroll raw-frame pool)
--- ===========================================================================
-function CraftingTab:BuildPool(parent)
-    self._pool = {}
-    for _ = 1, POOL_SIZE do
-        local f = CreateFrame("Button", nil, parent)
-        f:SetHeight(ROW_HEIGHT)
-        f:Hide()
-        f:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight", "ADD")
+-- The list's highlight follows the selected recipe by its trade-skill index.
+function CraftingTab:SyncListSelection()
+    local list, idx = self._list, self._selIndex
+    if not list then return end
+    if idx then
+        list:SetSelected(function(e) return e.kind == "recipe" and e.index == idx end)
+    else
+        list:SetSelected(nil)
+    end
+end
 
-        local sel = f:CreateTexture(nil, "BACKGROUND")
-        sel:SetAllPoints()
-        sel:SetColorTexture(1, 1, 1, 0.12)
-        sel:Hide()
-        f.selTex = sel
-
-        local icon = f:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(14, 14)
-        icon:SetPoint("LEFT", f, "LEFT", ICON_X, 0)
-        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        f.icon = icon
-
-        local nameLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        nameLbl:SetPoint("LEFT", f, "LEFT", NAME_X, 0)
-        nameLbl:SetWidth(NAME_W)
-        nameLbl:SetJustifyH("LEFT")
-        nameLbl:SetWordWrap(false)
-        f.nameLbl = nameLbl
-
-        local skillLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        skillLbl:SetPoint("LEFT", f, "LEFT", SKILL_X, 0)
-        skillLbl:SetWidth(SKILL_W)
-        skillLbl:SetJustifyH("LEFT")
-        f.skillLbl = skillLbl
-
-        local countLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        countLbl:SetPoint("LEFT", f, "LEFT", COUNT_X, 0)
-        countLbl:SetWidth(COUNT_W)
-        countLbl:SetJustifyH("RIGHT")
-        f.countLbl = countLbl
-
-        f:SetScript("OnClick", function(rf)
-            if rf._kind ~= "recipe" then return end
-            if addon.ItemLink.Click(rf._link) then return end
-            CraftingTab._selIndex = rf._index
-            CraftingTab._selId    = rf._recipeId
-            CraftingTab._qty      = 1
-            CraftingTab:UpdateVirtualRows()
-            CraftingTab:RefreshDetail()
-        end)
+function CraftingTab:BuildList(parent)
+    local diffMap = function()
+        return (addon.CraftingEngine and addon.CraftingEngine.DIFFICULTY_COLOR) or {}
+    end
+    return addon.W.RowList:New(parent, {
+        rowHeight      = ROW_HEIGHT,
+        hoverHighlight = true,
+        externalSort   = true,
+        sortCycle      = "three",
+        -- The profession's own category rows are group headers.
+        isHeader       = function(e) return e.kind == "header" and e.name end,
+        onSortChanged  = function(key, desc) self:OnSortChanged(key, desc) end,
+        onScroll       = function(_, offset) addon.GUI.ListScroll.Set("crafting", offset) end,
+        columns = {
+            { key = "_icon", width = 14, iconSize = 14, iconTexCoord = true, sortable = false,
+              icon = function(e) return e.icon or 134400 end },
+            { key = "name", header = L["CraftColRecipe"], headerTip = L["CraftSortHint"],
+              format = function(v, e)
+                  local selected = e.index ~= nil and e.index == self._selIndex
+                  return Color(selected and "ffffffff" or (diffMap()[e.difficulty] or "ffffffff"), v or "")
+              end },
+            -- The recipe's authoritative difficulty breakpoints (orange → yellow →
+            -- green → grey), coloured by FormatSkillTiers. Pattern-recipe orange
+            -- is corrected in the data pipeline (build_authoritative_data.py).
+            { key = "skill", header = L["CraftColSkill"], width = SKILL_W, headerTip = L["CraftSortHint"],
+              format = function(_, e) return addon.FormatSkillTiers(e.tiers, e.requiredSkill) end },
+            { key = "craft", header = L["CraftColCount"], width = COUNT_W, align = "RIGHT",
+              headerTip = L["CraftSortHint"],
+              format = function(_, e)
+                  if e.num and e.num > 0 then return Color("ff40c040", tostring(e.num)) end
+                  return Color("ff808080", "0")
+              end },
+        },
         -- No hover tooltip on list rows on purpose — it popped over the list
         -- and made it hard to see/select. The full item tooltip lives on the
-        -- detail panel's recipe name instead (see BuildDetail). Shift-click a
-        -- row still links the item in chat.
-
-        self._pool[#self._pool + 1] = f
-    end
+        -- detail panel's recipe name instead. Shift-click links the item.
+        onRowClick = function(e, _, _, button)
+            if button ~= "LeftButton" or e.kind ~= "recipe" then return end
+            if addon.ItemLink.Click(e.link) then return end
+            self._selIndex = e.index
+            self._selId    = e.recipeId
+            self._qty      = 1
+            self:SyncListSelection()
+            self:RefreshDetail()
+        end,
+    })
 end
 
 -- Full in-game item tooltip, anchored to the given frame. Prefers the crafted
@@ -530,59 +453,6 @@ function CraftingTab:ShowItemTooltip(anchorFrame, index, link, recipeId)
     -- are exactly the enchant/no-link recipes that got nothing.
     addon.ItemLink.AppendRecipeBlocks(GameTooltip, info and info.profId, recipeId)
     GameTooltip:Show()
-end
-
-function CraftingTab:UpdateVirtualRows()
-    local scroll, rows, pool = self._scroll, self._rows, self._pool
-    if not scroll or not rows or not pool then return end
-
-    local status   = scroll.status or scroll.localstatus
-    local offset   = (status and status.offset) or 0
-    local firstIdx = math.floor(offset / ROW_HEIGHT)
-    local diffMap  = (addon.CraftingEngine and addon.CraftingEngine.DIFFICULTY_COLOR) or {}
-
-    for i = 1, POOL_SIZE do
-        local f = pool[i]
-        local rowIdx = firstIdx + i
-        local e = rows[rowIdx]
-        if e then
-            f._kind = e.kind
-            if e.kind == "header" then
-                addon.GUI.ApplyRowStripe(f, rowIdx, 0)
-                f._index, f._recipeId, f._link = nil, nil, nil
-                f.icon:Hide(); f.skillLbl:Hide(); f.countLbl:Hide(); f.selTex:Hide()
-                f.nameLbl:SetPoint("LEFT", f, "LEFT", 8, 0)
-                f.nameLbl:SetWidth(0)  -- let category headers run full width
-                f.nameLbl:SetText(Brand(e.name))
-            else
-                addon.GUI.ApplyRowStripe(f, rowIdx)
-                f._index, f._recipeId, f._link = e.index, e.recipeId, e.link
-                f.icon:SetTexture(e.icon or 134400); f.icon:Show()
-                f.nameLbl:SetPoint("LEFT", f, "LEFT", NAME_X, 0)
-                f.nameLbl:SetWidth(NAME_W)
-                local selected = (self._selIndex == e.index)
-                f.nameLbl:SetText(Color(selected and "ffffffff" or (diffMap[e.difficulty] or "ffffffff"), e.name))
-                -- Skill column = the recipe's authoritative difficulty
-                -- breakpoints (orange→yellow→green→grey), coloured by
-                -- FormatSkillTiers. Pattern-recipe orange is corrected in the
-                -- data pipeline (build_authoritative_data.py), not here.
-                f.skillLbl:SetText(addon.FormatSkillTiers(e.tiers, e.requiredSkill))
-                f.skillLbl:Show()
-                f.countLbl:SetText((e.num and e.num > 0) and Color("ff40c040", tostring(e.num))
-                                   or Color("ff808080", "0"))
-                f.countLbl:Show()
-                if selected then f.selTex:Show() else f.selTex:Hide() end
-            end
-            local y = -((rowIdx - 1) * ROW_HEIGHT)
-            f:ClearAllPoints()
-            f:SetPoint("TOPLEFT",  scroll.content, "TOPLEFT",  0, y)
-            f:SetPoint("TOPRIGHT", scroll.content, "TOPRIGHT", 0, y)
-            f:Show()
-        else
-            f._kind, f._index, f._recipeId, f._link = nil, nil, nil, nil
-            f:Hide()
-        end
-    end
 end
 
 local function passesFilter(self, e)
@@ -630,9 +500,11 @@ CraftingTab._findProfById      = findProfById
 CraftingTab._activeProfession  = activeProfession
 CraftingTab._PriceSourceTag    = PriceSourceTag
 
-function CraftingTab:FillList()
-    local scroll = self._scroll
-    if not scroll then return end
+-- `restoreOffset` (a saved row, from Draw) puts the list back where it was; a
+-- refresh without one keeps the current scroll.
+function CraftingTab:FillList(restoreOffset)
+    local list = self._list
+    if not (list and self._listLive) then return end
 
     local Engine  = addon.CraftingEngine
     local entries = Engine and Engine:GetRecipeList() or {}
@@ -663,9 +535,9 @@ function CraftingTab:FillList()
     end
     self._rows = rows
 
-    scroll.content:SetHeight(math.max(1, #rows * ROW_HEIGHT))
-    if scroll.FixScroll then scroll:FixScroll() end
-    self:UpdateVirtualRows()
+    list:SetData(rows, true)
+    if restoreOffset then list:SetScrollOffset(restoreOffset) end
+    self:SyncListSelection()
 
     -- Resolve a pending Profit-Planner jump once the (correct) profession's list
     -- is built. No-op when nothing is pending.
@@ -714,7 +586,7 @@ end
 
 function CraftingTab:TrySelectPending()
     local pend = self._pendingSelect
-    if not (pend and self._rows and self._scroll) then return end
+    if not (pend and self._rows and self._listLive) then return end
 
     local Engine = addon.CraftingEngine
     local info = Engine and Engine:GetOpenInfo() or nil
@@ -723,7 +595,7 @@ function CraftingTab:TrySelectPending()
     -- is still in flight (OpenProfession → async SHOW). Wait for that redraw.
     if pend.profId and info.profId and pend.profId ~= info.profId then return end
 
-    for idx, e in ipairs(self._rows) do
+    for _, e in ipairs(self._rows) do
         if e.kind == "recipe"
            and (e.recipeId == pend.recipeId
                 or canonicalRecipeId(info.profId, e.recipeId) == pend.recipeId) then
@@ -731,8 +603,10 @@ function CraftingTab:TrySelectPending()
             self._selId         = e.recipeId
             self._qty           = 1
             self._pendingSelect = nil
-            self:ScrollToRow(idx)
-            self:UpdateVirtualRows()
+            self:SyncListSelection()
+            -- Into view with two rows of context, and not at all when it is
+            -- already on screen (a jump must not make the list lurch).
+            self._list:ScrollToEntry(e, { context = 2, ifNeeded = true })
             self:RefreshDetail()
             return
         end
@@ -748,36 +622,6 @@ function CraftingTab:TrySelectPending()
             addon:Print(L["ProfitCraftNotKnownHere"])
         end
     end
-end
-
--- Bring row `idx` (1-based position in self._rows) into view, near the top with
--- a little context above. No-op when the list already fits or the row is fully
--- visible. Scroll math matches AceGUI ScrollFrame:SetScroll (value 0..1000).
-function CraftingTab:ScrollToRow(idx)
-    local scroll = self._scroll
-    if not (scroll and idx and scroll.scrollframe and scroll.content) then return end
-    local view  = scroll.scrollframe:GetHeight() or 0
-    local total = scroll.content:GetHeight() or 0
-    if view <= 0 or total <= view then return end
-
-    local status    = scroll.status or scroll.localstatus
-    local curOffset = (status and status.offset) or 0
-    local rowTop    = (idx - 1) * ROW_HEIGHT
-    local rowBot    = rowTop + ROW_HEIGHT
-
-    local target
-    if rowTop < curOffset then
-        target = rowTop - ROW_HEIGHT * 2            -- a couple rows of context above
-    elseif rowBot > curOffset + view then
-        target = rowBot - view + ROW_HEIGHT * 2
-    else
-        return                                       -- already fully visible
-    end
-
-    target = math.max(0, math.min(target, total - view))
-    local value = target / (total - view) * 1000
-    if scroll.SetScroll then scroll:SetScroll(value) end
-    if scroll.scrollbar and scroll.scrollbar.SetValue then scroll.scrollbar:SetValue(value) end
 end
 
 -- ===========================================================================
@@ -828,7 +672,7 @@ end
 
 function CraftingTab:SetQty(n)
     self._qty = math.max(1, math.floor(n or 1))
-    if self._dpQty then self._dpQty:SetText(tostring(self._qty)) end
+    if self._dpStepper then self._dpStepper:SetValue(self._qty) end
 end
 
 function CraftingTab:BuildDetailPanel(parent)
@@ -1011,21 +855,35 @@ function CraftingTab:BuildDetailPanel(parent)
     -- The click registration is set per selection in RefreshDetail, NOT here --
     -- see the note there. "LeftButtonUp" alone is the correct (and only safe)
     -- default for the insecure trade-skill path.
-    local craftBtn = CreateFrame("Button", "TOGPMCraftButton", panel,
-        "UIPanelButtonTemplate, SecureActionButtonTemplate")
-    craftBtn:SetSize(CW, 24)
-    craftBtn:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -CR, -34)
-    craftBtn:SetText(L["CraftButton"])
-    craftBtn:RegisterForClicks("LeftButtonUp")
-    craftBtn:SetScript("PreClick", function()
-        if CraftingTab._craftIsSecure then return end  -- enchant: the secure /cast macro handles it
-        local sel = CraftingTab._dpSel
-        if sel and addon.CraftingEngine then
-            addon.CraftingEngine:Craft(sel.recipeId, sel.index, CraftingTab._qty or 1)
-        end
-    end)
-    rawTip(craftBtn, function() return L["CraftButton"] end, function() return L["CraftButtonDesc"] end)
-    self._dpCraft = craftBtn
+    --
+    -- The button is NOT parented into the panel. A frame with a secure child is
+    -- itself protected, and so is every ancestor -- and the panel lives inside
+    -- AceGUI's pooled window. Up to v1.1.1 that made TOGPM's whole window
+    -- protected, so closing it in combat failed with ADDON_ACTION_BLOCKED
+    -- "Frame:Hide()" (blamed on Ace3; reported in game 2026-09-26), and the
+    -- pooled frame would carry the protection to the next addon given it. So it
+    -- lives on a holder of our own, parented to UIParent, only ANCHORED to the
+    -- panel. A secure state driver hides the holder for the whole of combat --
+    -- nobody can craft in combat, and the driver is Blizzard's secure code, so it
+    -- may hide a protected frame then (SecureStateDriver.lua:98, classic_era).
+    -- Everything else about the button's visibility, stacking and scale is
+    -- synced out of combat by SyncCraftButton.
+    local holder = CreateFrame("Frame", "TOGPMCraftButtonHolder", UIParent)
+    holder:SetAllPoints(UIParent)
+    if RegisterStateDriver then RegisterStateDriver(holder, "visibility", "[combat] hide; show") end
+    self._dpCraftHolder = holder
+    self._dpCraft = nil
+    -- NOT anchored to the panel either: protection also carries to "any frames
+    -- they are anchored to" (warcraft.wiki.gg Secure_Execution_and_Tainting,
+    -- quoted by Peer Review 2026-09-26). SyncCraftButton places it at the panel's
+    -- screen position, relative to the holder only. These are its panel-relative
+    -- coordinates: CR in from the right edge, _dpCraftY down from the top.
+    self._dpCraftRight, self._dpCraftY, self._dpCraftW = CR, -34, CW
+    self:EnsureCraftButton()
+    -- Follow the panel: when the window closes, switches tab or reopens, the
+    -- button (which is not the panel's child) has to be told.
+    panel:HookScript("OnShow", function() CraftingTab:SyncCraftButton() end)
+    panel:HookScript("OnHide", function() CraftingTab:SyncCraftButton() end)
 
     local queueBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     queueBtn:SetSize(CW, 24)
@@ -1061,18 +919,13 @@ function CraftingTab:BuildDetailPanel(parent)
     rawTip(craftMaxBtn, function() return L["CraftMaxButton"] end, function() return L["CraftMaxButtonDesc"] end)
     self._dpCraftMax = craftMaxBtn
 
-    -- Stepper row, aligned to the Craft button's edges (full width): − [qty] + MAX
-    local minusBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    minusBtn:SetSize(24, 22)
-    minusBtn:SetPoint("TOPLEFT", craftBtn, "TOPLEFT", 0, 28)
-    minusBtn:SetText("-")
-    minusBtn:SetScript("OnClick", function() CraftingTab:SetQty((CraftingTab._qty or 1) - 1) end)
-    rawTip(minusBtn, function() return L["CraftDecrease"] end)
-    self._dpMinus = minusBtn
-
+    -- Stepper row, aligned to the Craft button's edges (full width): − [qty] + MAX.
+    -- The library's stepper has no upper bound here: Queue deliberately takes
+    -- more than the materials on hand make. So its own MAX (which caps at `max`)
+    -- is not used; ours sets the quantity to what can be made now.
     local maxBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     maxBtn:SetSize(46, 22)
-    maxBtn:SetPoint("TOPRIGHT", craftBtn, "TOPRIGHT", 0, 28)
+    maxBtn:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -CR, -6)
     maxBtn:SetText(L["CraftMax"])
     maxBtn:SetScript("OnClick", function()
         local sel = CraftingTab._dpSel
@@ -1081,26 +934,49 @@ function CraftingTab:BuildDetailPanel(parent)
     rawTip(maxBtn, function() return L["CraftMax"] end, function() return L["CraftMaxDesc"] end)
     self._dpMax = maxBtn
 
-    local plusBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    plusBtn:SetSize(24, 22)
-    plusBtn:SetPoint("RIGHT", maxBtn, "LEFT", -4, 0)
-    plusBtn:SetText("+")
-    plusBtn:SetScript("OnClick", function() CraftingTab:SetQty((CraftingTab._qty or 1) + 1) end)
-    rawTip(plusBtn, function() return L["CraftIncrease"] end)
-    self._dpPlus = plusBtn
+    -- Anchored to the panel, not the Craft button: the button is placed from
+    -- outside the window and does not move while the window is dragged in combat.
+    -- Box width: the column less MAX (46 + 4) and the stepper's two 22 px
+    -- buttons with their gaps (54).
+    local stepper = addon.W:CreateStepper(panel, {
+        min = 1, value = self._qty or 1, width = CW - 46 - 4 - 54,
+        tipTitle = L["CraftQuantity"],
+        onValueChanged = function(v) CraftingTab._qty = v end,
+    })
+    stepper:SetPoint("TOPLEFT", panel, "TOPRIGHT", -CR - CW, -6)
+    self._dpStepper = stepper
+end
 
-    local qty = CreateFrame("EditBox", nil, panel, "InputBoxTemplate")
-    qty:SetHeight(20)
-    qty:SetPoint("LEFT",  minusBtn, "RIGHT", 7, 0)
-    qty:SetPoint("RIGHT", plusBtn,  "LEFT",  -7, 0)
-    qty:SetPoint("TOP",   minusBtn, "TOP",   0, -1)
-    qty:SetAutoFocus(false)
-    qty:SetNumeric(true)
-    qty:SetMaxLetters(4)
-    qty:SetJustifyH("CENTER")
-    qty:SetScript("OnEnterPressed", function(s) CraftingTab:SetQty(tonumber(s:GetText()) or 1); s:ClearFocus() end)
-    qty:SetScript("OnEscapePressed", function(s) s:ClearFocus() end)
-    self._dpQty = qty
+-- The secure Craft button, on the holder (never the panel -- see
+-- BuildDetailPanel). The library's factory returns nil in combat, so this is
+-- retried by SyncCraftButton after combat; every use checks for it. Nobody can
+-- craft in combat, and the holder's state driver hides it then anyway.
+function CraftingTab:EnsureCraftButton()
+    if self._dpCraft then return self._dpCraft end
+    if not (self._dpCraftHolder and addon.W) then return nil end
+    local craftBtn = addon.W:CreateSecureActionButton(self._dpCraftHolder, {
+        name     = "TOGPMCraftButton",
+        text     = L["CraftButton"],
+        width    = self._dpCraftW or 218,
+        height   = 24,
+        tipTitle = L["CraftButton"],
+        tipBody  = L["CraftButtonDesc"],
+        preClick = function()
+            if CraftingTab._craftIsSecure then return end  -- enchant: the secure /cast macro handles it
+            local sel = CraftingTab._dpSel
+            if sel and addon.CraftingEngine then
+                addon.CraftingEngine:Craft(sel.recipeId, sel.index, CraftingTab._qty or 1)
+            end
+        end,
+    })
+    if not craftBtn then return nil end
+    -- The factory registers both clicks, which the secure half needs (it acts on
+    -- exactly one of them); the insecure trade-skill PreClick would then craft
+    -- twice. So up-only until RefreshDetail picks the mode for the recipe.
+    craftBtn:RegisterForClicks("LeftButtonUp")
+    craftBtn:Hide()
+    self._dpCraft = craftBtn
+    return craftBtn
 end
 
 --- The items Scan AH looks up for the selected recipe: the crafted item first
@@ -1144,17 +1020,20 @@ function CraftingTab:RefreshDetail()
     end
     self._dpSel = sel
 
+    -- The secure Craft button is NOT in this list: showing or hiding it is
+    -- protected in combat, so SyncCraftButton owns its visibility.
     local widgets = { self._dpIcon, self._dpNameBtn, self._dpReagHdr, self._dpCostHdr,
-                      self._dpMinus, self._dpQty, self._dpPlus, self._dpMax,
-                      self._dpCraft, self._dpQueue, self._dpCraftMax }
+                      self._dpStepper, self._dpMax,
+                      self._dpQueue, self._dpCraftMax }
     if not sel then
         self._dpHint:Show()
         self._dpMiss:Hide()
         if self._dpCost then self._dpCost:Hide() end
         for _, w in ipairs(widgets) do w:Hide() end
         for _, row in ipairs(self._dpReagPool) do row:Hide() end
+        self:SyncCraftButton()
         self._detailH = 56          -- compact: just the hint
-        if self._anchorAll then self._anchorAll() end
+        self:ApplyDetailHeight()
         return
     end
     self._dpHint:Hide()
@@ -1162,12 +1041,21 @@ function CraftingTab:RefreshDetail()
 
     self._dpIcon:SetTexture(sel.icon or 134400)
     self._dpNameBtn._fs:SetText(Color(sel.color or (addon.BrandColor or "ffFF8000"), sel.name))
-    self._dpQty:SetText(tostring(self._qty or 1))
+    -- SetValue rewrites the box even while the player is typing in it, and this
+    -- runs on every bag update; only a changed quantity (a new selection, MAX)
+    -- is set, and otherwise the non-forcing Refresh leaves a half-typed number.
+    if self._dpStepper:GetValue() ~= (self._qty or 1) then
+        self._dpStepper:SetValue(self._qty or 1)
+    else
+        self._dpStepper:Refresh()
+    end
     local canCraft = (sel.num or 0) > 0
-    -- _dpCraft is a SECURE button (enchant /cast), so Enable/Disable is protected
+    -- The Craft button is SECURE (enchant /cast), so Enable/Disable is protected
     -- during combat lockdown — guard it. _dpCraftMax is a normal button (safe).
-    if self._dpCraft.SetEnabled and not (InCombatLockdown and InCombatLockdown()) then
-        self._dpCraft:SetEnabled(canCraft)
+    -- It does not exist yet when the panel was first built in combat.
+    local craft = self:EnsureCraftButton()
+    if craft and not (InCombatLockdown and InCombatLockdown()) then
+        craft:SetEnabled(canCraft)
     end
     if self._dpCraftMax.SetEnabled then self._dpCraftMax:SetEnabled(canCraft) end
 
@@ -1177,13 +1065,13 @@ function CraftingTab:RefreshDetail()
     -- PreClick do the normal Lua craft. SetAttribute is forbidden in combat, so
     -- guard it (you can't craft in combat anyway).
     self._craftIsSecure = (Engine._isCraftWindow and sel.name and sel.name ~= "") and true or false
-    if self._dpCraft.SetAttribute and not (InCombatLockdown and InCombatLockdown()) then
+    if craft and not (InCombatLockdown and InCombatLockdown()) then
         if self._craftIsSecure then
-            self._dpCraft:SetAttribute("type", "macro")
-            self._dpCraft:SetAttribute("macrotext", "/cast " .. sel.name)
+            craft:SetAttribute("type", "macro")
+            craft:SetAttribute("macrotext", "/cast " .. sel.name)
         else
-            self._dpCraft:SetAttribute("type", nil)
-            self._dpCraft:SetAttribute("macrotext", nil)
+            craft:SetAttribute("type", nil)
+            craft:SetAttribute("macrotext", nil)
         end
         -- The secure half of this button ONLY fires if the registered click
         -- matches Blizzard's key-down/key-up gate. SecureActionButton_OnClick
@@ -1204,12 +1092,10 @@ function CraftingTab:RefreshDetail()
         -- one of the two passes it, so the enchant casts once. Only do it in
         -- secure/enchant mode: PreClick fires on every registered click, so with
         -- both registered the trade-skill path would craft twice per click.
-        if self._dpCraft.RegisterForClicks then
-            if self._craftIsSecure then
-                self._dpCraft:RegisterForClicks("LeftButtonUp", "LeftButtonDown")
-            else
-                self._dpCraft:RegisterForClicks("LeftButtonUp")
-            end
+        if self._craftIsSecure then
+            craft:RegisterForClicks("LeftButtonUp", "LeftButtonDown")
+        else
+            craft:RegisterForClicks("LeftButtonUp")
         end
     end
 
@@ -1218,17 +1104,15 @@ function CraftingTab:RefreshDetail()
     -- to the top of the controls column. Trade skills keep "Craft" plus the full
     -- stepper / Craft Max / Queue stack at their normal positions.
     local isEnchant = Engine._isCraftWindow and true or false
-    self._dpCraft:SetText(isEnchant and L["CraftEnchantButton"] or L["CraftButton"])
-    -- Repositioning a SECURE button is combat-protected; guard it (the button
-    -- keeps its prior valid position until the next out-of-combat refresh).
-    if not (InCombatLockdown and InCombatLockdown()) then
-        self._dpCraft:ClearAllPoints()
-        self._dpCraft:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -12, isEnchant and -6 or -34)
-    end
+    if craft then craft:SetText(isEnchant and L["CraftEnchantButton"] or L["CraftButton"]) end
+    -- Where the (secure) button sits in the panel; SyncCraftButton places it
+    -- there, out of combat only.
+    self._dpCraftY = isEnchant and -6 or -34
     if isEnchant then
-        self._dpMinus:Hide(); self._dpQty:Hide(); self._dpPlus:Hide(); self._dpMax:Hide()
+        self._dpStepper:Hide(); self._dpMax:Hide()
         self._dpCraftMax:Hide(); self._dpQueue:Hide()
     end
+    self:SyncCraftButton()
 
     local reagents = Engine:GetReagents(self._selIndex)
     local missing, shown = false, 0
@@ -1363,7 +1247,7 @@ function CraftingTab:RefreshDetail()
     -- controls block is short; trade skills use the full stepper/Craft/Max/Queue.
     local ctrlBottom = isEnchant and 30 or DCTRL_BOT
     self._detailH = math.max(math.max(reagentsBottom, ctrlBottom) + 10, 96)
-    if self._anchorAll then self._anchorAll() end
+    self:ApplyDetailHeight()
 end
 
 -- ===========================================================================
@@ -1386,12 +1270,6 @@ function CraftingTab:BuildQueuePanel(parent)
     title:SetPoint("TOPLEFT", panel, "TOPLEFT", Q_PAD, -6)
     self._queueTitle = title
     headerTip(title, false, 120, L["CraftQueueHeaderTitle"], L["CraftQueueHeaderDesc"])
-
-    local line = panel:CreateTexture(nil, "OVERLAY")
-    line:SetColorTexture(1, 0.5, 0, 0.9)
-    line:SetHeight(2)
-    line:Hide()
-    self._insertLine = line
 
     -- Craft Next | Clear All side by side, each taking half the width.
     -- Three buttons on one row at the same total width as before: Craft Next |
@@ -1422,49 +1300,38 @@ function CraftingTab:BuildQueuePanel(parent)
     craftAll:SetScript("OnClick", function() if addon.CraftQueue then addon.CraftQueue:CraftAll() end end)
     self._craftAllBtn = craftAll
 
-    self._queueRowPool = {}
-    for _ = 1, QUEUE_POOL do
-        local f = CreateFrame("Button", nil, panel)
-        f:SetHeight(QROW_H)
-        f:Hide()
-        f:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight", "ADD")
-        f:RegisterForDrag("LeftButton")
-
-        local icon = f:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(14, 14)
-        icon:SetPoint("LEFT", f, "LEFT", 2, 0)
-        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        f.icon = icon
-
-        local removeBtn = CreateFrame("Button", nil, f)
-        removeBtn:SetSize(16, 16)
-        removeBtn:SetPoint("RIGHT", f, "RIGHT", -2, 0)
-        removeBtn:SetNormalFontObject(GameFontNormalSmall)
-        removeBtn:SetText("|cffff5555x|r")
-        removeBtn:SetScript("OnClick", function()
-            if f._qindex and addon.CraftQueue then addon.CraftQueue:Remove(f._qindex) end
-        end)
-        f.removeBtn = removeBtn
-
-        local qtyLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        qtyLbl:SetPoint("RIGHT", removeBtn, "LEFT", -2, 0)
-        qtyLbl:SetWidth(34)
-        qtyLbl:SetJustifyH("RIGHT")
-        qtyLbl:SetTextColor(0.9, 0.9, 0.9)
-        f.qtyLbl = qtyLbl
-
-        local nameLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        nameLbl:SetPoint("LEFT",  icon,   "RIGHT", 3, 0)
-        nameLbl:SetPoint("RIGHT", qtyLbl, "LEFT",  -3, 0)
-        nameLbl:SetJustifyH("LEFT")
-        nameLbl:SetWordWrap(false)
-        f.nameLbl = nameLbl
-
-        f:SetScript("OnDragStart", function(rf) CraftingTab:_StartDrag(rf) end)
-        f:SetScript("OnDragStop",  function(rf) CraftingTab:_StopDrag(rf) end)
-
-        self._queueRowPool[#self._queueRowPool + 1] = f
-    end
+    -- The rows: a reorderable LibAceGUIWidgets RowList between the title and the
+    -- footer buttons. Dragging a row lifts it and draws the insert line; the drop
+    -- is handed to CraftQueue:Move, whose (from, to) is the list's own contract
+    -- ("the index it should have after the move"), and _Changed redraws it.
+    local listHost = CreateFrame("Frame", nil, panel)
+    listHost:SetPoint("TOPLEFT", panel, "TOPLEFT", Q_PAD, -Q_TITLE_H)
+    listHost:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -Q_PAD, Q_FOOTER_H)
+    self._queueList = addon.W.RowList:New(listHost, {
+        rowHeight      = QROW_H,
+        hoverHighlight = true,
+        reorderable    = true,
+        onReorder      = function(from, to)
+            if addon.CraftQueue then addon.CraftQueue:Move(from, to) end
+        end,
+        columns = {
+            { key = "icon", width = 14, iconSize = 14, iconTexCoord = true, sortable = false,
+              icon = function(r) return r.icon or 134400 end },
+            { key = "name", format = function(v, r)
+                  return Color(r.craftable and "ffffffff" or "ff888888", v or "")
+              end },
+            { key = "qty", width = 34, align = "RIGHT",
+              format = function(v) return Color("ffe6e6e6", "x" .. tostring(v or 0)) end },
+            { key = "remove", width = 16, button = true, sortable = false,
+              text = function() return "|cffff5555x|r" end,
+              -- Left-click only, as the old [x] button was: a stray right-click
+              -- must not delete a queue entry.
+              onClick = function(_, idx, _, mouseButton)
+                  if mouseButton ~= "LeftButton" then return end
+                  if addon.CraftQueue then addon.CraftQueue:Remove(idx) end
+              end },
+        },
+    })
 end
 
 function CraftingTab:QueueEntryDisplay(e)
@@ -1473,11 +1340,11 @@ function CraftingTab:QueueEntryDisplay(e)
     if live then return live.name, live.icon end
     local meta = addon.recipeDB and addon.recipeDB[e.profId] and addon.recipeDB[e.profId][e.recipeId]
     local name = (meta and meta.name)
-              or GetSpellInfo(e.recipeId)
+              or addon.Spell.GetInfo(e.recipeId)
               or ("#" .. tostring(e.recipeId))
     local icon = (meta and meta.icon)
               or (meta and meta.craftedItemId and addon.Item.GetIcon(meta.craftedItemId))
-              or (GetSpellTexture and GetSpellTexture(e.recipeId))
+              or addon.Spell.GetTexture(e.recipeId)
     return name, icon
 end
 
@@ -1491,36 +1358,20 @@ function CraftingTab:RefreshQueue()
     local Engine = addon.CraftingEngine
     local info   = Engine and Engine:GetOpenInfo()
 
-    local panelH = panel:GetHeight()
-    if not panelH or panelH <= 0 then panelH = 360 end
-    local maxVisible = math.max(0, math.floor((panelH - Q_TITLE_H - Q_FOOTER_H) / QROW_H))
-
-    for i = 1, #self._queueRowPool do
-        local row = self._queueRowPool[i]
-        local e   = q[i]
-        if e and i <= maxVisible then
-            row._qindex = i
-            local name, icon = self:QueueEntryDisplay(e)
-            row.icon:SetTexture(icon or 134400)
-            row.qtyLbl:SetText("x" .. e.qty)
-
-            local craftable = false
-            if info and e.profId == info.profId then
-                local live = Engine:GetRecipeEntry(e.recipeId)
-                craftable = live and (live.num or 0) > 0 or false
-            end
-            row.nameLbl:SetText(Color(craftable and "ffffffff" or "ff888888", name))
-
-            row:ClearAllPoints()
-            row:SetPoint("TOPLEFT", panel, "TOPLEFT", Q_PAD, -(Q_TITLE_H + (i - 1) * QROW_H))
-            row:SetPoint("RIGHT",   panel, "RIGHT",   -Q_PAD, 0)
-            row:SetHeight(QROW_H)
-            row:Show()
-        else
-            row._qindex = nil
-            row:Hide()
+    -- One display row per queue entry, in queue order (the list is unsorted, so
+    -- its index IS the queue index Move and Remove take). Built fresh: the queue
+    -- entries are saved variables and get no display fields written onto them.
+    local rows = {}
+    for i, e in ipairs(q) do
+        local name, icon = self:QueueEntryDisplay(e)
+        local craftable = false
+        if info and e.profId == info.profId then
+            local live = Engine:GetRecipeEntry(e.recipeId)
+            craftable = live and (live.num or 0) > 0 or false
         end
+        rows[i] = { name = name, icon = icon, qty = e.qty, craftable = craftable }
     end
+    if self._queueList then self._queueList:SetData(rows, true) end
 
     local canCraftNext = addon.CraftQueue and addon.CraftQueue:CanCraftNext()
     if self._craftNextBtn then
@@ -1531,89 +1382,76 @@ function CraftingTab:RefreshQueue()
     end
 end
 
--- ---- Drag-to-reorder ------------------------------------------------------
-local function rowsTopScreenY(panel)
-    local top = panel:GetTop()
-    if not top then return nil end
-    return top - Q_TITLE_H
-end
-
-function CraftingTab:_StartDrag(rf)
-    if not rf._qindex then return end
-    self._dragFrom, self._dragTarget = rf._qindex, rf._qindex
-    rf:SetFrameStrata("TOOLTIP")
-    rf:SetAlpha(0.85)
-    self._insertLine:Show()
-    rf:SetScript("OnUpdate", function(s) CraftingTab:_DragUpdate(s) end)
-end
-
-function CraftingTab:_DragUpdate(rf)
-    local panel = self._queuePanel
-    if not panel then return end
-    local scale = UIParent:GetEffectiveScale()
-    local _, cy = GetCursorPosition()
-    cy = cy / scale
-
-    rf:ClearAllPoints()
-    rf:SetPoint("LEFT",  panel, "LEFT",  Q_PAD, 0)
-    rf:SetPoint("RIGHT", panel, "RIGHT", -Q_PAD, 0)
-    rf:SetPoint("TOP",   UIParent, "BOTTOM", 0, cy + QROW_H / 2)
-
-    local count = addon.CraftQueue and addon.CraftQueue:Count() or 0
-    local top = rowsTopScreenY(panel)
-    if top and count > 0 then
-        local slot = math.floor((top - cy) / QROW_H) + 1
-        slot = math.max(1, math.min(count, slot))
-        self._dragTarget = slot
-        self._insertLine:ClearAllPoints()
-        self._insertLine:SetPoint("TOPLEFT", panel, "TOPLEFT", Q_PAD, -(Q_TITLE_H + (slot - 1) * QROW_H))
-        self._insertLine:SetPoint("RIGHT",   panel, "RIGHT",   -Q_PAD, 0)
-    end
-end
-
-function CraftingTab:_StopDrag(rf)
-    rf:SetScript("OnUpdate", nil)
-    rf:SetAlpha(1)
-    rf:SetFrameStrata(self._queuePanel:GetFrameStrata())
-    self._insertLine:Hide()
-    if self._dragFrom and self._dragTarget and addon.CraftQueue then
-        addon.CraftQueue:Move(self._dragFrom, self._dragTarget)
-    end
-    self._dragFrom, self._dragTarget = nil, nil
-    self:RefreshQueue()
-end
-
 -- ===========================================================================
 -- Cleanup + refresh hooks
 -- ===========================================================================
-function CraftingTab:DetachPool()
-    -- Clean up sort icon textures on header buttons before detaching. The icon
-    -- is detached + nil'd (ConfigureCenteredHeaderIcon recreates it on the next
-    -- UpdateHeaderText, so it self-heals). The hover glow is only created once in
-    -- BuildHeaders (the header buttons persist across redraws — see Draw), so we
-    -- merely HIDE it here rather than detach/nil it; it rides with _headerFrame's
-    -- own DetachPool reparent below and is reused on the next Draw.
-    if self._headerBtns then
-        for _, btn in ipairs(self._headerBtns) do
-            if btn._sortIcon then
-                btn._sortIcon:Hide()
-                btn._sortIcon:SetParent(nil)
-                btn._sortIcon:ClearAllPoints()
-                btn._sortIcon = nil
-            end
-            if btn._glow then
-                btn._glow:Hide()
-            end
-        end
+-- Show the secure Craft button exactly when the detail panel is on screen with a
+-- recipe selected, placed over the panel at the window's strata and scale. The
+-- button lives on TOGPMCraftButtonHolder (UIParent) and is anchored to nothing
+-- but that holder -- see BuildDetailPanel -- so it does not follow the panel by
+-- itself: this reads the panel's rect and places it. The holder's scale is set
+-- to the panel's, so the panel's own coordinates are the holder's coordinates
+-- (the holder fills UIParent from the screen's bottom-left).
+--
+-- Everything here is protected on a secure frame, so it runs only out of combat.
+-- In combat the holder's state driver has hidden the button; PLAYER_REGEN_ENABLED
+-- re-syncs it, so a window closed mid-fight does not leave the button behind.
+-- KNOWN GAP (not verified in a client): if the driver re-shows the holder before
+-- PLAYER_REGEN_ENABLED fires, a button for a window closed in combat can show
+-- until that event, expected to be the same frame.
+function CraftingTab:SyncCraftButton()
+    if InCombatLockdown and InCombatLockdown() then return end
+    local btn, holder, panel = self._dpCraft, self._dpCraftHolder, self._detailPanel
+    if not btn and holder then
+        -- The panel was built in combat, when the factory refuses: build it now,
+        -- and give it the selected recipe's attributes (RefreshDetail calls back).
+        btn = self:EnsureCraftButton()
+        if btn and self._dpSel then return self:RefreshDetail() end
     end
-
-    addon.GUI.DetachPool(self._pool)
-    addon.GUI.DetachPool(self._queuePanel)
-    addon.GUI.DetachPool(self._headerFrame)
-    addon.GUI.DetachPool(self._detailPanel)
-    self._scroll = nil
-    self._rows   = nil
+    if not (btn and holder and panel) then return end
+    local want = panel:IsVisible() and self._dpSel ~= nil
+    local right, top = panel:GetRight(), panel:GetTop()
+    if want and right and top then
+        holder:SetFrameStrata(panel:GetFrameStrata())
+        local uiScale = UIParent:GetEffectiveScale()
+        if uiScale and uiScale > 0 then holder:SetScale(panel:GetEffectiveScale() / uiScale) end
+        btn:SetFrameLevel(panel:GetFrameLevel() + 10)
+        btn:ClearAllPoints()
+        btn:SetPoint("TOPRIGHT", holder, "BOTTOMLEFT",
+            right - (self._dpCraftRight or 12), top + (self._dpCraftY or -34))
+        btn:Show()
+        self._craftBtnPlacedAt = string.format("%.2f:%.2f:%.4f", right, top, panel:GetEffectiveScale())
+    else
+        btn:Hide()
+        self._craftBtnPlacedAt = nil
+    end
+    -- The watcher runs whenever the button is WANTED, not only while it is
+    -- shown: a panel not laid out yet has no rect, the button stays hidden, and
+    -- only the watcher will notice the rect arriving and place it.
+    if self._craftBtnWatcher then
+        if want then self._craftBtnWatcher:Show() else self._craftBtnWatcher:Hide() end
+    end
 end
+
+-- The panel moves with the window (a drag, a resize, a window-scale change) and
+-- nothing tells the button. While the button is shown, this plain frame checks
+-- the panel's rect each frame and re-places the button when it changed -- out of
+-- combat only; in combat the button is hidden and need not follow.
+local watcher = CreateFrame("Frame")
+watcher:Hide()
+watcher:SetScript("OnUpdate", function()
+    if InCombatLockdown and InCombatLockdown() then return end
+    local panel = CraftingTab._detailPanel
+    local right, top = panel and panel:GetRight(), panel and panel:GetTop()
+    if not (right and top) then return end
+    local key = string.format("%.2f:%.2f:%.4f", right, top, panel:GetEffectiveScale())
+    if key ~= CraftingTab._craftBtnPlacedAt then CraftingTab:SyncCraftButton() end
+end)
+CraftingTab._craftBtnWatcher = watcher
+
+local regenFrame = CreateFrame("Frame")
+regenFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+regenFrame:SetScript("OnEvent", function() CraftingTab:SyncCraftButton() end)
 
 function CraftingTab:OnQueueChanged()
     local mw = addon.MainWindow
@@ -1624,7 +1462,7 @@ end
 
 function CraftingTab:OnLiveRefresh()
     local mw = addon.MainWindow
-    if not (mw and mw.frame and mw.activeTab == "crafting" and self._scroll) then return end
+    if not (mw and mw.frame and mw.activeTab == "crafting" and self._listLive) then return end
     self:FillList()
     self:RefreshDetail()
     self:RefreshQueue()
@@ -1646,17 +1484,6 @@ if addon.RegisterCallback then
     addon.RegisterCallback(CraftingTab, "AH_SCAN_COMPLETE", function()
         if addon.CraftingTab then addon.CraftingTab:OnLiveRefresh() end
     end)
-
-    -- Window resized: the panels re-anchor automatically (they're pinned to the
-    -- container edges), but the virtual-scroll row pool sizes itself to the
-    -- visible height, so recompute it once the resize settles. AnchorAll is a
-    -- cheap, idempotent re-pin done first as a belt-and-suspenders alongside the
-    -- LayoutFinished cascade. MainWindow fires this debounced (~150ms).
-    addon.RegisterCallback(CraftingTab, "WINDOW_RESIZED", function()
-        local mw = addon.MainWindow
-        if mw and mw.frame and mw.activeTab == "crafting" then
-            if CraftingTab._anchorAll then CraftingTab._anchorAll() end
-            CraftingTab:UpdateVirtualRows()
-        end
-    end)
+    -- No WINDOW_RESIZED handler: the dock re-lays itself from its own size, and
+    -- each RowList re-sizes its pool from its parent's.
 end

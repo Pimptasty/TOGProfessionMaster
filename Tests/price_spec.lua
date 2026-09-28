@@ -4,7 +4,7 @@
 -- Auctioneer / TSM bridges, the realm+faction scan store, the merchant capture
 -- and the source toggles are ItemDB's now (`Price/Sources.lua`, MINOR 25).
 --
--- writ-cannot: the "writers", "Auctionator bridge", "TSM bridge", "Auctioneer
+-- The "writers", "Auctionator bridge", "TSM bridge", "Auctioneer
 -- bridge", "merchant capture" and "AH scan results" groups that stood here
 -- until v1.1.0 tested code that was DELETED from this addon on purpose (the
 -- user's directive: "we need to move those 3rd party integrations into itemDB

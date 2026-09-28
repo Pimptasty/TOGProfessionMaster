@@ -176,7 +176,7 @@ function Engine:GetKnownProfessions()
         seen[profId] = true
         local castName = name
         if profId == 186 then                         -- Mining → cast Smelting (spell 2656)
-            castName = GetSpellInfo(2656) or name
+            castName = addon.Spell.GetInfo(2656) or name
         end
         out[#out + 1] = {
             name = name, castName = castName, profId = profId,
@@ -253,8 +253,11 @@ local TIER_HEX = { "ffff8040", "ffffff00", "ff40c040", "ff808080" }  -- orange/y
 -- corrects the orange/tiers for pattern recipes — see
 -- tools/build_authoritative_data.py), so this just colours the four values;
 -- no runtime fix-ups. Falls back to a single requiredSkill when there's no
--- difficulty array, and "-" when there's nothing.
+-- difficulty array, and "-" when there's nothing -- or when the tiers are
+-- UNANCHORED (addon.IsUnanchoredDifficulty, TOGProfessionMaster.lua), which
+-- ProfessionDB says to show as unknown rather than as thresholds.
 function addon.FormatSkillTiers(tiers, requiredSkill)
+    if addon.IsUnanchoredDifficulty(tiers, requiredSkill) then return "-" end
     if not tiers then
         return requiredSkill and ("|c" .. TIER_HEX[1] .. requiredSkill .. "|r") or "-"
     end
@@ -552,13 +555,20 @@ function Engine:Init()
         end
     end
 
+    -- RegisterEvent RAISES on a name the client does not know, which aborted
+    -- this Init on WoW Forever: it has no TRADE_SKILL_UPDATE (its
+    -- TradeSkillUIDocumentation.lua declares TRADE_SKILL_LIST_UPDATE instead)
+    -- and no CRAFT_* events in its API docs. Those go through a pcall that
+    -- skips an unknown name; each client gets whichever update event it has.
+    local function tryRegister(event) pcall(eventFrame.RegisterEvent, eventFrame, event) end
     eventFrame:RegisterEvent("TRADE_SKILL_SHOW")
-    eventFrame:RegisterEvent("TRADE_SKILL_UPDATE")
+    tryRegister("TRADE_SKILL_UPDATE")
+    tryRegister("TRADE_SKILL_LIST_UPDATE")
     eventFrame:RegisterEvent("TRADE_SKILL_CLOSE")
     if HAS_CRAFT_WINDOW then
-        eventFrame:RegisterEvent("CRAFT_SHOW")
-        eventFrame:RegisterEvent("CRAFT_UPDATE")
-        eventFrame:RegisterEvent("CRAFT_CLOSE")
+        tryRegister("CRAFT_SHOW")
+        tryRegister("CRAFT_UPDATE")
+        tryRegister("CRAFT_CLOSE")
     end
     eventFrame:SetScript("OnEvent", function(_, event) Engine:OnEvent(event) end)
 
@@ -566,6 +576,11 @@ function Engine:Init()
 end
 
 function Engine:OnEvent(event)
+    -- WoW Forever: the session this engine tracks is read through the classic
+    -- trade-skill API. The Crafting tab on C_TradeSkillUI is NOT BUILT YET, so
+    -- without that API no session opens and the tab shows its open-a-profession
+    -- prompt (Compat.lua, HasClassicTradeSkillAPI).
+    if event:find("^TRADE_SKILL_") and not addon:HasClassicTradeSkillAPI() then return end
     if event == "TRADE_SKILL_SHOW" then
         self._closePending = false   -- (re)opening: cancel any debounced teardown
         self._tradeOpen = true
@@ -595,7 +610,8 @@ function Engine:OnEvent(event)
         self._craftOpen = false
         self:ScheduleClose()
 
-    elseif event == "TRADE_SKILL_UPDATE" or event == "CRAFT_UPDATE" then
+    elseif event == "TRADE_SKILL_UPDATE" or event == "TRADE_SKILL_LIST_UPDATE"
+           or event == "CRAFT_UPDATE" then
         -- Skill rank / craftable counts may have changed (e.g. after a craft).
         -- Refresh the view if it's showing, but don't re-open anything. The
         -- _suppressUpdate guard breaks the expand-all → UPDATE → redraw →

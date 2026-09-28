@@ -97,9 +97,15 @@ read_globals = {
 	"GetProfessions", "GetProfessionInfo", "GetNumSkillLines", "GetSkillLineInfo",
 	"GetNumSpellTabs", "GetSpellTabInfo", "GetSpellBookItemInfo", "IsSpellKnown",
 	"GetSpellCooldown", "GetItemCooldown", "CastSpellByName",
+	-- The namespaced spell API; the only spelling WoW Forever has (Compat.lua).
+	"C_Spell", "C_SpellBook",
+	-- The modern tooltip helpers (Tooltip.lua's TooltipLink, WoW Forever).
+	"TooltipUtil",
 	-- Group / guild / instance state.
 	"IsInGuild", "IsInGroup", "IsInRaid", "IsInInstance", "IsGuildLeader",
 	"CanEditOfficerNote", "GetGuildInfo", "InCombatLockdown", "UnitAffectingCombat",
+	-- Secure state driver (the Craft button's holder hides itself for combat).
+	"RegisterStateDriver",
 	-- Mail inbox, read by the Cooldowns tab's supply-mail flow.
 	"GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxItem", "ATTACHMENTS_MAX_RECEIVE",
 	-- Chat channels, used by Modules/CommTest.lua's CHANNEL probe.

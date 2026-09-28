@@ -78,9 +78,11 @@ if C_Container and C_Container.GetContainerItemInfo then
 else
     -- Unreachable on every live flavour (see the note above). Kept, not trusted.
     function addon:GetContainerItemInfo(bag, slot)
-        local texture, count, locked, quality, readable,
-              lootable, link, filtered, noValue, itemId =
-              GetContainerItemInfo(bag, slot)
+        -- The editor's stub declares no parameters; the client takes (bag, slot).
+        ---@diagnostic disable-next-line: redundant-parameter
+        local r = { GetContainerItemInfo(bag, slot) }
+        local texture, count, locked, quality, readable = r[1], r[2], r[3], r[4], r[5]
+        local lootable, link, filtered, noValue, itemId = r[6], r[7], r[8], r[9], r[10]
         if not texture then return nil end
         -- Older Classic/TBC builds return only the first 7 values here (no itemID),
         -- so `itemId` comes back nil. Callers that key on .itemID — e.g. the cooldown
@@ -104,6 +106,7 @@ else
         }
     end
     function addon:GetContainerNumSlots(bag)
+        ---@diagnostic disable-next-line: redundant-parameter
         return GetContainerNumSlots(bag)
     end
     function addon:GetContainerItemLink(bag, slot)
@@ -117,7 +120,8 @@ end
 --- Every item in the player's bags as { [itemId] = count }.
 ---
 --- Lives here, next to the container shims it is built from, because it was
---- previously written out twice — `ScanBags` in GUI/ShoppingListTab.lua and
+--- previously written out twice — `ScanBags` in GUI/ShoppingListTab.lua (since
+--- deleted, v1.1.2) and
 --- `ScanBagsOnly` in Modules/ReagentWatch.lua — with byte-identical bodies on
 --- opposite sides of the GUI/Modules layer boundary. Two owners for one rule,
 --- and in particular two places to remember the `info.itemID or info.itemId`
@@ -156,8 +160,11 @@ end
 -- GetAddOnMetadata has no shim here. TOGProfessionMaster.lua loads BEFORE this
 -- file (.toc order) and resolves it itself for addon.Version; a copy here had
 -- no production caller and a spec vouching for it (audit finding 33). Same for
--- GetSpellInfo: it is the real function on every flavour this addon supports
--- (see the guard rule below), so there is nothing to shim.
+-- GetSpellInfo on the classic flavours (see the guard rule below). WoW Forever
+-- is the exception: it has no bare GetSpellInfo (in game 2026-09-27, from the
+-- Guild tab), and its 11_0_0_SpellBookAPITransitionGuide.lua also drops the
+-- bare GetSpellCooldown / GetSpellTexture / GetSpellLink. Every spell call in
+-- the addon goes through addon.Spell below.
 
 -- ---------------------------------------------------------------------------
 -- Item API -- ONE resolver, because every bare name here is a DEPRECATION
@@ -185,7 +192,8 @@ end
 -- spread by NAME SHAPE and ended up on the wrong names: a bare global gets a
 -- presence guard IF AND ONLY IF it is a deprecation fallback, and a name routed
 -- through a resolver here NEVER gets one, because the resolver owns the nil
--- check. So `GetSpellInfo(id)` is called bare -- it is in no `Deprecated_*`
+-- check. (Superseded for the spell API by addon.Spell, for WoW Forever; the
+-- rest of this note is the classic reasoning.) So `GetSpellInfo(id)` was called bare -- it is in no `Deprecated_*`
 -- file in either Classic tree and Blizzard's own UI calls it bare -- and a
 -- guard on it can never be false, while `if GetItemInfo then` above a call to
 -- `addon.Item.GetInfo` is WRONG: with the CVar off the guard is false, the
@@ -227,6 +235,107 @@ addon.Item.GetQualityColor = itemAPI("GetItemQualityColor", "GetItemQualityColor
 addon.Item.GetCooldown     = itemAPI("GetItemCooldown",     "GetItemCooldown")
 
 -- ---------------------------------------------------------------------------
+-- Spell API -- WoW Forever (the _Camelot TOC, the 11.x+ engine) has NO bare
+-- GetSpellCooldown: its 11_0_0_SpellBookAPITransitionGuide.lua:53 maps it to
+-- C_Spell.GetSpellCooldown, which answers ONE TABLE ({ startTime, duration,
+-- isEnabled, modRate }, SpellDocumentation.lua:292) rather than the classic
+-- `start, duration, enabled, modRate` list. Reported in game 2026-09-27 as
+-- "attempt to call a nil value" from ScanCooldowns. This answers the classic
+-- shape on every client, resolved at call time like the item API above.
+-- ---------------------------------------------------------------------------
+addon.Spell = addon.Spell or {}
+
+function addon.Spell.GetCooldown(spellId)
+    local ns = C_Spell and C_Spell.GetSpellCooldown
+    if ns then
+        local info, duration, enabled, modRate = ns(spellId)
+        if type(info) == "table" then
+            return info.startTime, info.duration, info.isEnabled, info.modRate
+        end
+        -- A client whose C_Spell form still answers the classic list.
+        if info ~= nil then return info, duration, enabled, modRate end
+    end
+    local bare = _G.GetSpellCooldown
+    if bare then return bare(spellId) end
+    return nil
+end
+
+-- RESOLUTION ORDER, and a stated EXCEPTION to the item rule above. addon.Item
+-- prefers the NAMESPACED function. The spell helpers below prefer the BARE one
+-- (GetCooldown is the one namespaced-first spell helper, because its bare form
+-- is the name Forever dropped). Two reasons, and the second is a TEST-
+-- ENVIRONMENT reason, not a client one: (1) the bare spell functions are the
+-- real functions on the classic clients, never deprecation fallbacks there;
+-- (2) the offline harness has no C_Spell stand-in, so every spec stubs the bare
+-- name, and namespaced-first would leave the C_Spell branch -- the one Forever
+-- runs -- the only one exercised in game and none offline. A C_Spell stand-in
+-- is requested from WoWAPITesting; when it lands, this order is to be revisited
+-- rather than kept by habit.
+--
+-- GetSpellInfo / GetSpellTexture / GetSpellLink. Bare FIRST: it is the real
+-- function on the classic clients (and what the offline specs stub by name).
+-- WoW Forever has no bare GetSpellInfo -- in game 2026-09-27, "attempt to call a
+-- nil value" from GuildTab -- and its transition guide moves all three into
+-- C_Spell. C_Spell.GetSpellInfo answers a SpellInfo table
+-- (SpellDocumentation.lua:1166); this unpacks it into the classic list
+-- `name, rank, icon, castTime, minRange, maxRange, spellID` (rank is nil there).
+function addon.Spell.GetInfo(spellId)
+    local bare = _G.GetSpellInfo
+    ---@diagnostic disable-next-line: redundant-parameter
+    if bare then return bare(spellId) end
+    local ns = C_Spell and C_Spell.GetSpellInfo
+    if not (ns and spellId) then return nil end
+    local info = ns(spellId)
+    if type(info) ~= "table" then return nil end
+    return info.name, nil, info.iconID, info.castTime, info.minRange, info.maxRange, info.spellID
+end
+
+function addon.Spell.GetTexture(spellId)
+    local bare = _G.GetSpellTexture
+    if bare then return bare(spellId) end
+    local ns = C_Spell and C_Spell.GetSpellTexture
+    if not (ns and spellId) then return nil end
+    return ns(spellId)
+end
+
+function addon.Spell.GetLink(spellId)
+    local bare = _G.GetSpellLink
+    if bare then return bare(spellId) end
+    local ns = C_Spell and C_Spell.GetSpellLink
+    if not (ns and spellId) then return nil end
+    return ns(spellId)
+end
+
+-- Does this client have the CLASSIC trade-skill window API the scanner and the
+-- Crafting engine read (GetTradeSkillLine, GetNumTradeSkills, GetTradeSkillInfo)?
+-- WoW Forever reaches profession data only through C_TradeSkillUI (its own UI:
+-- Blizzard_FrameXMLUtil/ProfessionsUtil.lua:79), and whether the classic
+-- globals exist there is not verified. Until they are confirmed, or a Forever
+-- recipe scan is built on C_TradeSkillUI, a trade-skill event on a client
+-- without them is ignored rather than scanned into a nil-call. Checked at call
+-- time, like every resolver here.
+function addon:HasClassicTradeSkillAPI()
+    return _G.GetTradeSkillLine ~= nil and _G.GetNumTradeSkills ~= nil
+       and _G.GetTradeSkillInfo ~= nil
+end
+
+-- IsSpellKnown(spellId, isPet). The bare function is the real one on the
+-- classic clients; on WoW Forever it is only a deprecation fallback
+-- (Deprecated_SpellBook.lua:16, behind loadDeprecationFallbacks, off by
+-- default), so there this does what that fallback does:
+-- C_SpellBook.IsSpellInSpellBook(id, bank, includeOverrides = false).
+function addon.Spell.IsKnown(spellId, isPet)
+    local bare = _G.IsSpellKnown
+    if bare then return bare(spellId, isPet) end
+    local sb = C_SpellBook and C_SpellBook.IsSpellInSpellBook
+    local banks = Enum and Enum.SpellBookSpellBank
+    if sb and banks then
+        return sb(spellId, isPet and banks.Pet or banks.Player, false) and true or false
+    end
+    return false
+end
+
+-- ---------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------
 -- Tooltip anchor helper
 -- Always use this instead of a raw GameTooltip:SetOwner call.
@@ -241,28 +350,8 @@ function addon.Tooltip.Owner(frame)
     GameTooltip:SetOwner(frame, anchor)
 end
 
---- Anchor an arbitrary frame relative to a source row using the same
---- screen-half logic as Tooltip.Owner — popup appears just below the source
---- when the source is in the top half of the screen, just above when in the
---- bottom half.  Use this for click-popups (transmute group expansion, etc.)
---- so they sit adjacent to the row that opened them and the user can mouse
---- onto the popup without losing context.  Accepts either a raw Frame or an
---- AceGUI widget (unwraps via the widget's .frame member).
-function addon.Tooltip.AnchorFrame(frame, source)
-    -- Unwrap AceGUI widgets — they aren't Frames themselves; the underlying
-    -- frame is at widget.frame.  Raw Frames have GetCenter directly.
-    local sourceFrame = source.GetCenter and source or source.frame
-    if not sourceFrame or not sourceFrame.GetCenter then return end
-    frame:ClearAllPoints()
-    local _, y = sourceFrame:GetCenter()
-    if y and y > GetScreenHeight() / 2 then
-        -- Source in upper half: place popup below source.
-        frame:SetPoint("TOPLEFT", sourceFrame, "BOTTOMLEFT", 0, 0)
-    else
-        -- Source in lower half: place popup above source.
-        frame:SetPoint("BOTTOMLEFT", sourceFrame, "TOPLEFT", 0, 0)
-    end
-end
+-- (Tooltip.AnchorFrame, the popup-beside-a-row placement, was retired for
+-- LibAceGUIWidgets' AnchorPopup -- see the Cooldowns tab's group popup.)
 
 -- TOGBankClassic integration helpers
 -- Shared by BrowserTab and CooldownsTab (and any future caller).
@@ -424,20 +513,43 @@ end
 --- Append one line per banker holding the button's item -- its name, count and
 --- TOGBank's status word in TOGBank's colour -- to the open GameTooltip. Nothing
 --- is added for a button with no item, or when TOGBank reports no state.
-function addon.Bank.AddStatusLines(btn)
-    local itemId = btn and btn._bankItemId
-    if not itemId then return end
+--- The per-banker status lines for `itemId`, as { left, right } pairs: the
+--- banker's dot, name and count, and TOGBank's status word, both in TOGBank's
+--- colour. nil when no banker holding it has a state (no TOGBank, an older one,
+--- or no stock). ONE source for both renderings below.
+local function bankerStatusLines(itemId)
+    if not itemId then return nil end
     local banks = addon.Bank.GetBanksWithItem(itemId)
     local any = false
     for _, b in ipairs(banks) do if b.state then any = true break end end
-    if not any then return end
-    GameTooltip:AddLine(" ")
+    if not any then return nil end
+    local lines = {}
     for _, b in ipairs(banks) do
         local state = b.state or "none"
-        GameTooltip:AddDoubleLine(
-            ("|c%s%s|r %s (%d)"):format(addon.Bank.StateColor(state), DOT, b.name, b.count),
-            "|c" .. addon.Bank.StateColor(state) .. addon.Bank.StateText(state) .. "|r")
+        local c = addon.Bank.StateColor(state)
+        lines[#lines + 1] = {
+            ("|c%s%s|r %s (%d)"):format(c, DOT, b.name, b.count),
+            "|c" .. c .. addon.Bank.StateText(state) .. "|r",
+        }
     end
+    return lines
+end
+
+function addon.Bank.AddStatusLines(btn)
+    local lines = bankerStatusLines(btn and btn._bankItemId)
+    if not lines then return end
+    GameTooltip:AddLine(" ")
+    for _, l in ipairs(lines) do GameTooltip:AddDoubleLine(l[1], l[2]) end
+end
+
+--- The same lines as one string, for a tooltip body that is handed text rather
+--- than drawn into GameTooltip (a RowList button column's `tip`).
+function addon.Bank.StatusText(itemId)
+    local lines = bankerStatusLines(itemId)
+    if not lines then return nil end
+    local out = {}
+    for _, l in ipairs(lines) do out[#out + 1] = l[1] .. " - " .. l[2] end
+    return table.concat(out, "\n")
 end
 
 --- Returns the total item count held across all banker alts.
@@ -796,6 +908,10 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
     end
 
     d:Show()
+    -- With the main window open, Escape closes this dialog before the window
+    -- (its name is taken off UISpecialFrames while that window's layer lasts,
+    -- so one press no longer closes both).
+    if addon.MainWindow then addon.MainWindow:AddEscapeChild(d) end
 end
 
 addon:DebugPrint(

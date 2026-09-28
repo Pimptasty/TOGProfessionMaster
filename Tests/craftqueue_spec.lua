@@ -145,6 +145,7 @@ describe("queue mutations", function()
 		Queue:Add(171, 2330, 1)
 		Queue._active   = { recipeId = 2330, profId = 171, remaining = 1 }
 		Queue._craftAll = true
+		assert.is_not_nil(Queue._active)
 		Queue:Clear()
 		assert.is_true(Queue:IsEmpty())
 		assert.is_nil(Queue._active)
@@ -257,6 +258,7 @@ describe("completion tracking", function()
 	it("drops the entry once the last one is made", function()
 		Queue:Add(171, 2330, 1)
 		Queue:TrackCraft(2330, 1)
+		assert.is_not_nil(Queue._active)
 		Queue:_OnCraftSuccess()
 		assert.is_true(Queue:IsEmpty())
 		assert.is_nil(Queue._active)
@@ -302,6 +304,7 @@ describe("completion tracking", function()
 		Queue:Add(171, 2330, 5)
 		Queue:TrackCraft(2330, 5)
 		trackFrame:Fire("OnEvent", "UNIT_SPELLCAST_SUCCEEDED", "player")
+		assert.is_not_nil(Queue._active)
 		trackFrame:Fire("OnEvent", "UNIT_SPELLCAST_INTERRUPTED", "player")
 		assert.equal(4, Queue:Get()[1].qty)
 		assert.is_nil(Queue._active)
@@ -317,28 +320,63 @@ describe("completion tracking", function()
 end)
 
 describe("CraftAll", function()
+	-- These tests swap in a synchronous C_Timer; put the real one back, or a
+	-- later spec file that depends on the deferral (tooltiphooks' Show-hook
+	-- ordering) runs against ours and fails.
+	local realTimer
+	before_each(function() realTimer = _G.C_Timer end)
+	after_each(function() _G.C_Timer = realTimer end)
+
 	it("does nothing on an empty queue", function()
 		Queue:CraftAll()
 		assert.is_false(Queue._craftAll)
 	end)
 
-	it("chains to the next entry as each batch finishes", function()
+	it("ends the run at once when no batch could start", function()
+		-- Queued, but not craftable with current mats: no batch is tracked, so a
+		-- later unrelated batch must not finish inside a stale run and prompt.
+		openWindow({ { name = "Minor Healing Potion", recipeId = 2330, num = 0 } })
+		Queue:Add(171, 2330, 1)
+		Queue:CraftAll()
+		assert.equal(0, #crafted)
+		assert.is_false(Queue._craftAll)
+	end)
+
+	it("NEVER starts the next entry itself — DoTradeSkill needs a click", function()
+		-- v1.1.1 chained the next batch from a C_Timer; the client blocks
+		-- DoTradeSkill outside a hardware event (ADDON_ACTION_BLOCKED, reported
+		-- in-game 2026-09-26). Finishing a batch must end the run and prompt.
 		openWindow({
 			{ name = "Minor Healing Potion", recipeId = 2330, num = 1 },
 			{ name = "Elixir", recipeId = 2331, num = 1 },
 		})
-		-- C_Timer.After fires immediately in the offline env, so the chain runs
-		-- through synchronously.
 		_G.C_Timer = { After = function(_, fn) fn() end }
+		local printed = {}
+		local realPrint = ns.Print
+		ns.Print = function(_, msg) printed[#printed + 1] = msg end
 		Queue:Add(171, 2330, 1)
 		Queue:Add(171, 2331, 1)
 		Queue:CraftAll()
 		assert.equal(1, #crafted)
 
-		Queue:TrackCraft(2330, 1)
 		Queue:_OnCraftSuccess()
-		assert.equal(2, #crafted)
-		assert.equal(2, crafted[2].index)
+		ns.Print = realPrint
+		assert.equal(1, #crafted)
+		assert.is_false(Queue._craftAll)
+		assert.equal(1, #printed)
+	end)
+
+	it("does not prompt when nothing else is craftable", function()
+		openWindow({ { name = "Minor Healing Potion", recipeId = 2330, num = 1 } })
+		_G.C_Timer = { After = function(_, fn) fn() end }
+		local printed = 0
+		local realPrint = ns.Print
+		ns.Print = function() printed = printed + 1 end
+		Queue:Add(171, 2330, 1)
+		Queue:CraftAll()
+		Queue:_OnCraftSuccess()
+		ns.Print = realPrint
+		assert.equal(0, printed)
 	end)
 
 	it("stops itself once nothing is left to make", function()

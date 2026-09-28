@@ -6,7 +6,7 @@
 
 Stop whispering every alchemist in your guild to ask "is your transmute up?" and stop logging into five different alts to remember who knows the recipe you need. TOG Profession Master keeps a live, shared view of every guildmate's professions, recipes, and cooldowns — and lets you mail reagents straight to the crafter without typing a single character name.
 
-Works on Classic Era / Anniversary, TBC Classic, Wrath Classic, Cataclysm Classic, and Mists of Pandaria Classic.
+Works on Classic Era / Anniversary, TBC Classic, Wrath Classic, Cataclysm Classic, and Mists of Pandaria Classic, with early support for WoW Forever (reading recipes from the profession window is not available there yet).
 
 ## Quickstart
 
@@ -27,13 +27,13 @@ That's it. Within a minute or two you'll see your guildmates' recipes and cooldo
 
 **Guild Tab** — Who in the guild has which profession, at what skill, and with which specialization. Specializations are inferred from the spec-gated recipes a crafter knows, so they show up even for people who never announced them. Gathering professions are included, and a profession with nobody in it is shown at zero — coverage gaps are the thing you actually want to see.
 
-**Crafting Tab** — A full crafting screen in TOGPM's own style, including a craft queue and a cost-to-craft with profit preview (a reagent a vendor sells is costed at the vendor price, never an auction listing). Optionally takes over the default profession window (`/togpm craft`). Enchanting is supported, recipe tooltips included. A hunter's Beast Training shares Enchanting's window on Classic and TBC; the takeover leaves it to the game, so pets can always be trained.
+**Crafting Tab** — A full crafting screen in TOGPM's own style, including a drag-to-reorder craft queue (Craft All crafts one recipe's full batch per click, because the game needs a click for each recipe) and a cost-to-craft with profit preview (a reagent a vendor sells is costed at the vendor price, never an auction listing). Optionally takes over the default profession window (`/togpm craft`). Enchanting is supported, recipe tooltips included. A hunter's Beast Training shares Enchanting's window on Classic and TBC; the takeover leaves it to the game, so pets can always be trained.
 
 **Profit Planner** — What's worth making right now, using auction prices from **ItemDB**: its own Auction House scan, or Auctionator, Auctioneer and TradeSkillMaster if you run them. Which sources are used, and in what order, is set once in ItemDB (`/itemdb`, or the **Price sources** button in TOGPM's settings) and applies to every TOG addon; the Historical view uses only the sources that keep a history. No other pricing addon required.
 
 **Allied Guilds (cross-guild sharing)** — Share professions and cooldowns between two guilds. Set up under **Settings → Cross-Guild** by an officer or the guild leader; it is bilateral by design, so both sides opt in, and it shares the whole guild's data rather than just yours. The allied-guild list and the allied rosters live in **GuildRoster** (also editable with `/guildroster sisters`), so every TOG addon on your account — this one, TOGTools, TOGBankClassic — reads one list and one set of rosters rather than each keeping its own. Pull an allied roster once from any online member of that guild (`/togpm pullroster <Name>`) and GuildRoster keeps it current from then on, for the whole guild.
 
-**Shopping List + Reagent Tracker** — Queue any recipe to your shopping list. The floating Reagent Tracker shows a live total of everything you need vs. what's in your bags. Chat alert when all reagents are available.
+**Shopping List + Reagent Tracker** — Queue any recipe to your shopping list. The floating Reagent Tracker shows a live total of everything you need vs. what's in your bags. You get a chat alert once your bags hold every reagent for a craft on your list.
 
 **Scan AH** — One click scans the auction house (through ItemDB's scanner) for whatever's relevant to the current tab (shopping-list reagents, cooldown reagents, missing recipes). Rows that have live listings get an **[AH]** button you can click to jump straight to the AH browse search.
 
@@ -98,7 +98,9 @@ If sync isn't working, these are the ones worth running before opening a bug rep
 
 Installing from CurseForge pulls these in automatically. Installing by hand means fetching them yourself, and the addon will not load without them:
 
-**Ace3**, **DeltaSync**, **AceCommQueue-1.0**, **VersionCheck-1.0**, **GuildRoster**, **ProfessionDB**, **ItemDB**.
+**Ace3**, **DeltaSync**, **AceCommQueue-1.0**, **VersionCheck-1.0**, **GuildRoster**, **ProfessionDB**, **ItemDB**, **LibAceGUIWidgets**, **LibDBIcon-1.0**.
+
+LibDBIcon-1.0 is bundled on WoW Forever, where it is not published yet; everywhere else it is a separate addon.
 
 Keep **AceCommQueue-1.0** current in particular — it is the layer that queues addon traffic, and older copies mistook ordinary server throttling for a fault and reported it as an error. **GuildRoster 0.7.0 or newer** is needed for cross-guild sharing: it holds the allied-guild list and rosters for every TOG addon; on an older copy the addon runs normally with cross-guild sharing off. **ItemDB carrying LibItemDB 25 or newer** is needed for any auction price: since v1.1.0 the Auction House scanner, the Auctionator / Auctioneer / TSM connections and the price-source settings all live there; on an older ItemDB you get vendor prices only, and no [AH] or Scan AH buttons.
 
@@ -116,7 +118,7 @@ Bug reports, feature requests, questions, or just chatting: **[Join the Discord]
 
 **Pimptasty** — author and maintainer.
 
-Built on the [Ace3](https://www.curseforge.com/wow/addons/ace3) library suite (AceAddon, AceGUI, AceDB, AceConfig, AceComm, AceSerializer, AceTimer, AceConsole), plus [DeltaSync](https://www.curseforge.com/wow/addons/deltasync) for the peer-to-peer sync engine, [GuildRoster](https://www.curseforge.com/wow/addons/libguildroster) for guild membership and online state, [ItemDB](https://www.curseforge.com/wow/addons/libitemdb) for item stats, vendor prices and recipe-scroll data, [AceCommQueue](https://www.curseforge.com/wow/addons/acecommqueue), [VersionCheck](https://www.curseforge.com/wow/addons/versioncheck), LibDataBroker, and LibDBIcon.
+Built on the [Ace3](https://www.curseforge.com/wow/addons/ace3) library suite (AceAddon, AceGUI, AceDB, AceConfig, AceComm, AceSerializer, AceTimer, AceConsole), plus [DeltaSync](https://www.curseforge.com/wow/addons/deltasync) for the peer-to-peer sync engine, [GuildRoster](https://www.curseforge.com/wow/addons/libguildroster) for guild membership and online state, [ItemDB](https://www.curseforge.com/wow/addons/libitemdb) for item stats, vendor prices and recipe-scroll data, [AceCommQueue](https://www.curseforge.com/wow/addons/acecommqueue), [VersionCheck](https://www.curseforge.com/wow/addons/versioncheck), LibAceGUIWidgets for the shared window and list widgets, LibDataBroker, and LibDBIcon.
 
 Optional integrations: [TOGBankClassic](https://www.curseforge.com/wow/addons/togbankclassic) for guild-bank reagent buttons; [GreenWall](https://www.curseforge.com/wow/addons/greenwall) for confederate-guild cooldown announcements.
 

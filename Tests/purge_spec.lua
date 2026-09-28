@@ -10,7 +10,7 @@
 --
 -- The allied-guild list that drives cross-guild federation used to be pinned
 -- here too (22 cases: the list, DropSisterGuildData, and the delivery verdicts
--- on TOGPM's two GUILD broadcasts). writ-cannot: that feature was removed on
+-- on TOGPM's two GUILD broadcasts). That feature was removed on
 -- purpose in v1.0.10 -- the list, its gossip, the roster relay and the two
 -- prefixes are LibGuildRoster's now and TOGPM makes no AceComm send of its
 -- own, so there is no config to broadcast, no roster to relay and no verdict

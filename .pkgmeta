@@ -17,6 +17,8 @@ required-dependencies:
   - libguildroster
   - libprofessiondb
   - libitemdb
+  - libdbicon-1-0
+  - libaceguiwidgets
 
 optional-dependencies:
   - togbankclassic

@@ -1,6 +1,5 @@
-## Interface: 40402
-## X-Min-Interface: 40402
-## Title: |cffFF8000TOG Profession Master|r |cff999999Cataclysm|r
+## Interface: 16001
+## Title: |cffFF8000TOG Profession Master|r |cff999999Forever|r
 ## Version: @project-version@
 ## Author: Pimptasty
 ## Category: Professions
@@ -8,8 +7,14 @@
 ## SavedVariables: TOGPM_Settings TOGPM_GuildDB
 ## SavedVariablesPerCharacter:
 ## X-Curse-Project-ID: 1513588
-## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0, DeltaSync, GuildRoster, ProfessionDB, ItemDB, LibDBIcon-1.0, LibAceGUIWidgets
-## OptionalDeps: TOGBankClassic, GreenWall, Auctionator, Auc-Advanced, TradeSkillMaster, TradeSkillMaster_AppHelper
+## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0, DeltaSync, GuildRoster, ProfessionDB, ItemDB, LibAceGUIWidgets
+## OptionalDeps: LibDBIcon-1.0, TOGBankClassic, GreenWall, Auctionator, Auc-Advanced, TradeSkillMaster, TradeSkillMaster_AppHelper
+
+# TEMPORARY, WoW Forever only: LibDBIcon-1.0 is not yet published for Forever,
+# so this TOC embeds it. LibStub keeps whichever copy has the higher MINOR.
+# LibDataBroker first: LibDBIcon errors at load if it is not registered.
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
 
 Locale\_init.lua
 Locale\enUS.lua

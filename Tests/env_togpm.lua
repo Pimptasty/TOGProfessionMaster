@@ -247,7 +247,7 @@ M.ACE = {
 }
 
 -- Suite libraries, from the sibling installs — the exact files that ship.
-M.LIBS = { "AceCommQueue-1.0", "DeltaSync-1.0" }
+M.LIBS = { "AceCommQueue-1.0", "DeltaSync-1.0", "LibAceGUIWidgets-1.0" }
 
 -- Addon files loaded into the shared namespace, in .toc order. Only the ones
 -- that load cleanly without a UI are here; GUI files are loaded per-spec.
@@ -418,7 +418,7 @@ function M.tradeSkillSession(profName, recipes, opts)
 		-- name, isHeader, isExpanded, rank, numTempPoints, modifier, maxRank
 		return s.name, s.isHeader or false, true, s.rank or 0, 0, 0, s.max or 0
 	end
-	_G.ExpandSkillHeader = function() end
+	_G.ExpandSkillHeader = function(_index) end
 
 	_G.GetTradeSkillLine        = function() return profName or "Alchemy", 300, 300 end
 	_G.GetNumTradeSkills        = function() return #recipes end
@@ -495,9 +495,19 @@ function M.drawTab(tab, opts)
 	opts = opts or {}
 	local GUI = M.aceGUI()
 	local container = GUI:Create(opts.widget or "SimpleGroup")
+	-- The container keeps its size, as the window's TabGroup does: AceGUI's
+	-- Fill layout anchors that container on all four sides, so its auto-height
+	-- never shrinks it. Set BEFORE the size: the frame's OnSizeChanged re-lays
+	-- it out, and an auto-height SimpleGroup with no children sizes itself
+	-- straight back to 0, which left a fill-height list no room for a row.
+	container:SetAutoAdjustHeight(false)
 	container:SetLayout(opts.layout or "List")
 	container:SetWidth(opts.width or 700)
 	container:SetHeight(opts.height or 480)
+	-- Anchored, as a real tab is inside the window: without a position nothing
+	-- laid out inside the container resolves a rect.
+	container.frame:ClearAllPoints()
+	container.frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
 	tab:Draw(container)
 	return container, GUI
 end

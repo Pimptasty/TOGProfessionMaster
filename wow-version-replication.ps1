@@ -55,7 +55,8 @@ if (-not $DryRun) {
     }
 }
 
-$WowVersions = @("_classic_era_", "_classic_", "_anniversary_")
+# _classic_beta_ is the WoW Forever client (installed 2026-09-27).
+$WowVersions = @("_classic_era_", "_classic_", "_anniversary_", "_classic_beta_")
 
 # Build list of addon install directories that actually exist on disk
 # Exclude the version that contains the source folder to avoid copying to itself
@@ -260,6 +261,18 @@ function Sync-File([string]$fullPath, [string]$verb) {
             Write-Host "[skip] $rel" -ForegroundColor DarkGray
         }
         return
+    }
+
+    # A "Deleted" event is not proof the file is gone. Editors (and Claude's
+    # Edit tool) save by replacing the file, which raises Deleted AND
+    # Created/Changed, and the watcher's handlers can run in either order. If
+    # Deleted ran last, the copy was removed from every other install while
+    # the source still had the file -- that is how Compat.lua vanished from the
+    # other clients on 2026-09-27 and TOGPM failed to load there. So a delete
+    # is honoured only when the source file really is gone; otherwise it is
+    # treated as a change and the file is copied.
+    if ($verb -eq "Deleted" -and (Test-Path -LiteralPath $fullPath)) {
+        $verb = "Changed"
     }
 
     $ts  = Get-Date -Format "HH:mm:ss"

@@ -182,34 +182,21 @@ local function ProfessionMatchesRow(profId, row)
 end
 
 -- ---------------------------------------------------------------------------
--- Responsive column widths
+-- Column widths (scale-1.0), for the RowList that draws the rows
 -- ---------------------------------------------------------------------------
--- The Cooldowns tab adapts its column widths to the available content area
--- so a user-resized window squeezes the columns gracefully instead of
--- clipping rows off the right edge. COL_MIN sets the lower bound for each
--- top-level column; below the sum of these the resize bound on the frame
--- prevents further dragging. COL_PREFER is the comfortable / max width.
--- Fixed column widths. Cooldowns previously computed widths from window
--- size on every WINDOW_RESIZED redraw, but that meant AceGUI Flow inside
--- each rowGroup reflowed mid-drag (the user perceived this as "rows
--- stacking into 2-3 lines and snapping back when the drag stops"). The
--- MissingRecipesTab and BrowserTab don't have this problem because their
--- virtual-scroll rows are raw CreateFrame frames at fixed widths — Flow
--- never re-runs on them. We get the same smooth-resize behaviour by just
--- using fixed widths here and letting wider windows leave empty space on
--- the right of the rows, instead of stretching.
---
--- col2 = 360 covers icon(18) + cdName(80) + reagent(80) + [AH](40) +
--- [Bank](40) + mail(20) + Flow inter-widget slack (40) + 42px headroom
--- so the [AH] button has definite room when scan results gate it on.
--- time = 80 fits the "Time Left" header comfortably (below ~70 it wraps).
-local COL_W      = { char = 140, col2 = 360, time = 80 }
--- Total width the row needs, exposed so MainWindow can size the frame's
--- SetResizeBounds correctly — preventing the user from dragging the
--- window below the point where columns would clip past the right edge.
--- With fixed widths (no responsive shrinking), this IS the row width
--- always — not just a floor.
-CooldownsTab.MIN_ROW_WIDTH = COL_W.char + COL_W.col2 + COL_W.time  -- 580
+-- The cooldown name is the list's one auto-width column and takes what the
+-- fixed columns leave. [Bank] is 50 wide because its label carries TOGBank's
+-- staleness dot in front of the text since v1.1.0.
+local COL = {
+    char    = 140,
+    icon    = 18,
+    reagent = 110,
+    ah      = 36,
+    bank    = 50,
+    mail    = 20,
+    time    = 80,
+    alert   = 18,
+}
 
 -- Window size policy for this tab — read by MainWindow on tab switch
 -- and on Open. `locked = true` means the resize grip is disabled and
@@ -217,80 +204,6 @@ CooldownsTab.MIN_ROW_WIDTH = COL_W.char + COL_W.col2 + COL_W.time  -- 580
 -- SAME locked dimensions so switching between those two tabs produces
 -- no visible jump (only switching to/from Browser changes the size).
 CooldownsTab.WINDOW_SIZE = { width = 720, height = 500, locked = true }
-
--- Inside col2 (the "Cooldown" column), widget widths break down as
--- icon + cdName + reagent + [AH] + [Bank] + mail. icon / [AH] / [Bank] /
--- mail are fixed-width; cdName + reagent share the remaining space.
-local C2_ICON      = 18
-local C2_MAIL      = 20
-local C2_AH_BTN    = 40
--- 50, was 40: the label carries TOGBank's staleness dot in front of [Bank]
--- since v1.1.0 (a bullet and a space at GameFontNormalSmall).
-local C2_BANK_BTN  = 50
-local C2_MIN_NAME  = 80
-local C2_MIN_RGNT  = 80
-
---- Compute inner col2 widths for the fixed col2 width and which buttons
---- are currently shown for this row. Returns iconW, cdNameW, reagentW,
---- ahW, bankW, mailW.
----
---- Reserves ~40px of internal slack for AceGUI Flow's per-widget gaps
---- between col2's children (icon / cdName / reagent / AH / Bank / mail —
---- up to 5 inter-widget gaps). Without the slack, the children sum
---- to col2W exactly; Flow then can't fit them on one line, wraps the last
---- few widgets to a second line, and col2 becomes ~2 rows tall — which
---- visually pushes the row's Time Left column off to look like it's on
---- the row below.
-local function ComputeCol2InnerWidths(col2W, hasReagent, hasAH, hasBank)
-    local mailW = hasReagent and C2_MAIL    or 0
-    local ahW   = hasAH      and C2_AH_BTN  or 0
-    local bankW = hasBank    and C2_BANK_BTN or 0
-    local fixed = C2_ICON + mailW + ahW + bankW
-    -- 40px slack for AceGUI Flow's per-widget gaps inside col2 (up to 5
-    -- inter-widget gaps × ~8px). Without enough slack the children sum
-    -- exceeds col2W and Flow wraps the last few widgets to a second line,
-    -- which makes col2 visually 2 rows tall and pushes the row's data
-    -- (including the Time Left text) onto a second visual row.
-    local internal_slack = 40
-    local variable = col2W - fixed - internal_slack
-    if variable < (C2_MIN_NAME + (hasReagent and C2_MIN_RGNT or 0)) then
-        variable = C2_MIN_NAME + (hasReagent and C2_MIN_RGNT or 0)
-    end
-    if not hasReagent then
-        return C2_ICON, math.max(C2_MIN_NAME, variable), 0, ahW, bankW, mailW
-    end
-    -- 50/50 split between cdName and reagent, with per-side minimums.
-    local cdNameW  = math.max(C2_MIN_NAME, math.floor(variable * 0.5))
-    local reagentW = math.max(C2_MIN_RGNT, variable - cdNameW)
-    return C2_ICON, cdNameW, reagentW, ahW, bankW, mailW
-end
-
---- Disable word-wrap on an AceGUI Label / InteractiveLabel widget — text
---- that's slightly too wide for the cell truncates instead of wrapping
---- to a second line and inflating the row height. AceGUI's internal
--- `nowrap(w)` lived here and is DELETED. Its own comment claimed "DrawHeaders,
--- DrawRow, and the group popup all share the same helper — applied to every
--- Label-style widget the cooldowns table renders so wrap is impossible
--- anywhere", and NOTHING IN THE ADDON EVER CALLED IT. The comment described an
--- intention that was never wired up, which is worse than no comment: it read as
--- a guarantee that no-wrap was handled here, so nobody looked again.
---
--- If wrapping does need suppressing on this tab's labels, wire it at the sites
--- rather than restoring a helper with no caller.
-
--- Leak-safe wrapper for `widget.frame:SetScript(...)` on AceGUI widgets.
--- Used here only for the rowGroup right-click handler — SimpleGroup has
--- no native OnMouseDown dispatch so we have to install a raw script and
--- restore the prior one on release. For Button / Dropdown / EditBox use
--- widget:SetCallback("OnEnter"/"OnLeave"/...) instead — those widgets'
--- Constructors install their own internal Control_OnEnter dispatch that
--- fires the SetCallback registry, and AceGUI clears the registry on
--- release for free. See addon.AceGUIFrameScripts in MainWindow.lua.
-local frameScripts = addon.AceGUIFrameScripts
-
--- (Removed: GetAvailableWidth + ComputeColWidths. The cooldowns tab now
--- uses fixed COL_W widths so rows don't reflow during resize-drag — same
--- smoothness as the Missing/Browser tabs which also use fixed widths.)
 
 -- Keep row height consistent with MissingRecipesTab so text baselines align
 -- visually the same across both locked-size tabs.
@@ -485,7 +398,7 @@ local function BuildRows(readyOnly, viewMode)
                         if spellId == data.saltShakerItem then
                             cdName = addon.Item.GetInfo(spellId) or "Salt Shaker"
                         else
-                            cdName = data.cooldowns[spellId] or GetSpellInfo(spellId)
+                            cdName = data.cooldowns[spellId] or addon.Spell.GetInfo(spellId)
                                      or addon.Item.GetInfo(spellId) or tostring(spellId)
                         end
                         local iconItemId    = data.iconOverrides and data.iconOverrides[spellId]
@@ -725,40 +638,6 @@ local function CdMail_CountItemInBags(itemId)
     return total, stacks
 end
 
---- Reagent labels whose RESTING colour tracks bag stock, so acquiring the
---- reagent recolours the column without a tab switch.
----
---- ⚠ WEAK KEYS, and that is load-bearing rather than tidiness. `NewText` calls
---- `parentFrame:CreateFontString` on every `DrawRow`, so unlike the row FRAMES —
---- which `track()` pools — the fontstrings are NEW on each refresh. A strong
---- table would therefore gain one entry per reagent row per refresh and never
---- lose one, keeping every discarded fontstring alive and recolouring all of
---- them on every `BAG_UPDATE` for the rest of the session. `__mode = "k"` lets a
---- fontstring nobody else holds be collected and takes its closure with it.
----
---- Keyed BY THE FONTSTRING rather than appended to a list for the same reason in
---- the other direction: if the fontstrings ever do become pooled, a redraw hands
---- one to a different reagent, and an append would leave the previous item's
---- closure recolouring it. Keying replaces the entry either way, so this is
---- correct whichever way that changes.
----
---- The subscription is made once, on first use, because this file has no
---- teardown hook of its own — between the weak keys and the keying it does not
---- need one. `REAGENT_WATCH_UPDATED` fires on every `BAG_UPDATE`
---- (`Modules/ReagentWatch.lua`) regardless of whether any watch is configured.
-local reagentTints = setmetatable({}, { __mode = "k" })
-local reagentTintsHooked = false
-
-local function registerReagentTint(fontString, colorFn)
-    reagentTints[fontString] = colorFn
-    if reagentTintsHooked then return end
-    reagentTintsHooked = true
-    addon:RegisterCallback("REAGENT_WATCH_UPDATED", function()
-        for fs, fn in pairs(reagentTints) do
-            fs:SetTextColor(fn())
-        end
-    end)
-end
 
 --- Greedy fulfillment plan — returns { canFulfill, reason, stacksToAttach, splitStack, totalAttachable }.
 local function CdMail_CalculateFulfillmentPlan(items, qtyNeeded, totalInBags)
@@ -846,7 +725,6 @@ CooldownsTab._BuildRows                 = BuildRows
 CooldownsTab._SortRows                  = SortRows
 CooldownsTab._SecondsToString           = SecondsToString
 CooldownsTab._CollectCooldownsByChar    = CollectCooldownsByChar
-CooldownsTab._ComputeCol2InnerWidths    = ComputeCol2InnerWidths
 CooldownsTab._ProfessionMatchesRow      = ProfessionMatchesRow
 CooldownsTab._CountItemInBags           = CdMail_CountItemInBags
 CooldownsTab._CalculateFulfillmentPlan  = CdMail_CalculateFulfillmentPlan
@@ -1102,11 +980,6 @@ function CooldownsTab:Draw(container)
     -- vertically the same way List did.
     container:SetLayout("Flow")
 
-    -- Fixed column widths — see COL_W comment block. No more responsive
-    -- recomputation per resize; rows stay put as the window drags wider
-    -- or narrower (matching the Missing/Browser tab feel).
-    self._colWidths = COL_W
-
     -- ---- Toolbar -----------------------------------------------------------
     local toolbar = AceGUI:Create("SimpleGroup")
     toolbar:SetLayout("Flow")
@@ -1342,47 +1215,35 @@ function CooldownsTab:Draw(container)
             end
             return items
         end,
+        -- [AH] buttons follow the scan results; the list re-reads each
+        -- button column's `show` on a repaint.
         onRefresh     = function()
-            -- Re-fill rows so [AH] buttons appear/disappear with scan
-            -- results. ReleaseChildren on _scroll only — preserves toolbar
-            -- and headers (and crucially the live scanBtn).
-            local scroll = CooldownsTab._scroll
-            if scroll and scroll.ReleaseChildren then
-                scroll:ReleaseChildren()
-                CooldownsTab:FillRows(scroll)
-                if scroll.DoLayout then scroll:DoLayout() end
-            end
+            if CooldownsTab._rowList then CooldownsTab._rowList:Refresh() end
         end,
     })
 
-    -- ---- Column headers ----------------------------------------------------
-    local headers = AceGUI:Create("SimpleGroup")
-    headers:SetLayout("Flow")
-    headers:SetFullWidth(true)
-    container:AddChild(headers)
-    self:DrawHeaders(headers, container)
-
-    -- ---- Scrollable rows ---------------------------------------------------
-    -- Persist scroll position across redraws so sync-triggered
-    -- GUILD_DATA_UPDATED rebuilds (every few seconds in active guilds)
-    -- and filter changes don't yank the user back to the top. Shared
-    -- helper handles SetStatusTable + saved-value capture; we just have
-    -- to call Restore() after FillRows + DoLayout so SetScroll can
-    -- derive a correct offset from the now-known content height.
-    local scroll, saved = addon.GUI.PersistentScroll.Acquire(self, {
-        key        = "cooldowns",
-        layout     = "List",
-        fullWidth  = true,
-        fullHeight = true,
-        onRelease  = function() self:DetachPopup() end,
-    })
-    container:AddChild(scroll)
-    self._scroll    = scroll
+    -- ---- Rows --------------------------------------------------------------
+    -- A LibAceGUIWidgets RowList, built once per session on a host the tab
+    -- owns (addon.GUI.ParkList), parked in a group that takes the rest of the
+    -- tab. Released on a tab switch or redraw: the popup is detached, and the
+    -- host goes back to UIParent.
+    local section = AceGUI:Create("SimpleGroup")
+    section:SetLayout("Fill")
+    section:SetFullWidth(true)
+    section:SetFullHeight(true)
+    container:AddChild(section)
+    self._section   = section
     self._container = container
+    if addon.W then
+        addon.W:OnWidgetRelease(section, "togpm:cooldownsList", function()
+            GameTooltip:Hide()
+            self:DetachPopup()
+            if self._section == section then self._section = nil end
+            self._rows = nil
+        end)
+    end
 
-    self:FillRows(scroll)
-    if scroll.DoLayout then scroll:DoLayout() end
-    addon.GUI.PersistentScroll.Restore(scroll, saved)
+    self:FillRows(section)
 end
 
 function CooldownsTab:DetachPopup()
@@ -1395,66 +1256,12 @@ function CooldownsTab:DetachPopup()
     end
 end
 
-function CooldownsTab:DrawHeaders(parent, container)
-    -- Column widths are fixed (COL_W) — same widths for headers and data
-    -- rows, so the header columns visually align with the row contents.
-    -- self._colWidths is set in Draw() to COL_W before this runs.
-    local cw = self._colWidths or { char = 190, col2 = 456, time = 80 }
-    local cols = {
-        { key = "char", label = L["ColCharacter"], width = cw.char,
-          tip = "Character", justify = "LEFT",
-          tipDesc = "The guild member who has this cooldown. Right-click a row to whisper them." },
-        { key = "cd",   label = L["ColCooldown"],  width = cw.col2,
-          tip = "Cooldown", tipDesc = "The name of the profession cooldown spell.", justify = "LEFT" },
-        { key = "time", label = L["ColTimeLeft"],  width = cw.time,
-          tip = "Time Left", tipDesc = "How long until this cooldown is ready. Green = ready now.", justify = "RIGHT" },
-    }
-
-    self._headerCols = cols
-    self._headerWidgets = {}
-
-    for _, col in ipairs(cols) do
-        local key = col.key
-        local w = addon.GUI.MakeColumnHeader({
-            parent       = parent,
-            label        = col.label,
-            -- Headers are centred over their columns with the sort arrow placed
-            -- beside the text (shared ConfigureCenteredHeaderIcon below), matching
-            -- the Profit Planner tab. Data cells keep their own justification.
-            width        = col.width,
-            justifyH     = "CENTER",
-            hoverGlow    = true,
-            tooltipTitle = col.tip,
-            tooltipDesc  = col.tipDesc,
-            onClick      = function()
-                self._sortCol, self._sortAsc = addon.GUI.Sort.Next(self._sortCol, self._sortAsc, key)
-                self:RedrawTable(container)
-            end,
-        })
-        addon.GUI.Sort.ConfigureCenteredHeaderIcon(w, self._sortCol == key, self._sortAsc, col.width)
-
-        -- Clean up sort icon when widget is released back to AceGUI pool
-        local prevOnRelease = w.events and w.events.OnRelease
-        w:SetCallback("OnRelease", function(widget)
-            if widget._sortIcon then
-                widget._sortIcon:Hide()
-                widget._sortIcon:SetParent(nil)
-                widget._sortIcon:ClearAllPoints()
-                widget._sortIcon = nil
-            end
-            if prevOnRelease then prevOnRelease(widget) end
-        end)
-
-        self._headerWidgets[key] = w
-    end
-end
-
 function CooldownsTab:RedrawTable(container)
     container:ReleaseChildren()
     self:Draw(container)
 end
 
-function CooldownsTab:FillRows(scroll)
+function CooldownsTab:FillRows(section)
     local rows = BuildRows(self._readyOnly, self._viewMode)
 
     -- Two-level dropdown filter:
@@ -1508,19 +1315,28 @@ function CooldownsTab:FillRows(scroll)
     end
 
     SortRows(rows, self._sortCol, self._sortAsc)
-    local now = GetServerTime()
+    self._rows = rows
 
     if #rows == 0 then
+        if self._rowListHost then self._rowListHost:Hide() end
         local lbl = AceGUI:Create("Label")
         lbl:SetText(L["NoCooldownData"])
         lbl:SetFullWidth(true)
-        scroll:AddChild(lbl)
+        section:AddChild(lbl)
         return
     end
+    if not addon.W then return end
 
-    for rowIndex, row in ipairs(rows) do
-        self:DrawRow(scroll, row, now, rowIndex)
-    end
+    local rl = addon.GUI.ParkList(self, "_rowList", section, function(host)
+        return self:BuildRowList(host)
+    end)
+    -- Keep the player's place across the rebuilds GUILD_DATA_UPDATED causes
+    -- every few seconds in an active guild. Read before SetData, whose
+    -- scroll-to-top is reported too.
+    local saved = addon.GUI.ListScroll.Get("cooldowns")
+    rl:SetSort(self._sortCol, not self._sortAsc)
+    rl:SetData(rows)
+    rl:SetScrollOffset(saved)
 end
 
 -- Profession-spec bonus output indicator support.
@@ -1554,122 +1370,33 @@ local function getSpecBonus(row, gdb)
     return nil
 end
 
-function CooldownsTab:DrawRow(parent, row, now, rowIndex)
-    -- Responsive column widths shared by charLbl / col2 / timeLbl below.
-    -- Computed once in Draw() per redraw; falls back to preferred values
-    -- if Draw hasn't run yet (defensive — shouldn't happen in practice).
-    local cw = self._colWidths or { char = 190, col2 = 456, time = 80 }
+-- ---------------------------------------------------------------------------
+-- The rows: a LibAceGUIWidgets RowList (MINOR 36). It draws only the visible
+-- rows and reuses its row frames and cells for the session, which is what
+-- the per-row kits did by hand up to v1.1.2. Each column below is what one
+-- part of the old hand-built row did; the hover and click on each cell are
+-- the list's `onCellEnter` / `onCellClick` / button `onClick`, resolved
+-- against the entry the pooled row is showing at that moment.
+-- ---------------------------------------------------------------------------
 
-    local remaining = row.expiresAt - now
-    local timeStr   = SecondsToString(remaining)
-    local timeColor
-    if remaining <= 0 then
-        timeColor = "|cff00ff00"   -- green: ready
-    elseif remaining < 28800 then
-        timeColor = "|cffffff00"   -- yellow: < 8h
-    elseif remaining < 86400 then
-        timeColor = "|cffff8800"   -- orange: < 24h
-    else
-        timeColor = "|cffff2200"   -- red: >= 24h
-    end
+local function timeColor(remaining)
+    if remaining <= 0 then return "|cff00ff00" end      -- green: ready
+    if remaining < 28800 then return "|cffffff00" end   -- yellow: < 8h
+    if remaining < 86400 then return "|cffff8800" end   -- orange: < 24h
+    return "|cffff2200"                                 -- red: >= 24h
+end
 
-    local rowGroup = AceGUI:Create("SimpleGroup")
-    rowGroup:SetLayout("Flow")
-    rowGroup:SetFullWidth(true)
-    if rowGroup.SetAutoAdjustHeight then rowGroup:SetAutoAdjustHeight(false) end
-    rowGroup:SetHeight(ROW_HEIGHT)
-    parent:AddChild(rowGroup)
-    local rf = rowGroup.frame
-    addon.GUI.ApplyRowStripe(rf, rowIndex or 1)
-    local rawChildren = {}
-    local function track(frame)
-        rawChildren[#rawChildren + 1] = frame
-        return frame
-    end
-
-    -- Shared whisper helper (right-click on char label OR anywhere on the row).
-    -- This comment said "shared" while the function was a private copy also
-    -- present in BrowserTab; now it actually is, from GUI/SharedWidgets.lua.
-    local openWhisper = addon.UI.OpenWhisper
-    local function doWhisper(anchorFrame)
-        local shortName = row.shortName
-        local fullKey   = row.charKey
-        if Menu and Menu.CreateContextMenu then
-            Menu.CreateContextMenu(anchorFrame, function(_, root)
-                root:CreateTitle(shortName)
-                root:CreateButton(shortName, function() openWhisper(fullKey) end)
-            end)
-        else
-            openWhisper(fullKey)
-        end
-    end
-    rf:EnableMouse(true)
-    frameScripts(rowGroup, {
-        OnMouseDown = function(f, button)
-            if button == "RightButton" then doWhisper(f) end
-        end,
-    })
-    local prevOnRelease = rowGroup.events and rowGroup.events.OnRelease
-    rowGroup:SetCallback("OnRelease", function(widget)
-        addon.GUI.DetachPool(rawChildren)
-        if prevOnRelease then prevOnRelease(widget) end
-    end)
-
-    local function NewText(_name, parentFrame, width, justify)
-        local fs = parentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        fs:SetHeight(ROW_HEIGHT)
-        fs:SetWidth(width)
-        fs:SetJustifyH(justify or "LEFT")
-        fs:SetJustifyV("MIDDLE")
-        fs:SetWordWrap(false)
-        return fs
-    end
-
-    local x = 0
-
-    -- ── Column 1: Character (190px) — online=white, offline=grey ─────────────
-    -- On TBC/Wrath, the first SPEC_ICON_W pixels are reserved for the spec-
-    -- bonus indicator (always present so column alignment stays consistent
-    -- across rows; icon texture is only set when a spec bonus actually applies).
-    local gdb        = addon:GetGuildDb()
-    if SPEC_SLOT_RESERVED then
-        local specSpellId, specBonusType = getSpecBonus(row, gdb)
-        local specHit = track(CreateFrame("Frame", nil, rf))
-        specHit:SetSize(SPEC_ICON_W, ROW_HEIGHT)
-        specHit:SetPoint("LEFT", rf, "LEFT", x, 0)
-        local specIcon = specHit:CreateTexture(nil, "ARTWORK")
-        specIcon:SetSize(12, 12)
-        specIcon:SetPoint("CENTER", specHit, "CENTER", 0, 0)
-        if specSpellId then
-            local tex = GetSpellTexture(specSpellId)
-            if tex then
-                specIcon:SetTexture(tex)
-                specIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-                specHit:EnableMouse(true)
-                specHit:SetScript("OnEnter", function()
-                    addon.Tooltip.Owner(specHit)
-                    local specName = GetSpellInfo(specSpellId) or ""
-                    GameTooltip:SetText(specName, 1, 1, 1, 1, true)
-                    local bonusLine = (specBonusType == "guaranteed")
-                        and L["SpecBonusGuaranteedDouble"]
-                        or  L["SpecBonusProcChance"]
-                    GameTooltip:AddLine(bonusLine, 0.7, 0.85, 1.0, true)
-                    GameTooltip:Show()
-                end)
-                specHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
-            end
-        end
-        x = x + SPEC_ICON_W
-    end
-
+--- The character cell's text: "You" / "You (Alt)" for the account's own
+--- characters, an offline crafter's online alt credited by name, coloured
+--- you / online / offline.
+local function charCellText(row)
+    local gdb = addon:GetGuildDb()
     local GuildRoster = addon.Scanner and addon.Scanner.GuildRoster
     local online = GuildRoster and GuildRoster:IsOnline(row.charKey) or false
     local displayName = row.shortName
     local isYou = addon:IsMyCharacter(row.charKey)
-
     if isYou then
-        -- "You" alone is ambiguous when several alts are listed. Disambiguate
-        -- alts as "You (AltName)" so the user can tell them apart at a glance.
+        -- "You" alone is ambiguous when several alts are listed.
         if row.charKey == addon:GetCharacterKey() then
             displayName = L["You"]
         else
@@ -1686,332 +1413,279 @@ function CooldownsTab:DrawRow(parent, row, now, rowIndex)
             end
         end
     end
+    local color = isYou and (addon.ColorYou or addon.BrandColor or "ffDA8CFF")
+        or (online and (addon.ColorOnline or "ffffffff") or (addon.ColorOffline or "ffaaaaaa"))
+    return "|c" .. color .. displayName .. "|r"
+end
 
-    local colorYou     = "|c" .. (addon.ColorYou    or addon.BrandColor or "ffDA8CFF")
-    local colorOnline  = "|c" .. (addon.ColorOnline  or "ffffffff")
-    local colorOffline = "|c" .. (addon.ColorOffline or "ffaaaaaa")
-    local nameColor = isYou and colorYou or (online and colorOnline or colorOffline)
-    local charHit = track(CreateFrame("Button", nil, rf))
-    charHit:SetSize(cw.char - SPEC_ICON_W, ROW_HEIGHT)
-    charHit:SetPoint("LEFT", rf, "LEFT", x, 0)
-    charHit:RegisterForClicks("AnyUp")
-    local charLbl = NewText(nil, charHit, cw.char - SPEC_ICON_W, "LEFT")
-    charLbl:SetPoint("LEFT", charHit, "LEFT", 0, 0)
-    charLbl:SetText(nameColor .. displayName .. "|r")
-    charHit:SetScript("OnClick", function(_, button)
-        if button == "RightButton" then doWhisper(charHit) end
+--- The cooldown's icon. An item-icon override (cloth crafts whose spell icon
+--- is a generic net texture) is checked BEFORE the group check, so a
+--- multi-reagent cloth cooldown still shows the produced bolt.
+local function rowIcon(row)
+    if row.isTransmuteGroup then return "Interface\\Icons\\Trade_Alchemy" end
+    if row.iconItemId then
+        local t = select(10, addon.Item.GetInfo(row.iconItemId))
+        if t then return t end
+    end
+    return row.spellId and addon.Spell.GetTexture(row.spellId) or nil
+end
+
+-- A cooldown's reagent names and icons can be cold in the client's item cache.
+-- Each item asks the client once, and the list repaints when it answers.
+local itemAsked = {}
+function CooldownsTab:WhenItemLoads(itemId)
+    if not itemId or itemAsked[itemId] or not Item then return end
+    itemAsked[itemId] = true
+    Item:CreateFromItemID(itemId):ContinueOnItemLoad(function()
+        if self._rowList then self._rowList:Refresh() end
     end)
-    charHit:SetScript("OnEnter", function()
-        addon.Tooltip.Owner(charHit)
-        GameTooltip:SetText(row.shortName, 1, 1, 1, 1, true)
-        GameTooltip:AddLine(L["TooltipWhisperRightClick"], 0.7, 0.7, 0.7, true)
-        GameTooltip:Show()
-    end)
-    charHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    x = x + cw.char
+end
 
-    -- ── Column 2: fixed 306px container — ALL cooldown content lives inside here ──
-    -- This SimpleGroup acts as a hard column boundary: charLbl ends at 190px,
-    -- col2 spans 190–496px, timeLbl starts at 496px regardless of inner content.
-
-    -- Pre-check bank stock now so we can compute exact inner widths before
-    -- creating any widgets (avoids dynamic resize after layout).
-    -- Through addon.Bank, not a private walk of TOGBankClassic_Guild.Info.alts:
-    -- this was a third copy of GetStock's loop, and it read `alt.items`, which
-    -- TOGBank v1.4.2 no longer writes (INV2-RETIRE-003). One reader,
-    -- one place to track their API.
-    local itemId   = row.reagentItemId
-    local hasBank  = false
-    if itemId and addon:IsAddOnLoaded("TOGBankClassic") then
-        hasBank = addon.Bank.GetStock(itemId) > 0
-    end
-
-    -- Pre-check whether the AH scanner has cached listings for this row's
-    -- reagent — same gating model as hasBank above. Flag drives whether
-    -- the [AH] widget gets a width slot in the Flow layout below.
-    local hasAH = false
-    if itemId and addon.AH then
-        local listings = addon.AH.GetListingsFor(itemId)
-        hasAH = listings and (listings.count or 0) > 0
-    end
-
-    -- Width budget inside col2. ComputeCol2InnerWidths splits the fixed
-    -- col2 width across the icon, cdName, reagent, [AH], [Bank], and mail
-    -- widgets. Buttons get fixed slots when shown; cdName + reagent share
-    -- the remainder 50/50 with per-side minimums. col2 itself is COL_W.col2
-    -- (fixed), passed in via self._colWidths (read into `cw` at the top of
-    -- this function).
-    local iconColW, cdNameW, reagentW, ahW, bankW, mailW =
-        ComputeCol2InnerWidths(cw.col2, itemId ~= nil, hasAH, hasBank)
-
-    local col2 = track(CreateFrame("Frame", nil, rf))
-    col2:SetSize(cw.col2, ROW_HEIGHT)
-    col2:SetPoint("LEFT", rf, "LEFT", x, 0)
-    local x2 = 0
-
-    local iconCell = track(CreateFrame("Frame", nil, col2))
-    iconCell:SetSize(iconColW, ROW_HEIGHT)
-    iconCell:SetPoint("LEFT", col2, "LEFT", x2, 0)
-    local iconW = iconCell:CreateTexture(nil, "ARTWORK")
-    iconW:SetSize(12, 12)
-    iconW:SetPoint("CENTER", iconCell, "CENTER", 0, 0)
-
-    -- Resolve icon texture
-    local iconTexture
-    if row.isTransmuteGroup then
-        iconTexture = "Interface\\Icons\\Trade_Alchemy"
-    elseif row.iconItemId then
-        -- Item-icon override — used by cloth crafts whose spell icon is a
-        -- generic net/cloth texture. Checked BEFORE isGroup so multi-reagent
-        -- cloth cooldowns (Primal Mooncloth/Spellcloth/Shadowcloth) that render
-        -- as expand rows still show the produced bolt's icon, not the bad one.
-        iconTexture = select(10, addon.Item.GetInfo(row.iconItemId))
-        if not iconTexture then
-            local iconItem = Item:CreateFromItemID(row.iconItemId)
-            iconItem:ContinueOnItemLoad(function()
-                local t = select(10, addon.Item.GetInfo(row.iconItemId))
-                if t then
-                    iconW:SetTexture(t)
-                    iconW:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-                end
-            end)
-            iconTexture = row.spellId and GetSpellTexture(row.spellId)
-        end
+-- Right-click anywhere on a row: whisper the character. Shared with the
+-- Browser tab through addon.UI.OpenWhisper.
+local function whisperMenu(row, anchorFrame)
+    local openWhisper = addon.UI.OpenWhisper
+    if Menu and Menu.CreateContextMenu then
+        Menu.CreateContextMenu(anchorFrame, function(_, root)
+            root:CreateTitle(row.shortName)
+            root:CreateButton(row.shortName, function() openWhisper(row.charKey) end)
+        end)
     else
-        -- Both single non-override rows and group rows (transmute-style expand
-        -- rows without an icon override) fall back to the spell texture.
-        iconTexture = row.spellId and GetSpellTexture(row.spellId)
+        openWhisper(row.charKey)
     end
-    if iconTexture then
-        iconW:SetTexture(iconTexture)
-        iconW:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    else
-        iconW:SetTexture(nil)
-    end
-    x2 = x2 + iconColW
+end
 
-    -- Cooldown name (text only — no image, so no stacking threshold applies)
-    local cdText = row.isGroup and ("[+] " .. row.cdName) or row.cdName
-    local cdHit = track(CreateFrame("Button", nil, col2))
-    cdHit:SetSize(cdNameW, ROW_HEIGHT)
-    cdHit:SetPoint("LEFT", col2, "LEFT", x2, 0)
-    cdHit:RegisterForClicks("AnyUp")
-    local cdNameLbl = NewText(nil, cdHit, cdNameW, "LEFT")
-    cdNameLbl:SetPoint("LEFT", cdHit, "LEFT", 0, 0)
-    cdNameLbl:SetText(cdText)
+-- The cooldown name's tooltip: a click hint on a group row, else the spell
+-- with the same recipe block the Professions tab shows. The `spell:` branch
+-- is why that block is explicit: the global tooltip hook is OnTooltipSetItem,
+-- so a spell tooltip inherits nothing.
+function CooldownsTab:ShowCooldownTooltip(row, owner)
     if row.isGroup then
-        cdHit:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(cdHit)
-            if row.isTransmuteGroup then
-                GameTooltip:AddLine(L["TooltipClickTransmutes"], 1, 1, 1, true)
-            else
-                GameTooltip:AddLine(
-                    string.format(L["TooltipClickDetailsFormat"],
-                        row.cdName or L["TooltipClickDetailsFallback"]),
-                    1, 1, 1, true)
-            end
-            GameTooltip:Show()
-        end)
-        cdHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        cdHit:SetScript("OnClick", function(_, button)
-            if button == "LeftButton" then self:ShowGroupPopup(row, cdHit) end
-        end)
-    else
-        cdHit:SetScript("OnEnter", function()
-            if row.spellId then
-                addon.Tooltip.Owner(cdHit)
-                if GetSpellInfo(row.spellId) then
-                    GameTooltip:SetHyperlink("spell:" .. row.spellId)
-                else
-                    GameTooltip:SetHyperlink("item:" .. row.spellId)
-                end
-                -- Same block the Professions tab shows. The `spell:` branch is
-                -- why this is explicit: the global tooltip hook is
-                -- OnTooltipSetItem, so a spell tooltip inherits nothing, and
-                -- cooldown rows are recipes (transmutes, Mooncloth, salts).
-                addon.ItemLink.AppendRecipeBlocks(GameTooltip, nil, row.spellId)
-                GameTooltip:Show()
-            end
-        end)
-        cdHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    end
-    x2 = x2 + cdNameW
-
-    -- Reagent + [Bank] + mail — all inside col2, only when a reagent exists
-    if itemId then
-        -- Reagent name
-        local reagentHit = track(CreateFrame("Button", nil, col2))
-        reagentHit:SetSize(reagentW, ROW_HEIGHT)
-        reagentHit:SetPoint("LEFT", col2, "LEFT", x2, 0)
-        reagentHit:RegisterForClicks("AnyUp")
-        local reagentLbl = NewText(nil, reagentHit, reagentW, "LEFT")
-        reagentLbl:SetPoint("LEFT", reagentHit, "LEFT", 0, 0)
-        -- Resting colour reflects BAG STOCK, the same rule the group popup
-        -- already used: WHITE when this character holds enough of the reagent
-        -- to fulfil the mail (>= reagentQty), GREY otherwise, so a glance down
-        -- the column shows which cooldowns you can actually feed.
-        --
-        -- This row used to hard-code `|cffaaaaaa`, so it was grey whether you
-        -- held the reagent or not — the popup and the row it expands from
-        -- disagreed about the same fact. The colour is set with SetTextColor
-        -- rather than an inline escape precisely so the stock check has
-        -- somewhere to write; an escape in the text wins over SetTextColor and
-        -- would have made this look like a broken stock check instead.
-        local reagentQty = row.reagentQty or 1
-        local function reagentRestColor()
-            if (CdMail_CountItemInBags(itemId)) >= reagentQty then return 1, 1, 1, 1 end
-            return 0.65, 0.65, 0.65, 1
-        end
-        reagentLbl:SetTextColor(reagentRestColor())
-        -- Live, because acquiring the reagent while the tab is open is the
-        -- normal case. REAGENT_WATCH_UPDATED fires on every BAG_UPDATE
-        -- (Modules/ReagentWatch.lua) whether or not any watch is configured,
-        -- so it is the signal already in the addon for exactly this.
-        registerReagentTint(reagentLbl, reagentRestColor)
-
-        local reagentName = addon.Item.GetInfo(itemId)
-        if reagentName then
-            reagentLbl:SetText(reagentName)
+        addon.Tooltip.Owner(owner)
+        if row.isTransmuteGroup then
+            GameTooltip:AddLine(L["TooltipClickTransmutes"], 1, 1, 1, true)
         else
-            reagentLbl:SetText("")
-            local rItem = Item:CreateFromItemID(itemId)
-            rItem:ContinueOnItemLoad(function()
-                local name = rItem:GetItemName()
-                if name then reagentLbl:SetText(name) end
-            end)
+            GameTooltip:AddLine(string.format(L["TooltipClickDetailsFormat"],
+                row.cdName or L["TooltipClickDetailsFallback"]), 1, 1, 1, true)
         end
-        reagentHit:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(reagentHit)
-            addon.ItemLink.SetItem(GameTooltip, nil, itemId)
+        GameTooltip:Show()
+    elseif row.spellId then
+        addon.Tooltip.Owner(owner)
+        if addon.Spell.GetInfo(row.spellId) then
+            GameTooltip:SetHyperlink("spell:" .. row.spellId)
+        else
+            GameTooltip:SetHyperlink("item:" .. row.spellId)
+        end
+        addon.ItemLink.AppendRecipeBlocks(GameTooltip, nil, row.spellId)
+        GameTooltip:Show()
+    end
+end
+
+local function hideTip() GameTooltip:Hide() end
+
+function CooldownsTab:BuildRowList(host)
+    local CA = addon.CooldownAlerts
+    local columns = {}
+    -- On TBC/Wrath, the spec-bonus indicator in front of the crafter's name:
+    -- this crafter's profession spec gives bonus output on this cooldown.
+    if SPEC_SLOT_RESERVED then
+        columns[#columns + 1] = { key = "_spec", width = SPEC_ICON_W, iconSize = 12,
+            iconTexCoord = true, sortable = false,
+            icon = function(row)
+                local specSpellId = getSpecBonus(row, addon:GetGuildDb())
+                return specSpellId and addon.Spell.GetTexture(specSpellId) or nil
+            end,
+            onCellEnter = function(row, _, _, cell)
+                local specSpellId, bonusType = getSpecBonus(row, addon:GetGuildDb())
+                if not specSpellId then return end
+                addon.Tooltip.Owner(cell)
+                GameTooltip:SetText(addon.Spell.GetInfo(specSpellId) or "", 1, 1, 1, 1, true)
+                GameTooltip:AddLine(bonusType == "guaranteed" and L["SpecBonusGuaranteedDouble"]
+                    or L["SpecBonusProcChance"], 0.7, 0.85, 1.0, true)
+                GameTooltip:Show()
+            end,
+            onCellLeave = hideTip }
+    end
+    columns[#columns + 1] = { key = "char", header = L["ColCharacter"], width = COL.char,
+        headerTip = "The guild member who has this cooldown. Right-click a row to whisper them.",
+        format = function(_, row) return charCellText(row) end,
+        onCellEnter = function(row, _, _, cell)
+            addon.Tooltip.Owner(cell)
+            GameTooltip:SetText(row.shortName, 1, 1, 1, 1, true)
+            GameTooltip:AddLine(L["TooltipWhisperRightClick"], 0.7, 0.7, 0.7, true)
             GameTooltip:Show()
-        end)
-        reagentHit:SetScript("OnLeave", function()
+        end,
+        onCellLeave = hideTip }
+    columns[#columns + 1] = { key = "_icon", width = COL.icon, iconSize = 12, iconTexCoord = true,
+        sortable = false,
+        icon = function(row)
+            if row.iconItemId and not select(10, addon.Item.GetInfo(row.iconItemId)) then
+                self:WhenItemLoads(row.iconItemId)
+            end
+            return rowIcon(row)
+        end }
+    -- The cooldown name. A group row reads "[+] Transmute" and a left click
+    -- opens its popup under the cell; a button cell so the click has a frame.
+    columns[#columns + 1] = { key = "cd", header = L["ColCooldown"], button = true,
+        headerTip = "The name of the profession cooldown spell.",
+        text = function(row) return row.isGroup and ("[+] " .. row.cdName) or row.cdName end,
+        onClick = function(row, _, _, button, cell)
+            if row.isGroup and button == "LeftButton" then self:ShowGroupPopup(row, cell) end
+        end,
+        onCellEnter = function(row, _, _, cell) self:ShowCooldownTooltip(row, cell) end,
+        onCellLeave = hideTip }
+    -- The reagent, white when this character holds enough to fulfil the mail
+    -- and grey otherwise -- the same rule the group popup uses. Repainted on
+    -- REAGENT_WATCH_UPDATED (every BAG_UPDATE), so buying it recolours it.
+    columns[#columns + 1] = { key = "reagent", width = COL.reagent, sortable = false,
+        format = function(_, row)
+            local itemId = row.reagentItemId
+            if not itemId then return "" end
+            local name = addon.Item.GetInfo(itemId)
+            if not name then
+                self:WhenItemLoads(itemId)
+                return ""
+            end
+            local enough = CdMail_CountItemInBags(itemId) >= (row.reagentQty or 1)
+            return (enough and "|cffffffff" or "|cffa6a6a6") .. name .. "|r"
+        end,
+        onCellEnter = function(row, _, _, cell)
+            if not row.reagentItemId then return end
+            addon.Tooltip.Owner(cell)
+            addon.ItemLink.SetItem(GameTooltip, nil, row.reagentItemId)
+            GameTooltip:Show()
+        end,
+        onCellLeave = function()
             addon.ItemLink.EndHover(GameTooltip)
             GameTooltip:Hide()
-        end)
-        reagentHit:SetScript("OnClick", function(_, button)
-            if button == "LeftButton" then
-                addon.ItemLink.Click((select(2, addon.Item.GetInfo(itemId))))
-            end
-        end)
-        x2 = x2 + reagentW
+        end,
+        onCellClick = function(row, _, _, button)
+            if button ~= "LeftButton" or not row.reagentItemId then return end
+            addon.ItemLink.Click((select(2, addon.Item.GetInfo(row.reagentItemId))))
+            return true
+        end }
+    -- [AH] left of [Bank] -- the order the operator chose for this tab.
+    columns[#columns + 1] = { key = "ahBtn", width = COL.ah, button = true, sortable = false,
+        show = function(row)
+            local listings = row.reagentItemId and addon.AH and addon.AH.GetListingsFor(row.reagentItemId)
+            return listings and (listings.count or 0) > 0 or false
+        end,
+        text = function() return "|cFF88CCFF[AH]|r" end,
+        tip  = function() return L["TooltipAHTitle"], L["TooltipAHDescReagent"] end,
+        onClick = function(row)
+            local name = addon.Item.GetInfo(row.reagentItemId)
+            if name then addon.AH.SearchFor(name) end
+        end }
+    columns[#columns + 1] = { key = "bankBtn", width = COL.bank, button = true, sortable = false,
+        show = function(row)
+            return row.reagentItemId and addon:IsAddOnLoaded("TOGBankClassic")
+                and addon.Bank.GetStock(row.reagentItemId) > 0 or false
+        end,
+        text = function(row) return addon.Bank.ButtonText(row.reagentItemId) end,
+        tip  = function(row)
+            local body = L["TooltipBankDescGeneric"]
+            local status = addon.Bank.StatusText(row.reagentItemId)
+            if status then body = body .. "\n\n" .. status end
+            return L["TooltipBankTitle"], body
+        end,
+        onClick = function(row)
+            local id = row.reagentItemId
+            addon.Bank.ShowRequestDialog(id, addon.Item.GetInfo(id), select(2, addon.Item.GetInfo(id)))
+        end }
+    columns[#columns + 1] = { key = "mailBtn", width = COL.mail, button = true, sortable = false,
+        show = function(row) return row.reagentItemId ~= nil end,
+        text = function() return "|TInterface\\Icons\\INV_Letter_15:12:12|t" end,
+        tip  = function()
+            return L["MailBtnTooltip"] or "Send Supply Mail",
+                L["MailBtnTooltipDesc"] or "Open a mailbox, then click to attach reagents."
+        end,
+        onClick = function(row)
+            local cdName = row.isTransmuteGroup and L["Transmute"] or row.cdName
+            CdMail_PrepareSupplyMail(row.charKey, cdName, row.outputName or cdName,
+                { { id = row.reagentItemId, qty = row.reagentQty or 1 } })
+        end }
+    columns[#columns + 1] = { key = "time", header = L["ColTimeLeft"], width = COL.time, align = "RIGHT",
+        headerTip = "How long until this cooldown is ready. Green = ready now.",
+        format = function(_, row)
+            local remaining = row.expiresAt - GetServerTime()
+            return timeColor(remaining) .. SecondsToString(remaining) .. "|r"
+        end }
+    -- The "!" cooldown-ready alarm, on the account's own characters only:
+    -- cyan when armed, grey when off. Arming an already-ready cooldown pings
+    -- at once, so the player sees it is wired up.
+    columns[#columns + 1] = { key = "alertBtn", width = COL.alert, button = true, sortable = false,
+        justify = "CENTER",
+        show = function(row) return CA ~= nil and addon:IsMyCharacter(row.charKey) end,
+        text = function(row) return CA and CA:IsArmed(row) and "|cff00ffff!|r" or "|cff666666!|r" end,
+        tip  = function(row)
+            return CA and CA:IsArmed(row) and L["CooldownAlertDisable"] or L["CooldownAlertEnable"]
+        end,
+        onClick = function(row, _, rl)
+            CA:Toggle(row)
+            rl:Refresh()
+        end }
 
-        -- [AH] button — sits to the LEFT of [Bank] in the Flow order.
-        -- Visible only when the AH scanner has cached listings for this
-        -- reagent (gates on AH.GetListingsFor.count > 0). Click jumps the
-        -- AH browse search to the reagent's name. Order matches the user's
-        -- explicit preference for the Cooldowns tab (Professions tab uses
-        -- the opposite [Bank] [AH] order on its reagent rows).
-        if hasAH then
-            local ahBtn = track(CreateFrame("Button", nil, col2))
-            ahBtn:SetSize(ahW, ROW_HEIGHT)
-            ahBtn:SetPoint("LEFT", col2, "LEFT", x2, 0)
-            local ahLbl = NewText(nil, ahBtn, ahW, "LEFT")
-            ahLbl:SetPoint("LEFT", ahBtn, "LEFT", 0, 0)
-            ahLbl:SetText("|cFF88CCFF[AH]|r")
-            ahBtn:SetScript("OnClick", function()
-                local name = addon.Item.GetInfo(itemId)
-                if name then addon.AH.SearchFor(name) end
-            end)
-            ahBtn:SetScript("OnEnter", function()
-                addon.Tooltip.Owner(ahBtn)
-                GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1, 1, true)
-                GameTooltip:AddLine(L["TooltipAHDescReagent"], nil, nil, nil, true)
-                GameTooltip:Show()
-            end)
-            ahBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-            x2 = x2 + ahW
+    local rl = addon.W.RowList:New(host, {
+        rowHeight      = ROW_HEIGHT,
+        hoverHighlight = true,
+        -- SortRows orders the rows (ready ones by name, ties by character);
+        -- the header sets the key and the arrow.
+        externalSort   = true,
+        onSortChanged  = function(key, desc) self:OnSortChanged(key, desc) end,
+        onScroll       = function(_, offset) addon.GUI.ListScroll.Set("cooldowns", offset) end,
+        columns        = columns,
+        onRowClick     = function(row, _, _, button, rowFrame)
+            if button == "RightButton" then whisperMenu(row, rowFrame) end
+        end,
+    })
+    -- Bag changes recolour the reagent column. Registered once: the list is
+    -- built once per session.
+    addon:RegisterCallback("REAGENT_WATCH_UPDATED", function()
+        if self._rowList and self._rowListHost and self._rowListHost:IsShown() then
+            self._rowList:Refresh()
         end
+    end)
+    return rl
+end
 
-        -- [Bank] button
-        if hasBank then
-            local bankBtn = track(CreateFrame("Button", nil, col2))
-            bankBtn:SetSize(bankW, ROW_HEIGHT)
-            bankBtn:SetPoint("LEFT", col2, "LEFT", x2, 0)
-            local bankLbl = NewText(nil, bankBtn, bankW, "LEFT")
-            bankLbl:SetPoint("LEFT", bankBtn, "LEFT", 0, 0)
-            -- The staleness dot + label, and the item remembered for the
-            -- tooltip's per-banker lines.
-            addon.Bank.Decorate(bankBtn, itemId, bankLbl)
-            bankBtn:SetScript("OnClick", function()
-                local name = addon.Item.GetInfo(itemId)
-                local link = select(2, addon.Item.GetInfo(itemId))
-                addon.Bank.ShowRequestDialog(itemId, name, link)
-            end)
-            bankBtn:SetScript("OnEnter", function()
-                addon.Tooltip.Owner(bankBtn)
-                GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
-                GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
-                addon.Bank.AddStatusLines(bankBtn)
-                GameTooltip:Show()
-            end)
-            bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-            x2 = x2 + bankW
-        end
-
-        -- Mail icon — use embedded texture tag (no SetImage) so this widget has
-        -- the same line height as all other text widgets and doesn't inflate the row.
-        local mailBtn = track(CreateFrame("Button", nil, col2))
-        mailBtn:SetSize(mailW, ROW_HEIGHT)
-        mailBtn:SetPoint("LEFT", col2, "LEFT", x2, 0)
-        local mailIcon = mailBtn:CreateTexture(nil, "ARTWORK")
-        mailIcon:SetSize(12, 12)
-        mailIcon:SetPoint("CENTER", mailBtn, "CENTER", 0, 0)
-        mailIcon:SetTexture("Interface\\Icons\\INV_Letter_15")
-        mailBtn:SetScript("OnClick", function()
-            local cdName    = row.isTransmuteGroup and L["Transmute"] or row.cdName
-            local outputName = row.outputName or cdName
-            CdMail_PrepareSupplyMail(row.charKey, cdName, outputName,
-                { { id = itemId, qty = row.reagentQty or 1 } })
-        end)
-        mailBtn:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(mailBtn)
-            GameTooltip:SetText(L["MailBtnTooltip"] or "Send Supply Mail", 1, 1, 1, 1, true)
-            GameTooltip:AddLine(L["MailBtnTooltipDesc"]
-                or "Open a mailbox, then click to attach reagents.", nil, nil, nil, true)
-            GameTooltip:Show()
-        end)
-        mailBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+-- A header click, reported by the list after it set its own key and arrow.
+function CooldownsTab:OnSortChanged(key, desc)
+    self._sortCol = key or "time"
+    self._sortAsc = not desc
+    if self._rows then
+        SortRows(self._rows, self._sortCol, self._sortAsc)
+        if self._rowList then self._rowList:SetData(self._rows, true) end
     end
+end
 
-    -- ── Column 3: Time Remaining — always at the right, never displaced ───
-    local timeHit = track(CreateFrame("Frame", nil, rf))
-    timeHit:SetSize(cw.time, ROW_HEIGHT)
-    timeHit:SetPoint("LEFT", rf, "LEFT", cw.char + cw.col2, 0)
-    local timeLbl = NewText(nil, timeHit, cw.time, "RIGHT")
-    timeLbl:SetPoint("LEFT", timeHit, "LEFT", 0, 0)
-    timeLbl:SetText(timeColor .. timeStr .. "|r")
-
-    -- ── Optional "!" cooldown-ready alarm toggle (own characters only) ─────
-    -- Mirrors the Browser tab's per-recipe alert "!" button. Cyan when armed,
-    -- grey when off; clicking flips state via addon.CooldownAlerts, which
-    -- also fires an immediate ping if the cooldown is already ready (gives
-    -- the user a confirmation that the alarm is wired up). Skipped on
-    -- non-own-character rows — guildmate cooldowns are informational and
-    -- alerting on them isn't part of this feature.
-    if isYou and addon.CooldownAlerts then
-        local CA = addon.CooldownAlerts
-        local alertBtn = track(CreateFrame("Button", nil, rf))
-        alertBtn:SetSize(18, ROW_HEIGHT)
-        alertBtn:SetPoint("LEFT", rf, "LEFT", cw.char + cw.col2 + cw.time, 0)
-        local alertLbl = NewText(nil, alertBtn, 18, "CENTER")
-        alertLbl:SetPoint("CENTER", alertBtn, "CENTER", 0, 0)
-        local function paint(_btn, armed)
-            alertLbl:SetText(armed and "|cff00ffff!|r" or "|cff666666!|r")
-        end
-        paint(alertBtn, CA:IsArmed(row))
-        alertBtn:SetScript("OnClick", function()
-            local newState = CA:Toggle(row)
-            paint(alertBtn, newState)
-        end)
-        alertBtn:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(alertBtn)
-            local enabled = CA:IsArmed(row)
-            GameTooltip:SetText(enabled and L["CooldownAlertDisable"] or L["CooldownAlertEnable"], 1, 1, 1, 1, true)
-            GameTooltip:Show()
-        end)
-        alertBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    end
+-- One popup row's frames and regions, built once per row slot and reused on
+-- every later open (see ShowGroupPopup). Only the parts that never change per
+-- open are set here.
+local function NewPopupRow(popup)
+    local s = {}
+    s.frame = CreateFrame("Frame", nil, popup)
+    s.nameLbl = s.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    s.nameLbl:SetJustifyH("LEFT")
+    -- The font's own colour, restored on reuse: hovering a name leaves it white.
+    s.nameColor = { s.nameLbl:GetTextColor() }
+    s.nameZone = CreateFrame("Frame", nil, s.frame)
+    s.nameZone:EnableMouse(true)
+    s.reagentLbl = s.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    s.reagentLbl:SetJustifyH("RIGHT")
+    s.reagentLbl:SetWordWrap(false)
+    s.reagentZone = CreateFrame("Frame", nil, s.frame)
+    s.reagentZone:EnableMouse(true)
+    s.ahBtn = CreateFrame("Button", nil, s.frame)
+    s.ahBtn:SetNormalFontObject(GameFontNormalSmall)
+    s.ahBtn:SetText("|cFF88CCFF[AH]|r")
+    s.bankBtn = CreateFrame("Button", nil, s.frame)
+    s.bankBtn:SetNormalFontObject(GameFontNormalSmall)
+    s.mailBtn = CreateFrame("Button", nil, s.frame)
+    s.mailBtn:SetSize(16, 16)
+    s.mailBtn:SetNormalTexture("Interface\\Icons\\INV_Letter_15")
+    s.mailBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    s.optional = { s.reagentLbl, s.reagentZone, s.ahBtn, s.bankBtn, s.mailBtn }
+    return s
 end
 
 --- Show a popup listing all individual spells inside a cooldown group.
@@ -2041,7 +1715,7 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
         for sid in pairs(row.group.spells) do
             entries[#entries + 1] = {
                 spellId = sid,
-                name    = GetSpellInfo(sid) or ("Spell " .. sid),
+                name    = addon.Spell.GetInfo(sid) or ("Spell " .. sid),
             }
         end
         table.sort(entries, function(a, b) return a.name < b.name end)
@@ -2086,41 +1760,63 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
     local popupW = 500
     local totalH = pad + #entries * rowH + pad
 
-    local popup = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
-    popup:Hide()  -- start hidden so popup:Show() at the end fires OnShow
+    -- The popup shell, its click-outside overlay and its rows are built once and
+    -- reused: WoW never frees a frame, and up to v1.1.2 every open built a new
+    -- shell, overlay and ~6 frames per row. `_gen` is bumped per open so an
+    -- item-load callback from an earlier open does nothing.
+    local popup = self._popupShell
+    if not popup then
+        popup = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+        popup:SetFrameStrata("TOOLTIP")
+        popup:SetBackdrop({
+            bgFile   = [[Interface\Tooltips\UI-Tooltip-Background]],
+            edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]],
+            edgeSize = 12,
+            insets   = { left = 3, right = 3, top = 3, bottom = 3 },
+        })
+        popup:SetBackdropColor(0.06, 0.06, 0.06, 0.95)
+        popup:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+        popup:EnableMouse(true)
+        popup:SetScript("OnMouseDown", function() end)  -- block click-through
+        popup._rows, popup._gen = {}, 0
+
+        -- Click-outside-to-close overlay
+        local closeOnClick = CreateFrame("Frame", nil, UIParent)
+        closeOnClick:SetAllPoints(UIParent)
+        closeOnClick:SetFrameStrata("DIALOG")
+        closeOnClick:EnableMouse(true)
+        closeOnClick:SetScript("OnMouseDown", function()
+            popup:Hide(); closeOnClick:Hide()
+            if CooldownsTab._groupPopup == popup then CooldownsTab._groupPopup = nil end
+        end)
+        popup._closeOnClick = closeOnClick  -- store reference for cleanup
+        self._popupShell = popup
+    end
+    popup:Hide()  -- hidden so popup:Show() at the end fires OnShow
+    popup._gen = popup._gen + 1
+    local popupGen = popup._gen
+    local closeOnClick = popup._closeOnClick
+    -- DetachPopup may have detached them from a released window.
+    popup:SetParent(UIParent)
+    closeOnClick:SetParent(UIParent)
+    closeOnClick:ClearAllPoints()
+    closeOnClick:SetAllPoints(UIParent)
+    closeOnClick:Show()
     popup:SetWidth(popupW)
     popup:SetHeight(totalH)
-    popup:SetFrameStrata("TOOLTIP")
-    popup:SetBackdrop({
-        bgFile   = [[Interface\Tooltips\UI-Tooltip-Background]],
-        edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]],
-        edgeSize = 12,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    popup:SetBackdropColor(0.06, 0.06, 0.06, 0.95)
-    popup:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
-    -- Position adjacent to the clicked widget using the shared screen-half
-    -- helper (mirrors Tooltip.Owner for arbitrary frames).  Falls back to
-    -- centered on UIParent if the caller didn't pass a source widget.
-    if sourceWidget then
-        addon.Tooltip.AnchorFrame(popup, sourceWidget)
+    popup:ClearAllPoints()
+    -- Position under the clicked row, or over it when there is no room below,
+    -- kept on screen horizontally: LibAceGUIWidgets' AnchorPopup (MINOR 36,
+    -- TOGPM contract c8d6892f), which measures both frames in UIParent units so
+    -- a scaled window places right. Centred on UIParent when the caller passed
+    -- no source.
+    local sourceFrame = sourceWidget and (sourceWidget.frame or sourceWidget)
+    if sourceFrame and addon.W then
+        addon.W:AnchorPopup(popup, sourceFrame)
     else
         popup:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     end
     popup._sourceRow = row
-
-    -- Click-outside-to-close overlay
-    local closeOnClick = CreateFrame("Frame", nil, UIParent)
-    closeOnClick:SetAllPoints(UIParent)
-    closeOnClick:SetFrameStrata("DIALOG")
-    closeOnClick:EnableMouse(true)
-    closeOnClick:SetScript("OnMouseDown", function()
-        popup:Hide(); closeOnClick:Hide()
-        if CooldownsTab._groupPopup == popup then CooldownsTab._groupPopup = nil end
-    end)
-    popup:EnableMouse(true)
-    popup:SetScript("OnMouseDown", function() end)  -- block click-through
-    popup._closeOnClick = closeOnClick  -- store reference for cleanup
 
     -- The popup itself sits at TOOLTIP strata, which is the same strata as
     -- GameTooltip — so GameTooltip's default frame level loses to the popup's
@@ -2166,6 +1862,7 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
     local reagentW = hasReagents and 180 or 0
     local nameW    = popupW - pad * 2 - reagentW - ahW - bankW - mailW - 8
 
+    for i = #entries + 1, #popup._rows do popup._rows[i].frame:Hide() end
     for i, e in ipairs(entries) do
         local spellId    = e.spellId
         local recipeId   = e.recipeId
@@ -2178,27 +1875,36 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
 
         local yOff = -(pad + (i - 1) * rowH)
 
-        local rowFrame = CreateFrame("Frame", nil, popup)
+        local slot = popup._rows[i]
+        if not slot then
+            slot = NewPopupRow(popup)
+            popup._rows[i] = slot
+        end
+        for _, f in ipairs(slot.optional) do f:Hide() end
+        local rowFrame = slot.frame
+        rowFrame:ClearAllPoints()
         rowFrame:SetHeight(rowH)
         rowFrame:SetPoint("TOPLEFT",  popup, "TOPLEFT",  pad, yOff)
         rowFrame:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -pad, yOff)
+        rowFrame:Show()
 
         -- Spell name (blank on the 2nd+ row of a multi-reagent transmute so
         -- the visual grouping stays clean).
-        local nameLbl = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        local nameLbl = slot.nameLbl
+        nameLbl:ClearAllPoints()
         nameLbl:SetPoint("LEFT", 0, 0)
         nameLbl:SetWidth(nameW)
-        nameLbl:SetJustifyH("LEFT")
+        nameLbl:SetTextColor(unpack(slot.nameColor))
         nameLbl:SetText(showName and entryName or "")
 
         -- Mouseover tooltip for the name zone: spell tooltip when we have a
         -- spellId, falls back to the recipe's output-item tooltip via recipeId
         -- (which IS the output itemId for non-spell recipes).  Either way the
         -- user gets some hover info on every row.
-        local nameZone = CreateFrame("Frame", nil, rowFrame)
+        local nameZone = slot.nameZone
+        nameZone:ClearAllPoints()
         nameZone:SetPoint("TOPLEFT",     rowFrame, "TOPLEFT",    0, 0)
         nameZone:SetPoint("BOTTOMRIGHT", rowFrame, "BOTTOMLEFT", nameW, 0)
-        nameZone:EnableMouse(true)
         nameZone:SetScript("OnEnter", function()
             if showName then nameLbl:SetTextColor(1, 1, 0, 1) end
             if spellId then
@@ -2221,7 +1927,9 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
 
         -- Reagent and mail button (transmute groups only)
         if reagentId then
-            local reagentLbl = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            local reagentLbl = slot.reagentLbl
+            reagentLbl:Show()
+            reagentLbl:ClearAllPoints()
             -- Sit to the LEFT of [AH] [Bank] [mail] (the +6 is per-button
             -- gap padding × 3 stacked widgets). Order right-to-left:
             --   mailBtn   at -(mailW + 2)
@@ -2230,11 +1938,8 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
             --   reagent   at -(reagentW + ahW + bankW + mailW + 8)
             reagentLbl:SetPoint("RIGHT", rowFrame, "RIGHT", -(ahW + bankW + mailW + 6), 0)
             reagentLbl:SetWidth(reagentW)
-            reagentLbl:SetJustifyH("RIGHT")
-            -- One line only: the row is a fixed rowH tall, so a wrapped name
-            -- would overlap the row below. The 170px column fits every reagent
-            -- name; this just guarantees no wrap if a longer one ever appears.
-            reagentLbl:SetWordWrap(false)
+            -- One line only (SetWordWrap(false) in NewPopupRow): the row is a
+            -- fixed rowH tall, so a wrapped name would overlap the row below.
             -- Resting colour reflects bag stock: WHITE when the viewer holds
             -- enough of this reagent to fulfill the mail (>= reagentQty), GREY
             -- otherwise — a glance shows which reagents you can actually send.
@@ -2259,14 +1964,16 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
                 reagentLbl:SetText("")
                 local rItem = Item:CreateFromItemID(reagentId)
                 rItem:ContinueOnItemLoad(function()
+                    if popup._gen ~= popupGen then return end  -- a later open owns the row
                     reagentLbl:SetText(rItem:GetItemName() or "")
                 end)
             end
 
-            local reagentZone = CreateFrame("Frame", nil, rowFrame)
+            local reagentZone = slot.reagentZone
+            reagentZone:ClearAllPoints()
             reagentZone:SetPoint("TOPLEFT",     rowFrame, "TOPRIGHT",    -(reagentW + ahW + bankW + mailW + 6), 0)
             reagentZone:SetPoint("BOTTOMRIGHT", rowFrame, "BOTTOMRIGHT", -(ahW + bankW + mailW + 6), 0)
-            reagentZone:EnableMouse(true)
+            reagentZone:Show()
             reagentZone:SetScript("OnEnter", function()
                 reagentHovered = true
                 reagentLbl:SetTextColor(1, 1, 0, 1)
@@ -2292,12 +1999,10 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
             -- refreshers so a Scan AH that completes BEFORE the user opens
             -- the popup is reflected in row visibility immediately.
             if addon.AH then
-                local ahBtn = CreateFrame("Button", nil, rowFrame)
+                local ahBtn = slot.ahBtn  -- hidden above; the refresher reveals it
+                ahBtn:ClearAllPoints()
                 ahBtn:SetSize(ahW, rowH)
                 ahBtn:SetPoint("RIGHT", rowFrame, "RIGHT", -(bankW + mailW + 4), 0)
-                ahBtn:SetNormalFontObject(GameFontNormalSmall)
-                ahBtn:SetText("|cFF88CCFF[AH]|r")
-                ahBtn:Hide()  -- starts hidden; refresher reveals when listings exist
                 ahBtn:SetScript("OnClick", function()
                     local name = addon.Item.GetInfo(reagentId)
                     if name then addon.AH.SearchFor(name) end
@@ -2324,12 +2029,12 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
             -- TOGBankClassic's lazy Info.alts initialization that returns 0
             -- on the first GetStock query of a session).
             if addon.Bank then
-                local bankBtn = CreateFrame("Button", nil, rowFrame)
+                local bankBtn = slot.bankBtn  -- hidden above; the refresher reveals it
+                bankBtn._bankItemId = nil
+                bankBtn:ClearAllPoints()
                 bankBtn:SetSize(bankW, rowH)
                 bankBtn:SetPoint("RIGHT", rowFrame, "RIGHT", -(mailW + 2), 0)
-                bankBtn:SetNormalFontObject(GameFontNormalSmall)
                 bankBtn:SetText(addon.Bank.ButtonText(nil))
-                bankBtn:Hide()  -- starts hidden; refresher reveals when stock > 0
                 bankBtn:SetScript("OnClick", function()
                     local name = addon.Item.GetInfo(reagentId)
                     local link = select(2, addon.Item.GetInfo(reagentId))
@@ -2357,13 +2062,12 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
             -- mails EVERY reagent in the group (see groupReagents above).
             local mailReagents = mailEntry[e]
             if mailReagents then
-                local mailBtn = CreateFrame("Button", nil, rowFrame)
-                mailBtn:SetSize(16, 16)
+                local mailBtn = slot.mailBtn
+                mailBtn:ClearAllPoints()
                 mailBtn:SetPoint("RIGHT", rowFrame, "RIGHT", 0, 0)
-                mailBtn:SetNormalTexture("Interface\\Icons\\INV_Letter_15")
-                mailBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+                mailBtn:Show()
                 mailBtn:SetScript("OnClick", function()
-                    local spellName = (spellId and GetSpellInfo(spellId)) or entryName
+                    local spellName = (spellId and addon.Spell.GetInfo(spellId)) or entryName
                     -- Resolve the crafted-output name for the mail body. The
                     -- PRODUCT first -- "Arcanite Bar", from the recipe's crafted
                     -- item, so the body does not read "make Transmute: Arcanite ...
@@ -2410,6 +2114,8 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
         end
     end)
     self._groupPopup = popup
+    -- Escape closes this popup before the main window.
+    if addon.MainWindow then addon.MainWindow:AddEscapeChild(popup) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -2418,9 +2124,5 @@ end
 -- (Removed: per-tab AH_OPEN_STATE_CHANGED / AH_SCAN_COMPLETE handlers.
 -- The shared addon.GUI.MakeScanAHButton factory in GUI/SharedWidgets.lua
 -- owns one global handler that refreshes the active tab's scan button +
--- runs the tab's onRefresh hook. The hook for this tab refills row
--- children so [AH] buttons appear/disappear with scan results.)
-
--- (Removed: WINDOW_RESIZED handler. Column widths are now fixed (COL_W),
--- so window resizes need no per-tab response — Flow no longer reflows
--- mid-drag, and the rows stay put exactly like the Missing/Browser tabs.)
+-- runs the tab's onRefresh hook. The hook for this tab repaints the list,
+-- which re-reads the [AH] column's `show`.)

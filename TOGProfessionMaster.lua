@@ -95,6 +95,17 @@ LibStub("AceCommQueue-1.0"):Embed(Ace)
 -- CallbackHandler-1.0 ships with Ace3 so it is always available.
 addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
 
+-- LibAceGUIWidgets-1.0: the suite's shared widgets, window helpers and pool-safe
+-- AceGUI hooks. A required dependency (every .toc, .pkgmeta). TOGPM needs MINOR
+-- 36, the release that answered its 22 contracts; an older copy is treated as
+-- absent so the GUI never half-runs against an API it lacks. Accent: MINOR 36's
+-- default IS the suite orange, so TOGPM never calls Configure{ accent }.
+addon.W_MINOR = 36
+do
+    local W, minor = LibStub("LibAceGUIWidgets-1.0", true)
+    addon.W = (W and (minor or 0) >= addon.W_MINOR) and W or nil
+end
+
 -- ---------------------------------------------------------------------------
 -- Perf -- in-game timing record, read back with /togpm perf
 -- ---------------------------------------------------------------------------
@@ -562,10 +573,8 @@ local SETTINGS_DEFAULTS = {
         -- Shopping list: [spellId] = { quantity = N }
         shoppingList    = {},
 
-        -- Reagent watch list: [itemId] = true
-        reagentWatch    = {},
-
-        -- Shopping list alert flags: [spellId] = true
+        -- Crafter-online opt-in per shopping-list recipe (the "!" on a
+        -- Professions-tab shopping-list row): [spellId] = true
         shoppingAlerts  = {},
 
         -- Cooldown-ready alert flags. Keyed by alertKey (built by the
@@ -1051,12 +1060,14 @@ end
 -- flashGold / flashRed / flashBlue = a brief full-screen edge flash in that tint
 -- (flashGold is the original), taskbar = FlashClientIcon, which flashes the game
 -- window in the OS taskbar (only visible when you're alt-tabbed out). Also called
--- as the live preview when the visual is picked in Settings. The flash frame +
--- texture are created once and recolored per fire.
+-- as the live preview when the visual is picked in Settings. The edge flash is
+-- LibAceGUIWidgets' FlashScreen (MINOR 36, TOGPM contract 759b8287): one shared
+-- click-through frame at FULLSCREEN_DIALOG strata, three dips that end by
+-- themselves, and a second fire restarts it rather than stacking.
 local VISUAL_FLASH_COLORS = {
-    flashGold = { 1, 0.82, 0 },
-    flashRed  = { 1, 0.15, 0.15 },
-    flashBlue = { 0.25, 0.55, 1 },
+    flashGold = "ffffd100",
+    flashRed  = "ffff2626",
+    flashBlue = "ff408cff",
 }
 function addon:FireCrafterAlertVisual(style, message)
     if style == "taskbar" then
@@ -1080,20 +1091,12 @@ function addon:FireCrafterAlertVisual(style, message)
         end
         return
     end
-    local color = VISUAL_FLASH_COLORS[style] or VISUAL_FLASH_COLORS.flashGold
-    if not addon._crafterAlertFlash then
-        local flash = CreateFrame("Frame", "TOGPMCrafterAlertFlash", UIParent)
-        flash:SetAllPoints(UIParent)
-        flash:SetFrameStrata("FULLSCREEN_DIALOG")
-        local tex = flash:CreateTexture(nil, "BACKGROUND")
-        tex:SetAllPoints(flash)
-        tex:SetTexture("Interface\\FullScreenTextures\\LowHealth")
-        flash:Hide()
-        addon._crafterAlertFlash    = flash
-        addon._crafterAlertFlashTex = tex
-    end
-    addon._crafterAlertFlashTex:SetVertexColor(color[1], color[2], color[3])
-    UIFrameFlash(addon._crafterAlertFlash, 0.5, 0.5, 3, false, 0, 0)
+    if not addon.W then return end
+    addon.W:FlashScreen({
+        color   = VISUAL_FLASH_COLORS[style] or VISUAL_FLASH_COLORS.flashGold,
+        times   = 3,
+        seconds = 0.5,
+    })
 end
 
 function Ace:OnPlayerLogout()
@@ -1301,7 +1304,7 @@ function addon:DumpCooldowns(args)
     Ace:Print(("|cffda8cff%s cooldowns:|r"):format(charKey))
     for spellId, expiresAt in pairs(bucket) do
         local remaining = expiresAt - now
-        local name = GetSpellInfo(spellId) or "?"
+        local name = addon.Spell.GetInfo(spellId) or "?"
         Ace:Print(("  [%s] %s expiresAt=%d remaining=%ds"):format(
             tostring(spellId), name, expiresAt, remaining))
     end
@@ -1339,7 +1342,7 @@ function addon:DumpTransmuteDiag()
     local total = 0
     for spellId, name in pairs(data.transmutes) do
         total = total + 1
-        local start, duration = GetSpellCooldown(spellId)
+        local start, duration = addon.Spell.GetCooldown(spellId)
         if start and start > 0 and duration and duration > 1.5 then
             local remaining = (start + duration) - GetTime()
             apiActive[spellId] = { name = name, start = start, duration = duration, remaining = remaining }
@@ -1371,7 +1374,7 @@ function addon:DumpTransmuteDiag()
     -- (3) IsSpellKnown: does the WoW API agree the player knows these?
     local isSpellKnownTrue = 0
     for spellId in pairs(data.transmutes) do
-        if IsSpellKnown(spellId, false) then
+        if addon.Spell.IsKnown(spellId, false) then
             isSpellKnownTrue = isSpellKnownTrue + 1
         end
     end
@@ -1431,14 +1434,16 @@ function addon:DumpTransmuteDiag()
     -- catalogue is stale for this client.
     Ace:Print("  [Spellbook 'Transmute*' entries]:")
     local sbHits = 0
-    local numTabs = GetNumSpellTabs and GetNumSpellTabs() or 0
+    -- All three or none: WoW Forever drops the classic spellbook API.
+    local numTabs = (GetNumSpellTabs and GetSpellTabInfo and GetSpellBookItemInfo)
+                    and GetNumSpellTabs() or 0
     for tab = 1, numTabs do
         local _, _, offset, numSpells = GetSpellTabInfo(tab)
         for j = 1, (numSpells or 0) do
             local idx = offset + j
             local _, sId = GetSpellBookItemInfo(idx, "spell")
             if sId then
-                local sName = GetSpellInfo(sId)
+                local sName = addon.Spell.GetInfo(sId)
                 if sName and sName:find("[Tt]ransmute") then
                     sbHits = sbHits + 1
                     Ace:Print(("    %s -> spellId=%d%s"):format(
@@ -2007,6 +2012,33 @@ function addon:DebugPrint(...)
     if not addon.debug then return end
     local t = date("%H:%M:%S")
     Ace:Print("|cffaaaaff[DEBUG " .. t .. "]|r", ...)
+end
+
+-- ProfessionDB's UNANCHORED rule (its README): a recipe's difficulty tiers are
+-- placeholders, and difficulty[1] must NOT be shown or used as a skill
+-- threshold, exactly when requiredSkill is ABSENT and difficulty[1] == 1.
+-- Neither half alone means that: requiredSkill absent with difficulty[1] > 1 is
+-- real data, and requiredSkill == 1 with difficulty[1] == 1 is a real apprentice
+-- craft. The one residual (a genuine orange-at-1 with no requiredSkill) reads as
+-- unanchored, which errs toward hiding a threshold -- the safe direction.
+-- Lives here rather than beside FormatSkillTiers (CraftingEngine) because the
+-- Browser and Missing Recipes tabs need it too and must not depend on the
+-- crafting module being loaded.
+function addon.IsUnanchoredDifficulty(tiers, requiredSkill)
+    return requiredSkill == nil and type(tiers) == "table" and tiers[1] == 1
+end
+
+-- The skill a recipe is learned at, for the Browser tier filter and the
+-- Missing Recipes "Can learn now" gate: requiredSkill when shipped, else the
+-- orange breakpoint difficulty[1] -- unless the tiers are unanchored, where that
+-- breakpoint is a placeholder and the answer is nil (unknown). Both callers
+-- already treat nil as "can't classify, keep the row".
+function addon.RecipeLearnSkill(meta)
+    if not meta then return nil end
+    if meta.requiredSkill then return meta.requiredSkill end
+    local d = meta.difficulty
+    if type(d) ~= "table" or addon.IsUnanchoredDifficulty(d, nil) then return nil end
+    return d[1]
 end
 
 -- Build a stable character key used as the primary identifier throughout.
@@ -2749,9 +2781,9 @@ function addon:GetRecipeName(profId, recipeId)
     if m and m.name then return m.name end
     -- Fallback: WoW client APIs (may return localized name).
     if type(recipeId) == "number" then
-        -- Both bare: GetSpellInfo is never nil on a supported flavour, and the
-        -- item resolver nil-checks internally (Compat.lua, THE GUARD RULE).
-        local n = GetSpellInfo(recipeId) or addon.Item.GetInfo(recipeId)
+        -- Both resolvers nil-check internally (Compat.lua); bare GetSpellInfo
+        -- does not exist on WoW Forever.
+        local n = addon.Spell.GetInfo(recipeId) or addon.Item.GetInfo(recipeId)
         if n then return n end
     end
     return tostring(recipeId)
@@ -2764,8 +2796,8 @@ function addon:GetRecipeIcon(profId, recipeId)
         if t then return t end
     end
     if type(recipeId) == "number" then
-        if GetSpellTexture then
-            local t = GetSpellTexture(recipeId)
+        do
+            local t = addon.Spell.GetTexture(recipeId)
             if t then return t end
         end
         local t = addon.Item.GetIcon(recipeId)

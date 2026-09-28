@@ -102,11 +102,12 @@ describe("CollectCooldownsByChar", function()
 	it("scopes the guild view to the current guild's roster", function()
 		-- Cooldowns carry no guild tag, so without this every character in the
 		-- account-wide table rendered under whichever guild you were in.
+		local OUTSIDER = "Outsider-Testrealm"
 		give(MATE, 12345, NOW + 60)
-		give("Outsider-Testrealm", 12345, NOW + 60)
+		give(OUTSIDER, 12345, NOW + 60)
 		local out = CD._CollectCooldownsByChar("guild")
 		assert.is_true(out[MATE] ~= nil)
-		assert.is_nil(out["Outsider-Testrealm"])
+		assert.is_nil(out[OUTSIDER])
 	end)
 
 	it("the mine view returns own characters regardless of guild", function()
@@ -312,35 +313,9 @@ describe("SortRows", function()
 	end)
 end)
 
-describe("column widths", function()
-	it("splits the spare space evenly between name and reagent", function()
-		local icon, name, reagent = CD._ComputeCol2InnerWidths(360, true, false, false)
-		assert.equal(18, icon)
-		assert.is_true(name >= 80 and reagent >= 80)
-		assert.is_true(math.abs(name - reagent) <= 1)
-	end)
-
-	it("gives the whole span to the name when there is no reagent", function()
-		local _, name, reagent, _, _, mail = CD._ComputeCol2InnerWidths(360, false, false, false)
-		assert.equal(0, reagent)
-		assert.equal(0, mail)
-		assert.is_true(name >= 80)
-	end)
-
-	it("reserves space for the buttons that are actually shown", function()
-		local _, _, _, ah, bank, mail = CD._ComputeCol2InnerWidths(360, true, true, true)
-		assert.equal(40, ah)
-		-- 50: the label carries TOGBank's staleness dot in front of [Bank].
-		assert.equal(50, bank)
-		assert.equal(20, mail)
-	end)
-
-	it("never drops below the per-cell minimums, however narrow the column", function()
-		local _, name, reagent = CD._ComputeCol2InnerWidths(50, true, true, true)
-		assert.is_true(name >= 80)
-		assert.is_true(reagent >= 80)
-	end)
-end)
+-- (The "column widths" specs for ComputeCol2InnerWidths went with it: the
+-- rows are a LibAceGUIWidgets RowList now, and the name column's floor is
+-- pinned against the drawn list in Tests/gui_draw_spec.lua.)
 
 describe("supply-mail planner", function()
 	local function bags(counts)

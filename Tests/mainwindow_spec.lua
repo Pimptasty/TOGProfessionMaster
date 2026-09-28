@@ -39,7 +39,6 @@ setup(function()
 	env.loadModule("GUI/GuildTab.lua")
 	env.loadModule("GUI/AHProfitTab.lua")
 	env.loadModule("GUI/CraftingTab.lua")
-	env.loadModule("GUI/ShoppingListTab.lua")
 	env.loadModule("GUI/ReagentTracker.lua")
 	MW = ns.MainWindow
 end)
@@ -103,10 +102,27 @@ describe("opening the window", function()
 	-- screen, unreachable, until the reporter dropped UI scale to 65%. The
 	-- status table restores top/left saved under whatever coordinate space the
 	-- player had at the time; the window must stay on the screen it has now.
+	-- Asserted from where the window LANDED, not from a flag: PersistWindow
+	-- (LibAceGUIWidgets MINOR 36) moves a restored window fully onto the screen
+	-- and writes the corrected position back into the saved table.
 	it("is clamped to the screen, so a restored off-screen position cannot strand it", function()
 		ns.lib.db.char.frames.mainWindow = { width = 720, height = 500, top = 2000, left = 100 }
 		MW:Open()
-		assert.is_true(MW.frame.frame:IsClampedToScreen())
+		local _, screenH = UIParent:GetWidth(), UIParent:GetHeight()
+		assert.is_true(MW.frame.frame:GetTop() <= screenH)
+		assert.is_true(ns.lib.db.char.frames.mainWindow.top <= screenH)
+	end)
+
+	-- PersistWindow clamps only on restore, so a title bar dragged past the top
+	-- edge mid-session needs the frame's own clamp while the window is open --
+	-- and the pooled frame must get its old setting back, or the flag follows
+	-- it into the next addon AceGUI hands it to.
+	it("stays clamped while open and hands the pooled frame back unclamped", function()
+		MW:Open()
+		local raw = MW.frame.frame
+		assert.is_true(raw:IsClampedToScreen())
+		MW:Close()
+		assert.is_false(raw:IsClampedToScreen())
 	end)
 
 	it("caps a saved Browser size at the screen instead of restoring it taller than the display", function()

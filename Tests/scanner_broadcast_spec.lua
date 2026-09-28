@@ -168,10 +168,11 @@ describe("BroadcastLeafToGuild", function()
 		-- We advertised it (it gossiped in via subhashes) but hold nothing; left
 		-- alone, peers request it forever and our inflated stamp keeps the real
 		-- owner silent.
-		gdb.hashes["cooldown:Ghost-Testrealm"] = { hash = 9, updatedAt = 5, abs = true }
-		S:BroadcastLeafToGuild("cooldown:Ghost-Testrealm")
+		local leaf = "cooldown:Ghost-Testrealm"
+		gdb.hashes[leaf] = { hash = 9, updatedAt = 5, abs = true }
+		S:BroadcastLeafToGuild(leaf)
 		assert.equal(0, #DS.dataCasts)
-		assert.is_nil(gdb.hashes["cooldown:Ghost-Testrealm"])
+		assert.is_nil(gdb.hashes[leaf])
 	end)
 
 	it("does NOT drop the hash on an empty SCOPED reply", function()
@@ -271,7 +272,7 @@ end)
 -- A "sister rosters" block of seven cases sat here until v1.0.10, pinning
 -- Scanner:PersistSisterRoster / OnSisterRosterUpdated / RefeedSisterRosters --
 -- TOGPM's own copy of the persisted sister roster in TOGPM_GuildDB.
--- writ-cannot: that feature was removed on purpose; LibGuildRoster MINOR 18
+-- That feature was removed on purpose; LibGuildRoster MINOR 18
 -- persists, re-feeds and gates the sister rosters itself, in its own
 -- SavedVariables, so that every addon on the account reads one store. The
 -- three functions no longer exist (Tests/sisterguild_spec.lua pins their

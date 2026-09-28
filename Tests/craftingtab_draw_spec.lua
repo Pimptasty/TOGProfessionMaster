@@ -188,6 +188,100 @@ describe("selecting a recipe", function()
 	end)
 end)
 
+-- In game 2026-09-26: closing TOGPM in combat raised ADDON_ACTION_BLOCKED
+-- "Frame:Hide()" from AceGUIContainer-Frame. The secure Craft button made every
+-- ancestor protected, and its ancestors were AceGUI's pooled window. It now lives
+-- on a UIParent holder and only follows the panel.
+describe("the secure Craft button", function()
+	local realLockdown
+
+	before_each(function() realLockdown = _G.InCombatLockdown end)
+	after_each(function() _G.InCombatLockdown = realLockdown end)
+
+	-- The offline window is never laid out, so the panel has no rect until one
+	-- is given; in game AnchorAll gives it one. Place it, then let the watcher
+	-- notice, exactly as it would when the layout lands after RefreshDetail.
+	local function selectCraftable()
+		env.drawTab(CT)
+		CT._selIndex = 2
+		CT:RefreshDetail()
+		assert.is_truthy(CT._dpSel)
+		local panel = CT._detailPanel
+		panel:ClearAllPoints()
+		panel:SetPoint("TOPLEFT", _G.UIParent, "TOPLEFT", 100, -100)
+		panel:SetSize(400, 120)
+		CT._craftBtnWatcher:GetScript("OnUpdate")(CT._craftBtnWatcher, 0)
+	end
+
+	it("is not inside the detail panel or the AceGUI window", function()
+		-- The panel (and the holder with it) is built once and cached; this
+		-- test's UIParent is a fresh one from installFrames, so build anew.
+		CT._detailPanel = nil
+		selectCraftable()
+		local btn, panel = CT._dpCraft, CT._detailPanel
+		local chain, f = {}, btn:GetParent()
+		while f do chain[#chain + 1] = f; f = f:GetParent() end
+		for _, ancestor in ipairs(chain) do
+			assert.are_not.equal(panel, ancestor)
+		end
+		assert.equal(CT._dpCraftHolder, btn:GetParent())
+		assert.equal(_G.UIParent, CT._dpCraftHolder:GetParent())
+	end)
+
+	it("is anchored to nothing but its holder -- never to the panel", function()
+		-- Protection also carries to the frames a protected frame is anchored to
+		-- (warcraft.wiki.gg, via Peer Review 2026-09-26).
+		selectCraftable()
+		local btn = CT._dpCraft
+		assert.is_true(btn:GetNumPoints() >= 1)
+		for i = 1, btn:GetNumPoints() do
+			local _, relativeTo = btn:GetPoint(i)
+			assert.equal(CT._dpCraftHolder, relativeTo)
+		end
+	end)
+
+	it("lands at the panel's top-right, where it was when it was the panel's child", function()
+		selectCraftable()
+		local btn, panel = CT._dpCraft, CT._detailPanel
+		assert.is_near(panel:GetRight() - 12, btn:GetRight(), 0.01)
+		assert.is_near(panel:GetTop() - 34, btn:GetTop(), 0.01)
+	end)
+
+	it("follows the panel when the window moves", function()
+		selectCraftable()
+		local btn, panel = CT._dpCraft, CT._detailPanel
+		local p, rel, rp, x, y = panel:GetPoint(1)
+		panel:ClearAllPoints()
+		panel:SetPoint(p, rel, rp, (x or 0) + 50, (y or 0) - 30)
+		CT._craftBtnWatcher:GetScript("OnUpdate")(CT._craftBtnWatcher, 0)
+		assert.is_near(panel:GetRight() - 12, btn:GetRight(), 0.01)
+		assert.is_near(panel:GetTop() - 34, btn:GetTop(), 0.01)
+	end)
+
+	it("shows with a recipe selected and hides with none", function()
+		selectCraftable()
+		assert.is_true(CT._dpCraft:IsShown())
+		CT._selIndex = nil
+		CT:RefreshDetail()
+		assert.is_false(CT._dpCraft:IsShown())
+	end)
+
+	it("hides when the panel hides, since it is not the panel's child", function()
+		selectCraftable()
+		CT._detailPanel:Hide()
+		assert.is_false(CT._dpCraft:IsShown())
+	end)
+
+	it("is not shown or hidden by TOGPM during combat", function()
+		selectCraftable()
+		_G.InCombatLockdown = function() return true end
+		CT._detailPanel:Hide()
+		CT._selIndex = nil
+		CT:RefreshDetail()
+		assert.is_true(CT._dpCraft:IsShown())   -- untouched; the state driver owns combat
+	end)
+end)
+
 describe("the queue panel", function()
 	it("renders an empty queue", function()
 		env.drawTab(CT)

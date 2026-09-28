@@ -51,13 +51,19 @@ local SOURCES = {
 	{ path = "Compat.lua",                  min = 2 },
 	{ path = "GUI/SharedWidgets.lua",       min = 8 },
 	{ path = "GUI/BrowserTab.lua",          min = 22 },
-	{ path = "GUI/CooldownsTab.lua",        min = 14 },
+	-- 12 since the rows moved to RowList: the row [Bank] / [AH] / mail / "!"
+	-- tooltips are button-column `tip`s, drawn by the library. The group
+	-- popup's own tooltips are still here.
+	{ path = "GUI/CooldownsTab.lua",        min = 12 },
 	{ path = "GUI/MissingRecipesTab.lua",   min = 5 },
 	{ path = "GUI/CraftingTab.lua",         min = 8 },
 	{ path = "GUI/AHProfitTab.lua",         min = 6 },
-	{ path = "GUI/ShoppingListTab.lua",     min = 0 },
-	{ path = "GUI/ReagentTracker.lua",      min = 2 },
-	{ path = "GUI/MainWindow.lua",          min = 3 },
+	-- 0 since the tracker's rows moved to RowList: the [Bank] tooltip is the
+	-- button column's `tip`, drawn by the library.
+	{ path = "GUI/ReagentTracker.lua",      min = 0 },
+	-- 0 since the help/gear tooltips moved to LibAceGUIWidgets' DressBottomRow,
+	-- which draws them through the library's own ShowTooltip.
+	{ path = "GUI/MainWindow.lua",          min = 0 },
 	{ path = "GUI/MinimapButton.lua",       min = 4 },
 	-- v1.1.0: the scan button and its tooltip moved to ItemDB with the scanner;
 	-- this file is a facade with no tooltip of its own. Kept in the list (rather
@@ -250,7 +256,8 @@ end
 
 describe("every tooltip line this addon appends opts into the wrap preset", function()
 	it("enumerates the sources", function()
-		assert.equal(13, #SOURCES)
+		-- 12 since GUI/ShoppingListTab.lua was deleted as dead code (v1.1.2).
+		assert.equal(12, #SOURCES)
 		for _, src in ipairs(SOURCES) do
 			assert.is_truthy(#code(src.path) > 0, "empty source: " .. src.path)
 		end

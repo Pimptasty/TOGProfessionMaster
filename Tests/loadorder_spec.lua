@@ -212,3 +212,68 @@ describe("every TOC declares the same dependencies", function()
 		end
 	end)
 end)
+
+-- TEMPORARY, WoW Forever only (the operator's decision of 2026-09-27, applied
+-- fleet-wide from FastGuildInvite v2.14.7): LibDBIcon-1.0 is not published for
+-- Forever, so the _Camelot TOC embeds it and lists it only as optional. Every
+-- other TOC keeps hard-depending on the standalone and embeds nothing. TO UNDO
+-- when LibDBIcon ships for Forever: delete the two Libs lines and folders, put
+-- LibDBIcon-1.0 back in _Camelot's ## Dependencies, and empty FOREVER_EMBEDS.
+local CAMELOT = "TOGProfessionMaster_Camelot.toc"
+local FOREVER_EMBEDS = {
+	"libs/libdatabroker-1.1/libdatabroker-1.1.lua",
+	"libs/libdbicon-1.0/libdbicon-1.0.lua",
+}
+
+describe("the WoW Forever TOC", function()
+	local function header(path, key)
+		for line in read(path):gmatch("[^\r\n]+") do
+			local v = line:match("^##%s*" .. key .. ":%s*(.-)%s*$")
+			if v then return v end
+		end
+		return nil
+	end
+
+	local function depSet(s)
+		local out = {}
+		for name in (s or ""):gmatch("[^,%s]+") do out[name] = true end
+		return out
+	end
+
+	it("loads the embedded libraries first, LibDataBroker before LibDBIcon", function()
+		local files = tocFiles(CAMELOT)
+		for i, lib in ipairs(FOREVER_EMBEDS) do
+			assert.equal(lib, files[i])
+		end
+	end)
+
+	it("then loads exactly what the base TOC loads, in the same order", function()
+		local files, base = tocFiles(CAMELOT), tocFiles(TOCS[1])
+		local rest = {}
+		for i = #FOREVER_EMBEDS + 1, #files do rest[#rest + 1] = files[i] end
+		assert.same(base, rest)
+	end)
+
+	it("ships both embedded files", function()
+		for _, lib in ipairs(FOREVER_EMBEDS) do
+			local f = io.open(lib:gsub("^libs/", "Libs/"), "r")
+			assert.is_truthy(f, "missing " .. lib)
+			if f then f:close() end
+		end
+	end)
+
+	it("lists LibDBIcon only as optional, and otherwise depends on what the base does", function()
+		local base = depSet(header(TOCS[1], "Dependencies"))
+		base["LibDBIcon-1.0"] = nil
+		assert.same(base, depSet(header(CAMELOT, "Dependencies")))
+		assert.is_true(depSet(header(CAMELOT, "OptionalDeps"))["LibDBIcon-1.0"] == true)
+	end)
+
+	it("is the only TOC that embeds them", function()
+		for _, toc in ipairs(TOCS) do
+			for _, lib in ipairs(FOREVER_EMBEDS) do
+				assert.is_nil(indexOf(tocFiles(toc), lib), toc .. " loads " .. lib)
+			end
+		end
+	end)
+end)

@@ -1,15 +1,18 @@
--- TOG Profession Master — Reagent Watch + Shopping List Alerts
--- Handles BAG_UPDATE logic only; the UI panel lives in GUI/ShoppingListTab.lua.
+-- TOG Profession Master — reagent counts + Shopping List Alerts
+-- Handles BAG_UPDATE logic only; it has no UI of its own.
 --
--- 9.3 Reagent Watch
---   db.char.reagentWatch = { [itemId] = true }
---   Tracks a custom list of item IDs the player cares about.
---   Fires addon.callbacks "REAGENT_WATCH_UPDATED" on each BAG_UPDATE so the
---   UI panel can refresh.
+-- Reagent counts
+--   Caches the personal bank (BANKFRAME_CLOSED) and mailbox (MAIL_CLOSED)
+--   counts, and fires addon.callbacks "REAGENT_WATCH_UPDATED" on each
+--   BAG_UPDATE so the tabs that colour reagents by stock can repaint. (The
+--   event keeps its old name. The item watch list it was named for lived on
+--   the Shopping List tab, which the main window never drew; both were
+--   removed as dead code in v1.1.2.)
 --
--- 9.4 Shopping List Alerts
+-- Shopping List Alerts
 --   When ALL reagents for a queued craft are satisfied in bags, print a chat
---   notification once (guarded by db.char.shoppingAlerts[spellId]).
+--   notification once (guarded by the module-local `alerted` latch -- NOT
+--   db.char.shoppingAlerts, which is the crafter-online opt-in).
 --   The flag is cleared when reagents drop below the requirement so the player
 --   gets a fresh alert next time they stock up.
 
@@ -25,8 +28,7 @@ addon.ReagentWatch = RW
 -- ---------------------------------------------------------------------------
 
 --- Scan bags only, return { [itemId] = count }.  Cheap, runs every BAG_UPDATE.
---- The implementation is addon:ScanBagCounts in Compat.lua, shared with
---- GUI/ShoppingListTab.lua, which used to carry a byte-identical copy.
+--- The implementation is addon:ScanBagCounts in Compat.lua.
 local function ScanBagsOnly()
     return addon:ScanBagCounts()
 end
@@ -117,83 +119,82 @@ function RW:GetBankCount(itemId)
 end
 
 -- ---------------------------------------------------------------------------
--- 9.3 — Reagent Watch
+-- Shopping List Alerts
 -- ---------------------------------------------------------------------------
 
---- Add an item to the watch list.
-function RW:Watch(itemId)
-    itemId = tonumber(itemId)
-    if not itemId then return end
-    Ace.db.char.reagentWatch[itemId] = true
-    addon.callbacks:Fire("REAGENT_WATCH_UPDATED")
-end
+-- The "already told them" latch, keyed by shopping-list id. It is NOT
+-- db.char.shoppingAlerts: that table is the player's per-recipe opt-in for the
+-- crafter-online alert (the "!" on a Professions-tab shopping-list row, read by
+-- addon:OnCrafterCameOnline). This module used to latch into it, so a
+-- reagents-ready alert silently switched the crafter alert on for that recipe
+-- and running out switched it off again. In memory only: PLAYER_LOGIN re-arms
+-- it from the bags, which is all a saved copy would have done.
+local alerted = {}
 
---- Remove an item from the watch list.
-function RW:Unwatch(itemId)
-    itemId = tonumber(itemId)
-    if not itemId then return end
-    Ace.db.char.reagentWatch[itemId] = nil
-    addon.callbacks:Fire("REAGENT_WATCH_UPDATED")
-end
-
---- Return true if itemId is currently on the watch list.
-function RW:IsWatching(itemId)
-    itemId = tonumber(itemId)
-    if not itemId then return false end
-    return Ace.db.char.reagentWatch[itemId] == true
-end
-
---- Return sorted array of { itemId, itemName, count } for the watch list.
-function RW:GetWatchedItems()
-    local bags = ScanBags()
-    local list = {}
-    for itemId in pairs(Ace.db.char.reagentWatch) do
-        -- "..." not the single-glyph ellipsis: the client's fonts stop at
-        -- Latin-1 and U+2026 draws as a box or as nothing at all.
-        local name = addon.Item.GetInfo(itemId) or "|cffaaaaaa(loading...)|r"
-        list[#list + 1] = {
-            itemId   = itemId,
-            itemName = name,
-            count    = bags[itemId] or 0,
-        }
+--- The reagents one craft of a shopping-list entry needs, as
+--- { { id = itemId, qty = n }, ... }. Every entry the Professions tab adds
+--- carries the recipe's full reagent list (the one the Reagent Tracker sums);
+--- an entry without one falls back to the cooldown catalogue, which knows the
+--- reagent of each cooldown craft. nil when neither knows.
+local function EntryReagents(spellId, entry)
+    local out = {}
+    for _, r in ipairs(entry.reagents or {}) do
+        local id = (r.itemLink and tonumber(r.itemLink:match("item:(%d+)")))
+                or (r.itemId and r.itemId > 0 and r.itemId or nil)
+        if id then out[#out + 1] = { id = id, qty = r.count or 1 } end
     end
-    table.sort(list, function(a, b) return a.itemName < b.itemName end)
-    return list
+    if #out > 0 then return out end
+    local data = addon:GetCooldownData()
+    local rg = data.reagents[spellId] or data.transReagents[spellId]
+    if rg then return { { id = rg.id, qty = rg.qty } } end
+    return nil
 end
 
--- ---------------------------------------------------------------------------
--- 9.4 — Shopping List Alerts
--- ---------------------------------------------------------------------------
+--- Is every reagent for `qty` crafts of this entry in `bags`?
+local function EntryReady(reagents, qty, bags)
+    for _, r in ipairs(reagents) do
+        if (bags[r.id] or 0) < r.qty * qty then return false end
+    end
+    return true
+end
 
 --- Check every shopping list entry; fire a chat alert the first time all
---- reagents for a craft are present in bags.  Clear the "alerted" flag when
---- bags drop below requirements so the player gets a fresh alert next time.
+--- reagents for a craft are present in bags.  Clear the latch when bags drop
+--- below requirements so the player gets a fresh alert next time.
 local function CheckAlerts(bags)
-    local bl   = Ace.db.char.shoppingList
-    local alrt = Ace.db.char.shoppingAlerts
-    local data = addon:GetCooldownData()
+    local bl = Ace.db.char.shoppingList
+
+    -- An entry removed from the list re-arms, so queuing it again alerts.
+    for spellId in pairs(alerted) do
+        if not bl[spellId] then alerted[spellId] = nil end
+    end
 
     for spellId, entry in pairs(bl) do
-        local qty     = (entry and entry.quantity) or 1
-        local reagent = data.reagents[spellId] or data.transReagents[spellId]
-        if reagent then
-            local have    = bags[reagent.id] or 0
-            local needed  = reagent.qty * qty
-            local ready   = have >= needed
+        local qty      = (entry and entry.quantity) or 1
+        local reagents = entry and EntryReagents(spellId, entry)
+        if reagents then
+            local ready = EntryReady(reagents, qty, bags)
 
-            if ready and not alrt[spellId] then
+            if ready and not alerted[spellId] then
                 -- First time ready — alert
-                alrt[spellId] = true
-                local spellName = GetSpellInfo(spellId) or tostring(spellId)
-                local itemName  = addon.Item.GetInfo(reagent.id) or tostring(reagent.id)
-                addon:Print(string.format(
-                    L["AlertReadyFormat"],
-                    spellName, qty, itemName, have
-                ))
-            elseif not ready and alrt[spellId] then
+                alerted[spellId] = true
+                local craftName = entry.name or addon.Spell.GetInfo(spellId) or tostring(spellId)
+                if #reagents == 1 then
+                    local r = reagents[1]
+                    local itemName = addon.Item.GetInfo(r.id) or tostring(r.id)
+                    addon:Print(string.format(
+                        L["AlertReadyFormat"],
+                        craftName, qty, itemName, bags[r.id] or 0
+                    ))
+                else
+                    addon:Print(string.format(
+                        L["AlertReadyAllFormat"], craftName, qty, #reagents
+                    ))
+                end
+            elseif not ready and alerted[spellId] then
                 -- Bags dropped below requirement — clear flag so next restock
                 -- triggers a fresh alert
-                alrt[spellId] = nil
+                alerted[spellId] = nil
             end
         end
     end
@@ -234,20 +235,19 @@ end)
 
 -- Also check on login in case bags are already stocked
 Ace:RegisterEvent("PLAYER_LOGIN", function()
+    -- The item watch list (removed in v1.1.2 with the Shopping List tab it
+    -- lived on) left a saved table behind; drop it.
+    Ace.db.char.reagentWatch = nil
+
     local bags = ScanBags()
-    -- Don't alert on login — pre-populate flags silently so first legitimate
-    -- restock triggers the message
-    local bl   = Ace.db.char.shoppingList
-    local alrt = Ace.db.char.shoppingAlerts
-    local data = addon:GetCooldownData()
+    -- Don't alert on login — pre-populate the latch silently so the first
+    -- legitimate restock triggers the message
+    local bl = Ace.db.char.shoppingList
     for spellId, entry in pairs(bl) do
-        local qty     = (entry and entry.quantity) or 1
-        local reagent = data.reagents[spellId] or data.transReagents[spellId]
-        if reagent then
-            local have = bags[reagent.id] or 0
-            if have >= reagent.qty * qty then
-                alrt[spellId] = true  -- already ready on login, don't spam
-            end
+        local qty      = (entry and entry.quantity) or 1
+        local reagents = entry and EntryReagents(spellId, entry)
+        if reagents and EntryReady(reagents, qty, bags) then
+            alerted[spellId] = true  -- already ready on login, don't spam
         end
     end
 end)
@@ -257,5 +257,11 @@ end)
 -- ---------------------------------------------------------------------------
 
 function RW:ClearAlert(spellId)
-    Ace.db.char.shoppingAlerts[spellId] = nil
+    alerted[spellId] = nil
+end
+
+--- Test seam: the latch is module state, and the offline suite loads this file
+--- once per spec file, so each spec starts from an empty latch.
+function RW:_ResetAlertLatch()
+    for k in pairs(alerted) do alerted[k] = nil end
 end

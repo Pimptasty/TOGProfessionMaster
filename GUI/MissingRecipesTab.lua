@@ -225,13 +225,8 @@ local function GetGuildProfessions()
     return out
 end
 
--- Virtual-scroll constants. Mirrors BrowserTab's approach: a raw frame pool
--- of POOL_SIZE rows is reused as the user scrolls, so total widget count
--- stays bounded regardless of list size. AceGUI's layout pass scales badly
--- past a few hundred children, so we pay the layout cost on POOL_SIZE rows
--- only — never on the full result.
+-- The result list's row height (scale-1.0), handed to the RowList.
 local ROW_HEIGHT = 16
-local POOL_SIZE  = 35
 
 -- Skill cap each rank-up book grants. Used to filter rank books out of
 -- the missing list when the character's skillMax is already at or above
@@ -510,11 +505,12 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
         -- data.difficulty[1] (orange threshold = lowest castable rank).
         -- ~13% of Blacksmithing and ~16% of Tailoring recipes ship with
         -- no requiredSkill; falling back to difficulty[1] closes that
-        -- coverage gap. If BOTH are nil the row still passes (truly
-        -- unknown — same intentional permissive behavior).
+        -- coverage gap. If BOTH are nil -- or the tiers are unanchored
+        -- (ProfessionDB: requiredSkill absent and difficulty[1] == 1, a
+        -- placeholder) -- the row still passes (truly unknown — same
+        -- intentional permissive behavior).
         if not skip and canLearnOnly then
-            local gate = data.requiredSkill
-                      or (data.difficulty and data.difficulty[1])
+            local gate = addon.RecipeLearnSkill(data)
             if gate and gate > skillRank then
                 skip = true
             end
@@ -623,16 +619,6 @@ end
 -- Sub-tabs use an AceGUI TabGroup (My Character / Guild), matching the log
 -- sub-tabs in TOG Tools. Draw builds the strip; DrawScope renders the active
 -- scope's toolbar + result list INTO the TabGroup's content.
---
--- DrawScope's result-list anchoring installs a LayoutFinished override on the
--- TabGroup (its content container). AceGUI pools widgets globally and does NOT
--- clear such overrides on release, so on teardown we restore the TabGroup's
--- CLASS LayoutFinished (captured once from a fresh instance) — otherwise the
--- override would bleed into whatever addon next acquires that pooled TabGroup and
--- break its auto-size. (The MAIN tab container is protected differently:
--- MainWindow nils its LayoutFinished on every tab switch.)
-local _TG_CLASS_LAYOUTFINISHED  -- captured once from a fresh TabGroup
-
 function MissingRecipesTab:Draw(container)
     container:SetLayout("Fill")
     self._container = container
@@ -663,19 +649,11 @@ function MissingRecipesTab:Draw(container)
     tg:SetLayout("Fill")
     tg:SetFullWidth(true)
     tg:SetFullHeight(true)
-
-    -- Capture the class LayoutFinished once; restore it on release (pool safety).
-    if not _TG_CLASS_LAYOUTFINISHED and type(tg.LayoutFinished) == "function" then
-        _TG_CLASS_LAYOUTFINISHED = tg.LayoutFinished
-    end
-    tg:SetCallback("OnRelease", function(widget)
-        if _TG_CLASS_LAYOUTFINISHED then widget.LayoutFinished = _TG_CLASS_LAYOUTFINISHED end
-        -- Detach the virtual-scroll pool via the shared addon.GUI.DetachPool
-        -- helper (through DetachPool), so the pooled raw rows can't bleed into
-        -- another addon if this TabGroup is torn down without the inner scroll's
-        -- own onRelease having fired first.
-        self:DetachPool()
-    end)
+    -- The TabGroup takes the height the tab gives it. Its class LayoutFinished
+    -- would otherwise re-size it to its content after every layout, fighting
+    -- the fill-height list below. SetAutoAdjustHeight is AceGUI's own switch
+    -- for this, and AceGUI resets it on release, so nothing reaches the pool.
+    tg:SetAutoAdjustHeight(false)
 
     tg:SetCallback("OnGroupSelected", function(widget, _e, value)
         self._scope = value
@@ -694,7 +672,9 @@ end
 -- Render the active scope's toolbar + result list into `container` (the TabGroup
 -- content). Split out of Draw so OnGroupSelected can redraw just the content.
 function MissingRecipesTab:DrawScope(container)
-    container:SetLayout("List")
+    -- Flow, so the result section below can take the rest of the height
+    -- ("fill"); the toolbar and the hint labels are full width, one per row.
+    container:SetLayout("Flow")
     local guildScope = (self._scope == "guild")
 
     -- Persist the character / profession dropdown selections across /reload
@@ -908,81 +888,31 @@ function MissingRecipesTab:DrawScope(container)
             end
             return items
         end,
+        -- [AH] buttons appear and go with scan results; the list re-reads each
+        -- button column's `show` on every repaint.
         onRefresh     = function()
-            if MissingRecipesTab._pool and MissingRecipesTab._scroll then
-                MissingRecipesTab:UpdateVirtualRows()
-            end
+            if MissingRecipesTab._rowList then MissingRecipesTab._rowList:Refresh() end
         end,
     })
 
     -- ---- Result section ----------------------------------------------------
+    -- Takes the rest of the tab's height. It holds either a hint label or the
+    -- list, whose host ParkList parks here; on release (a tab, sub-tab or
+    -- character switch) the host goes back to UIParent and the rows go with
+    -- the draw that built them.
     local section = AceGUI:Create("SimpleGroup")
-    section:SetLayout("List")
+    section:SetLayout("Fill")
     section:SetFullWidth(true)
     section:SetFullHeight(true)
     container:AddChild(section)
     self._listSection = section
-
-    -- When section is released (tab switch / character switch / Refresh),
-    -- clear our four-edge fill anchors so they don't bleed into another
-    -- tab's content if AceGUI recycles this SimpleGroup. Also nil
-    -- self._listSection so the leftover container.LayoutFinished hook
-    -- early-returns on other tabs (BrowserTab uses the same pattern via
-    -- self._scroll = nil in DestroyPool).
-    section:SetCallback("OnRelease", function()
-        if section.frame then section.frame:ClearAllPoints() end
-        if self._listSection == section then self._listSection = nil end
-    end)
-
-    -- Pin each edge of section.frame to fill the container, AND anchor the
-    -- scroll inside section to fill below the column header. Both anchors
-    -- live in the same container.LayoutFinished hook because we MUST NOT
-    -- override section.LayoutFinished — SimpleGroup defines a class-level
-    -- LayoutFinished that auto-resizes the widget to fit its content
-    -- (AceGUIContainer-SimpleGroup.lua:25), and that method lives on the
-    -- widget table itself, not in widget.events. AceGUI:Release does not
-    -- restore class methods on the recycled widget. So if we replace
-    -- section.LayoutFinished, the override survives recycling — when the
-    -- pooled SimpleGroup is acquired by e.g. Cooldowns' headers group,
-    -- AceGUI's layout calls headers:LayoutFinished, hits our (now-orphaned)
-    -- override which early-returns on a nil self._scroll, and the headers
-    -- frame is never SetHeight'd to fit its column labels. It keeps the
-    -- stale ~300px from when it was our fill-anchored section, and Flow
-    -- layout positions the next sibling 300px below — the user's "huge
-    -- gap." Doing all anchoring through container.LayoutFinished (TabGroup,
-    -- which is not pooled across tab uses) avoids that trap entirely.
-    local function AnchorAll()
-        if not (self._listSection and self._listSection.frame and toolbar.frame) then return end
-        local cContent = container.content or container.frame
-        if not cContent then return end
-
-        local sf = self._listSection.frame
-        sf:ClearAllPoints()
-        sf:SetPoint("TOP",    toolbar.frame, "BOTTOM", 0, -4)
-        sf:SetPoint("LEFT",   cContent,      "LEFT",   0,  0)
-        sf:SetPoint("RIGHT",  cContent,      "RIGHT",  0,  0)
-        sf:SetPoint("BOTTOM", cContent,      "BOTTOM", 0,  4)
-
-        if self._scroll and self._scroll.frame and self._headerFrame then
-            local f = self._scroll.frame
-            f:ClearAllPoints()
-            f:SetPoint("TOP",    self._headerFrame, "BOTTOM", 0, -2)
-            f:SetPoint("LEFT",   sf,                "LEFT",   0,  0)
-            f:SetPoint("RIGHT",  sf,                "RIGHT",  0,  0)
-            f:SetPoint("BOTTOM", sf,                "BOTTOM", 0,  4)
-        end
+    if addon.W then
+        addon.W:OnWidgetRelease(section, "togpm:missingList", function()
+            GameTooltip:Hide()
+            if self._listSection == section then self._listSection = nil end
+            self._list = nil
+        end)
     end
-    -- Anchor on the TabGroup container's LayoutFinished. We intentionally do NOT
-    -- chain the TabGroup's class LayoutFinished here: that class method does
-    -- `self:SetHeight(contentHeight + 46)`, auto-growing the TabGroup to fit the
-    -- (virtually huge) list content and fighting the SetFullHeight(true) we asked
-    -- for — which would make the container resize every pass. Suppressing it (by
-    -- replacing with just AnchorAll) keeps the TabGroup at its parent-assigned
-    -- fill height. The class method is restored on release for pool safety
-    -- (_TG_CLASS_LAYOUTFINISHED in the OnRelease handler).
-    container.LayoutFinished = function() AnchorAll() end
-    self._anchorAll = AnchorAll
-    AnchorAll()
 
     self:FillList()
 end
@@ -1008,440 +938,245 @@ function MissingRecipesTab:RefreshList()
 end
 
 -- ---------------------------------------------------------------------------
--- Result list — virtual-scroll using a raw frame pool (35 rows), mirroring
--- BrowserTab's pattern. AceGUI is reserved for the toolbar and a few static
--- header / count widgets above the scrollable list. Without virtual scrolling
--- a profession with several hundred missing recipes spawns thousands of
--- AceGUI widgets and the layout pass freezes the WoW client.
+-- Result list — a LibAceGUIWidgets RowList (MINOR 36), built once per session
+-- on a host the tab owns (addon.GUI.ParkList). It draws only the visible rows,
+-- which is what keeps a profession with several hundred missing recipes from
+-- freezing the client, and it draws the header, sort arrow, banding, hover
+-- highlight, scrollbar and the [Bank] / [AH] button columns.
 -- ---------------------------------------------------------------------------
 
--- Build the pool of POOL_SIZE raw Frames, parented to the AceGUI ScrollFrame's
--- content frame so they scroll naturally. Each pool frame holds an icon,
--- name / skill / sources fontstrings, and a small watch-toggle button. Frames
--- are reused as the user scrolls; only the content of each is updated.
-function MissingRecipesTab:BuildPool(parent)
-    self._pool = {}
-    for i = 1, POOL_SIZE do
-        local f = CreateFrame("Button", nil, parent)
-        f:SetHeight(ROW_HEIGHT)
-        f:Hide()
-        f:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight", "ADD")
+-- What a row shows, worked out once per entry (the entries are rebuilt on
+-- every FillList, and so is this). Item name, quality and icon ALL come from
+-- synchronous sources — LibItemDB (offline item DB) and ProfessionDB (recipe
+-- names) — so every row renders fully on the FIRST paint with NO client-cache
+-- round-trip. That keeps the tab quiet: nothing is ever "pending" a
+-- GetItemInfo cache-fill, so it only re-renders on genuine data changes
+-- (GUILD_DATA_UPDATED, e.g. a skill learned) — never on the item-load storm
+-- that used to refresh it several times a second and creep the scroll.
+function MissingRecipesTab:RowDisplay(entry)
+    local d = entry._display
+    if d then return d end
+    local idb = addon.GetItemDB and addon:GetItemDB()
+    -- v0.5.0 keyed recipeDB by spell id; entry.itemId is the recipe-scroll
+    -- item that teaches the spell (trainer-taught recipes have none). Never
+    -- pass the spell id to an item API — SetItemByID silently sets an empty
+    -- tooltip and (worse) breaks addons like LoonBestInSlot that hook it.
+    local itemId = entry.itemId
+    local displayName, itemName, itemLink, icon
+    if itemId then
+        -- LibItemDB's name (the full scroll name, e.g. "Recipe: Thistle Tea"),
+        -- then the recipe's own ProfessionDB name, then the spell name — all
+        -- synchronous. CRITICAL: never fall back to GetItemInfo here; a cold
+        -- scroll item's GET_ITEM_INFO_RECEIVED storm is what crept the scroll.
+        -- Some recipe items do not exist on this client at all (removed
+        -- Vanilla scrolls) and fall through to the recipe / spell name.
+        itemName = idb and idb:GetName(itemId)
+        itemLink = idb and idb:GetLink(itemId)
+        displayName = itemName
+                      or entry.name
+                      or addon.Spell.GetInfo(entry.spellId)
+                      or ("|cffaaaaaaspell:" .. tostring(entry.spellId) .. "|r")
+        -- GetItemIcon reads static item file data (synchronous, fires no
+        -- cache event); fall back to the spell texture.
+        icon = addon.Item.GetIcon(itemId)
+               or addon.Spell.GetTexture(entry.spellId)
+    else
+        -- Trainer-only recipe with no scroll item: the spell's name, and the
+        -- icon of the item it CREATES (entry.craftedItemId, shipped from
+        -- SpellEffect[Effect=24] data — Heavy Weightstone -> item 3241), else
+        -- the spell texture (Enchanting has no produced item and correctly
+        -- lands here, on the enchant scroll icon Blizzard gave the spell).
+        displayName = addon.Spell.GetInfo(entry.spellId)
+                      or entry.name
+                      or ("|cffaaaaaaspell:" .. entry.spellId .. "|r")
+        icon = (entry.craftedItemId and addon.Item.GetIcon(entry.craftedItemId))
+               or addon.Spell.GetTexture(entry.spellId)
+    end
 
-        local icon = f:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(14, 14)
-        icon:SetPoint("LEFT", f, "LEFT", 4, 0)
-        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        f.icon = icon
+    -- Colour the name by the CRAFTED item's quality (what the recipe produces),
+    -- matching the crafting window, where a recipe for an epic shows purple
+    -- even when its pattern scroll is white. LibItemDB ONLY (synchronous):
+    -- GetItemInfo on a cold crafted item is the same scroll-creeping storm as
+    -- above. Common / poor produce stays white; recipes with no produced item
+    -- (enchants) fall back to the scroll's own link colour.
+    local color
+    local q = idb and entry.craftedItemId and idb:GetQuality(entry.craftedItemId)
+    if q and q > 1 then
+        -- C_Item.GetItemQualityColor, through Compat.lua's resolver (audit
+        -- finding 26): the bare global is only a deprecation fallback.
+        local r, g, b = addon.Item.GetQualityColor(q)
+        if r and g and b then
+            color = string.format("ff%02x%02x%02x", r * 255, g * 255, b * 255)
+        end
+    elseif not entry.craftedItemId and itemLink then
+        color = itemLink:match("|c(%x%x%x%x%x%x%x%x)|H")
+    end
+    local nmText = color and ("|c" .. color .. displayName .. "|r") or displayName
+    if self._showAll and entry.known then
+        -- Show All mode marks recipes the character already knows with a check.
+        nmText = "|TInterface\\Buttons\\UI-CheckBox-Check:0|t " .. nmText
+    end
+    -- "All Professions" view: tag each row with its profession so the flat,
+    -- cross-profession list stays readable.
+    if self._profId == "all" and entry.profName then
+        nmText = "|cff888888[" .. entry.profName .. "]|r " .. nmText
+    end
 
-        local nameLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        nameLbl:SetPoint("LEFT", icon, "RIGHT", 4, 0)
-        nameLbl:SetWidth(240)
-        nameLbl:SetJustifyH("LEFT")
-        nameLbl:SetWordWrap(false)
-        f.nameLbl = nameLbl
+    d = { name = nmText, icon = icon or 134400, itemName = itemName, itemLink = itemLink }
+    entry._display = d
+    return d
+end
 
-        -- Skill data column shifted 5px left of name's right edge so its
-        -- right-justified values align with the column header above it.
-        local skillLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        skillLbl:SetPoint("LEFT", nameLbl, "RIGHT", -1, 0)
-        skillLbl:SetWidth(104)
-        skillLbl:SetJustifyH("LEFT")
-        f.skillLbl = skillLbl
-
-        -- 16px gap from the skill column matches the header's 4 + 8 spacer +
-        -- 4 (Flow's default child gap) so the column edges line up.
-        local srcLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        srcLbl:SetPoint("LEFT", skillLbl, "RIGHT", 16, 0)
-        srcLbl:SetWidth(180)
-        srcLbl:SetJustifyH("LEFT")
-        srcLbl:SetWordWrap(false)
-        srcLbl:SetTextColor(0.75, 0.75, 0.75)
-        f.srcLbl = srcLbl
-
-        -- [Bank] button — same pattern as BrowserTab/CooldownsTab/ShoppingListTab.
-        -- Visible only when TOGBankClassic reports stock for this recipe scroll;
-        -- click opens the bank-request dialog. Sized/styled to match the other
-        -- [Bank] buttons across the addon for consistency. Sits to the LEFT
-        -- of [AH] so the on-row order reads [Bank] [AH] left-to-right (Bank
-        -- first, AH after), matching BrowserTab's reagent-row order.
-        local bankBtn = CreateFrame("Button", nil, f)
-        bankBtn:SetSize(60, 12)   -- room for the staleness dot
-        bankBtn:SetPoint("RIGHT", f, "RIGHT", -42, 0)  -- right edge of [Bank] sits left of [AH]
-        bankBtn:SetNormalFontObject(GameFontNormalSmall)
-        bankBtn:SetText(addon.Bank.ButtonText(nil))
-        bankBtn:Hide()
-        bankBtn:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(bankBtn)
-            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
-            GameTooltip:AddLine(L["TooltipBankDescScroll"], nil, nil, nil, true)
-            addon.Bank.AddStatusLines(bankBtn)
-            GameTooltip:Show()
-        end)
-        bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        f.bankBtn = bankBtn
-
-        -- [AH] button — visible only when the AH scanner has cached listings
-        -- for this recipe scroll. Click jumps the AH UI to a Browse search
-        -- for the scroll's name so the user can bid/buyout from the standard
-        -- Blizzard UI. Sits to the RIGHT of [Bank] so the on-row order reads
-        -- [Bank] [AH] left-to-right; when only one is shown the other slot
-        -- is empty (small gap acceptable since these are conditionally-
-        -- visible action buttons). Width 36 fits "[AH]" comfortably.
-        local ahBtn = CreateFrame("Button", nil, f)
-        ahBtn:SetSize(36, 12)
-        ahBtn:SetPoint("RIGHT", f, "RIGHT", -2, 0)  -- far right of the row
-        ahBtn:SetNormalFontObject(GameFontNormalSmall)
-        ahBtn:SetText("|cFF88CCFF[AH]|r")
-        ahBtn:Hide()
-        ahBtn:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(ahBtn)
-            GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1, 1, true)
-            GameTooltip:AddLine(L["TooltipAHDescScroll"], nil, nil, nil, true)
-            GameTooltip:Show()
-        end)
-        ahBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        f.ahBtn = ahBtn
-
-        -- Row-level mouse handling for hover tooltip + shift-click chat link.
-        -- Item-id path renders the recipe-scroll tooltip (reagents, prof
-        -- requirement). For trainer-only recipes (no scroll item exists),
-        -- fall back to the spell tooltip so the row still has SOMETHING on
-        -- hover instead of nothing — and so we never pass nil into
-        -- SetItemByID (Blizzard silently sets an empty tooltip, but
-        -- addons that hook SetItemByID such as LoonBestInSlot then crash
-        -- on the empty state).
-        --
-        f:SetScript("OnEnter", function()
-            if not (f._itemId or f._spellId) then return end
-            -- The one shared frame, same as every other tab. See the note at the
-            -- top of this file for why the private instance was removed.
-            local tip = GameTooltip
-            -- Anchor next to the row using the same screen-half logic as
-            -- addon.Tooltip.Owner — popup appears just below the row when
-            -- the row is in the upper half of the screen, just above
-            -- when it's in the lower half.
-            local _, y = f:GetCenter()
-            local anchor = (y and y > GetScreenHeight() / 2)
-                           and "ANCHOR_BOTTOMLEFT" or "ANCHOR_TOPLEFT"
-            tip:SetOwner(f, anchor)
-            -- Decide between item tooltip and spell tooltip. Item is
-            -- preferred (shows reagents + profession requirement) but
-            -- ONLY when the item is already in the WoW client's cache.
-            -- Calling SetItemByID on a cache-cold item ID silently sets
-            -- an empty tooltip — fall back to spell or plain text. The
-            -- cold-cache check via GetItemInfo doubles as an async
-            -- prefetch trigger, so the next mouseover lands warm.
-            -- No presence guard on the bare name: the resolver owns the nil
-            -- check, and with the deprecation-fallback CVar off the bare alias
-            -- is nil while the call would have worked (finding 30).
-            local useItem = false
-            if f._itemId then
-                local cachedName = addon.Item.GetInfo(f._itemId)
-                useItem = cachedName ~= nil
-            end
-            if useItem then
-                tip:SetItemByID(f._itemId)
-            elseif f._spellId and tip.SetSpellByID then
-                tip:SetSpellByID(f._spellId)
-            else
-                local name = (f._spellId and GetSpellInfo(f._spellId))
-                             or (f._itemId and ("Item #" .. f._itemId))
-                             or "?"
-                tip:SetText(name, 1, 1, 1, 1, true)
-            end
-            -- v0.9.0: Optionally append [TOGPM] itemId / spellId footer
-            -- for troubleshooting recipe bleedthrough (SoD/TBC/etc.). Respects
-            -- the same tooltipShowIds toggle as the global item-tooltip hook.
-            local showIds = Ace and Ace.db and Ace.db.profile
-                            and Ace.db.profile.tooltipShowIds
-            if showIds then
-                local brandColor = addon.BrandColor or "ffFF8000"
-                local idParts = {}
-                if f._itemId  then table.insert(idParts, "itemId="  .. tostring(f._itemId))  end
-                if f._spellId then table.insert(idParts, "spellId=" .. tostring(f._spellId)) end
-                if #idParts > 0 then
-                    tip:AddLine(" ")
-                    tip:AddLine("|c" .. brandColor .. "[TOGPM]|r " ..
-                                "|c" .. brandColor .. table.concat(idParts, "  ") .. "|r",
-                                1, 1, 1, true)
-                end
-            end
-            -- The same blocks the Professions tab puts on its own tooltips.
-            -- Called explicitly rather than left to the global hook: that hook
-            -- only fires for a tooltip carrying an ITEM, and these rows fall back
-            -- to SetSpellByID or plain text whenever the scroll is uncached or
-            -- the recipe is trainer-taught with no scroll at all.
-            --
-            -- NO MANUAL `_togpmRecipeBlock = nil` RESET HERE ANY MORE. It used to
-            -- be required because the private frame was not one of the frames
-            -- Tooltip.lua hooks `OnTooltipCleared` on, so the dedup flag was
-            -- never cleared and the block rendered once per session. On
-            -- GameTooltip the client fires OnTooltipCleared from SetOwner at the
-            -- start of every hover, which clears it. Re-adding the manual reset
-            -- would now DOUBLE-render: it would defeat the guard that stops this
-            -- explicit call and the global hook both drawing a block.
-            addon.ItemLink.AppendRecipeBlocks(tip, f._profId, f._spellId, f._craftedItemId)
-
+-- The row tooltip. The item path renders the recipe-scroll tooltip (reagents,
+-- profession requirement); a trainer-only recipe (no scroll item) falls back
+-- to the spell tooltip so the row still has something on hover, and nil never
+-- reaches SetItemByID (addons that hook it, such as LoonBestInSlot, crash on
+-- the empty state).
+function MissingRecipesTab:ShowRowTooltip(entry, owner)
+    local itemId, spellId = entry.itemId, entry.spellId
+    if not (itemId or spellId) then return end
+    -- The one shared frame, same as every other tab.
+    local tip = GameTooltip
+    addon.Tooltip.Owner(owner)
+    -- Decide between item tooltip and spell tooltip. Item is preferred (shows
+    -- reagents + profession requirement) but ONLY when the item is already in
+    -- the WoW client's cache. Calling SetItemByID on a cache-cold item ID
+    -- silently sets an empty tooltip — fall back to spell or plain text. The
+    -- cold-cache check via GetItemInfo doubles as an async prefetch trigger,
+    -- so the next mouseover lands warm. No presence guard on the bare name:
+    -- the resolver owns the nil check (finding 30).
+    local useItem = false
+    if itemId then
+        useItem = addon.Item.GetInfo(itemId) ~= nil
+    end
+    if useItem then
+        tip:SetItemByID(itemId)
+    elseif spellId and tip.SetSpellByID then
+        tip:SetSpellByID(spellId)
+    else
+        local name = (spellId and addon.Spell.GetInfo(spellId))
+                     or (itemId and ("Item #" .. itemId))
+                     or "?"
+        tip:SetText(name, 1, 1, 1, 1, true)
+    end
+    -- v0.9.0: Optionally append [TOGPM] itemId / spellId footer for
+    -- troubleshooting recipe bleedthrough (SoD/TBC/etc.). Respects the same
+    -- tooltipShowIds toggle as the global item-tooltip hook.
+    local showIds = Ace and Ace.db and Ace.db.profile
+                    and Ace.db.profile.tooltipShowIds
+    if showIds then
+        local brandColor = addon.BrandColor or "ffFF8000"
+        local idParts = {}
+        if itemId  then table.insert(idParts, "itemId="  .. tostring(itemId))  end
+        if spellId then table.insert(idParts, "spellId=" .. tostring(spellId)) end
+        if #idParts > 0 then
             tip:AddLine(" ")
-            tip:AddLine(L["MissingRowTooltipShift"], 0.7, 0.7, 0.7, true)
-            tip:Show()
-            -- Register for hold-to-compare. Only meaningful when the row is
-            -- showing an ITEM — a recipe-scroll tooltip has an equip slot to
-            -- compare against, a spell tooltip does not.
-            if useItem then addon.ItemLink.BeginHover(tip) end
-        end)
-        f:SetScript("OnLeave", function()
+            tip:AddLine("|c" .. brandColor .. "[TOGPM]|r " ..
+                        "|c" .. brandColor .. table.concat(idParts, "  ") .. "|r",
+                        1, 1, 1, true)
+        end
+    end
+    -- The same blocks the Professions tab puts on its own tooltips. Called
+    -- explicitly rather than left to the global hook: that hook only fires for
+    -- a tooltip carrying an ITEM, and these rows fall back to SetSpellByID or
+    -- plain text whenever the scroll is uncached or trainer-taught. No manual
+    -- `_togpmRecipeBlock = nil` reset: SetOwner fires OnTooltipCleared, which
+    -- clears it, and a manual reset would double-render the block.
+    -- In a single-profession view the entry carries no profId; the selected
+    -- profession is the one it belongs to.
+    local profId = entry.profId or (type(self._profId) == "number" and self._profId or nil)
+    addon.ItemLink.AppendRecipeBlocks(tip, profId, spellId, entry.craftedItemId)
+
+    tip:AddLine(" ")
+    tip:AddLine(L["MissingRowTooltipShift"], 0.7, 0.7, 0.7, true)
+    tip:Show()
+    -- Register for hold-to-compare. Only meaningful when the row is showing
+    -- an ITEM — a recipe-scroll tooltip has an equip slot to compare against.
+    if useItem then addon.ItemLink.BeginHover(tip) end
+end
+
+-- A left click links the recipe scroll (or the spell, for a trainer-only
+-- recipe) through addon.ItemLink.Click, which routes through Blizzard's own
+-- HandleModifiedItemClick and honours the player's modified-click bindings.
+function MissingRecipesTab:ClickRow(entry, button)
+    if button ~= "LeftButton" then return end
+    local link
+    if entry.itemId then
+        link = select(2, addon.Item.GetInfo(entry.itemId))
+    elseif entry.spellId then
+        link = addon.Spell.GetLink(entry.spellId)
+    end
+    addon.ItemLink.Click(link)
+end
+
+local function headerTip(desc)
+    return desc and (desc .. " " .. (L["CraftSortHint"] or "Click to sort.")) or nil
+end
+
+function MissingRecipesTab:BuildRowList(host)
+    return addon.W.RowList:New(host, {
+        rowHeight      = ROW_HEIGHT,
+        hoverHighlight = true,
+        -- SortList orders the rows (profession groups first in the All view,
+        -- unknown skill last in both directions); the header sets the key.
+        externalSort   = true,
+        onSortChanged  = function(key, desc) self:OnSortChanged(key, desc) end,
+        onScroll       = function(_, offset) addon.GUI.ListScroll.Set("missing", offset) end,
+        columns = {
+            { key = "_icon", width = 22, iconSize = 14, iconTexCoord = true, sortable = false,
+              icon = function(e) return self:RowDisplay(e).icon end },
+            { key = "recipe", header = L["MissingColRecipe"],
+              headerTip = headerTip(L["MissingHdrCountDesc"]),
+              format = function(_, e) return self:RowDisplay(e).name end },
+            { key = "skill", header = L["MissingColSkill"], width = 104,
+              headerTip = headerTip(L["MissingHdrSkillDesc"]),
+              format = function(_, e) return addon.FormatSkillTiers(e.tiers, e.requiredSkill) end },
+            { key = "source", header = L["MissingColSource"], width = 180, gapBefore = 12,
+              headerTip = headerTip(L["MissingHdrSourceDesc"]),
+              format = function(_, e) return "|cffbfbfbf" .. (e.sourcesText or "") .. "|r" end },
+            -- [Bank]: only when TOGBankClassic reports stock for this recipe
+            -- scroll (trainer-only recipes have no scroll to bank).
+            { key = "bankBtn", width = 60, button = true, sortable = false,
+              show = function(e) return e.itemId and addon.Bank and addon.Bank.GetStock(e.itemId) > 0 end,
+              text = function(e) return addon.Bank.ButtonText(e.itemId) end,
+              tip  = function(e)
+                  local body = L["TooltipBankDescScroll"]
+                  local status = addon.Bank.StatusText(e.itemId)
+                  if status then body = body .. "\n\n" .. status end
+                  return L["TooltipBankTitle"], body
+              end,
+              onClick = function(e)
+                  local d = self:RowDisplay(e)
+                  addon.Bank.ShowRequestDialog(e.itemId, d.itemName or ("Item #" .. e.itemId), d.itemLink)
+              end },
+            -- [AH]: only once a scan has found live listings for the scroll.
+            -- The click searches the Browse tab for it; with the AH closed,
+            -- AH.SearchFor says so in chat.
+            { key = "ahBtn", width = 36, button = true, sortable = false,
+              show = function(e)
+                  local listings = e.itemId and addon.AH and addon.AH.GetListingsFor(e.itemId)
+                  return listings and (listings.count or 0) > 0 and self:RowDisplay(e).itemName ~= nil
+              end,
+              text = function() return "|cFF88CCFF[AH]|r" end,
+              tip  = function() return L["TooltipAHTitle"], L["TooltipAHDescScroll"] end,
+              onClick = function(e) addon.AH.SearchFor(self:RowDisplay(e).itemName) end },
+        },
+        onRowEnter = function(e, _, _, rowFrame) self:ShowRowTooltip(e, rowFrame) end,
+        onRowLeave = function()
             addon.ItemLink.EndHover(GameTooltip)
             GameTooltip:Hide()
-        end)
-        -- Was a raw editBox:Insert, which ignores the player's modified-click
-        -- bindings and skips the AH-search and macro handling Blizzard's own
-        -- insert does. addon.ItemLink.Click
-        -- routes through Blizzard's own HandleModifiedItemClick, as every other
-        -- row in the addon now does.
-        f:SetScript("OnMouseDown", function(_, button)
-            if button ~= "LeftButton" then return end
-            local link
-            if f._itemId then
-                _, link = addon.Item.GetInfo(f._itemId)
-            elseif f._spellId and GetSpellLink then
-                link = GetSpellLink(f._spellId)
-            end
-            addon.ItemLink.Click(link)
-        end)
-
-        self._pool[i] = f
-    end
+        end,
+        onRowClick = function(e, _, _, button) self:ClickRow(e, button) end,
+    })
 end
 
--- Detach the pool from a soon-to-be-released parent without throwing the
--- frames away. The ScrollFrame is released on every RefreshList; keeping the
--- pool persistent across releases avoids leaking 35 fresh CreateFrame() calls
--- per refresh (WoW frames are session-lifetime and never GC'd). Pool frames
--- get reparented onto the new ScrollFrame's content in the next FillList.
-function MissingRecipesTab:DetachPool()
-    addon.GUI.DetachPool(self._pool)
-    self._scroll = nil
-    self._list   = nil
-end
-
--- Reposition + repopulate the pool based on the current scroll offset. Only
--- runs over POOL_SIZE rows regardless of total list size — the scroll math
--- decides which slice of self._list is visible.
-function MissingRecipesTab:UpdateVirtualRows()
-    local scroll = self._scroll
-    local list   = self._list
-    if not scroll or not list or not self._pool then return end
-
-    local status   = scroll.status or scroll.localstatus
-    local offset   = (status and status.offset) or 0
-    local firstIdx = math.floor(offset / ROW_HEIGHT)
-
-    -- Item name / quality / icon ALL come from synchronous sources — LibItemDB
-    -- (offline item DB) and ProfessionDB (recipe names) — so every row renders
-    -- fully on the FIRST paint with NO client-cache round-trip. That's what lets
-    -- this stay quiet: nothing is ever "pending" a GetItemInfo cache-fill, so the
-    -- tab only re-renders on genuine data changes (GUILD_DATA_UPDATED, e.g. a
-    -- skill learned) — never on the item-load storm that used to refresh it
-    -- several times a second and creep the scroll.
-    local idb = addon.GetItemDB and addon:GetItemDB()
-
-    for i = 1, POOL_SIZE do
-        local f       = self._pool[i]
-        local listIdx = firstIdx + i
-        local entry   = list[listIdx]
-        if entry then
-            addon.GUI.ApplyRowStripe(f, listIdx)
-            -- v0.5.0 keyed recipeDB by spell id; the row's entry.itemId is the
-            -- recipe-scroll item that teaches the spell (when one exists —
-            -- trainer-taught recipes have no scroll item). Use entry.itemId
-            -- for any item-id API call (GameTooltip:SetItemByID, GetItemInfo,
-            -- GetItemIcon, GetItemQualityColor). When nil, fall back to
-            -- spell-based display via GetSpellInfo. Never pass the spell id
-            -- to item APIs — silently sets an empty tooltip and (worse)
-            -- breaks downstream addons like LoonBestInSlot that hook
-            -- SetItemByID and then crash on the empty result.
-            local itemId = entry.itemId
-            f._itemId = itemId
-            f._spellId = entry.spellId
-            -- For the recipe-detail and integrations blocks below. Kept on the
-            -- frame rather than looked up at hover time because the pooled row
-            -- is what OnEnter has, and the entry it was built from is gone.
-            f._profId        = entry.profId
-            f._craftedItemId = entry.craftedItemId
-
-            local displayName, itemName, itemLink
-            if itemId then
-                -- Synchronous item-name resolution (LibItemDB), then the recipe's
-                -- own ProfessionDB name, then the spell name — see below. No
-                -- GetItemInfo, so nothing is ever left as a cache-miss placeholder
-                -- and the row is complete on the first paint. (Historically this
-                -- used GetItemInfo + a GET_ITEM_INFO_RECEIVED refresh, which is
-                -- what created the refresh storm / scroll creep.)
-                --
-                -- Legacy note retained: some recipe items legitimately don't
-                -- exist on the current client (e.g. Vanilla recipes whose scroll
-                -- items were removed) — those simply fall through to the recipe /
-                -- spell name so the row still shows SOMETHING meaningful instead
-                -- of a permanent
-                -- "#22430 (loading…)" placeholder.
-                -- Name from LibItemDB (synchronous) — the full scroll name, e.g.
-                -- "Recipe: Thistle Tea". CRITICAL: never fall back to GetItemInfo
-                -- here. A cold scroll item's async cache-fill fires
-                -- GET_ITEM_INFO_RECEIVED, and the resulting refresh storm is what
-                -- crept the scroll to the bottom. When LibItemDB doesn't carry the
-                -- scroll item, use the recipe's OWN name from ProfessionDB
-                -- (entry.name), then the spell name — all synchronous.
-                itemName = idb and idb:GetName(itemId)
-                itemLink = idb and idb:GetLink(itemId)
-                displayName = itemName
-                              or entry.name
-                              or GetSpellInfo(entry.spellId)
-                              or ("|cffaaaaaaspell:" .. tostring(entry.spellId) .. "|r")
-                -- GetItemIcon reads static item file data (synchronous, fires no
-                -- cache event); fall back to the spell texture.
-                f.icon:SetTexture(addon.Item.GetIcon(itemId)
-                                  or (GetSpellTexture and GetSpellTexture(entry.spellId))
-                                  or 134400)
-            else
-                -- Trainer-only recipe with no scroll item. Fall back to the
-                -- spell's name + icon. No item link / quality colour
-                -- available — recipes are uncoloured in this branch.
-                local spellName = GetSpellInfo(entry.spellId)
-                                  or (entry.name)
-                                  or ("|cffaaaaaaspell:" .. entry.spellId .. "|r")
-                displayName = spellName
-                -- Icon resolution priority for trainer-only crafts:
-                --
-                --   1. entry.craftedItemId — the item the spell PRODUCES,
-                --      shipped in addon.recipeDB from SpellEffect[Effect=24]
-                --      data (see ProfessionDB's
-                --      tools/build_authoritative_data.py). This
-                --      is the authoritative source for trainer-taught
-                --      craft icons (Heavy Weightstone → item 3241, Coarse
-                --      Sharpening Stone → item 2863, etc.) and works for
-                --      every recipe whose primary effect is Create Item,
-                --      regardless of whether the player has ever seen the
-                --      crafted item.
-                --
-                --   2. GetSpellTexture(spellId) — fallback when no
-                --      craftedItemId was shipped (Enchanting craft spells
-                --      have no produced item, so they correctly fall here
-                --      and render the enchant scroll icon Blizzard
-                --      assigned the spell).
-                -- The guard used to test the bare `GetItemIcon`, a name that
-                -- never corresponded to what the resolver calls
-                -- (C_Item.GetItemIconByID) -- finding 30's sharpest site.
-                local craftedIcon
-                if entry.craftedItemId then
-                    craftedIcon = addon.Item.GetIcon(entry.craftedItemId)
-                end
-                local spellIcon = craftedIcon
-                              or (GetSpellTexture and GetSpellTexture(entry.spellId))
-                f.icon:SetTexture(spellIcon or 134400)
-            end
-
-            -- Colour the name by the CRAFTED item's quality (what the recipe
-            -- produces) — matching the crafting window, where a recipe for an
-            -- epic shows purple even when its pattern scroll is common/white
-            -- (e.g. "Pattern: Molten Helm"). Fall back to the recipe-scroll item's
-            -- own quality (enchants have no crafted item), then to no colour.
-            -- GetItemInfo returns nil while an item is still loading; the
-            -- GET_ITEM_INFO_RECEIVED handler re-renders the row once it lands.
-            -- Crafted-item quality colour, from LibItemDB ONLY (synchronous).
-            -- CRITICAL: never call GetItemInfo on the crafted item here. A cold
-            -- crafted item (gear/food the player has never seen) would trigger an
-            -- async cache load, and the resulting GET_ITEM_INFO_RECEIVED storm
-            -- re-rendered the list several times a second and crept the scroll to
-            -- the bottom — that is exactly what "colour by crafted quality"
-            -- regressed. Uncommon+ crafted gear gets its quality colour; common /
-            -- poor produce (most food) stays uncoloured (white); enchants and
-            -- other no-produced-item recipes fall back to the scroll item's own
-            -- link colour, which was already resolved above with no extra call.
-            local color
-            local q = idb and entry.craftedItemId and idb:GetQuality(entry.craftedItemId)
-            if q and q > 1 then
-                -- C_Item.GetItemQualityColor is the real function on every
-                -- flavour this addon supports. The bare global is only a
-                -- DEPRECATION FALLBACK -- Blizzard_DeprecatedItemScript assigns
-                -- it from the namespaced one, and only when the
-                -- `loadDeprecationFallbacks` CVar is on, so with that CVar off
-                -- the bare call raises. Compat.lua owns the resolution (audit
-                -- finding 26); do not re-detect it here.
-                local r, g, b = addon.Item.GetQualityColor(q)
-                if r and g and b then
-                    color = string.format("ff%02x%02x%02x", r * 255, g * 255, b * 255)
-                end
-            elseif not entry.craftedItemId and itemLink then
-                color = itemLink:match("|c(%x%x%x%x%x%x%x%x)|H")
-            end
-            local nmText = color and ("|c" .. color .. displayName .. "|r") or displayName
-            if self._showAll and entry.known then
-                -- Show All mode marks recipes the character already knows with a check.
-                nmText = "|TInterface\\Buttons\\UI-CheckBox-Check:0|t " .. nmText
-            end
-            -- "All Professions" view: tag each row with its profession so the
-            -- flat, cross-profession list stays readable.
-            if self._profId == "all" and entry.profName then
-                nmText = "|cff888888[" .. entry.profName .. "]|r " .. nmText
-            end
-            f.nameLbl:SetText(nmText)
-
-            -- Skill column: the recipe's authoritative difficulty breakpoints
-            -- (orange→yellow→green→grey). Pattern-recipe orange is corrected in
-            -- the data pipeline, so this just colours the shipped values.
-            f.skillLbl:SetText(addon.FormatSkillTiers(entry.tiers, entry.requiredSkill))
-            f.srcLbl:SetText(entry.sourcesText or "")
-
-            -- [Bank] button: show only when TOGBankClassic reports stock for
-            -- this recipe scroll. Click opens the request dialog with the
-            -- scroll's name + link. Bank stock is queried fresh per row each
-            -- pool refresh — cheap (single table walk in addon.Bank.GetStock).
-            -- Trainer-only recipes (itemId == nil) have no scroll to bank.
-            if itemId and addon.Bank and addon.Bank.GetStock(itemId) > 0 then
-                local rowItemId   = itemId
-                local rowItemName = itemName or ("Item #" .. itemId)
-                local rowItemLink = itemLink
-                addon.Bank.Decorate(f.bankBtn, rowItemId)
-                f.bankBtn:SetScript("OnClick", function()
-                    addon.Bank.ShowRequestDialog(rowItemId, rowItemName, rowItemLink)
-                end)
-                f.bankBtn:Show()
-            else
-                f.bankBtn:Hide()
-            end
-
-            -- [AH] button: show ONLY when a scan has found live listings for
-            -- this recipe scroll, mirroring [Bank]'s "show iff stock > 0"
-            -- pattern. Click jumps the AH browse search to the scroll's name
-            -- so the user can bid/buy from the standard Blizzard UI. The
-            -- button stays visible after the scan even if the user clicks
-            -- another tab; AH.SearchFor handles "AH closed" gracefully with
-            -- a chat message so a stale-results click is harmless. Trainer-
-            -- only recipes (itemId == nil) have no scroll to find on the AH.
-            local listings = itemId and addon.AH and addon.AH.GetListingsFor(itemId)
-            if listings and (listings.count or 0) > 0 and itemName then
-                local rowItemName = itemName
-                f.ahBtn:SetScript("OnClick", function()
-                    addon.AH.SearchFor(rowItemName)
-                end)
-                f.ahBtn:Show()
-            else
-                f.ahBtn:Hide()
-            end
-
-            local y = -((listIdx - 1) * ROW_HEIGHT)
-            f:ClearAllPoints()
-            f:SetPoint("TOPLEFT",  scroll.content, "TOPLEFT",  0, y)
-            f:SetPoint("TOPRIGHT", scroll.content, "TOPRIGHT", 0, y)
-            f:Show()
-        else
-            f._itemId         = nil
-            f._spellId        = nil
-            f._profId         = nil
-            f._craftedItemId  = nil
-            f:Hide()
-        end
+-- A header click, reported by the list after it set its own key and arrow.
+function MissingRecipesTab:OnSortChanged(key, desc)
+    self._sortCol = key or "skill"
+    self._sortAsc = not desc
+    if self._list then
+        self:SortList(self._list)
+        if self._rowList then self._rowList:SetData(self._list, true) end
     end
 end
 
@@ -1465,7 +1200,7 @@ function MissingRecipesTab:SortList(list)
             if col == "recipe" then
                 local n = (e.itemId and idb and idb:GetName(e.itemId))
                           or (e.itemId and addon.Item.GetInfo(e.itemId))
-                          or GetSpellInfo(e.spellId)
+                          or addon.Spell.GetInfo(e.spellId)
                           or e.name or ""
                 key[e] = tostring(n):lower()
             else
@@ -1511,6 +1246,10 @@ end
 function MissingRecipesTab:FillList()
     local section = self._listSection
     if not section then return end
+    -- A refresh that ends on a hint label must not leave the previous list
+    -- showing under it; ParkList shows the host again when there are rows.
+    if self._rowListHost then self._rowListHost:Hide() end
+    self:SetCountText(nil)
 
     -- Empty / waiting-for-pick states
     if not self._profId or self._profId == 0 then
@@ -1561,9 +1300,9 @@ function MissingRecipesTab:FillList()
     -- "attempt to index a number value" crashes). GetItemInfo can trigger
     -- an async load for uncached items; we wrap with a type check so
     -- unloaded items get skipped from the filter rather than crashing on
-    -- :lower(). As the user scrolls the list, UpdateVirtualRows calls
-    -- GetItemInfo per visible row, populating the WoW item cache, so the
-    -- search filter progressively matches more items as more get cached.
+    -- :lower(). The rows themselves read LibItemDB, not the client cache; a
+    -- row's hover (ShowRowTooltip) calls GetItemInfo and warms the cache, so
+    -- the search matches more scroll names as more of them get cached.
     local list = fullList
     local filter = (self._searchText or ""):lower()
     if filter ~= "" then
@@ -1576,7 +1315,7 @@ function MissingRecipesTab:FillList()
             -- regardless of whether the recipe is taught by a pattern or
             -- only by a trainer.
             local name = (entry.itemId and addon.Item.GetInfo(entry.itemId))
-                         or GetSpellInfo(entry.spellId)
+                         or addon.Spell.GetInfo(entry.spellId)
             local nameHit = type(name) == "string" and name:lower():find(filter, 1, true)
             -- Also match the effect text ("+5 Weapon Damage", "+12 Agility")
             -- so e.g. "5 damage" / "agility" find the right recipes.
@@ -1602,170 +1341,50 @@ function MissingRecipesTab:FillList()
         return
     end
 
-    -- Single header row that doubles as the count line — the first column
-    -- shows "X Missing Recipe(s)" instead of a redundant "Recipe" title
-    -- (every row IS a recipe, so the column title was tautological and
-    -- visually duplicated the count line stacked above it). Column widths
-    -- mirror the pool row widths in BuildPool; the 8px spacer between
-    -- Skill and Sources plus the pool's 16px skill→source gap keeps the
-    -- columns visually distinct.
+    -- The count ("12 Missing Recipes") goes in the window's status bar, as
+    -- the Profit Planner's row count does: a header whose text changes with
+    -- every search would rebuild the list's header and every row's cells.
     local noun
     if self._showAll then
         noun = (#list == 1) and L["MissingCountAllSingular"] or L["MissingCountAllPlural"]
     else
         noun = (#list == 1) and L["MissingCountSingular"] or L["MissingCountPlural"]
     end
-    local countText = string.format(L["MissingCountFormat"], #list, noun)
+    self:SetCountText("|c" .. brand .. string.format(L["MissingCountFormat"], #list, noun) .. "|r")
 
-    local hdr = AceGUI:Create("SimpleGroup")
-    hdr:SetLayout("Flow")
-    hdr:SetFullWidth(true)
-    section:AddChild(hdr)
-    local function H(text, w, justifyH, tipTitle, tipDesc, sortKey)
-        -- Sortable columns (sortKey set) get the shared sort treatment: centred
-        -- text, the arrow beside it (ConfigureCenteredHeaderIcon), a brand hover
-        -- glow, a click-to-sort handler, and a "Click to sort." tooltip hint —
-        -- matching the Profit / Cooldowns / Crafting headers. Plain spacers and
-        -- label-only headers pass no sortKey and stay as they were.
-        local desc = tipDesc
-        if sortKey and desc then
-            desc = desc .. " " .. (L["CraftSortHint"] or "Click to sort.")
-        end
-        local widget = addon.GUI.MakeColumnHeader({
-            parent       = hdr,
-            label        = text,
-            width        = w,
-            justifyH     = sortKey and "CENTER" or justifyH,
-            hoverGlow    = sortKey ~= nil,
-            tooltipTitle = tipTitle,
-            tooltipDesc  = desc,
-            onClick      = sortKey and function()
-                self._sortCol, self._sortAsc =
-                    addon.GUI.Sort.Next(self._sortCol, self._sortAsc, sortKey)
-                self:RefreshList()
-            end or nil,
-        })
-        if sortKey then
-            addon.GUI.Sort.ConfigureCenteredHeaderIcon(
-                widget, self._sortCol == sortKey, self._sortAsc, w)
-            -- Clean up the sort-icon texture when the pooled widget is released
-            -- (chains MakeColumnHeader's hover-glow OnRelease via prevOnRelease).
-            local prevOnRelease = widget.events and widget.events.OnRelease
-            widget:SetCallback("OnRelease", function(wdg)
-                if wdg._sortIcon then
-                    wdg._sortIcon:Hide()
-                    wdg._sortIcon:SetParent(nil)
-                    wdg._sortIcon:ClearAllPoints()
-                    wdg._sortIcon = nil
-                end
-                if prevOnRelease then prevOnRelease(wdg) end
-            end)
-        end
-    end
-    H("",                    22)
-    H(countText,             240, nil,
-        L["MissingHdrCountTitle"], L["MissingHdrCountDesc"], "recipe")
-    H(L["MissingColSkill"],  104, "LEFT",
-        L["MissingHdrSkillTitle"], L["MissingHdrSkillDesc"], "skill")
-    H("",                    16)  -- 8 + 8 nudge so Sources header sits over its data column
-    H(L["MissingColSource"], 180, nil,
-        L["MissingHdrSourceTitle"], L["MissingHdrSourceDesc"], "source")
-    H("",                    24)
-
-    -- Stash hdr.frame so the AnchorAll function (set on container.LayoutFinished
-    -- in Draw) can reference it when anchoring scroll. We do NOT override
-    -- hdr.LayoutFinished or section.LayoutFinished — see the comment in Draw
-    -- for why that breaks the Cooldowns tab via SimpleGroup recycling.
-    self._headerFrame = hdr.frame
-
-    -- Virtual-scroll container. The AceGUI ScrollFrame manages the scrollbar
-    -- and clipping; the raw pool inside scroll.content does the actual row
-    -- rendering. Shared PersistentScroll helper captures the saved scroll
-    -- position so sync-triggered Refresh / RefreshList rebuilds don't yank
-    -- the user back to the top mid-scroll (matches the BrowserTab and
-    -- CooldownsTab fixes from v0.3.5).
-    local scroll, savedScroll = addon.GUI.PersistentScroll.Acquire(self, {
-        key        = "missing",
-        layout     = "List",
-        fullWidth  = true,
-        fullHeight = true,
-        onRelease  = function() self:DetachPool() end,
-    })
-    section:AddChild(scroll)
-    self._scroll = scroll
-
-    -- Virtual-scroll trick (matches BrowserTab:FillList): install a no-op
-    -- LayoutFinished on the scroll instance so AceGUI's class default
-    -- doesn't overwrite our manual content.height. Required because
-    -- FixScroll calls DoLayout on every scrollbar visibility transition
-    -- (AceGUIContainer-ScrollFrame.lua:108/118), and DoLayout fires the
-    -- "List" layout function which calls scroll.LayoutFinished(_, _, 0)
-    -- when scroll.children is empty (Missing parents raw frames to
-    -- scroll.content directly, so AceGUI sees no children). The class
-    -- default would then set content:SetHeight(0 or 20) — collapsing
-    -- our virtual list to 0 px and hiding every row. Pre-v0.4.0 this
-    -- silently worked because BrowserTab's no-op override leaked through
-    -- the shared AceGUI ScrollFrame pool; Missing was free-riding on
-    -- it. PersistentScroll.Acquire now restores the class default on
-    -- every acquire (so Cooldowns' AceGUI-children auto-size works
-    -- correctly), so Missing has to install its own no-op explicitly.
-    scroll.LayoutFinished = function() end
-
-    -- Tell the AceGUI ScrollFrame how tall the virtual content is so the
-    -- scrollbar sizes correctly. Then build (or reuse) the pool and slot
-    -- the visible rows in.
-    scroll.content:SetHeight(#list * ROW_HEIGHT)
-    if scroll.FixScroll then scroll:FixScroll() end
-
-    if not self._pool then
-        self:BuildPool(scroll.content)
-    else
-        -- Reparent existing pool frames onto the new scroll content (the
-        -- ScrollFrame is recreated on every RefreshList).
-        for _, f in ipairs(self._pool) do f:SetParent(scroll.content) end
-    end
-
-    self:UpdateVirtualRows()
-
-    if scroll.scrollbar then
-        scroll.scrollbar:SetScript("OnValueChanged", function(bar, value)
-            if bar.obj and bar.obj.SetScroll then bar.obj:SetScroll(value) end
-            self:UpdateVirtualRows()
-        end)
-    end
-
-    -- Restore saved scroll position. PersistentScroll.Restore is order-robust
-    -- (it re-applies the exact pixel offset, which needs no frame height), so it
-    -- does NOT matter that we anchor the frame just below this. afterFn
-    -- re-positions the raw-frame pool to the restored offset (without it, the
-    -- scrollbar shows the right value but the rows stay anchored to row 0).
-    addon.GUI.PersistentScroll.Restore(scroll, savedScroll, function()
-        self:UpdateVirtualRows()
+    if not addon.W then return end
+    local rl = addon.GUI.ParkList(self, "_rowList", section, function(host)
+        return self:BuildRowList(host)
     end)
+    -- Keep the player's place across the rebuilds a guild-data refresh
+    -- causes. Read before SetData, whose scroll-to-top is reported too.
+    local saved = addon.GUI.ListScroll.Get("missing")
+    rl:SetSort(self._sortCol, not self._sortAsc)
+    rl:SetData(list)
+    rl:SetScrollOffset(saved)
+end
 
-    -- Apply scroll anchor now that self._scroll and self._headerFrame are set.
-    -- AceGUI will also re-fire container.LayoutFinished as part of section's
-    -- own resize cascade, but doing it here means the first paint is correct
-    -- without waiting for the next layout pass.
-    if self._anchorAll then self._anchorAll() end
+-- The count line lives in the main window's status bar. Written only while
+-- this tab is the active one, so a stray refresh cannot overwrite another
+-- tab's status; MainWindow:DrawTab restores the version on a switch.
+function MissingRecipesTab:SetCountText(text)
+    local mw = addon.MainWindow
+    if mw and mw.activeTab == "missing" and mw.SetStatusSuffix then
+        mw:SetStatusSuffix(text)
+    end
 end
 
 -- (No GET_ITEM_INFO_RECEIVED handler by design.) Item names, quality colours
 -- and icons are resolved synchronously from LibItemDB + ProfessionDB in
--- UpdateVirtualRows, so there is nothing to "fill in" when the WoW item cache
+-- RowDisplay, so there is nothing to "fill in" when the WoW item cache
 -- warms up. The tab therefore re-renders ONLY on real data changes
 -- (GUILD_DATA_UPDATED via MainWindow:Refresh — e.g. a crafter learns a recipe),
 -- not on the background item-load storm that used to fire several times a
 -- second and creep the scroll.
 
--- Refresh the scan button label whenever the AH opens or closes (it
--- enables/disables based on AH availability). Also refresh pool rows so
--- the [AH] button visibility (gated on cached scan results) correctly
--- clears when the AH closes — addon.AH wipes its results on close, so
--- without this the [AH] buttons would linger on rows until the next
--- pool refresh.
--- (Removed: per-tab AH_OPEN_STATE_CHANGED / AH_SCAN_COMPLETE handlers.
--- The shared addon.GUI.MakeScanAHButton factory in GUI/SharedWidgets.lua
--- owns one global handler that refreshes the active tab's scan button
--- and runs the tab's onRefresh hook — for missing, that hook calls
--- UpdateVirtualRows so [AH] buttons appear/disappear with scan results.)
+-- The [AH] buttons follow the scan results (addon.AH wipes them when the AH
+-- closes). There is no per-tab AH_OPEN_STATE_CHANGED / AH_SCAN_COMPLETE
+-- handler: the shared addon.GUI.MakeScanAHButton factory in
+-- GUI/SharedWidgets.lua owns one global handler that refreshes the active
+-- tab's scan button and runs the tab's onRefresh hook -- for missing, that
+-- hook repaints the list, which re-reads the [AH] column's `show`.

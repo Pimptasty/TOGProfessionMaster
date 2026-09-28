@@ -25,8 +25,18 @@ local POTION = 118
 --- is which scripts and Show-hooks get attached, so they have to be observable.
 local function fakeTooltip(name)
 	local t = { _name = name, lines = {}, scripts = {}, showHooks = {} }
+	-- The script types this frame HAS. A real frame's HookScript raises on one it
+	-- does not, which is what WoW Forever's tooltips do for OnTooltipSetItem, so
+	-- the fake does the same: a spec that removes a type sees the real failure.
+	t.hasScript  = { OnTooltipSetItem = true, OnTooltipCleared = true }
 	t.AddLine    = function(_, text) t.lines[#t.lines + 1] = tostring(text) end
-	t.HookScript = function(_, ev, fn) t.scripts[ev] = t.scripts[ev] or {}; table.insert(t.scripts[ev], fn) end
+	t.HasScript  = function(_, ev) return t.hasScript[ev] == true end
+	t.HookScript = function(_, ev, fn)
+		if not t.hasScript[ev] then
+			error("bad argument #2 to '?' (Usage: local success = self:HookScript(scriptTypeName, script [, bindingType]))")
+		end
+		t.scripts[ev] = t.scripts[ev] or {}; table.insert(t.scripts[ev], fn)
+	end
 	t.Show       = function() end
 	t.GetItem    = function() return t._itemName, t._itemLink end
 	-- Enough of a tooltip to survive OTHER specs' deferred work. `advanceTime`
@@ -131,6 +141,24 @@ describe("which tooltip frames get hooked", function()
 		assert.has_no.errors(login)
 		assert.is_truthy(_G.GameTooltip.scripts["OnTooltipSetItem"])
 	end)
+
+	-- WoW Forever, in game 2026-09-27: its tooltips have no OnTooltipSetItem, and
+	-- HookScript raised "bad argument #2" out of the PLAYER_LOGIN handler, three
+	-- times per login. The modern post-call carries the item there instead.
+	it("skips OnTooltipSetItem on a client whose tooltips lack it, and still hooks the rest", function()
+		local tips = installTooltipFrames()
+		for _, tt in pairs(tips) do tt.hasScript.OnTooltipSetItem = nil end
+		local registered = 0
+		_G.TooltipDataProcessor = { AddTooltipPostCall = function() registered = registered + 1 end }
+		_G.Enum = _G.Enum or {}
+		_G.Enum.TooltipDataType = { Item = 1 }
+		assert.has_no.errors(login)
+		for name, tt in pairs(tips) do
+			assert.is_nil(tt.scripts.OnTooltipSetItem, name .. " was hooked on a script it lacks")
+			assert.is_truthy(tt.scripts.OnTooltipCleared, name .. " lost its cleared hook")
+		end
+		assert.equal(1, registered)
+	end)
 end)
 
 describe("the legacy hook registers UNCONDITIONALLY", function()
@@ -230,9 +258,14 @@ describe("the Show-hook fallback", function()
 		-- our lines ABOVE Wowhead's instead of at the bottom of the chain —
 		-- the reported TBC Anniversary complaint.
 		installTooltipFrames()
+		-- Count only Show-hooks. PLAYER_LOGIN also drives the Ace lifecycle, whose
+		-- own hooksecurefunc calls (OnEnable etc.) have nothing to do with this.
 		local hooked = 0
 		local realHook = _G.hooksecurefunc
-		_G.hooksecurefunc = function(...) hooked = hooked + 1; return realHook(...) end
+		_G.hooksecurefunc = function(t, m, ...)
+			if m == "Show" then hooked = hooked + 1 end
+			return realHook(t, m, ...)
+		end
 
 		login()
 		assert.equal(0, hooked, "Show-hook registered immediately; the ordering delay is gone")
@@ -248,7 +281,10 @@ describe("the Show-hook fallback", function()
 		_G.C_Timer = nil
 		local hooked = 0
 		local realHook = _G.hooksecurefunc
-		_G.hooksecurefunc = function(...) hooked = hooked + 1; return realHook(...) end
+		_G.hooksecurefunc = function(t, m, ...)
+			if m == "Show" then hooked = hooked + 1 end
+			return realHook(t, m, ...)
+		end
 
 		login()
 		assert.is_true(hooked > 0, "no deferral available, so it should have registered inline")

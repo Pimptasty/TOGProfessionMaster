@@ -348,13 +348,10 @@ end)
 describe("RebuildOnFirstLoad", function()
 	it("strips leaf keys from retired schema versions", function()
 		local gdb = populated()
-		gdb.hashes["recipes:171"]    = { hash = 1, updatedAt = 1 }
-		gdb.hashes["recipemeta:171"] = { hash = 2, updatedAt = 2 }
-		gdb.hashes["guild:recipes"]  = { hash = 3, updatedAt = 3 }
+		local retired = { "recipes:171", "recipemeta:171", "guild:recipes" }
+		for i, key in ipairs(retired) do gdb.hashes[key] = { hash = i, updatedAt = i } end
 		HashManager:RebuildOnFirstLoad(DS, gdb)
-		assert.is_nil(gdb.hashes["recipes:171"])
-		assert.is_nil(gdb.hashes["recipemeta:171"])
-		assert.is_nil(gdb.hashes["guild:recipes"])
+		for _, key in ipairs(retired) do assert.is_nil(gdb.hashes[key]) end
 	end)
 
 	it("builds the leaves the data implies", function()
@@ -369,10 +366,12 @@ describe("RebuildOnFirstLoad", function()
 
 	it("does not fabricate a skills leaf for a character with only crafting skills", function()
 		local gdb = env.newGdb()
-		gdb.skills["Crafter-Realm"] = { [171] = { skillRank = 300, skillMax = 300 } }
-		gdb.lastScan["Crafter-Realm"] = { professions = 50 }
+		local who = "Crafter-Realm"
+		gdb.skills[who] = { [171] = { skillRank = 300, skillMax = 300 } }
+		gdb.lastScan[who] = { professions = 50 }
 		HashManager:RebuildOnFirstLoad(DS, gdb)
-		assert.is_nil(gdb.hashes["skills:Crafter-Realm"])
+		assert.is_not_nil(gdb.hashes["professions:" .. who])
+		assert.is_nil(gdb.hashes["skills:" .. who])
 	end)
 
 	it("does NOT mint a professions leaf for a character we only relayed skills for", function()
@@ -380,16 +379,18 @@ describe("RebuildOnFirstLoad", function()
 		-- orphan hash we can't serve, and once adopted elsewhere its truthy
 		-- lastScan.professions makes peers ignore that character's real data.
 		local gdb = env.newGdb()
-		gdb.skills["Relayed-Realm"] = { [171] = { skillRank = 300, skillMax = 300 } }
+		local who = "Relayed-Realm"
+		gdb.skills[who] = { [171] = { skillRank = 300, skillMax = 300 } }
 		HashManager:RebuildOnFirstLoad(DS, gdb)
-		assert.is_nil(gdb.hashes["professions:Relayed-Realm"])
+		assert.is_nil(gdb.hashes["professions:" .. who])
 	end)
 
 	it("purges the fabricated updatedAt-0 professions leaves an earlier build wrote", function()
 		local gdb = populated()
-		gdb.hashes["professions:Ghost-Realm"] = { hash = 7, updatedAt = 0 }
+		local leaf = "professions:Ghost-Realm"
+		gdb.hashes[leaf] = { hash = 7, updatedAt = 0 }
 		HashManager:RebuildOnFirstLoad(DS, gdb)
-		assert.is_nil(gdb.hashes["professions:Ghost-Realm"])
+		assert.is_nil(gdb.hashes[leaf])
 	end)
 
 	it("clears the bogus lastScan.professions == 0 those leaves left behind", function()
@@ -402,13 +403,10 @@ describe("RebuildOnFirstLoad", function()
 
 	it("sweeps orphan hashes we hold no data for", function()
 		local gdb = populated()
-		gdb.hashes["cooldown:Ghost-Realm"]     = { hash = 1, updatedAt = 10 }
-		gdb.hashes["skills:Ghost-Realm"]       = { hash = 2, updatedAt = 10 }
-		gdb.hashes["accountchars:Ghost-Realm"] = { hash = 3, updatedAt = 10 }
+		local orphans = { "cooldown:Ghost-Realm", "skills:Ghost-Realm", "accountchars:Ghost-Realm" }
+		for i, key in ipairs(orphans) do gdb.hashes[key] = { hash = i, updatedAt = 10 } end
 		HashManager:RebuildOnFirstLoad(DS, gdb)
-		assert.is_nil(gdb.hashes["cooldown:Ghost-Realm"])
-		assert.is_nil(gdb.hashes["skills:Ghost-Realm"])
-		assert.is_nil(gdb.hashes["accountchars:Ghost-Realm"])
+		for _, key in ipairs(orphans) do assert.is_nil(gdb.hashes[key]) end
 	end)
 
 	it("always leaves all four roll-ups present", function()
@@ -470,8 +468,11 @@ describe("broadcast maps", function()
 		assert.is_true(l0["guild:accountchars"] ~= nil)
 		assert.is_true(l0["guild:skills"] ~= nil)
 		assert.is_true(l0["guild:professions"] ~= nil)
-		assert.is_nil(l0["cooldown:Alice-Realm"])
-		assert.is_nil(l0["skills:Alice-Realm"])
+		-- Held locally, and still kept out of L0.
+		for _, key in ipairs({ "cooldown:Alice-Realm", "skills:Alice-Realm" }) do
+			assert.is_not_nil(gdb.hashes[key])
+			assert.is_nil(l0[key])
+		end
 	end)
 
 	it("omit roll-ups that have not been computed yet", function()
@@ -506,11 +507,12 @@ describe("PadMissingProfessionPlaceholders", function()
 	it("skips professions this client version cannot have", function()
 		local ns = env.boot()
 		local prev = ns.IsProfessionAvailable
-		ns.IsProfessionAvailable = function(profId) return profId ~= 755 end   -- no Jewelcrafting
+		local JEWELCRAFTING = 755
+		ns.IsProfessionAvailable = function(profId) return profId ~= JEWELCRAFTING end
 		local map = {}
 		HashManager:PadMissingProfessionPlaceholders(DS, map)
 		ns.IsProfessionAvailable = prev
-		assert.is_nil(map["crafters:755"])
+		assert.is_nil(map["crafters:" .. JEWELCRAFTING])
 		assert.is_true(map["crafters:171"] ~= nil)
 	end)
 

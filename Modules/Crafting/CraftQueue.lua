@@ -142,15 +142,19 @@ function CraftQueue:CraftNext()
     Engine:Craft(e.recipeId, entry.index, count)
 end
 
--- Craft All: work down the whole queue, crafting each eligible entry in turn.
--- Launches the first batch now; as each finishes, _OnCraftSuccess chains to the
--- next eligible entry. Stops when nothing is left to make, on interrupt/failure,
--- or when the queue is cleared. (For Enchanting each item still waits for you to
--- click its target — DoCraft makes one and hands you the cursor.)
+-- Craft All: craft the top eligible entry's full batch now. The game only lets
+-- DoTradeSkill run from a hardware event, so the NEXT entry cannot be started
+-- automatically when this batch finishes — _OnCraftSuccess ends the run and
+-- prompts the player to click again if more is craftable. Interrupt/failure or
+-- clearing the queue also end it.
 function CraftQueue:CraftAll()
     if self:IsEmpty() then return end
     self._craftAll = true
     self:CraftNext()
+    -- No batch started (nothing eligible, or the Enchanting path, which hands
+    -- off to Blizzard's Craft window and tracks nothing): end the run now, or a
+    -- later unrelated batch would finish "inside" it and prompt.
+    if not self._active then self._craftAll = false end
 end
 
 -- Begin tracking a craft initiated through CraftingEngine:Craft (either the
@@ -187,17 +191,23 @@ function CraftQueue:_OnCraftSuccess()
 
     if active.remaining <= 0 then
         self._active = nil
-        -- Craft All: this batch is done — chain to the next eligible entry after
-        -- a short beat so the trade-skill state settles. Stop if nothing's left.
+        -- Craft All: this batch is done. We must NOT start the next one from
+        -- here: DoTradeSkill needs a hardware event (a real click), and this runs
+        -- from UNIT_SPELLCAST_SUCCEEDED — v1.1.1 chained CraftNext through a
+        -- C_Timer and the client blocked it with ADDON_ACTION_BLOCKED
+        -- "DoTradeSkill()" as soon as the first recipe finished. So the run ends
+        -- here and, if more is craftable, we tell the player to click again. The
+        -- check waits a short beat so the trade-skill counts have settled.
         if self._craftAll then
-            local function chain()
-                if self._craftAll and self:CanCraftNext() then
-                    self:CraftNext()
-                else
-                    self._craftAll = false
+            self._craftAll = false
+            local function prompt()
+                if self:CanCraftNext() then
+                    addon:Print(addon.L and addon.L["CraftAllNextNeedsClick"]
+                        or ("Batch finished — click Craft All (or Craft Next) to start the next recipe."
+                            .. " The game requires a click for each one."))
                 end
             end
-            if C_Timer and C_Timer.After then C_Timer.After(0.1, chain) else chain() end
+            if C_Timer and C_Timer.After then C_Timer.After(0.1, prompt) else prompt() end
         end
     end
     self:_Changed()

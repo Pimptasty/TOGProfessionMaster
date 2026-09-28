@@ -252,17 +252,19 @@ describe("MergeCraftersIntoGdb", function()
 
 	it("drops data for a guild we do not federate with", function()
 		local gdb = gdbWith()
+		local stranger = "Stranger-Realm"
 		assert.is_false(Scanner:MergeCraftersIntoGdb(gdb, 171,
-			{ [2330] = { ["Stranger-Realm"] = FOREIGN } }, nil, nil, HOME))
-		assert.is_nil(gdb.recipes[171][2330] and gdb.recipes[171][2330].crafters["Stranger-Realm"])
+			{ [2330] = { [stranger] = FOREIGN } }, nil, nil, HOME))
+		assert.is_nil(gdb.recipes[171][2330] and gdb.recipes[171][2330].crafters[stranger])
 	end)
 
 	it("skips falsy and non-string crafter keys", function()
 		local gdb = gdbWith()
+		local ghost = "Ghost-Realm"
 		Scanner:MergeCraftersIntoGdb(gdb, 171,
-			{ [2330] = { ["Ghost-Realm"] = false, [42] = true } }, nil, nil, HOME)
+			{ [2330] = { [ghost] = false, [42] = true } }, nil, nil, HOME)
 		local crafters = gdb.recipes[171][2330].crafters
-		assert.is_nil(crafters["Ghost-Realm"])
+		assert.is_nil(crafters[ghost])
 		assert.is_nil(crafters[42])
 	end)
 
@@ -376,10 +378,11 @@ describe("RebuildAltGroups", function()
 
 	it("replaces the previous index rather than accumulating", function()
 		local gdb = env.newGdb()
-		gdb.altGroups["Stale-Realm"] = { "Stale-Realm" }
+		local stale = "Stale-Realm"
+		gdb.altGroups[stale] = { stale }
 		gdb.altClaims["Alice-Realm"] = { "Alice-Realm" }
 		Scanner:RebuildAltGroups(gdb)
-		assert.is_nil(gdb.altGroups["Stale-Realm"])
+		assert.is_nil(gdb.altGroups[stale])
 	end)
 
 	it("ignores malformed claims and an absent claim table", function()

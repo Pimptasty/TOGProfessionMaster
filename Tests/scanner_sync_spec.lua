@@ -169,12 +169,13 @@ describe("BuildLeafPayload — crafters", function()
 	end)
 
 	it("narrows to the requested players when the peer asked for a subset", function()
-		gdb.recipes[ALCHEMY][2331] = { crafters = { ["Other-Testrealm"] = TAG } }
-		gdb.skills["Other-Testrealm"] = { [ALCHEMY] = { skillRank = 1, skillMax = 300 } }
+		local other = "Other-Testrealm"
+		gdb.recipes[ALCHEMY][2331] = { crafters = { [other] = TAG } }
+		gdb.skills[other] = { [ALCHEMY] = { skillRank = 1, skillMax = 300 } }
 		local p = S:BuildLeafPayload("crafters:" .. ALCHEMY, { [OWNER] = true })
 		assert.is_true(p.leaves["crafters:" .. ALCHEMY].data[2330] ~= nil)
 		assert.is_nil(p.leaves["crafters:" .. ALCHEMY].data[2331])
-		assert.is_nil(p.skills and p.skills[ALCHEMY] and p.skills[ALCHEMY]["Other-Testrealm"])
+		assert.is_nil(p.skills and p.skills[ALCHEMY] and p.skills[ALCHEMY][other])
 	end)
 
 	it("refuses a profession with no crafters at all", function()

@@ -58,7 +58,7 @@ before_each(function()
 	-- C_Item exactly as the client does. See env.itemAPI.
 	env.itemAPI("GetItemInfo", function() return nil end)
 	env.itemAPI("GetItemIcon", function() return nil end)
-	_G.GetSpellTexture = function() return nil end
+	_G.GetSpellTexture = function(_spell) return nil end
 end)
 
 local function knows(charKey, profId, spellId, tag)

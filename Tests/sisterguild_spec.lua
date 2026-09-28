@@ -259,7 +259,7 @@ describe("the library's callbacks reach the guild-scoped views", function()
 		-- minimap_spec has hooked the minimap button onto it, and LibDBIcon
 		-- refuses a second Register of the same name -- a fresh copy per run is
 		-- minimap_spec's own answer to that.
-		if env.libs.loaded["TOGPM-LibDBIcon"] then env.libs.fresh("TOGPM-LibDBIcon") end
+		if env.libs.loaded["LibDBIcon-1.0"] then env.libs.fresh("LibDBIcon-1.0") end
 		ns.lib:OnEnable()
 	end)
 
@@ -294,6 +294,53 @@ describe("the library's callbacks reach the guild-scoped views", function()
 		lib.callbacks:Fire("OnRosterReady")
 		assert.same({ "Old Guild" }, ns:GetSisterGuilds())
 		assert.is_nil(ns.lib.db.profile.sisterGuilds)
+	end)
+end)
+
+describe("Scanner:SisterPullGate", function()
+	-- The bilateral consent proof they attach, naming OUR home guild.
+	local function pull(extra)
+		local b = { type = "sister-pull", parent = "Horde-Sisterguild", keys = { [HOME] = true } }
+		for k, v in pairs(extra or {}) do b[k] = v end
+		return b
+	end
+
+	before_each(function()
+		officer(true)
+		ns:SetSisterGuilds("Sisterguild")
+		ns.Scanner.GuildRoster = lib
+	end)
+
+	it("serves a listed guild that lists us, on first contact (no roster held yet)", function()
+		local consent, identity = ns.Scanner:SisterPullGate("Sis-Testrealm", pull())
+		assert.is_true(consent)
+		assert.is_true(identity)
+	end)
+
+	it("serves a MEMBER of a sister roster we already hold", function()
+		-- v1.1.1 passed IsInGuildScoped(name, guildKey) against the library's
+		-- (guildKey, name), so this legitimate member was refused.
+		lib:SetSisterRoster("Horde-Sisterguild", { { name = "Sis-Testrealm" } }, {})
+		local consent, identity = ns.Scanner:SisterPullGate("Sis-Testrealm", pull())
+		assert.is_true(consent)
+		assert.is_true(identity)
+	end)
+
+	it("refuses a stranger claiming a sister guild whose roster we hold", function()
+		lib:SetSisterRoster("Horde-Sisterguild", { { name = "Sis-Testrealm" } }, {})
+		local consent, identity = ns.Scanner:SisterPullGate("Spoof-Testrealm", pull())
+		assert.is_true(consent)
+		assert.is_false(identity)
+	end)
+
+	it("refuses a guild we do not list", function()
+		local consent = ns.Scanner:SisterPullGate("X-Testrealm", pull({ parent = "Horde-Strangers" }))
+		assert.is_false(consent)
+	end)
+
+	it("refuses a one-sided config: they do not list us", function()
+		local consent = ns.Scanner:SisterPullGate("Sis-Testrealm", pull({ keys = {} }))
+		assert.is_false(consent)
 	end)
 end)
 

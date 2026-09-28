@@ -107,7 +107,6 @@ setup(function()
 	env.loadModule("GUI/MissingRecipesTab.lua")
 	env.loadModule("GUI/GuildTab.lua")
 	env.loadModule("GUI/AHProfitTab.lua")
-	env.loadModule("GUI/ShoppingListTab.lua")
 	env.loadModule("GUI/ReagentTracker.lua")
 end)
 
@@ -145,7 +144,7 @@ before_each(function()
 	-- Keep the client item API silent: its cost is the client's, not Lua's.
 	env.itemAPI("GetItemInfo", function() return nil end)
 	env.itemAPI("GetItemIcon", function() return nil end)
-	_G.GetSpellTexture = function() return nil end
+	_G.GetSpellTexture = function(_spell) return nil end
 end)
 
 describe("the real database, described", function()
@@ -224,7 +223,6 @@ describe("each tab drawn cold on the real database", function()
 		{ "Missing Recipes",       "MissingRecipesTab" },
 		{ "Guild",                 "GuildTab" },
 		{ "Profit Planner",        "AHProfitTab" },
-		{ "Shopping List",         "ShoppingListTab" },
 	}
 	for _, spec in ipairs(tabs) do
 		local label, field, prep = spec[1], spec[2], spec[3]

@@ -157,7 +157,7 @@ end)
 
 -- Audit finding 33: `addon.GetAddOnMetadata`, `addon:GetSpellInfo` and
 -- `addon:GetItemInfo` were shims with NO production caller, and three cases
--- here vouched for them -- a green spec about dead code. writ-cannot: those
+-- here vouched for them -- a green spec about dead code. Those
 -- three cases are gone because the shims were deleted on purpose (the only
 -- GetAddOnMetadata resolution that runs is TOGProfessionMaster.lua's own,
 -- which loads before Compat; GetSpellInfo is the real function on every
@@ -315,43 +315,111 @@ describe("tooltip anchoring", function()
 	end)
 end)
 
-describe("AnchorFrame", function()
-	local ns, points
-
-	local function target()
-		return { ClearAllPoints = function() end,
-		         SetPoint = function(_, ...) points = { ... } end }
-	end
+-- WoW Forever (in game 2026-09-27): no bare GetSpellCooldown, and IsSpellKnown
+-- only as an off-by-default deprecation fallback. The helpers must answer the
+-- classic shape from the namespaced API there, and the bare one elsewhere.
+describe("the spell API helpers", function()
+	local ns, saved
+	local NAMES = { "C_Spell", "C_SpellBook", "GetSpellCooldown", "IsSpellKnown", "Enum",
+	                "GetSpellInfo", "GetSpellTexture", "GetSpellLink" }
 
 	before_each(function()
 		ns = compatAt(11508)
-		points = nil
-		_G.GetScreenHeight = function() return 1000 end
+		saved = {}
+		for _, n in ipairs(NAMES) do saved[n] = _G[n] end
+	end)
+	after_each(function()
+		for _, n in ipairs(NAMES) do _G[n] = saved[n] end
 	end)
 
-	it("puts the popup below a source in the top half", function()
-		ns.Tooltip.AnchorFrame(target(), { GetCenter = function() return 0, 800 end })
-		assert.equal("TOPLEFT", points[1])
-		assert.equal("BOTTOMLEFT", points[3])
+	it("unpacks C_Spell.GetSpellCooldown's table into start, duration, enabled, modRate", function()
+		_G.GetSpellCooldown = nil
+		_G.C_Spell = { GetSpellCooldown = function()
+			return { startTime = 100, duration = 3600, isEnabled = true, modRate = 1 }
+		end }
+		local start, duration, enabled, modRate = ns.Spell.GetCooldown(11479)
+		assert.equal(100, start)
+		assert.equal(3600, duration)
+		assert.is_true(enabled)
+		assert.equal(1, modRate)
 	end)
 
-	it("puts the popup above a source in the bottom half", function()
-		ns.Tooltip.AnchorFrame(target(), { GetCenter = function() return 0, 200 end })
-		assert.equal("BOTTOMLEFT", points[1])
-		assert.equal("TOPLEFT", points[3])
+	it("falls back to the bare GetSpellCooldown where there is no C_Spell", function()
+		_G.C_Spell = nil
+		_G.GetSpellCooldown = function() return 5, 10, 1, 1 end
+		local start, duration = ns.Spell.GetCooldown(1)
+		assert.equal(5, start)
+		assert.equal(10, duration)
 	end)
 
-	it("unwraps an AceGUI widget to its underlying frame", function()
-		local widget = { frame = { GetCenter = function() return 0, 800 end } }
-		ns.Tooltip.AnchorFrame(target(), widget)
-		assert.equal("TOPLEFT", points[1])
+	it("answers nil, not an error, on a client with neither", function()
+		_G.C_Spell, _G.GetSpellCooldown = nil, nil
+		assert.is_nil((ns.Spell.GetCooldown(1)))
 	end)
 
-	it("does nothing for a source that is neither", function()
-		ns.Tooltip.AnchorFrame(target(), {})
-		assert.is_nil(points)
+	-- The Guild tab, in game on Forever: bare GetSpellInfo is nil there.
+	it("unpacks C_Spell.GetSpellInfo's table into the classic list where the bare one is gone", function()
+		_G.GetSpellInfo = nil
+		_G.C_Spell = { GetSpellInfo = function(id)
+			return { name = "Axesmith", iconID = 99, originalIconID = 98, castTime = 0,
+			         minRange = 0, maxRange = 5, spellID = id }
+		end }
+		local name, rank, icon, castTime, minRange, maxRange, spellID = ns.Spell.GetInfo(17041)
+		assert.equal("Axesmith", name)
+		assert.is_nil(rank)
+		assert.equal(99, icon)
+		assert.equal(0, castTime)
+		assert.equal(0, minRange)
+		assert.equal(5, maxRange)
+		assert.equal(17041, spellID)
+	end)
+
+	it("prefers the bare GetSpellInfo where it exists", function()
+		_G.GetSpellInfo = function() return "bare", nil, 1 end
+		_G.C_Spell = { GetSpellInfo = function() return { name = "namespaced" } end }
+		assert.equal("bare", (ns.Spell.GetInfo(1)))
+	end)
+
+	it("answers nil for an unknown spell or a nil id, on either path", function()
+		_G.GetSpellInfo = nil
+		_G.C_Spell = { GetSpellInfo = function() return nil end }
+		assert.is_nil((ns.Spell.GetInfo(1)))
+		assert.is_nil((ns.Spell.GetInfo(nil)))
+	end)
+
+	it("reaches C_Spell for the texture and the link when the bare ones are gone", function()
+		_G.GetSpellTexture, _G.GetSpellLink = nil, nil
+		_G.C_Spell = {
+			GetSpellTexture = function() return 1234 end,
+			GetSpellLink    = function(id) return "|Hspell:" .. id .. "|h[x]|h" end,
+		}
+		assert.equal(1234, ns.Spell.GetTexture(5))
+		assert.equal("|Hspell:5|h[x]|h", ns.Spell.GetLink(5))
+	end)
+
+	it("uses the bare IsSpellKnown where it exists", function()
+		_G.IsSpellKnown = function(id, isPet) return id == 7 and not isPet end
+		assert.is_true(ns.Spell.IsKnown(7, false))
+		assert.is_false(ns.Spell.IsKnown(8, false))
+	end)
+
+	it("does what Forever's fallback does when the bare one is gone", function()
+		_G.IsSpellKnown = nil
+		local asked
+		_G.Enum = { SpellBookSpellBank = { Player = 0, Pet = 1 } }
+		_G.C_SpellBook = { IsSpellInSpellBook = function(id, bank, overrides)
+			asked = { id, bank, overrides }
+			return id == 7
+		end }
+		assert.is_true(ns.Spell.IsKnown(7, false))
+		assert.same({ 7, 0, false }, asked)
+		assert.is_false(ns.Spell.IsKnown(9, true))
+		assert.same({ 9, 1, false }, asked)
 	end)
 end)
+
+-- Tooltip.AnchorFrame's specs left with the function: popup placement is
+-- LibAceGUIWidgets' AnchorPopup now, specced in that library.
 
 describe("TOGBankClassic integration", function()
 	local ns

@@ -62,8 +62,8 @@ local function ResolveRecipeLink(entry)
     -- flag existed still resolves as a spell instead of falling through to an
     -- item lookup.
     local spellId = entry.spellId or entry.id
-    if type(spellId) == "number" and GetSpellLink then
-        local link = GetSpellLink(spellId)
+    if type(spellId) == "number" then
+        local link = addon.Spell.GetLink(spellId)
         if link then return link end
     end
     -- Synthetic minimal link. Won't carry the proper colour or stats but
@@ -600,12 +600,12 @@ local function BuildFullList(profId, viewMode, opts)
                     end
                     local itemLink = craftedItemId and select(2, addon.Item.GetInfo(craftedItemId))
                     -- Learn skill for the tier filter: authoritative requiredSkill
-                    -- when shipped, else the orange (difficulty[1]) breakpoint —
-                    -- same fallback MissingRecipesTab uses. nil when neither is
-                    -- known; FilterTiers keeps those rows unconditionally.
+                    -- when shipped, else the orange (difficulty[1]) breakpoint
+                    -- unless ProfessionDB marks the tiers unanchored — same
+                    -- helper MissingRecipesTab uses. nil when unknown;
+                    -- FilterTiers keeps those rows unconditionally.
                     local meta      = profMetaDB[recipeId]
-                    local reqSkill  = meta.requiredSkill
-                                      or (meta.difficulty and meta.difficulty[1])
+                    local reqSkill  = addon.RecipeLearnSkill(meta)
                     table.insert(list, {
                         id            = recipeId,
                         -- The profession this row belongs to. Rows are built per
@@ -703,9 +703,9 @@ function BrowserTab:Draw(container)
     self._container = container
     container:SetLayout("List")
 
-    -- Clean up a raw headerBar left over from a previous Draw() or tab switch.
+    -- Detach the header bar left from a previous Draw() or tab switch; it is
+    -- reused (EnsureHeaderBar), so it is not nil'd.
     addon.GUI.DetachPool(self._headerBar)
-    self._headerBar = nil
 
     self._slSection = nil
     local slData = Ace.db.char.shoppingList
@@ -1025,46 +1025,20 @@ function BrowserTab:Draw(container)
     end
 
     -- ---- Column headers (raw frame) ----------------------------------------
+    -- Created once and reused, like _detailOuter: WoW never frees a frame, and
+    -- Draw re-runs on every GUILD_DATA_UPDATED, so a fresh bar (plus its two
+    -- hit frames) per Draw leaked three frames each time.
     local anchorFrame = (self._slSection and self._slSection.frame) or toolbar.frame
-    local headerBar   = CreateFrame("Frame", nil, container.content)
-    headerBar:SetHeight(18)
+    self:EnsureHeaderBar()
+    local headerBar = self._headerBar
+    headerBar:SetParent(container.content)
+    headerBar:ClearAllPoints()
     headerBar:SetPoint("TOPLEFT",  anchorFrame, "BOTTOMLEFT",  0, 0)
     headerBar:SetPoint("TOPRIGHT", anchorFrame, "BOTTOMRIGHT", 0, 0)
-    self._headerBar = headerBar
-
-    local recipeHdr = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    recipeHdr:ClearAllPoints()
-    recipeHdr:SetPoint("LEFT", headerBar, "LEFT", 24, 0)
-    recipeHdr:SetText(addon.UI.Brand("Recipes"))
-
-    local recipeHdrHit = CreateFrame("Frame", nil, headerBar)
-    recipeHdrHit:SetPoint("LEFT",  recipeHdr, "LEFT",  -2, 0)
-    recipeHdrHit:SetPoint("RIGHT", recipeHdr, "RIGHT",  2, 0)
-    recipeHdrHit:SetHeight(18)
-    recipeHdrHit:SetScript("OnEnter", function(f)
-        addon.Tooltip.Owner(f)
-        GameTooltip:SetText(L["TooltipRecipeTitle"], 1, 1, 1, 1, true)
-        GameTooltip:AddLine(L["TooltipRecipeDesc"], nil, nil, nil, true)
-        GameTooltip:Show()
-    end)
-    recipeHdrHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-    local craftersHdr = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    craftersHdr:ClearAllPoints()
-    craftersHdr:SetPoint("LEFT", headerBar, "LEFT", 186, 0)
-    craftersHdr:SetText(addon.UI.Brand(L["CraftersColHeader"]))
-
-    local craftersHdrHit = CreateFrame("Frame", nil, headerBar)
-    craftersHdrHit:SetPoint("LEFT",  craftersHdr, "LEFT",  -2, 0)
-    craftersHdrHit:SetPoint("RIGHT", craftersHdr, "RIGHT",  2, 0)
-    craftersHdrHit:SetHeight(18)
-    craftersHdrHit:SetScript("OnEnter", function(f)
-        addon.Tooltip.Owner(f)
-        GameTooltip:SetText(L["TooltipCraftersTitle"], 1, 1, 1, 1, true)
-        GameTooltip:AddLine(L["TooltipCraftersDesc"], nil, nil, nil, true)
-        GameTooltip:Show()
-    end)
-    craftersHdrHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    headerBar:Show()
+    -- Header text re-set per Draw so a brand-colour change still reaches it.
+    self._hdrRecipe:SetText(addon.UI.Brand("Recipes"))
+    self._hdrCrafters:SetText(addon.UI.Brand(L["CraftersColHeader"]))
 
     -- ---- Recipe scroll list (left column) ----------------------------------
     if self._pool then
@@ -1091,8 +1065,9 @@ function BrowserTab:Draw(container)
             -- the virtual-scroll trick is restored on the NEXT Acquire
             -- (PersistentScroll.Acquire reassigns the class method on
             -- every acquire), so we don't have to clean it up here.
+            -- _headerBar is reused across Draws (EnsureHeaderBar), so it is
+            -- detached but NOT nil'd.
             addon.GUI.DetachPool(self._headerBar)
-            self._headerBar = nil
             -- _detailOuter is reused across Draws (lazy-created in
             -- EnsureDetailPanel, re-parented + re-anchored next Draw),
             -- so we detach but do NOT nil it.
@@ -2273,6 +2248,34 @@ end
 -- ---------------------------------------------------------------------------
 -- Detail panel (right column)
 -- ---------------------------------------------------------------------------
+
+-- The column-header bar above the recipe list, created once; Draw re-parents
+-- and re-anchors it. Its two hit frames give the headers their tooltips.
+function BrowserTab:EnsureHeaderBar()
+    if self._headerBar then return end
+    local headerBar = CreateFrame("Frame", nil, UIParent)
+    headerBar:SetHeight(18)
+    self._headerBar = headerBar
+
+    local function header(x, titleKey, descKey)
+        local fs = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        fs:SetPoint("LEFT", headerBar, "LEFT", x, 0)
+        local hit = CreateFrame("Frame", nil, headerBar)
+        hit:SetPoint("LEFT",  fs, "LEFT",  -2, 0)
+        hit:SetPoint("RIGHT", fs, "RIGHT",  2, 0)
+        hit:SetHeight(18)
+        hit:SetScript("OnEnter", function(f)
+            addon.Tooltip.Owner(f)
+            GameTooltip:SetText(L[titleKey], 1, 1, 1, 1, true)
+            GameTooltip:AddLine(L[descKey], nil, nil, nil, true)
+            GameTooltip:Show()
+        end)
+        hit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        return fs
+    end
+    self._hdrRecipe   = header(24,  "TooltipRecipeTitle",   "TooltipRecipeDesc")
+    self._hdrCrafters = header(186, "TooltipCraftersTitle", "TooltipCraftersDesc")
+end
 
 -- Lazily create all detail-panel sub-frames the first time; subsequent Draw()
 -- calls just re-parent the outer frame to the new container.content.

@@ -1,6 +1,6 @@
 ## Interface: 11509
 ## X-Min-Interface: 11509
-## Title: |cffFF8000TOG Profession Master |c999999FFVanilla
+## Title: |cffFF8000TOG Profession Master|r |cff999999Vanilla|r
 ## Version: @project-version@
 ## Author: Pimptasty
 ## Category: Professions
@@ -8,11 +8,8 @@
 ## SavedVariables: TOGPM_Settings TOGPM_GuildDB
 ## SavedVariablesPerCharacter:
 ## X-Curse-Project-ID: 1513588
-## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0, DeltaSync, GuildRoster, ProfessionDB, ItemDB
+## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0, DeltaSync, GuildRoster, ProfessionDB, ItemDB, LibDBIcon-1.0, LibAceGUIWidgets
 ## OptionalDeps: TOGBankClassic, GreenWall, Auctionator, Auc-Advanced, TradeSkillMaster, TradeSkillMaster_AppHelper
-
-libs\LibDataBroker-1.1.lua
-libs\LibDBIcon-1.0.lua
 
 Locale\_init.lua
 Locale\enUS.lua
@@ -53,7 +50,6 @@ GUI\MainWindow.lua
 GUI\SharedWidgets.lua
 GUI\BrowserTab.lua
 GUI\CooldownsTab.lua
-GUI\ShoppingListTab.lua
 GUI\MissingRecipesTab.lua
 GUI\CraftingTab.lua
 GUI\AHProfitTab.lua

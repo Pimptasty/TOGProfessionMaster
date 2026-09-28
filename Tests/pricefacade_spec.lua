@@ -278,10 +278,12 @@ describe("MigratePriceSettingsToItemDB -- a player's choices follow the ladder",
 		ns._itemDB = { GetVendorBasePrice = function() return nil end }
 		local p = profile()
 		p.useAuctionator = true
+		local STORE = "ahPrices"
+		Ace.db.factionrealm[STORE] = { [2589] = 12 }
 		assert.equal(0, ns:MigratePriceSettingsToItemDB())
 		assert.is_true(p.useAuctionator)
 		-- The orphaned store still goes: nothing reads it whichever ItemDB is in.
-		assert.is_nil(Ace.db.factionrealm.ahPrices)
+		assert.is_nil(Ace.db.factionrealm[STORE])
 	end)
 
 	it("is a no-op with nothing to carry", function()

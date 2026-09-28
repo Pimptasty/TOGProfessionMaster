@@ -280,11 +280,14 @@ describe("Check — stale entries", function()
 	end)
 
 	it("drops a malformed entry", function()
-		arm("junk", "not a table")
-		arm("junk2", { label = "no charKey" })
+		local JUNK, JUNK2 = "junk", "junk2"
+		arm(JUNK, "not a table")
+		arm(JUNK2, { label = "no charKey" })
+		assert.is_not_nil(ns.lib.db.char.cooldownAlerts[JUNK])
+		assert.is_not_nil(ns.lib.db.char.cooldownAlerts[JUNK2])
 		CA:Check()
-		assert.is_nil(ns.lib.db.char.cooldownAlerts["junk"])
-		assert.is_nil(ns.lib.db.char.cooldownAlerts["junk2"])
+		assert.is_nil(ns.lib.db.char.cooldownAlerts[JUNK])
+		assert.is_nil(ns.lib.db.char.cooldownAlerts[JUNK2])
 	end)
 
 	it("keeps a valid entry for another of our own characters", function()

@@ -189,3 +189,56 @@ describe("GetPlayerBagCount — what you already have", function()
 		assert.equal(0, RT:GetPlayerBagCount(THORIUM))
 	end)
 end)
+
+describe("CountText — the colour says what you can do next", function()
+	it("is green when the bags alone cover it", function()
+		assert.equal("|cff00ff00" .. "4|r/4", RT:CountText({ have = 4, need = 4 }))
+	end)
+
+	it("is yellow when the guild bank fills the gap, and shows the bank's share", function()
+		assert.equal("|cffffff00" .. "1|r/4 |cff88ccff+5|r", RT:CountText({ have = 1, need = 4, bank = 5 }))
+	end)
+
+	it("is orange when even bags and bank fall short", function()
+		assert.equal("|cffff8800" .. "1|r/4", RT:CountText({ have = 1, need = 4 }))
+	end)
+
+	it("is red when there is none anywhere", function()
+		assert.equal("|cffff4444" .. "0|r/4", RT:CountText({ have = 0, need = 4 }))
+	end)
+end)
+
+-- The window, drawn by LibAceGUIWidgets' RowList: one row per reagent, and a
+-- window that is exactly as tall as its rows.
+describe("the tracker window", function()
+	local W
+
+	before_each(function()
+		W = ns.W
+		if RT.frame then RT.frame:Hide() end
+		RT.frame, RT._list, RT._host, RT._emptyLbl = nil, nil, nil, nil
+		if W.ClearDiagnostics then W:ClearDiagnostics() end
+	end)
+
+	after_each(function()
+		if RT.frame then RT.frame:Hide() end
+	end)
+
+	it("lists one row per reagent and sizes the window to them", function()
+		queue(1, 2, {
+			{ itemId = THORIUM, name = "Thorium Bar", count = 2 },
+			{ itemId = FELCLOTH, name = "Felcloth", count = 1 },
+		})
+		RT:Open()
+		assert.equal(2, #RT._list.data)
+		-- 20 title + 2 rows x 16 + 6 padding.
+		assert.equal(20 + 2 * 16 + 6, RT.frame:GetHeight())
+		assert.equal(0, #W:Diagnostics())
+	end)
+
+	it("shows the empty line, and no list, for an empty shopping list", function()
+		RT:Open()
+		assert.is_true(RT._emptyLbl:IsShown())
+		assert.is_false(RT._host:IsShown())
+	end)
+end)

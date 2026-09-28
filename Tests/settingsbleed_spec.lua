@@ -36,7 +36,6 @@ setup(function()
 	env.loadModule("GUI/MissingRecipesTab.lua")
 	env.loadModule("GUI/GuildTab.lua")
 	env.loadModule("GUI/AHProfitTab.lua")
-	env.loadModule("GUI/ShoppingListTab.lua")
 	env.loadModule("GUI/ReagentTracker.lua")
 	env.loadModule("GUI/Settings.lua")
 	MW = ns.MainWindow

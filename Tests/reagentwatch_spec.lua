@@ -1,4 +1,5 @@
--- Modules/ReagentWatch.lua — the watch list, and the shopping-list alert latch.
+-- Modules/ReagentWatch.lua — the reagent-count refresh, and the shopping-list
+-- alert latch.
 --
 -- The alert is the part with teeth. "You can now craft X" must fire ONCE when
 -- the reagents first arrive, stay quiet while they are still there, and re-arm
@@ -71,7 +72,7 @@ before_each(function()
 	bagsHolding({})
 	ns.lib.db.char.shoppingList   = {}
 	ns.lib.db.char.shoppingAlerts = {}
-	ns.lib.db.char.reagentWatch   = {}
+	RW:_ResetAlertLatch()
 end)
 
 after_each(function()
@@ -89,55 +90,28 @@ local function bagUpdate()
 	frames.fireEvent("BAG_UPDATE")
 end
 
-describe("the watch list", function()
-	it("adds, reports and removes an item", function()
-		RW:Watch(THORIUM)
-		assert.is_true(RW:IsWatching(THORIUM))
-		RW:Unwatch(THORIUM)
-		assert.is_false(RW:IsWatching(THORIUM))
-	end)
-
-	it("accepts an item id that arrives as a string", function()
-		-- Ids reach this from chat links and edit boxes, not just from code.
-		RW:Watch("12359")
-		assert.is_true(RW:IsWatching(THORIUM))
-		assert.is_true(RW:IsWatching("12359"))
-	end)
-
-	it("ignores a nil or non-numeric id rather than erroring", function()
-		assert.has_no.errors(function() RW:Watch(nil) end)
-		assert.has_no.errors(function() RW:Watch("not an item") end)
-		assert.has_no.errors(function() RW:Unwatch(nil) end)
-		assert.is_false(RW:IsWatching(nil))
-		assert.same({}, ns.lib.db.char.reagentWatch)
-	end)
-
-	it("reports what the bags hold for each watched item", function()
-		RW:Watch(THORIUM)
-		RW:Watch(FELCLOTH)
-		bagsHolding({ [THORIUM] = 7 })
-		local list = RW:GetWatchedItems()
-		assert.equal(2, #list)
-		-- Sorted by name: Felcloth before Thorium Bar.
-		assert.equal("Felcloth", list[1].itemName)
-		assert.equal(0, list[1].count)
-		assert.equal(7, list[2].count)
-	end)
-
-	it("tells the UI to refresh when the list changes", function()
-		-- Its own listener table rather than registering on the addon itself, so
-		-- unregistering cannot disturb a real subscriber — and so the handler
-		-- cannot outlive this spec file.
+describe("reagent counts", function()
+	it("tells the tabs to repaint on every bag change", function()
+		-- The Cooldowns and Crafting tabs colour reagents by stock and listen
+		-- for this. Its own listener table rather than registering on the addon
+		-- itself, so unregistering cannot disturb a real subscriber.
 		-- Dot-call passing our own listener as `self`: CallbackHandler refuses to
-		-- unregister when self is the registry's own target, which is what
-		-- `ns:UnregisterCallback(...)` would be.
+		-- unregister when self is the registry's own target.
 		local listener, fired = {}, 0
 		ns.RegisterCallback(listener, "REAGENT_WATCH_UPDATED",
 			function() fired = fired + 1 end)
-		RW:Watch(THORIUM)
-		RW:Unwatch(THORIUM)
+		bagUpdate()
+		bagUpdate()
 		ns.UnregisterCallback(listener, "REAGENT_WATCH_UPDATED")
 		assert.equal(2, fired)
+	end)
+
+	it("drops the old watch list's saved table at login", function()
+		local KEY = "reagentWatch"
+		ns.lib.db.char[KEY] = { [THORIUM] = true }
+		assert.is_not_nil(ns.lib.db.char[KEY])
+		frames.fireEvent("PLAYER_LOGIN")
+		assert.is_nil(ns.lib.db.char[KEY])
 	end)
 end)
 
@@ -200,6 +174,67 @@ describe("the craft-ready alert", function()
 		bagsHolding({ [FELCLOTH] = 2 })
 		bagUpdate()
 		assert.equal(1, #printed)
+	end)
+
+	it("alerts for an ordinary recipe from the reagents the entry carries", function()
+		-- The Professions tab stores the recipe's full reagent list on the
+		-- entry. The alert used to read only the cooldown catalogue, so an
+		-- ordinary recipe never alerted at all.
+		ns.lib.db.char.shoppingList[555] = { name = "Runecloth Bag", quantity = 2,
+			reagents = {
+				{ itemId = THORIUM,  count = 1, name = "Thorium Bar" },
+				{ itemLink = "|Hitem:" .. FELCLOTH .. "::|h[Felcloth]|h", count = 3 },
+			} }
+		bagsHolding({ [THORIUM] = 2, [FELCLOTH] = 5 })   -- Felcloth short: 5 < 6
+		bagUpdate()
+		assert.equal(0, #printed)
+
+		bagsHolding({ [THORIUM] = 2, [FELCLOTH] = 6 })
+		bagUpdate()
+		assert.equal(1, #printed)
+		assert.is_truthy(printed[1]:find("Runecloth Bag", 1, true))
+		assert.is_truthy(printed[1]:find("all 2 reagents", 1, true))
+	end)
+
+	it("prefers the entry's reagents over the cooldown catalogue", function()
+		ns.lib.db.char.shoppingList[TRANSMUTE] = { quantity = 1,
+			reagents = { { itemId = FELCLOTH, count = 1 } } }
+		bagsHolding({ [FELCLOTH] = 1 })                   -- no Thorium at all
+		bagUpdate()
+		assert.equal(1, #printed)
+		assert.is_truthy(printed[1]:find("Felcloth", 1, true))
+	end)
+
+	it("never touches the crafter-online opt-in", function()
+		-- db.char.shoppingAlerts is the "!" toggle on a shopping-list row: the
+		-- player asking to be told when a crafter of this recipe logs in. The
+		-- latch used to live in it, so a ready alert switched that on and
+		-- running out switched a real opt-in off.
+		local optIn = ns.lib.db.char.shoppingAlerts
+		optIn[MOONCLOTH_CRAFT] = true                     -- the player opted in
+		queue(TRANSMUTE, 1)
+		queue(MOONCLOTH_CRAFT, 1)
+		bagsHolding({ [THORIUM] = 2 })
+		bagUpdate()                                        -- transmute alerts
+		assert.equal(1, #printed)
+		assert.is_nil(optIn[TRANSMUTE])
+		assert.is_true(optIn[MOONCLOTH_CRAFT])
+
+		frames.fireEvent("PLAYER_LOGIN")                   -- login arms silently
+		assert.is_nil(optIn[TRANSMUTE])
+		assert.is_true(optIn[MOONCLOTH_CRAFT])
+	end)
+
+	it("re-arms an entry taken off the list, without ClearAlert", function()
+		queue(TRANSMUTE, 1)
+		bagsHolding({ [THORIUM] = 2 })
+		bagUpdate()
+		assert.equal(1, #printed)
+		ns.lib.db.char.shoppingList[TRANSMUTE] = nil
+		bagUpdate()
+		queue(TRANSMUTE, 1)
+		bagUpdate()
+		assert.equal(2, #printed)
 	end)
 
 	it("ignores a queued craft whose reagents are unknown", function()

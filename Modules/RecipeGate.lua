@@ -111,9 +111,9 @@ function RecipeGate:IsValidOnClient(profId, recipeId, meta)
 	if meta.minExpansion and meta.minExpansion > clientExp then
 		return false, "minExpansion"
 	end
-	-- GetSpellInfo is called bare: it is the real function on every flavour
-	-- (Compat.lua, THE GUARD RULE), so a presence guard on it can never be false.
-	if isEra and not GetSpellInfo(recipeId) then
+	-- Through addon.Spell.GetInfo: bare GetSpellInfo is the real function on the
+	-- classic flavours, and WoW Forever has only C_Spell's (Compat.lua).
+	if isEra and not addon.Spell.GetInfo(recipeId) then
 		return false, "nospell"
 	end
 	if isEra then
@@ -129,7 +129,7 @@ function RecipeGate:IsValidOnClient(profId, recipeId, meta)
 		-- copy answers, and the guard gated every untagged high-ID Era recipe
 		-- out of the UI while the resolver could have resolved all of them
 		-- (finding 30, the site with teeth). The resolver answers nil itself.
-		local spellExists = GetSpellInfo(recipeId) ~= nil
+		local spellExists = addon.Spell.GetInfo(recipeId) ~= nil
 		local itemExists  =
 			(meta.itemId        and addon.Item.GetInfoInstant(meta.itemId)) or
 			(meta.craftedItemId and addon.Item.GetInfoInstant(meta.craftedItemId))

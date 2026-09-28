@@ -6,6 +6,391 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # TOG Profession Master Changelog
 
+## [v1.1.2] (2026-09-27) - WoW Forever support, Craft All stops tripping a blocked action, the Craft button no longer protects the whole window, and LibDBIcon becomes a dependency
+
+### Bug Fixes
+
+- **The shopping-list "Ready to craft" alert fired only for cooldown crafts,
+  and it rewrote the player's crafter-online choices.** `CheckAlerts` read the
+  reagent from `addon:GetCooldownData()`, so a normal recipe on the list never
+  alerted, although every entry the Professions tab adds carries the recipe's
+  full reagent list (the one the Reagent Tracker sums). It also latched into
+  `db.char.shoppingAlerts`, which is the per-recipe opt-in for the
+  crafter-online alert (the "!" on a shopping-list row, read by
+  `OnCrafterCameOnline`): a ready alert, or logging in with the reagents
+  already in the bags, switched that recipe's crafter alert on, and running
+  out switched a real opt-in off. The alert now checks every reagent on the
+  entry (falling back to the cooldown catalogue for an entry with none), and
+  its latch is a module-local table re-armed at login. A multi-reagent recipe
+  prints the new `AlertReadyAllFormat` (English only; other clients fall back
+  to it). New specs in `Tests/reagentwatch_spec.lua`; the opt-in spec was not
+  run against the old code. Location: `Modules/ReagentWatch.lua`,
+  `Locale/enUS.lua`.
+- **WoW Forever: opening a profession would have scanned into a nil call.**
+  Forever reaches profession data through `C_TradeSkillUI`, and whether it
+  keeps `GetTradeSkillLine` / `GetNumTradeSkills` / `GetTradeSkillInfo` is not
+  verified. New `addon:HasClassicTradeSkillAPI()` checks for all three at call
+  time; the Scanner's and the Crafting engine's trade-skill handlers return
+  early without them, so on Forever the Crafting tab shows its "open a
+  profession" prompt instead of erroring. Known gap: no Forever recipe scan is
+  built, so Forever characters contribute no recipes yet (the cooldown scan is
+  separate and runs). Location: `Compat.lua`, `Scanner.lua`,
+  `Modules/Crafting/CraftingEngine.lua`.
+- **The Crafting quantity box overwrote what the player was typing on every bag
+  update.** `RefreshDetail` set the stepper's value on every refresh; it now
+  sets it only when the quantity actually changed and otherwise uses the
+  library's non-forcing `Refresh`. Location: `GUI/CraftingTab.lua`.
+- **A right-click on a Crafting queue row's [x] removed the entry.** The
+  RowList button column fires on any button; the remove handler now acts only
+  on a left click, as the hand-built queue did. Location: `GUI/CraftingTab.lua`.
+- **The addon's name in the game's AddOns list used a broken grey colour code
+  in every TOC.** All six titles now read
+  `|cffFF8000TOG Profession Master|r |cff999999<version>|r` (brand orange,
+  grey version tag), and the Cataclysm TOC's tag is spelled out (DeltaSync's
+  fleet request). Not checked in the AddOns list. Location: all six TOCs.
+
+- **WoW Forever: an error at login, and the scanner never finished starting
+  (in-game report).** `Scanner:Init` registered `TRADE_SKILL_UPDATE`, which
+  Forever does not have (its `TradeSkillUIDocumentation.lua` declares
+  `TRADE_SKILL_LIST_UPDATE` instead). `RegisterEvent` raises on an unknown
+  name, so everything after it in Init -- the login scans, the broadcast
+  timers, the trainer and learned-recipe events -- was never set up. The
+  events a client may lack (`TRADE_SKILL_UPDATE`, `TRADE_SKILL_LIST_UPDATE`,
+  `CRAFT_SHOW`, `CRAFT_UPDATE`, `NEW_RECIPE_LEARNED`) now go through one
+  `tryRegister` that skips an unknown name, and `TRADE_SKILL_LIST_UPDATE` is
+  registered where it exists. Every other event Init registers is declared in
+  Forever's API docs. `CraftingEngine:Init` had the same fault on its own event
+  frame (`TRADE_SKILL_UPDATE`, and the `CRAFT_*` trio, none in Forever's docs)
+  and now registers them the same way; `TRADE_SKILL_LIST_UPDATE` is handled as
+  an update there too. Every other event the addon registers by name is
+  declared in Forever's API docs. Not verified in a Forever client; whether the
+  classic-style profession scan itself works on Forever is also not verified.
+  Location: `Scanner.lua`, `Modules/Crafting/CraftingEngine.lua`.
+- **WoW Forever: "bad argument #2 to HookScript" at every login (in-game
+  report).** Forever's tooltips have no `OnTooltipSetItem` script (the modern
+  engine replaced it with `TooltipDataProcessor`, which the same function
+  already registers), and `HookScript` raises on a script a frame lacks. The
+  tooltip hooks now go on only where `HasScript` says the frame has them.
+  `Tests/tooltiphooks_spec.lua`'s fake tooltip now raises exactly as a real
+  frame does and a new spec covers a tooltip with no `OnTooltipSetItem`.
+  Location:
+  `Tooltip.lua`.
+- **WoW Forever: hovering a quest reward raised "attempt to call a nil value"
+  from the tooltip (in-game report).** Forever's `GetItem` comes from
+  `GameTooltipDataMixin`, which not every tooltip handed to the
+  `TooltipDataProcessor` post-call carries. All four link reads now go
+  through `TooltipLink`, which uses `GetItem` where it exists and
+  `TooltipUtil.GetDisplayedItem` (that mixin's own implementation) otherwise.
+  `tooltip_spec` and `tooltiphooks_spec` pass (33/0); not verified in a
+  Forever client. Location: `Tooltip.lua`.
+- **WoW Forever: the cooldown scan failed at every login with "attempt to call a
+  nil value" (in-game report).** Forever has no bare `GetSpellCooldown`
+  (`11_0_0_SpellBookAPITransitionGuide.lua:53` maps it to
+  `C_Spell.GetSpellCooldown`, which answers one table), and its `IsSpellKnown`
+  is only an off-by-default deprecation fallback. New `addon.Spell.GetCooldown`
+  answers the classic `start, duration, enabled, modRate` from either API, and
+  `addon.Spell.IsKnown` falls back to `C_SpellBook.IsSpellInSpellBook` exactly
+  as Forever's own fallback does. All seven call sites use them (the cooldown
+  scan, specialization detection, `/togpm transmutedebug`). Specs in
+  `Tests/compat_spec.lua`. Location: `Compat.lua`, `Scanner.lua`,
+  `TOGProfessionMaster.lua`.
+- **WoW Forever: the Guild tab failed to open with "attempt to call a nil value"
+  (in-game report).** Forever has no bare `GetSpellInfo` either, and its
+  transition guide also drops the bare `GetSpellTexture` and `GetSpellLink`.
+  New `addon.Spell.GetInfo` / `GetTexture` / `GetLink` use the bare function
+  where it exists (the real one on the classic clients) and otherwise
+  `C_Spell`'s, with `GetInfo` unpacking its `SpellInfo` table into the classic
+  `name, rank, icon, castTime, minRange, maxRange, spellID` list. Every call in
+  the addon now goes through them -- the Guild, Cooldowns, Missing Recipes,
+  Crafting, Profit Planner, Professions and shopping-list code, the scanner,
+  the recipe gate and reagent alerts -- so no other tab hits the same error.
+  Specs in `Tests/compat_spec.lua`. After these five Forever fixes the operator
+  reported no further errors in a Forever client (2026-09-27); nothing beyond
+  logging in and opening the tabs has been exercised there. Known gap: `GetSpellBookItemInfo` / `GetNumSpellTabs` are also gone on
+  Forever; the spellbook name cache is guarded and simply stays empty there.
+- **A recipe learned from a pattern stayed on the Missing Recipes tab until the
+  profession window was opened (player report).** Only the trade-skill and craft
+  scans write the character's own crafter set, and they run only while that
+  window is open. A pattern, plan or formula read from the bag learned the recipe
+  with the window closed, so nothing recorded it. Two new listeners now do:
+  `NEW_RECIPE_LEARNED(recipeID)`, which Classic Era's API docs declare but which
+  is not confirmed to fire for profession recipes, and the
+  `ERR_LEARN_RECIPE_S` system message ("You have learned how to create a new
+  item: %s."). The message is matched against the client's own localised string
+  and the name is looked up only in the character's own professions. Both go
+  through the new `Scanner:RecordLearnedRecipe`, which adds the one recipe,
+  stamps the scan time, invalidates the profession hash, refreshes the tabs and
+  schedules the broadcast. A spell-known check was ruled out because
+  `IsSpellKnown` answers false for trade-skill spells on Classic Era (DATA-004).
+  Fixed for recipes whose learn message names them; Enchanting formulas (the
+  Craft window) are not verified, and neither is whether the message's name is
+  the recipe's or the crafted item's. Peer Review (thread dd630106) found
+  Blizzard's own Era UI registers `NEW_RECIPE_LEARNED` only for Engraving, so
+  the chat message is the real path and the event is a bonus. Not yet seen in
+  game. Location: `Scanner.lua`, `Tests/scanner_learn_spec.lua`.
+- **Craft All raised ADDON_ACTION_BLOCKED "DoTradeSkill()" as soon as the
+  first recipe finished.** `_OnCraftSuccess` chained `CraftNext` through a
+  `C_Timer` from `UNIT_SPELLCAST_SUCCEEDED`, but `DoTradeSkill` only runs from
+  a hardware event, so the client blocked the second recipe. Craft All now
+  crafts the top eligible entry's full batch and ends the run. When the batch
+  finishes and more is craftable, it prints `CraftAllNextNeedsClick` telling the
+  player to click again. `CraftAll` also clears `_craftAll` when no batch
+  started (nothing eligible, or the Enchanting hand-off). Before, a later
+  unrelated batch would finish "inside" the run and print the prompt. The
+  tooltip (`CraftCraftAllDesc`) says a click is needed per recipe. Location:
+  `Modules/Crafting/CraftQueue.lua`, `Locale/enUS.lua`.
+- **Closing the window in combat raised ADDON_ACTION_BLOCKED "Frame:Hide()"
+  (blamed on Ace3).** The secure `TOGPMCraftButton` was a child of the
+  Crafting detail panel. A frame with a secure child is protected, and so is
+  every ancestor, so the whole AceGUI window became protected. The pooled frame
+  could also carry that protection to the next addon given it. The button now
+  lives on `TOGPMCraftButtonHolder`, which is parented to `UIParent` and not
+  anchored to the panel either. Peer Review (thread 008cd6d5) quoted the wiki:
+  protection also carries to frames a secure frame is anchored to.
+  `RegisterStateDriver(holder, "visibility", "[combat] hide; show")` hides it
+  for combat. New `CraftingTab:SyncCraftButton` places it at the panel's
+  screen position, strata and scale, out of combat only, and re-runs on panel
+  show/hide, on `PLAYER_REGEN_ENABLED`, and from an `OnUpdate` watcher that
+  runs only while the button is wanted and follows window drags and scale
+  changes. The stepper row (-, MAX, +) is anchored to the panel instead of the
+  button. The button stays secure because Enchanting's `DoCraft` is protected.
+  Location: `GUI/CraftingTab.lua`.
+- **Sister-guild data pulls were refused for every legitimate member once a
+  sister roster was held.** The anti-spoof check called
+  `IsInGuildScoped(name, guildKey)`, but the library's signature is
+  `(guildKey, name)`, so identity always came back false. The gate moved into
+  `Scanner:SisterPullGate(sender, baseline)`, which returns
+  `(consentOk, identityOk)` and passes the arguments in the right order.
+  Location: `Scanner.lua`.
+- **Placeholder skill tiers were shown and filtered on as real thresholds.**
+  ProfessionDB's rule: when `requiredSkill` is absent and `difficulty[1] == 1`,
+  the tiers are unanchored placeholders. New `addon.IsUnanchoredDifficulty` and
+  `addon.RecipeLearnSkill` apply that rule. `FormatSkillTiers` shows "-" for
+  those recipes. The Browser tier filter and the Missing Recipes "Can learn
+  now" gate treat them as unknown and keep the row. Location:
+  `TOGProfessionMaster.lua`, `Modules/Crafting/CraftingEngine.lua`,
+  `GUI/BrowserTab.lua`, `GUI/MissingRecipesTab.lua`.
+- **The Missing Reagents [Bank] button sent requests with no item name.** It
+  passed `entry.name` / `entry.link`, but `BuildReagentList` entries carry
+  `itemName` and no link, so the dialog always got `nil` for both. The name and
+  link are now resolved with `addon.Item.GetInfo(itemId)` at click time.
+  Location: `GUI/ShoppingListTab.lua`. NOTE, found later the same day: nothing
+  in the shipped addon draws `ShoppingListTab` -- `MainWindow:DrawTab` has no
+  branch for it and `getTabDefs` lists no such tab -- so this fix, and the
+  Reagent Watch panel in the same file, cannot be reached in game. The player
+  notes no longer list it.
+- **The Professions tab leaked three frames on every redraw.** `Draw` created a
+  new column-header bar and two tooltip hit frames each time and dropped them on
+  release. WoW never frees a frame, and `Draw` re-runs on every
+  `GUILD_DATA_UPDATED`. New `BrowserTab:EnsureHeaderBar` creates them once, and
+  `Draw` re-parents and re-anchors them, like `_detailOuter`. Location:
+  `GUI/BrowserTab.lua`.
+- **The Cooldowns tab leaked frames on every refresh and every popup open.**
+  `DrawRow` created up to 11 raw frames per row, plus their textures and font
+  strings, and dropped them on release. The transmute popup built a new shell,
+  click-outside overlay and ~6 frames per row on every open. WoW frees neither
+  frames nor regions. Each row now takes a kit (`NewRowKit`: every frame and
+  region a row can use, built once) from a free list and returns it on release.
+  Each element keeps its role, and whatever a row sets conditionally (the spec
+  icon and its hover, the group row's click) is reset. `ReleaseRowKit` drops
+  the reagent label's entry from `reagentTints`, so a kit sitting in the free
+  list is no longer recoloured on every `BAG_UPDATE`. The popup keeps one shell
+  (`_popupShell`) and one row slot per line (`NewPopupRow`), with unused slots
+  hidden. A per-kit / per-open generation stops a late item-load callback
+  writing into a kit or row that has moved on. Location: `GUI/CooldownsTab.lua`.
+  Later in this release the rows themselves moved to a RowList (see
+  Improvements), which retired the kits; the popup's shell and row-slot reuse
+  stands.
+- **The Scan AH button's tooltip never appeared while it was disabled**, which
+  is whenever the Auction House is closed. A disabled Button fires no OnEnter
+  unless `SetMotionScriptsWhileDisabled(true)` is set; Blizzard's own
+  `UIButtonMixin:SetDisabledTooltip` does the same. `MakeScanAHButton` now sets
+  it, and resets it in its `OnRelease` because the AceGUI frame is pooled.
+  Location: `GUI/SharedWidgets.lua`.
+
+### Improvements
+
+- **The never-shown Shopping List tab and its Reagent Watch list are deleted as
+  dead code.** `MainWindow` has no tab for `GUI/ShoppingListTab.lua` and has
+  not drawn it since the shopping list moved into the Professions tab (v0.0.15
+  era), so its Reagent Watch panel -- the only way to add an item to
+  `db.char.reagentWatch` -- could not be reached in game. Removed: the file
+  (from all six TOCs), `ReagentWatch`'s `Watch` / `Unwatch` / `IsWatching` /
+  `GetWatchedItems`, the `reagentWatch` default, and
+  `Tests/shoppinglist_spec.lua`; `PLAYER_LOGIN` drops any saved
+  `reagentWatch` table once. Kept: the bag/bank/mail counts, the
+  `REAGENT_WATCH_UPDATED` refresh the Cooldowns and Crafting tabs listen for,
+  and the shopping-list alert. `Tests/shoppingbank_spec.lua` keeps only its
+  `addon.Bank.ShowRequestDialog` cases; the specs that loaded or listed the
+  file no longer do. The watch panel's locale strings are left in the 15
+  locale files, unused. Suite 1615/0. Also stripped four leftover
+  `writ-cannot:` gate markers from spec comments. Location:
+  `Modules/ReagentWatch.lua`, `TOGProfessionMaster.lua`, all six TOCs, `Tests/`.
+- **The Missing Recipes help told players to click a "+" that does not
+  exist.** Its "Row actions" line said "+" adds the scroll to your Reagent
+  Watch; the tab has no such button (and the watch list is gone, above). It
+  now describes the row's real [Bank] and [AH] buttons. Location:
+  `GUI/MainWindow.lua`.
+- **LibDBIcon-1.0 is a required dependency; the embedded copies are gone.**
+  `libs/LibDBIcon-1.0.lua` and `libs/LibDataBroker-1.1.lua` are deleted, all
+  five TOCs list `LibDBIcon-1.0` in `## Dependencies`, and `.pkgmeta` adds
+  `libdbicon-1-0` to `required-dependencies`.
+- **WoW Forever support, with LibDBIcon embedded there only (temporary).** New
+  `TOGProfessionMaster_Camelot.toc` (Interface 16001). LibDBIcon-1.0 is not
+  yet published for Forever, so that TOC alone loads
+  `Libs/LibDataBroker-1.1/LibDataBroker-1.1.lua` then
+  `Libs/LibDBIcon-1.0/LibDBIcon-1.0.lua` (byte-for-byte copies of the
+  standalone v12.0.3: MINOR 4 and 56) before any addon code, and lists
+  LibDBIcon-1.0 under `## OptionalDeps` instead of `## Dependencies`, so a
+  standalone copy still wins when a player has one. The other five TOCs are
+  unchanged. `Tests/loadorder_spec.lua` pins it. To undo once LibDBIcon ships
+  for Forever: delete the two TOC lines and both `Libs` folders, move
+  LibDBIcon-1.0 back into `_Camelot`'s `## Dependencies`, and empty
+  `FOREVER_EMBEDS` in that spec. Not tested in a Forever client.
+- **Specs.** New `Tests/skilltiers_spec.lua` covers the unanchored-tier rule.
+  `Tests/craftingtab_draw_spec.lua` checks that the Craft button's only anchor
+  is the holder, that it lands at the panel's spot, and that it follows the
+  panel when the panel moves. `Tests/craftqueue_spec.lua` checks the Craft All
+  run end and prompt. `Tests/sisterguild_spec.lua` checks the pull gate's
+  argument order. `Tests/shoppingbank_spec.lua` clicks the Missing Reagents
+  [Bank] button and checks the dialog's name and link. `Tests/gui_draw_spec.lua`
+  checks that the Professions header bar is the same frame across redraws, and
+  that the disabled Scan AH button shows its tooltip and releases a clean frame
+  (red with the flag removed); that a Cooldowns redraw creates no frames and
+  returns every kit (red with the free list bypassed); and that a reused kit
+  keeps no click, reagent column, mail button or bank item from its previous
+  row. `Tests/cooldowndraw_spec.lua` checks that reopening the popup builds no
+  frames, and its one-mail-button spec now counts SHOWN buttons, since pooled
+  row slots own hidden ones. `Tests/tooltiphooks_spec.lua` now counts only `Show` hooks,
+  because the Ace lifecycle's own `hooksecurefunc` calls at `PLAYER_LOGIN` were
+  inflating the count. The harness pin moved from 82eb99e to 7008976 in its own
+  commit, then to f7742d1: on 7008976 the full suite ran past ten minutes
+  without finishing while every spec file passed alone. The harness named
+  d77ed4f (its reset now drops the old UIParent's children, a ~5x slowdown
+  in one process) as the likely cause; the commits were not bisected.
+  Whole suite 1639/0 on f7742d1.
+- **LibAceGUIWidgets-1.0 is a required dependency (MINOR 36), and the window
+  code it replaces is gone (adoption in progress).** All five TOCs and
+  `.pkgmeta` list it; `addon.W` holds it when MINOR >= 36. Moved to the library
+  so far:
+  - `addon.GUI.AttachTooltip` and `addon.AceGUIFrameScripts` are pass-throughs
+    to `AttachWidgetTooltip` / `WidgetFrameScripts`. The old tooltip helper
+    enabled the mouse on a pooled Dropdown/EditBox frame and never turned it
+    off; the library restores it. The label-offset, search-box, header-glow and
+    sort-icon cleanups ride `W:OnWidgetRelease`, so none of them takes the
+    widget's one `OnRelease` callback; the sort-icon cleanup that was copied into
+    the AH Profit and Cooldowns tabs now lives once in the icon helper.
+  - Main window: `PersistWindow` + `SetWindowProfile` (the resizable tabs share
+    one profile; the old `browserWidth`/`browserHeight` move into it once),
+    `SetWindowScale`, `SetWindowOpacity` (re-applied after each tab draw, and
+    now reaching the tab panes too), `DressBottomRow` for the help and gear
+    icons (help tooltip `tipMinWidth` 280), and `EscapeLayer` for Escape
+    (popup first, then the window). Behaviour change: closing the window now
+    also closes the [Bank] request dialog and the Cooldowns popup; the dialog
+    used to outlive the window it came from. The window stays clamped to the
+    screen while open (`PersistWindow` clamps only on restore), and the pooled
+    frame's own clamp setting is put back on release. The `OnSizeChanged` resize hook was a
+    `HookScript` on the pooled frame, added again on every open and never
+    removable; it is now a `WidgetFrameScripts` script restored on Release.
+    The gear's proxy-clearing workaround is gone: the options panel is an
+    AceConfigDialog window, and the start of its `Open` wraps
+    `CloseSpecialWindows` rather than calling it (Ace3
+    `AceConfigDialog-3.0.lua:1853-1860`; the rest of `Open` not read, and not
+    yet tried in game). A resizable profile's size is saved on Release by the
+    library itself since MINOR 36 (LibAceGUIWidgets thread 7481d3a5); the
+    `MainWindow:_SaveResizableSize` stand-in written earlier in this release
+    is removed.
+  - The Cooldowns group popup is placed by `AnchorPopup`;
+    `addon.Tooltip.AnchorFrame` and its four specs are removed.
+  - The crafter-online edge flash is `W:FlashScreen` (four flat edge bars in
+    place of the low-health texture). New `Tests/crafteralert_spec.lua`.
+  - The Reagent Tracker is a RowList: cropped icons, `hoverHighlight`, a
+    `[Bank]` button column (`show`/`text`/`tip`, with the per-banker lines from
+    the new `addon.Bank.StatusText`), and `fitContent` sizing the window. New
+    specs in `Tests/reagenttracker_spec.lua`.
+  - The Guild tab's profession -> specialisation -> member tree is
+    `CreateExpandableList`, built once per session and parked in each draw's
+    fill-height group (`AttachRawFrames` hands it back on release). A toggle
+    re-lays the list instead of redrawing the tab, and the expand state now
+    survives a guild-data refresh. The tab's scroll position is no longer saved
+    across a /reload (the list scrolls itself; it was `PersistentScroll`).
+    `BuildTree` specs in `Tests/guildtab_spec.lua`.
+  - The Profit Planner's rows are a RowList, built once per session on a host
+    the tab owns and parked in each draw's group (new `addon.GUI.ParkList`,
+    because `RowList:New` hooks its parent's scripts for good and must never be
+    given a pooled AceGUI frame). The list draws the headers, sort arrow,
+    banding, hover highlight and scrollbar; it is `externalSort`, so `SortRows`
+    still orders the rows (source by its label, ties by recipe). The raw
+    36-row pool, the hand-built header bar, the scrollbar `OnValueChanged`
+    swap and a `scroll.LayoutFinished` override on a pooled ScrollFrame are
+    gone. Each subtab's scroll position is kept in rows by the new
+    `addon.GUI.ListScroll`. The row tooltip now goes through
+    `addon.Tooltip.Owner`, so it opens above a row in the lower half of the
+    screen instead of always below. Specs in `Tests/gui_draw_spec.lua`;
+    `env.drawTab` now anchors its container, since nothing inside an
+    unanchored one had a real height.
+  - Missing Recipes is a RowList the same way: `externalSort` over the
+    existing `SortList`, `[Bank]` and `[AH]` as button columns (`show` /
+    `text` / `tip`; the scan's `onRefresh` just repaints the list), and a row
+    tooltip that also names the selected profession for the recipe block in a
+    single-profession view (it passed nil before). Gone: the 35-row pool,
+    `UpdateVirtualRows`, the hand-built header, `AnchorAll`, and two
+    overrides on pooled AceGUI widgets -- the result ScrollFrame's
+    `LayoutFinished` and the sub-tab TabGroup's, which is now AceGUI's own
+    `SetAutoAdjustHeight(false)` (reset by AceGUI on release). Behaviour
+    change: the "12 Missing Recipes" count moved from the first column's
+    header to the window's status bar, as the Profit Planner's row count
+    already is, because a header whose text changes on every search would
+    rebuild the list's header and every row's cells. Specs in
+    `Tests/gui_draw_spec.lua`, including the row tooltip driven for real.
+  - Cooldowns is a RowList too, which replaces the row kits added earlier in
+    this release (`NewRowKit` / `AcquireRowKit` / `DrawRow`), the
+    `ComputeCol2InnerWidths` width budget and its specs, the hand-built
+    headers, the ScrollFrame and the per-row AceGUI SimpleGroups. Each part of
+    the old row is a column: the TBC/Wrath spec-bonus icon, the character
+    (right-click anywhere on a row still whispers), the cooldown icon, the name
+    as a button cell (`[+]` on a group row, a left click opens the popup under
+    it), the reagent (white or grey by bag stock, repainted on
+    `REAGENT_WATCH_UPDATED`, left click links it), then `[AH]`, `[Bank]`, mail
+    and the "!" alarm as button columns, and the time. The reagent-tint
+    registry is gone; a cold reagent name or icon asks the client once and
+    repaints the list when it answers. The group popup is unchanged. The
+    Cooldowns cold draw on the reporter's saved database fell from 266-407 ms
+    (over its 250 ms budget on this machine) to 25 ms. `cooldowndraw_spec`'s
+    27 specs, which assert on the drawn text, colours and the popup click,
+    pass against the new list unchanged; the two kit specs in
+    `gui_draw_spec` are now a no-new-frames-on-redraw spec and a pooled-row
+    spec, and the name column's 80 px floor is pinned from the declared
+    widths. `env.drawTab` now gives its container `SetAutoAdjustHeight(false)`
+    before its size, as the window's all-sides-anchored TabGroup behaves:
+    the harness fires `OnSizeChanged` synchronously and an empty auto-height
+    SimpleGroup shrank itself back to 0.
+  - Crafting: the recipe list is a RowList with the profession's category
+    rows as group headers (`sortCycle = "three"` gives the third header click
+    back to the tree), the queue is a reorderable RowList handing drops to
+    `CraftQueue:Move`, the panels sit in a `NewDockLayout` the tab owns for
+    the session (no more `container.LayoutFinished` or scroll `LayoutFinished`
+    overrides, no `DetachPool`), the quantity box is `CreateStepper`, and the
+    Craft button is `CreateSecureActionButton`, built lazily because the
+    factory refuses in combat. The Profit Planner jump now uses
+    `ScrollToEntry(..., { context = 2, ifNeeded = true })`, and
+    `Tests/craftscroll_spec.lua` drives it end to end instead of pinning the
+    retired `ScrollToRow` arithmetic. Suite 1624/0 at that point; not run in
+    game.
+  - The Professions list, the Bank dialog and the toolbars are still
+    hand-rolled.
+
+  Location: `TOGProfessionMaster.lua`, `Compat.lua`, `GUI/MainWindow.lua`,
+  `GUI/SharedWidgets.lua`, `GUI/CooldownsTab.lua`, `GUI/AHProfitTab.lua`,
+  `GUI/ReagentTracker.lua`, all five TOCs, `.pkgmeta`, `Tests/env_togpm.lua`.
+- **26 weak spec assertions fixed** (Writ's peer review, thread feed68df):
+  `is_nil` on a literal key now names its key once, shared by the setup and the
+  assertion, with a positive assertion first where the key could have been
+  absent. `Tests/pricefacade_spec.lua` now seeds the orphaned `ahPrices` store,
+  so its removal is exercised.
+
+---
+
 ## [v1.1.1] (2026-09-16) - The [Bank] request dialog follows TOGBank's enforced request limit and places shop orders
 
 ### Bug Fixes

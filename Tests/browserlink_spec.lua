@@ -48,7 +48,7 @@ local function installGlobals()
 	env.itemAPI("GetItemInfoInstant", function(id) return items[id] and id or nil end)
 	env.itemAPI("GetItemIcon",        function() return nil end)
 	_G.GetSpellInfo       = function(id) return "Spell " .. id end
-	_G.GetSpellTexture    = function() return nil end
+	_G.GetSpellTexture    = function(_spell) return nil end
 	_G.GetTime            = function() return 0 end
 	-- BrowserTab schedules its background cache warm at file scope; nothing here
 	-- drives the timers, they just have to exist for the file to load.

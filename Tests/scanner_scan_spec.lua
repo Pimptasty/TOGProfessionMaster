@@ -49,7 +49,7 @@ before_each(function()
 	S._dropCandidates  = nil
 	_G.GetProfessions    = nil          -- Classic: no such API
 	_G.GetProfessionInfo = nil
-	_G.ExpandSkillHeader = function() end
+	_G.ExpandSkillHeader = function(_index) end
 	_G.IsSpellKnown = function() return false end
 	setSkills({})
 end)
@@ -101,7 +101,7 @@ describe("ScanGatheringProfessions", function()
 
 	it("expands collapsed headers first, or the children are invisible", function()
 		local expanded = false
-		_G.ExpandSkillHeader = function() expanded = true end
+		_G.ExpandSkillHeader = function(_index) expanded = true end
 		setSkills({ { name = "Herbalism", rank = 1, max = 300 } })
 		S:ScanGatheringProfessions()
 		assert.is_true(expanded)
@@ -183,7 +183,7 @@ describe("ScanGatheringProfessions", function()
 		-- Expanding a header fires SKILL_LINES_CHANGED, which would re-enter.
 		local depth, maxDepth = 0, 0
 		setSkills({ { name = "Herbalism", rank = 1, max = 300 } })
-		_G.ExpandSkillHeader = function()
+		_G.ExpandSkillHeader = function(_index)
 			depth = depth + 1
 			if depth > maxDepth then maxDepth = depth end
 			S:ScanGatheringProfessions()
@@ -273,9 +273,10 @@ describe("OnTradeSkillEvent -- a linked window", function()
 	it("records NOTHING for someone who is not in the guild", function()
 		-- The gate this describe exists for. A stranger's linked window is not
 		-- guild data and must not enter the database under any key.
-		_G.IsTradeSkillLinked = function() return true, "Stranger" end
+		local stranger = "Stranger"
+		_G.IsTradeSkillLinked = function() return true, stranger end
 		S:OnTradeSkillEvent()
-		assert.is_nil(gdb.skills["Stranger-Testrealm"])
+		assert.is_nil(gdb.skills[stranger .. "-Testrealm"])
 		assert.is_nil(gdb.skills[ME])
 	end)
 

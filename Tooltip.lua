@@ -24,9 +24,28 @@ local function ItemIdFromLink(link)
     return tonumber(link:match("item:(%d+)"))
 end
 
+-- The item link a tooltip is showing, or nil. tooltip:GetItem() is the classic
+-- method, but on WoW Forever it comes from GameTooltipDataMixin and not every
+-- tooltip frame the TooltipDataProcessor post-call hands us has it -- the quest
+-- reward tooltip raised "attempt to call a nil value" (in game 2026-09-27).
+-- TooltipUtil.GetDisplayedItem is that mixin's own implementation
+-- (Forever Blizzard_GameTooltip/Mainline/GameTooltip.lua:1031).
+local function TooltipLink(tooltip)
+    if tooltip.GetItem then
+        local _, link = tooltip:GetItem()
+        return link
+    end
+    local util = _G.TooltipUtil
+    if util and util.GetDisplayedItem then
+        local _, link = util.GetDisplayedItem(tooltip)
+        return link
+    end
+    return nil
+end
+
 -- Extract item ID from a link or plain itemstring returned by GetItem().
 local function ItemIdFromTooltip(tooltip)
-    local _, link = tooltip:GetItem()
+    local link = TooltipLink(tooltip)
     return link and ItemIdFromLink(link)
 end
 
@@ -146,7 +165,7 @@ local function AppendCraftersAndIds(tooltip, itemID)
     -- The deferred call may fire after the user has hovered off the
     -- original item. Re-verify the tooltip is still showing the same
     -- item before polluting the new content. Cheap: one GetItem call.
-    local _, currentLink = tooltip:GetItem()
+    local currentLink = TooltipLink(tooltip)
     if not currentLink or ItemIdFromLink(currentLink) ~= itemID then return end
 
     -- Read settings each call — cheap (one table lookup per toggle) and
@@ -329,7 +348,7 @@ local function AppendRecipeDetailsForItem(tooltip, itemID)
 
     -- Same re-verify the crafters path does: a deferred call can land after the
     -- user has hovered off, and appending then writes onto the wrong item.
-    local _, currentLink = tooltip:GetItem()
+    local currentLink = TooltipLink(tooltip)
     if not currentLink or ItemIdFromLink(currentLink) ~= itemID then return end
 
     -- One block, even when several recipes produce this item (different
@@ -469,13 +488,22 @@ Ace:RegisterEvent("PLAYER_LOGIN", function()
     -- GetItem() which has its own client-flavour quirks. The
     -- _togpmAppended dedup in AppendCrafters keeps all three paths from
     -- double-appending the lines.
+    --
+    -- HookScript RAISES on a script type the frame does not have, and WoW
+    -- Forever's tooltips have no OnTooltipSetItem (in-game report 2026-09-27;
+    -- the modern engine replaced it with the TooltipDataProcessor path above).
+    -- So each script is hooked only where the frame has it.
     local frames = { GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3 }
     local count = 0
     for _, tt in ipairs(frames) do
         if tt then
-            tt:HookScript("OnTooltipSetItem", OnTooltipSetItem)
-            tt:HookScript("OnTooltipCleared", OnTooltipCleared)
-            count = count + 1
+            if tt:HasScript("OnTooltipSetItem") then
+                tt:HookScript("OnTooltipSetItem", OnTooltipSetItem)
+                count = count + 1
+            end
+            if tt:HasScript("OnTooltipCleared") then
+                tt:HookScript("OnTooltipCleared", OnTooltipCleared)
+            end
         end
     end
     addon:DebugPrint("Tooltip: registered legacy OnTooltipSetItem hook on", count, "tooltip frames")
@@ -517,7 +545,7 @@ Ace:RegisterEvent("PLAYER_LOGIN", function()
                     -- comparison tooltips are exactly the case where two of these
                     -- frames are visible at once.
                     if self._togpmReshowing then return end
-                    local _, link = self:GetItem()
+                    local link = TooltipLink(self)
                     if not link then return end
                     local itemID = ItemIdFromLink(link)
                     if not itemID then return end

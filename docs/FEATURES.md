@@ -170,11 +170,11 @@ Built with `AceGUI-3.0`:
 - Shift-click reagent name → insert item link into chat
 - **[Bank] button** per row — TOGBankClassic integration
 
-### 9.3 Reagent Watch
+### 9.3 Reagent Watch (removed in v1.1.2)
 
-- Separate list of watched item IDs — tracked in `AceDB`
-- Shows current bag count per watched item
-- Updates on `BAG_UPDATE`
+- Removed as dead code: its only UI was the Shopping List tab, which the main
+  window never drew. The floating Reagent Tracker covers the shopping-list
+  reagents it would have shown.
 
 ### 9.4 Bucket List Alerts
 

@@ -92,7 +92,6 @@ describe("every tab that shows a recipe wires the shared block", function()
 	local WIRED = {
 		["GUI/MissingRecipesTab.lua"] = "private tooltip frame — the global hook cannot reach it",
 		["GUI/CooldownsTab.lua"]      = "spell: hyperlink — carries no item",
-		["GUI/ShoppingListTab.lua"]   = "SetSpellByID — carries no item",
 		["GUI/AHProfitTab.lua"]       = "SetText fallback — carries no item",
 		["GUI/CraftingTab.lua"]       = "trade-skill index — carries no item",
 		["GUI/BrowserTab.lua"]        = "hand-built tooltip — carries no item",

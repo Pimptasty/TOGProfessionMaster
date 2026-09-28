@@ -241,3 +241,52 @@ describe("BuildMemberList — the skill reading next to a name", function()
 		assert.is_false(rows[2].online)
 	end)
 end)
+
+-- The tree handed to LibAceGUIWidgets' expandable list: profession ->
+-- specialisation -> member, with the empty parts shown but not expandable.
+describe("BuildTree", function()
+	local tree
+
+	before_each(function()
+		local GT = ns.GuildTab
+		local orig = GT.BuildMemberList
+		GT.BuildMemberList = function()
+			return { { name = "Mate", online = true, skillText = " (300/300)" } }
+		end
+		tree = GT:BuildTree({
+			{ profId = 164, name = "Blacksmithing", total = 2, specs = {
+				{ key = "armor", name = "Armorsmith", count = 1, memberSet = { x = true } },
+				{ key = "weapon", name = "Weaponsmith", count = 0 },
+			} },
+			{ profId = 129, name = "First Aid", total = 1, specs = {}, memberSet = { x = true } },
+			{ profId = 182, name = "Herbalism", total = 0, specs = {} },
+		})
+		GT.BuildMemberList = orig
+	end)
+
+	it("keys each profession by its id and counts it", function()
+		assert.equal(164, tree[1].key)
+		assert.equal("2", tree[1].valueText)
+	end)
+
+	it("puts members under a specialisation that has any", function()
+		local armor = tree[1].children[1]
+		assert.equal("armor", armor.key)
+		assert.equal("Mate (300/300)", armor.children[1].label)
+	end)
+
+	it("shows an empty specialisation with nothing to expand", function()
+		assert.is_nil(tree[1].children[2].children)
+		assert.equal("Weaponsmith", tree[1].children[2].label)
+	end)
+
+	it("expands a profession with no specialisations straight to its members", function()
+		assert.equal("Mate (300/300)", tree[2].children[1].label)
+	end)
+
+	it("shows a profession nobody has, dimmed, with nothing to expand", function()
+		assert.is_nil(tree[3].children)
+		assert.equal("Herbalism", tree[3].label)
+		assert.is_table(tree[3].color)
+	end)
+end)

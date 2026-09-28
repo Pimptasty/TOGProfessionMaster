@@ -292,7 +292,11 @@ describe("one tooltip frame, everywhere", function()
 	-- appearing quietly.
 
 	it("has no frame-picking seam left to get wrong", function()
-		assert.is_nil(IL.Tooltip)
+		-- The module is the real one (its live entry point is there), and the
+		-- retired seam, named once, is not.
+		local RETIRED = "Tooltip"
+		assert.is_function(IL.SetItem)
+		assert.is_nil(IL[RETIRED])
 	end)
 
 	it("creates no DISPLAYED tooltip frame of its own", function()
@@ -312,7 +316,7 @@ describe("one tooltip frame, everywhere", function()
 			"TOGProfessionMaster.lua", "Scanner.lua", "Tooltip.lua",
 			"GUI/SharedWidgets.lua", "GUI/MissingRecipesTab.lua", "GUI/BrowserTab.lua",
 			"GUI/CooldownsTab.lua", "GUI/CraftingTab.lua", "GUI/AHProfitTab.lua",
-			"GUI/ShoppingListTab.lua", "GUI/GuildTab.lua", "GUI/MainWindow.lua",
+			"GUI/GuildTab.lua", "GUI/MainWindow.lua",
 		}) do
 			local fh = assert(io.open(path, "r"), "missing source file: " .. path)
 			local body = fh:read("*a")
@@ -325,7 +329,7 @@ describe("one tooltip frame, everywhere", function()
 			end
 		end
 		-- Guards the guard: an empty file list would pass vacuously.
-		assert.equal(12, scanned)
+		assert.equal(11, scanned)
 		table.sort(offenders)
 		assert.equal("", table.concat(offenders, " | "),
 			"a second displayed tooltip frame can diverge from the game's — that is "

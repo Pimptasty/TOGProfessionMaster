@@ -257,11 +257,18 @@ function ItemLink.SyncCompare(tip)
     if not tip then return false end
     if ItemLink.WantsCompare() then
         if GameTooltip_ShowCompareItem then
+            -- The LSP annotation declares no parameters; classic_era's
+            -- Blizzard_GameTooltip/Classic/GameTooltip.lua:680 is
+            -- GameTooltip_ShowCompareItem(self, anchorFrame).
+            ---@diagnostic disable-next-line: redundant-parameter
             GameTooltip_ShowCompareItem(tip)
             return true
         end
         return false
     end
+    -- classic_era GameTooltip.lua:492 is GameTooltip_HideShoppingTooltips(self);
+    -- the LSP annotation declares no parameters.
+    ---@diagnostic disable-next-line: redundant-parameter
     if GameTooltip_HideShoppingTooltips then GameTooltip_HideShoppingTooltips(tip) end
     return false
 end
@@ -560,7 +567,7 @@ function ItemLink.UnlearnedBy(profId, recipeId)
             -- Resolved at runtime, as the Guild tab does. Returns nil for a spell
             -- this client does not know, which is why the name is optional below
             -- rather than assumed.
-            if specId then spec = (GetSpellInfo(specId)) end
+            if specId then spec = (addon.Spell.GetInfo(specId)) end
             out = out or {}
             out[#out + 1] = {
                 name  = charKey:match("^(.-)%-") or charKey,
@@ -1235,6 +1242,8 @@ end
 --- Stop tracking; call from OnLeave alongside hiding the tooltip.
 function ItemLink.EndHover(tip)
     if tip and GameTooltip_HideShoppingTooltips then
+        -- (self) in classic_era GameTooltip.lua:492; the annotation is wrong.
+        ---@diagnostic disable-next-line: redundant-parameter
         GameTooltip_HideShoppingTooltips(tip)
     end
     hovered = nil
@@ -1335,6 +1344,25 @@ function addon.GUI.LiftAboveSizers(button, offset)
     button:SetFrameLevel(base + (offset or 5))
 end
 
+-- On an AceGUI header WIDGET the arrow texture is ours on a pooled frame, so it
+-- is detached when AceGUI releases the widget (through the library's release
+-- chain -- keyed, so a second configure replaces rather than stacks). Raw
+-- frame-backed headers belong to a tab's own pool, which detaches them itself.
+-- Both icon helpers below call this; before, each tab that used them repeated
+-- the same five-line OnRelease block.
+local function detachSortIconOnRelease(widget)
+    if not (addon.W and widget.frame and widget.SetCallback) then return end
+    addon.W:OnWidgetRelease(widget, "togpm:sortIcon", function(w)
+        local tex = w._sortIcon
+        if tex then
+            tex:Hide()
+            tex:SetParent(nil)
+            tex:ClearAllPoints()
+            w._sortIcon = nil
+        end
+    end)
+end
+
 -- Shared header-arrow widget plumbing (FGI-style MoreArrow texture).
 -- Works for AceGUI header widgets and raw frame-backed header buttons.
 function addon.GUI.Sort.ConfigureHeaderIcon(widgetOrButton, isSorted, isAsc, justify)
@@ -1347,6 +1375,7 @@ function addon.GUI.Sort.ConfigureHeaderIcon(widgetOrButton, isSorted, isAsc, jus
         tex = host:CreateTexture(nil, "OVERLAY")
         tex:SetSize(12, 12)
         widgetOrButton._sortIcon = tex
+        detachSortIconOnRelease(widgetOrButton)
     end
 
     tex:ClearAllPoints()
@@ -1383,11 +1412,10 @@ end
 -- GetStringWidth. Use it on tabs whose headers are centred over their columns
 -- (Profit Planner, Cooldowns) so the arrow hugs the text everywhere alike.
 --
--- The widget owns its texture as `widget._sortIcon`; callers must clean it up on
--- the widget's OnRelease / DetachPool (Hide + SetParent(nil) + ClearAllPoints +
--- nil) exactly as they do for ConfigureHeaderIcon, so it doesn't bleed across the
--- pool. Only the asc/desc look is shared, via SetIndicator. `width` is the column
--- width; it falls back to the host frame's current width.
+-- The widget owns its texture as `widget._sortIcon`. On an AceGUI widget it is
+-- detached on Release automatically (detachSortIconOnRelease); a raw header's
+-- pool detaches it. Only the asc/desc look is shared, via SetIndicator. `width`
+-- is the column width; it falls back to the host frame's current width.
 --
 -- Works for both AceGUI header widgets (host = widget.frame, text = widget.label)
 -- and raw frame-backed headers (host = widget itself, text = widget._fs) — so
@@ -1407,6 +1435,7 @@ function addon.GUI.Sort.ConfigureCenteredHeaderIcon(widget, isSorted, isAsc, wid
         tex = host:CreateTexture(nil, "OVERLAY")
         tex:SetSize(size, size)
         widget._sortIcon = tex
+        detachSortIconOnRelease(widget)
     end
     if not isSorted then
         tex:Hide()
@@ -1721,6 +1750,55 @@ function addon.GUI.PersistentScroll.Reset(tab, scroll)
 end
 
 -- ---------------------------------------------------------------------------
+-- A LibAceGUIWidgets RowList that lives for the session, inside a pooled tab
+-- ---------------------------------------------------------------------------
+-- RowList:New HookScripts its parent's OnSizeChanged and OnMouseWheel, and a
+-- HookScript cannot be removed -- so the parent must never be a pooled AceGUI
+-- frame. Each list gets a raw host frame owned by the tab for the session; every
+-- draw parks that host inside the draw's AceGUI group, and AttachRawFrames hands
+-- it back to UIParent when the group is released. The list keeps its rows, sort
+-- arrow and column widths across redraws and tab switches.
+--
+-- `owner` is the tab module (the host and list are kept on it under `field`),
+-- `group` the AceGUI group to fill, and `build(host)` returns the new RowList
+-- the first time only.
+function addon.GUI.ParkList(owner, field, group, build)
+    local hostField = field .. "Host"
+    local host = owner[hostField]
+    if not host then
+        host = CreateFrame("Frame", nil, UIParent)
+        owner[hostField] = host
+        owner[field] = build(host)
+    end
+    host:SetParent(group.content)
+    host:ClearAllPoints()
+    host:SetAllPoints(group.content)
+    host:Show()
+    if addon.W then addon.W:AttachRawFrames(group, host) end
+    return owner[field]
+end
+
+-- The saved scroll position of a RowList, in ROWS, kept in the same
+-- db.char.frames.scrollTabs store PersistentScroll uses (under its own field,
+-- so an older build's pixel offset for the same key is not misread as rows).
+-- Read the offset BEFORE SetData: SetData scrolls to the top, and that move is
+-- reported through the list's onScroll too.
+addon.GUI.ListScroll = {}
+
+function addon.GUI.ListScroll.Get(key)
+    local store = _GetScrollStore()
+    local rec = store and key and store[key]
+    return (rec and rec.rowOffset) or 0
+end
+
+function addon.GUI.ListScroll.Set(key, offset)
+    local store = _GetScrollStore()
+    if not (store and key) then return end
+    store[key] = store[key] or {}
+    store[key].rowOffset = offset
+end
+
+-- ---------------------------------------------------------------------------
 -- Persistent UI choices (dropdown selections, active tab, saved filters, ...)
 -- ---------------------------------------------------------------------------
 -- One place for the "remember this control's value across /reload and relog"
@@ -1933,6 +2011,14 @@ function addon.GUI.MakeScanAHButton(opts)
     end)
 
     addon.GUI.AttachTooltip(btn, opts.tooltipTitle, opts.tooltipDesc)
+    -- The button is disabled whenever the AH is closed -- exactly when its
+    -- tooltip matters -- and a disabled Button fires no OnEnter unless motion
+    -- scripts are enabled while disabled (Blizzard does the same for its own
+    -- disabled-button tooltips: UIButtonTemplate.lua SetDisabledTooltip,
+    -- classic_era). Reset in OnRelease below: the frame is pooled.
+    if btn.frame.SetMotionScriptsWhileDisabled then
+        btn.frame:SetMotionScriptsWhileDisabled(true)
+    end
 
     -- OnRelease: clear our slot in _activeButtons IF this is still the
     -- registered button. A redraw replaces the entry with a NEW button
@@ -1944,6 +2030,9 @@ function addon.GUI.MakeScanAHButton(opts)
         end
         btn._tpmRefresh   = nil
         btn._tpmOnRefresh = nil
+        if btn.frame.SetMotionScriptsWhileDisabled then
+            btn.frame:SetMotionScriptsWhileDisabled(false)
+        end
     end)
 
     _activeButtons[opts.tabName] = btn
@@ -1954,62 +2043,18 @@ end
 -- ---------------------------------------------------------------------------
 -- Tooltip attachment
 -- ---------------------------------------------------------------------------
--- Standard "title + body" tooltip on hover. Routes through whichever
--- mechanism the widget actually exposes:
---
---   • widget:SetCallback("OnEnter"/"OnLeave", fn) — Button, CheckBox,
---     Dropdown body, EditBox body, InteractiveLabel. AceGUI's per-widget
---     Constructor wires Control_OnEnter to fire the SetCallback registry,
---     and AceGUI clears the registry on Release for free.
---
---   • widget.frame:EnableMouse(true) + raw frame OnEnter — covers the
---     LABEL area above Dropdown / EditBox (those widgets put their label
---     fontstring at the top of widget.frame; the dropdown button or
---     editbox sits below and only it gets Control_OnEnter, so hovering
---     the label produces NO callback). Routed through the leak-safe
---     addon.AceGUIFrameScripts so the script restores on release.
---     Detected by the presence of widget.label (a fontstring) — that
---     attribute exists on Dropdown / EditBox but not Button or CheckBox.
+-- Standard "title + body" tooltip on hover of an AceGUI widget, label area
+-- included. Delegates to LibAceGUIWidgets' AttachWidgetTooltip (MINOR 36,
+-- TOGPM's own contract efe864ec): it answers on widget.frame and the widget's
+-- interactive children, runs each frame's existing dispatcher first (so our
+-- SetCallback("OnEnter") handlers elsewhere still fire), and on Release puts
+-- back every script, the mouse flag and the motion flag. The hand-rolled
+-- version this replaces enabled the mouse on a pooled Dropdown/EditBox frame
+-- and never turned it back off. Anchored through addon.Tooltip.Owner like
+-- every other TOGPM tooltip.
 function addon.GUI.AttachTooltip(widget, title, desc)
-    if not widget then return end
-
-    local function show(anchor)
-        addon.Tooltip.Owner(anchor or widget.frame)
-        -- wrap = true. `SetText` takes (text, r, g, b, alpha, wrap) and `wrap`
-        -- defaults to FALSE, so a caller passing a long `title` would set the
-        -- width of the whole tooltip. This is the shared helper every tab's
-        -- button tooltips go through, so the title is arbitrary caller text.
-        if title then GameTooltip:SetText(title, 1, 1, 1, 1, true) end
-        if desc  then GameTooltip:AddLine(desc, nil, nil, nil, true) end
-        GameTooltip:Show()
-    end
-    local function hide() GameTooltip:Hide() end
-
-    widget:SetCallback("OnEnter", function(w) show(w.frame) end)
-    widget:SetCallback("OnLeave", hide)
-
-    -- Dropdown and EditBox put their SetLabel("...") fontstring at the
-    -- TOP of widget.frame and the actual interactive body (the dropdown
-    -- button / input field) BELOW it. AceGUI only wires Control_OnEnter
-    -- to the body, so hovering the label area would never fire OnEnter.
-    -- Enable mouse on the wrapper frame and route the same tooltip via
-    -- the leak-safe AceGUIFrameScripts so the label area is hoverable.
-    --
-    -- Type check (NOT widget.label presence) — Label/InteractiveLabel
-    -- also expose widget.label as their primary fontstring; installing
-    -- a raw OnEnter on their wrapper would replace AceGUI's internal
-    -- Control_OnEnter dispatcher and silently break widget:SetCallback
-    -- for the rest of the widget's lifetime.
-    local needsWrapper = (widget.type == "Dropdown" or widget.type == "EditBox")
-    if needsWrapper and widget.frame then
-        if widget.frame.EnableMouse then
-            widget.frame:EnableMouse(true)
-        end
-        addon.AceGUIFrameScripts(widget, {
-            OnEnter = function(f) show(f) end,
-            OnLeave = hide,
-        })
-    end
+    if not (widget and addon.W) then return end
+    addon.W:AttachWidgetTooltip(widget, title, desc, { owner = addon.Tooltip.Owner })
 end
 
 addon.GUI.InputLabelOffsetX = addon.GUI.InputLabelOffsetX or 4
@@ -2050,8 +2095,10 @@ function addon.GUI.OffsetInputLabel(widget, dx)
     end
     widget._togpmInputLabelOffset = useDx
 
-    local prevOnRelease = widget.events and widget.events.OnRelease
-    widget:SetCallback("OnRelease", function(self)
+    -- Undone on Release through the library's release chain, which leaves the
+    -- widget's single SetCallback("OnRelease") slot to its caller.
+    if not addon.W then return end
+    addon.W:OnWidgetRelease(widget, "togpm:labelOffset", function(self)
         if self.label then
             self.label:ClearAllPoints()
             for _, p in ipairs(originalPoints) do
@@ -2059,7 +2106,6 @@ function addon.GUI.OffsetInputLabel(widget, dx)
             end
         end
         self._togpmInputLabelOffset = nil
-        if prevOnRelease then prevOnRelease(self) end
     end)
 end
 
@@ -2136,8 +2182,8 @@ function addon.GUI.StyleSearchBox(widget, keepLabelSpace)
         eb:SetTextInsets(18, 0, 0, 0)
     end
 
-    local prevOnRelease = widget.events and widget.events.OnRelease
-    widget:SetCallback("OnRelease", function(self)
+    if not addon.W then return widget end
+    addon.W:OnWidgetRelease(widget, "togpm:searchBox", function(self)
         addon.GUI._searchBoxes[eb] = nil
         local i = self._searchIcon
         if i then
@@ -2150,7 +2196,6 @@ function addon.GUI.StyleSearchBox(widget, keepLabelSpace)
             self.editbox:SetTextInsets(unpack(self._origTextInsets))
             self._origTextInsets = nil
         end
-        if prevOnRelease then prevOnRelease(self) end
     end)
     return widget
 end
@@ -2208,11 +2253,12 @@ function addon.GUI.MakeColumnHeader(opts)
     -- colour (single source of truth) — no SetGradient, which differs across
     -- clients. Opt-in so only sortable-header tabs (Profit, Cooldowns) light up.
     --
-    -- AttachTooltip above already registered OnEnter/OnLeave, so we CHAIN them
-    -- (widget.events holds one callback per event). OnRelease hides + detaches
-    -- the texture so it can't bleed into another addon that recycles this pooled
-    -- widget; tab callers chain their own OnRelease via prevOnRelease, so setting
-    -- it here composes rather than conflicts.
+    -- OnEnter/OnLeave are chained through SetCallback (widget.events holds one
+    -- callback per event; AttachTooltip's hover runs on the frame scripts, so it
+    -- is not in the way). The release hook hides + detaches the texture so it
+    -- can't bleed into another addon that recycles this pooled widget; it rides
+    -- the library's release chain, so a tab's own SetCallback("OnRelease")
+    -- neither stomps it nor is stomped by it.
     if opts.hoverGlow then
         local glow = lbl._togpmHeaderGlow
         if not glow then
@@ -2236,17 +2282,17 @@ function addon.GUI.MakeColumnHeader(opts)
             if self._togpmHeaderGlow then self._togpmHeaderGlow:Hide() end
             if prevLeave then prevLeave(self, ...) end
         end)
-        local prevRelease = lbl.events and lbl.events.OnRelease
-        lbl:SetCallback("OnRelease", function(self, ...)
-            local tex = self._togpmHeaderGlow
-            if tex then
-                tex:Hide()
-                tex:SetParent(nil)
-                tex:ClearAllPoints()
-                self._togpmHeaderGlow = nil
-            end
-            if prevRelease then prevRelease(self, ...) end
-        end)
+        if addon.W then
+            addon.W:OnWidgetRelease(lbl, "togpm:headerGlow", function(self)
+                local tex = self._togpmHeaderGlow
+                if tex then
+                    tex:Hide()
+                    tex:SetParent(nil)
+                    tex:ClearAllPoints()
+                    self._togpmHeaderGlow = nil
+                end
+            end)
+        end
     end
 
     opts.parent:AddChild(lbl)

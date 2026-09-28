@@ -432,9 +432,12 @@ describe("the transmute popup", function()
 			return t
 		end
 
+		-- SHOWN mail buttons: since v1.1.2 the popup's rows are pooled, so every
+		-- row slot owns a mail button and those without one to show keep it hidden.
 		local function mailButtons(popup)
 			return frames.findAll(popup, function(o)
-				local tex = o._type == "Button" and o.GetNormalTexture and o:GetNormalTexture()
+				local tex = o._type == "Button" and o:IsShown()
+					and o.GetNormalTexture and o:GetNormalTexture()
 				return tex and tex:GetTexture() == "Interface\\Icons\\INV_Letter_15" or false
 			end)
 		end
@@ -446,6 +449,23 @@ describe("the transmute popup", function()
 			assert.is_truthy(anyMatching(texts, "Thorium Bar"))
 			assert.is_truthy(anyMatching(texts, "Arcane Crystal"))
 			assert.equal(1, #mailButtons(popup))
+		end)
+
+		it("builds no new frames when it is opened again", function()
+			-- Up to v1.1.2 every open built a new shell, overlay and row frames,
+			-- and WoW never frees a frame.
+			setUpArcaniteRow()
+			local popup, _, cdHit = openPopup()
+			cdHit:GetScript("OnClick")(cdHit, "LeftButton")   -- close
+			local made, realCreate = 0, _G.CreateFrame
+			_G.CreateFrame = function(...) made = made + 1; return realCreate(...) end
+			local ok, err = pcall(cdHit:GetScript("OnClick"), cdHit, "LeftButton")
+			_G.CreateFrame = realCreate
+			assert.is_true(ok, tostring(err))
+			assert.equal(popup, CD._groupPopup)
+			assert.is_true(popup:IsShown())
+			assert.equal(0, made)
+			assert.is_truthy(anyMatching(popupText(popup), "Arcane Crystal"))
 		end)
 
 		it("puts BOTH reagents on one mail when that button is clicked", function()

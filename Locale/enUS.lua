@@ -65,7 +65,8 @@ L["CraftMax"]             = "Max"
 L["CraftMaxButton"]       = "Craft Max"
 L["CraftMaxButtonDesc"]   = "Queue the most of this recipe you can make right now and start crafting it immediately — like Skillet's \"Create All\". Do it across several recipes to stack them all up in a few clicks."
 L["CraftCraftAll"]        = "Craft All"
-L["CraftCraftAllDesc"]    = "Craft every recipe in the queue you can make right now, one after another. (Enchanting still pauses for you to click each target item.)"
+L["CraftCraftAllDesc"]    = "Craft the full batch of the top recipe in the queue you can make right now. The game requires a click to start each new recipe, so click again when a batch finishes. (Enchanting still pauses for you to click each target item.)"
+L["CraftAllNextNeedsClick"] = "Batch finished — click Craft All (or Craft Next) to start the next recipe. The game requires a click for each one."
 L["CraftMissingMaterials"] = "Missing Materials"
 L["CraftBankReagentDesc"] = "A guild-bank character has this reagent. Click to request it."
 L["CraftAHReagentDesc"]   = "The Auction House has this reagent (from your last scan). Click to search for it."
@@ -441,6 +442,7 @@ L["CraftedBy"]              = "Crafted by:"
 -- Alerts
 -- ---------------------------------------------------------------------------
 L["AlertReadyFormat"]       = "|cff00ff00Ready to craft:|r %s \195\151 %d  (%s \195\151 %d in bags)"
+L["AlertReadyAllFormat"]    = "|cff00ff00Ready to craft:|r %s \195\151 %d  (all %d reagents in bags)"
 
 -- Shopping list crafter alert
 L["ShoppingAlertEnable"]               = "Enable crafter alert for this recipe"

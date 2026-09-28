@@ -18,50 +18,21 @@ ProfitTab.WINDOW_SIZE = { minWidth = 920, minHeight = 540 }
 ProfitTab._sortCol = ProfitTab._sortCol or "profit"
 if ProfitTab._sortAsc == nil then ProfitTab._sortAsc = false end
 
-local ROW_H     = 16
-local POOL_SIZE = 36
+local ROW_H  = 16
+local ICON_W = 14
 
+-- Column widths (scale-1.0). The recipe column has none: it is the list's one
+-- auto-width column and takes whatever the fixed columns leave. The money
+-- columns are wide enough to space the coin values apart.
 local COL = {
-    recipe     = 168,
+    icon       = ICON_W + 6,
     profession = 78,
     crafters   = 112,
     source     = 92,
-    -- Money columns: wide enough to space the coin values comfortably apart,
-    -- but the total row extent must stay inside the window's usable content
-    -- width (~840px after the nested frame/tab insets on the 920px minWidth)
-    -- so Profit and the scrollbar aren't pushed off the right edge and the
-    -- Profit header doesn't wrap. 112 each lands the last column at ~821px,
-    -- clear of the scrollbar, while still spacing the coin values well apart
-    -- (the original 72 was cramped; Copilot's 142 overflowed the window).
     cost       = 112,
     sell       = 112,
     profit     = 112,
 }
-
-local PAD = 2
-local ICON_W = 14
-local ICON_GAP = 3
-local X = {}
-
-local function BuildLayout()
-    local x = 4
-    X.icon = x
-    x = x + ICON_W + ICON_GAP
-    X.recipe = x
-    x = x + COL.recipe + PAD
-    X.profession = x
-    x = x + COL.profession + PAD
-    X.crafters = x
-    x = x + COL.crafters + PAD
-    X.source = x
-    x = x + COL.source + PAD
-    X.cost = x
-    x = x + COL.cost + PAD
-    X.sell = x
-    x = x + COL.sell + PAD
-    X.profit = x
-end
-BuildLayout()
 
 local BRAND = "|c" .. (addon.BrandColor or "ffFF8000")
 local RESET = "|r"
@@ -436,17 +407,7 @@ function ProfitTab:RefreshRowsInPlace(resetToTop)
 
     self._rows = self:ApplyFilters(self._baseRows)
     self:SortRows(self._rows)
-
-    if self._scroll then
-        if resetToTop and self._scroll.scrollbar and self._scroll.scrollbar.SetValue then
-            self._scroll.scrollbar:SetValue(0)
-        end
-        if self._scroll.content then
-            self._scroll.content:SetHeight(math.max(1, #self._rows * ROW_H))
-        end
-        if self._scroll.FixScroll then self._scroll:FixScroll() end
-        self:UpdateRows()
-    end
+    if self._list then self._list:SetData(self._rows, not resetToTop) end
 
     self:SetCountText(BRAND .. ("Rows: %d"):format(#self._rows) .. RESET)
 end
@@ -574,7 +535,7 @@ function ProfitTab:BuildRows(mode)
                         local displayItemId = craftedItemId or resolvedItemId
                         local icon = (displayItemId and addon.Item.GetIcon(displayItemId))
                                   or (resolvedItemId and addon.Item.GetIcon(resolvedItemId))
-                                  or (GetSpellTexture and GetSpellTexture(recipeId))
+                                  or addon.Spell.GetTexture(recipeId)
                         rows[#rows + 1] = {
                             itemId = resolvedItemId,
                             displayItemId = displayItemId,
@@ -748,101 +709,15 @@ function ProfitTab:BuildToolbar(parent, mode, options)
     toolbar:AddChild(sourceDropdown)
 end
 
-function ProfitTab:BuildHeaders(parent)
-    local hdr = AceGUI:Create("SimpleGroup")
-    hdr:SetLayout("Flow")
-    hdr:SetFullWidth(true)
-
-    -- Leading spacer = the recipe data column's X (left margin + icon + gap), so
-    -- the first header column starts exactly over the recipe data column. Using
-    -- X.recipe rather than ICON_W+ICON_GAP also accounts for BuildLayout's 4px
-    -- left margin — omitting it was the start of the header→row drift.
-    local spacer = AceGUI:Create("Label")
-    spacer:SetWidth(X.recipe)
-    spacer:SetText(" ")
-    hdr:AddChild(spacer)
-
-    -- Every header is CENTER-justified over its column, and the sort arrow is
-    -- placed just to the right of the (centered) header text by the shared
-    -- addon.GUI.Sort.ConfigureCenteredHeaderIcon — not at the column's far edge.
-    -- The DATA cells keep their own justification (set in BuildPool): names left,
-    -- money right.
-    local cols = {
-        { key = "recipe",     label = "Recipe",        width = COL.recipe,     tip = "Crafted item." },
-        { key = "profession", label = "Profession",    width = COL.profession,
-          tip = "Profession that crafts this recipe." },
-        { key = "crafters",   label = "Your Crafters", width = COL.crafters,
-          tip = "Your characters that know this recipe." },
-        { key = "source",     label = "Price Source",  width = COL.source,     tip = "Provider used for sale price." },
-        { key = "cost",       label = "Craft Cost",    width = COL.cost,       tip = "Material cost for one craft." },
-        { key = "sell",       label = "Sell Price",    width = COL.sell,
-          tip = "Current or historical sell price for one item." },
-        { key = "profit",     label = "Profit",        width = COL.profit,     tip = "Sell minus craft cost." },
-    }
-
-    self._headerCols = cols
-    self._headerWidgets = {}
-
-    for i, col in ipairs(cols) do
-        if i > 1 then
-            -- Data columns are separated by PAD px, but Flow places header widgets
-            -- edge-to-edge. A PAD-wide spacer before each subsequent header keeps
-            -- every header column span aligned with its data column (without it the
-            -- headers drift left, cumulatively, one PAD per column).
-            local gap = AceGUI:Create("Label")
-            gap:SetWidth(PAD)
-            gap:SetText(" ")
-            hdr:AddChild(gap)
-        end
-        local w = addon.GUI.MakeColumnHeader({
-            parent = hdr,
-            label = col.label,
-            width = col.width,
-            justifyH = "CENTER",
-            hoverGlow = true,
-            tooltipTitle = col.label,
-            tooltipDesc = col.tip .. " Click to sort.",
-            onClick = function()
-                self:OnHeaderClick(col.key)
-            end,
-        })
-        addon.GUI.Sort.ConfigureCenteredHeaderIcon(w, self._sortCol == col.key, self._sortAsc, col.width)
-
-        -- Clean up sort icon when widget is released back to AceGUI pool
-        local prevOnRelease = w.events and w.events.OnRelease
-        w:SetCallback("OnRelease", function(widget)
-            if widget._sortIcon then
-                widget._sortIcon:Hide()
-                widget._sortIcon:SetParent(nil)
-                widget._sortIcon:ClearAllPoints()
-                widget._sortIcon = nil
-            end
-            if prevOnRelease then prevOnRelease(widget) end
-        end)
-
-        self._headerWidgets[col.key] = w
-    end
-
-    parent:AddChild(hdr)
-end
-
-function ProfitTab:UpdateHeaderText()
-    if not (self._headerCols and self._headerWidgets) then return end
-    for _, col in ipairs(self._headerCols) do
-        local w = self._headerWidgets[col.key]
-        if w then
-            w:SetText(BRAND .. col.label .. RESET)
-            addon.GUI.Sort.ConfigureCenteredHeaderIcon(w, self._sortCol == col.key, self._sortAsc, col.width)
-        end
-    end
-end
-
-function ProfitTab:OnHeaderClick(col)
-    self._sortCol, self._sortAsc = addon.GUI.Sort.Next(self._sortCol, self._sortAsc, col)
-    self:UpdateHeaderText()
+-- A header click, reported by the list (onSortChanged) after it has set its
+-- own key and arrow: a new column starts ascending, the same column flips.
+-- The list is externalSort, so SortRows orders the rows.
+function ProfitTab:OnSortChanged(key, desc)
+    self._sortCol = key or "profit"
+    self._sortAsc = not desc
     if self._rows then
         self:SortRows(self._rows)
-        self:UpdateRows()
+        if self._list then self._list:SetData(self._rows, true) end
     end
 end
 
@@ -917,196 +792,113 @@ function ProfitTab:SortRows(rows)
     end
 end
 
-function ProfitTab:DetachPool()
-    -- Hide tooltip if it's showing for this tab's elements.
-    if GameTooltip then
-        GameTooltip:Hide()
-    end
-
-    -- The profession dropdown is now a native AceGUI child of the toolbar and
-    -- is released by container:ReleaseChildren(); no manual detach required.
-    addon.GUI.DetachPool(self._pool)
-    self._scroll = nil
-    self._rows = nil
-    self._baseRows = nil
+--- The row icon: the crafted item's, else the recipe's, else the question mark.
+local function rowIcon(row)
+    return (row.displayItemId and addon.Item.GetIcon(row.displayItemId))
+        or (row.itemId and addon.Item.GetIcon(row.itemId))
+        or row.icon
+        or (row.recipeId and addon.Spell.GetTexture(row.recipeId))
+        or 134400
 end
 
-function ProfitTab:BuildPool(parent)
-    self._pool = {}
-    for _ = 1, POOL_SIZE do
-        local f = CreateFrame("Button", nil, parent)
-        f:SetHeight(ROW_H)
-        f:Hide()
-        f:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight", "ADD")
+local function sourceText(source)
+    if source and addon.Price and addon.Price.ColorizeSource then
+        return addon.Price.ColorizeSource(source)
+    end
+    return source or "|cff888888No price|r"
+end
 
-        local icon = f:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(14, 14)
-        icon:SetPoint("LEFT", f, "LEFT", X.icon, 0)
-        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        f.icon = icon
+--- The item tooltip plus the planner's own lines, for the row under the pointer.
+function ProfitTab:ShowRowTooltip(row, owner)
+    addon.Tooltip.Owner(owner)
 
-        local bg = f:CreateTexture(nil, "BACKGROUND")
-        bg:SetAllPoints(f)
-        f.bg = bg
+    if row.itemLink then
+        addon.ItemLink.SetItem(GameTooltip, row.itemLink)
+    elseif row.displayItemId then
+        GameTooltip:SetItemByID(row.displayItemId)
+    elseif row.itemId then
+        GameTooltip:SetItemByID(row.itemId)
+    else
+        -- Fallback if no item info available
+        GameTooltip:SetText(row.recipe, 1, 1, 1, 1, true)
+    end
 
-        local recipe = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        recipe:SetPoint("LEFT", f, "LEFT", X.recipe, 0)
-        recipe:SetWidth(COL.recipe)
-        recipe:SetJustifyH("LEFT")
-        recipe:SetWordWrap(false)
-        f.recipe = recipe
+    -- Add profit planner details
+    GameTooltip:AddLine(" ")  -- Blank line separator
+    GameTooltip:AddLine("Profit Planner:", 1, 0.82, 0, true)
+    -- wrap = true on both. `row.crafters` is a comma-joined list of every
+    -- guildmate who can make the item, so on a popular recipe it is the
+    -- longest line on the tooltip by a wide margin — and without the flag
+    -- it cannot break, so it sets the width of the whole frame.
+    GameTooltip:AddLine("Profession: " .. row.profession, 0.9, 0.9, 0.9, true)
+    GameTooltip:AddLine("Crafters: " .. row.crafters, 0.9, 0.9, 0.9, true)
+    GameTooltip:AddLine("Price Source: " .. sourceText(row.source), 1, 1, 1, true)
+    if row.source and row.age and row.age > 14 * 24 * 60 * 60 then
+        GameTooltip:AddLine("Price is stale (>14 days old)", 1, 0.82, 0, true)
+    end
 
-        local prof = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        prof:SetPoint("LEFT", f, "LEFT", X.profession, 0)
-        prof:SetWidth(COL.profession)
-        prof:SetJustifyH("LEFT")
-        prof:SetWordWrap(false)
-        f.prof = prof
+    -- The same recipe block every other tab shows. Explicit rather than
+    -- inherited: the global hook is OnTooltipSetItem, so the SetText
+    -- fallback above (a recipe with no resolvable item) carried nothing
+    -- at all, and the block renders once per tooltip either way.
+    addon.ItemLink.AppendRecipeBlocks(GameTooltip, row.profId, row.recipeId, row.itemId)
 
-        local crafters = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        crafters:SetPoint("LEFT", f, "LEFT", X.crafters, 0)
-        crafters:SetWidth(COL.crafters)
-        crafters:SetJustifyH("LEFT")
-        crafters:SetWordWrap(false)
-        f.crafters = crafters
+    -- Click hints (the whole tooltip in this tab is intentionally plain
+    -- English, matching the lines above).
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("Click to open in the Crafting tab", 0.4, 0.8, 1, true)
+    GameTooltip:AddLine("Shift-click to link in chat", 0.6, 0.6, 0.6, true)
 
-        local source = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        source:SetPoint("LEFT", f, "LEFT", X.source, 0)
-        source:SetWidth(COL.source)
-        source:SetJustifyH("LEFT")
-        source:SetWordWrap(false)
-        f.source = source
+    GameTooltip:Show()
+end
 
-        local cost = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        cost:SetPoint("LEFT", f, "LEFT", X.cost, 0)
-        cost:SetWidth(COL.cost)
-        cost:SetJustifyH("RIGHT")
-        cost:SetWordWrap(false)
-        f.cost = cost
+-- The rows: a LibAceGUIWidgets RowList (MINOR 36), built once per session on a
+-- host the tab owns (addon.GUI.ParkList). It draws the header bar, sort arrow,
+-- banding, hover highlight and scrollbar. The list is externalSort: a header
+-- click comes back through onSortChanged, and SortRows orders the rows by the
+-- same rule it always did (source by its label, ties by recipe name).
+local function headerTip(text) return text .. " Click to sort." end
 
-        local sell = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        sell:SetPoint("LEFT", f, "LEFT", X.sell, 0)
-        sell:SetWidth(COL.sell)
-        sell:SetJustifyH("RIGHT")
-        sell:SetWordWrap(false)
-        f.sell = sell
-
-        local profit = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        profit:SetPoint("LEFT", f, "LEFT", X.profit, 0)
-        profit:SetWidth(COL.profit)
-        profit:SetJustifyH("RIGHT")
-        profit:SetWordWrap(false)
-        f.profit = profit
-
-        f:SetScript("OnEnter", function(rf)
-            if not rf._row then return end
-            local row = rf._row
-            -- Always anchor tooltip to BOTTOMLEFT (bottom-right of cursor) for profit tab rows
-            GameTooltip:SetOwner(rf, "ANCHOR_BOTTOMLEFT")
-
-            -- Show actual game item tooltip
-            if row.itemLink then
-                addon.ItemLink.SetItem(GameTooltip, row.itemLink)
-            elseif row.displayItemId then
-                GameTooltip:SetItemByID(row.displayItemId)
-            elseif row.itemId then
-                GameTooltip:SetItemByID(row.itemId)
-            else
-                -- Fallback if no item info available
-                GameTooltip:SetText(row.recipe, 1, 1, 1, 1, true)
-            end
-
-            -- Add profit planner details
-            GameTooltip:AddLine(" ")  -- Blank line separator
-            GameTooltip:AddLine("Profit Planner:", 1, 0.82, 0, true)
-            -- wrap = true on both. `row.crafters` is a comma-joined list of every
-            -- guildmate who can make the item, so on a popular recipe it is the
-            -- longest line on the tooltip by a wide margin — and without the flag
-            -- it cannot break, so it sets the width of the whole frame. The line
-            -- two below already passed `true`; these did not.
-            GameTooltip:AddLine("Profession: " .. row.profession, 0.9, 0.9, 0.9, true)
-            GameTooltip:AddLine("Crafters: " .. row.crafters, 0.9, 0.9, 0.9, true)
-            if row.source then
-                GameTooltip:AddLine("Price Source: "
-                    .. (addon.Price and addon.Price.ColorizeSource(row.source) or row.source),
-                    1, 1, 1, true)
-            else
-                GameTooltip:AddLine("Price Source: |cff888888No price|r", 1, 1, 1, true)
-            end
-            if row.source and row.age and row.age > 14 * 24 * 60 * 60 then
-                GameTooltip:AddLine("Price is stale (>14 days old)", 1, 0.82, 0, true)
-            end
-
-            -- The same recipe block every other tab shows. Explicit rather than
-            -- inherited: the global hook is OnTooltipSetItem, so the SetText
-            -- fallback above (a recipe with no resolvable item) carried nothing
-            -- at all, and the block renders once per tooltip either way.
-            addon.ItemLink.AppendRecipeBlocks(GameTooltip, row.profId, row.recipeId, row.itemId)
-
-            -- Click hints (the whole tooltip in this tab is intentionally plain
-            -- English, matching the lines above).
-            GameTooltip:AddLine(" ")
-            GameTooltip:AddLine("Click to open in the Crafting tab", 0.4, 0.8, 1, true)
-            GameTooltip:AddLine("Shift-click to link in chat", 0.6, 0.6, 0.6, true)
-
-            GameTooltip:Show()
-        end)
-        f:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        f:SetScript("OnClick", function(rf)
-            local row = rf._row
-            if not row then return end
+function ProfitTab:BuildList(host)
+    return addon.W.RowList:New(host, {
+        rowHeight      = ROW_H,
+        hoverHighlight = true,
+        externalSort   = true,
+        onSortChanged  = function(key, desc) self:OnSortChanged(key, desc) end,
+        onScroll       = function(_, offset) addon.GUI.ListScroll.Set(self._scrollKey, offset) end,
+        columns = {
+            { key = "_icon", width = COL.icon, iconSize = ICON_W, iconTexCoord = true,
+              sortable = false, icon = rowIcon },
+            { key = "recipe", header = "Recipe", headerTip = headerTip("Crafted item.") },
+            { key = "profession", header = "Profession", width = COL.profession,
+              headerTip = headerTip("Profession that crafts this recipe."),
+              format = function(v) return "|cffaaaaaa" .. (v or "") .. RESET end },
+            { key = "crafters", header = "Your Crafters", width = COL.crafters,
+              headerTip = headerTip("Your characters that know this recipe."),
+              format = function(v) return "|cffffffff" .. (v or "") .. RESET end },
+            { key = "source", header = "Price Source", width = COL.source,
+              headerTip = headerTip("Provider used for sale price."),
+              format = function(v) return sourceText(v) end },
+            { key = "cost", header = "Craft Cost", width = COL.cost, align = "RIGHT",
+              headerTip = headerTip("Material cost for one craft."),
+              format = function(v) return moneyText(v) end },
+            { key = "sell", header = "Sell Price", width = COL.sell, align = "RIGHT",
+              headerTip = headerTip("Current or historical sell price for one item."),
+              format = function(v) return moneyText(v) end },
+            { key = "profit", header = "Profit", width = COL.profit, align = "RIGHT",
+              headerTip = headerTip("Sell minus craft cost."),
+              format = function(v) return colorProfit(v) end },
+        },
+        onRowEnter = function(row, _, _, rowFrame) self:ShowRowTooltip(row, rowFrame) end,
+        onRowLeave = function() GameTooltip:Hide() end,
+        onRowClick = function(row, _, _, button)
+            if button ~= "LeftButton" then return end
             -- Shift-click keeps the standard "link item in chat" behaviour.
             if addon.ItemLink.Click(row.itemLink) then return end
             -- Plain click jumps to the Crafting tab and opens this recipe there.
             ProfitTab:GoToCrafting(row)
-        end)
-
-        self._pool[#self._pool + 1] = f
-    end
-end
-
-function ProfitTab:UpdateRows()
-    if not (self._scroll and self._rows and self._pool) then return end
-    local status = self._scroll.status or self._scroll.localstatus
-    local offset = (status and status.offset) or 0
-    local first = math.floor(offset / ROW_H)
-
-    for i = 1, POOL_SIZE do
-        local f = self._pool[i]
-        local row = self._rows[first + i]
-        if row then
-            f._row = row
-            addon.GUI.ApplyRowStripe(f, first + i)
-            local tex = (row.displayItemId and addon.Item.GetIcon(row.displayItemId))
-                     or (row.itemId and addon.Item.GetIcon(row.itemId))
-                     or row.icon
-                     or (row.recipeId and GetSpellTexture and GetSpellTexture(row.recipeId))
-            f.icon:SetTexture(tex or 134400)
-            f.recipe:SetText(row.recipe)
-            f.prof:SetText("|cffaaaaaa" .. row.profession .. RESET)
-            f.crafters:SetText("|cffffffff" .. row.crafters .. RESET)
-            if row.source and addon.Price and addon.Price.ColorizeSource then
-                f.source:SetText(addon.Price.ColorizeSource(row.source))
-            elseif row.source then
-                f.source:SetText(row.source)
-            else
-                f.source:SetText("|cff888888No price|r")
-            end
-            f.cost:SetText(moneyText(row.cost))
-            f.sell:SetText(moneyText(row.sell))
-            f.profit:SetText(colorProfit(row.profit))
-
-            local y = -((first + i - 1) * ROW_H)
-            f:ClearAllPoints()
-            f:SetPoint("TOPLEFT", self._scroll.content, "TOPLEFT", 0, y)
-            f:SetPoint("TOPRIGHT", self._scroll.content, "TOPRIGHT", 0, y)
-            f:Show()
-        else
-            f._row = nil
-            if f.bg then f.bg:SetColorTexture(1, 1, 1, 0) end
-            f:Hide()
-        end
-    end
+        end,
+    })
 end
 
 function ProfitTab:DrawTable(container, mode)
@@ -1123,52 +915,35 @@ function ProfitTab:DrawTable(container, mode)
     -- Row count is shown in the window status bar (see SetCountText), not here.
     self:SetCountText(BRAND .. "Loading..." .. RESET)
 
-    self:BuildHeaders(container)
-
-    local scroll, savedScroll = addon.GUI.PersistentScroll.Acquire(self, {
-        key = (mode == "history") and "ahprofit_history" or "ahprofit_live",
-        layout = "List", fullWidth = true, fullHeight = true,
-        onRelease = function() self:DetachPool() end,
-    })
-    container:AddChild(scroll)
-    self._scroll = scroll
-    -- Virtual-row tabs manage content size/anchors manually; disable
-    -- ScrollFrame auto-content layout (same pattern as Crafting/Browser).
-    scroll.LayoutFinished = function() end
-
-    if not self._pool then
-        self:BuildPool(scroll.content)
-    else
-        for _, f in ipairs(self._pool) do f:SetParent(scroll.content) end
-    end
-
-    if scroll.scrollbar then
-        local bar = scroll.scrollbar
-        local prev = (bar.GetScript and bar:GetScript("OnValueChanged")) or nil
-        if bar.SetScript then
-            bar:SetScript("OnValueChanged", function(bar2, value)
-            if bar2.obj and bar2.obj.SetScroll then bar2.obj:SetScroll(value) end
-            self:UpdateRows()
-        end)
-        end
-
-        local prevOnRelease = scroll.events and scroll.events.OnRelease
-        scroll:SetCallback("OnRelease", function(widget)
-            if bar and bar.SetScript then
-                bar:SetScript("OnValueChanged", prev)
-            end
-            if prevOnRelease then prevOnRelease(widget) end
-        end)
-    end
-
     self._rows = self:ApplyFilters(baseRows)
     self:SortRows(self._rows)
-    scroll.content:SetHeight(math.max(1, #self._rows * ROW_H))
-    if scroll.FixScroll then scroll:FixScroll() end
-    self:UpdateRows()
-    addon.GUI.PersistentScroll.Restore(scroll, savedScroll, function()
-        self:UpdateRows()
-    end)
+
+    if addon.W then
+        local group = AceGUI:Create("SimpleGroup")
+        group:SetFullWidth(true)
+        group:SetFullHeight(true)
+        group:SetLayout("Fill")
+        container:AddChild(group)
+        -- Released on a subtab or tab switch: the rows belong to that draw,
+        -- and the list's host goes back to UIParent through ParkList.
+        addon.W:OnWidgetRelease(group, "togpm:profitList", function()
+            GameTooltip:Hide()
+            self._rows, self._baseRows = nil, nil
+        end)
+
+        local list = addon.GUI.ParkList(self, "_list", group, function(host)
+            return self:BuildList(host)
+        end)
+        -- Each subtab keeps its own scroll position across redraws and
+        -- /reload. The key is set before SetData so the scroll-to-top that
+        -- SetData reports lands on this subtab, then the saved row goes back.
+        local key = (mode == "history") and "ahprofit_history" or "ahprofit_live"
+        local saved = addon.GUI.ListScroll.Get(key)
+        self._scrollKey = key
+        list:SetSort(self._sortCol, not self._sortAsc)
+        list:SetData(self._rows)
+        list:SetScrollOffset(saved)
+    end
 
     self:SetCountText(BRAND .. ("Rows: %d"):format(#self._rows) .. RESET)
 end

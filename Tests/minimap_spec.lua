@@ -9,9 +9,10 @@
 --     passing a throwaway local silently lost the position on every /reload.
 --     It has to be the table that persists.
 --
--- Runs against the REAL vendored LibDataBroker-1.1 and LibDBIcon-1.0 — they live
--- inside this addon rather than as siblings, which is what `libs.register`
--- exists for.
+-- Runs against the REAL LibDataBroker-1.1 and LibDBIcon-1.0 from the standalone
+-- LibDBIcon-1.0 addon in the sibling AddOns folder. Since v1.1.2 that addon is a
+-- required dependency and TOGPM no longer embeds either library, so the sibling
+-- copy is exactly what players run.
 
 ---@diagnostic disable: duplicate-set-field
 package.path = "./Tests/?.lua;" .. package.path
@@ -21,25 +22,16 @@ local libs = require("env.libs")
 local ns, dataObj, opened
 
 local function haveVendoredLibs()
-	return libs.available("TOGPM-LibDataBroker") and libs.available("TOGPM-LibDBIcon")
+	return libs.available("LibDBIcon-1.0")
 end
 
 setup(function()
 	ns = env.initDb()
-	-- Vendored, not sibling: root is the addon itself. Keyed under names of our
-	-- own so they cannot collide with a shared-manifest entry of the same
-	-- library, with `major` naming what each actually registers with LibStub —
-	-- which is what lets `libs.fresh` evict the right thing.
-	libs.register("TOGPM-LibDataBroker", {
-		root = ".", folder = "libs", files = { "LibDataBroker-1.1.lua" },
-		major = "LibDataBroker-1.1",
-	})
-	libs.register("TOGPM-LibDBIcon", {
-		root = ".", folder = "libs", files = { "LibDBIcon-1.0.lua" },
-		major = "LibDBIcon-1.0",
-	})
+	-- The harness's own manifest entry (Adoption log 2026-09-25, d57d724) loads
+	-- the standalone addon from AddOns/LibDBIcon-1.0 with its LibDataBroker, so
+	-- no private registration is needed.
 	if haveVendoredLibs() then
-		libs.load("TOGPM-LibDataBroker", "TOGPM-LibDBIcon")
+		libs.load("LibDBIcon-1.0")
 		env.loadModule("GUI/MinimapButton.lua")
 		dataObj = LibStub("LibDataBroker-1.1", true)
 			and LibStub("LibDataBroker-1.1"):GetDataObjectByName("TOGProfessionMaster")
@@ -68,21 +60,21 @@ end)
 
 describe("minimap launcher", function()
 	it("registers an LDB launcher object", function()
-		if not dataObj then return pending("vendored LibDataBroker-1.1 not found in libs/") end
+		if not dataObj then return pending("LibDBIcon-1.0 addon not installed next to TOGPM") end
 		assert.equal("launcher", dataObj.type)
 		assert.is_function(dataObj.OnClick)
 		assert.is_function(dataObj.OnTooltipShow)
 	end)
 
 	it("opens the browser on a plain left-click", function()
-		if not dataObj then return pending("vendored LibDataBroker-1.1 not found in libs/") end
+		if not dataObj then return pending("LibDBIcon-1.0 addon not installed next to TOGPM") end
 		dataObj.OnClick(nil, "LeftButton")
 		assert.is_true(opened.browser)
 		assert.is_nil(opened.settings)
 	end)
 
 	it("opens settings on shift+left-click, not the browser", function()
-		if not dataObj then return pending("vendored LibDataBroker-1.1 not found in libs/") end
+		if not dataObj then return pending("LibDBIcon-1.0 addon not installed next to TOGPM") end
 		_G.IsShiftKeyDown = function() return true end
 		dataObj.OnClick(nil, "LeftButton")
 		assert.is_true(opened.settings)
@@ -90,19 +82,19 @@ describe("minimap launcher", function()
 	end)
 
 	it("opens the shopping list on right-click", function()
-		if not dataObj then return pending("vendored LibDataBroker-1.1 not found in libs/") end
+		if not dataObj then return pending("LibDBIcon-1.0 addon not installed next to TOGPM") end
 		dataObj.OnClick(nil, "RightButton")
 		assert.is_true(opened.reagents)
 	end)
 
 	it("ignores a button it has no binding for", function()
-		if not dataObj then return pending("vendored LibDataBroker-1.1 not found in libs/") end
+		if not dataObj then return pending("LibDBIcon-1.0 addon not installed next to TOGPM") end
 		dataObj.OnClick(nil, "MiddleButton")
 		assert.same({}, opened)
 	end)
 
 	it("documents all three bindings in the tooltip", function()
-		if not dataObj then return pending("vendored LibDataBroker-1.1 not found in libs/") end
+		if not dataObj then return pending("LibDBIcon-1.0 addon not installed next to TOGPM") end
 		local lines = {}
 		dataObj.OnTooltipShow({ AddLine = function(_, text) lines[#lines + 1] = text end })
 		-- Title, blank, and one line per binding.
@@ -121,12 +113,12 @@ describe("LibDBIcon registration", function()
 		-- game OnEnable runs once. A fresh copy per test is the honest way to run
 		-- it repeatedly; SetupMinimapButton looks the library up through LibStub
 		-- at call time, so it picks the new one up.
-		libs.fresh("TOGPM-LibDBIcon")
+		libs.fresh("LibDBIcon-1.0")
 		ns.lib:OnEnable()
 	end
 
 	it("hands LibDBIcon the table that PERSISTS, seeded from the legacy field", function()
-		if not dataObj then return pending("vendored LibDataBroker-1.1 not found in libs/") end
+		if not dataObj then return pending("LibDBIcon-1.0 addon not installed next to TOGPM") end
 		ns.lib.db.profile.minimap       = nil     -- fresh profile
 		ns.lib.db.profile.minimapPos    = 137     -- the pre-v0.7.1 field
 		ns.lib.db.profile.minimapButton = true
@@ -141,7 +133,7 @@ describe("LibDBIcon registration", function()
 	end)
 
 	it("defaults the angle when there is no legacy position either", function()
-		if not dataObj then return pending("vendored LibDataBroker-1.1 not found in libs/") end
+		if not dataObj then return pending("LibDBIcon-1.0 addon not installed next to TOGPM") end
 		ns.lib.db.profile.minimap    = nil
 		ns.lib.db.profile.minimapPos = nil
 		enable()
@@ -149,7 +141,7 @@ describe("LibDBIcon registration", function()
 	end)
 
 	it("does not overwrite a position the user has already dragged to", function()
-		if not dataObj then return pending("vendored LibDataBroker-1.1 not found in libs/") end
+		if not dataObj then return pending("LibDBIcon-1.0 addon not installed next to TOGPM") end
 		ns.lib.db.profile.minimap    = { minimapPos = 12 }
 		ns.lib.db.profile.minimapPos = 137
 		enable()
@@ -157,7 +149,7 @@ describe("LibDBIcon registration", function()
 	end)
 
 	it("mirrors the visibility setting into LibDBIcon's hide flag", function()
-		if not dataObj then return pending("vendored LibDataBroker-1.1 not found in libs/") end
+		if not dataObj then return pending("LibDBIcon-1.0 addon not installed next to TOGPM") end
 		ns.lib.db.profile.minimap       = nil
 		ns.lib.db.profile.minimapButton = false
 		enable()
@@ -167,7 +159,7 @@ end)
 
 describe("ShowMinimapButton", function()
 	it("turns the setting on so the button survives a reload", function()
-		if not dataObj then return pending("vendored LibDataBroker-1.1 not found in libs/") end
+		if not dataObj then return pending("LibDBIcon-1.0 addon not installed next to TOGPM") end
 		ns.Print = function() end
 		ns.lib.db.profile.minimapButton = false
 		ns:ShowMinimapButton()

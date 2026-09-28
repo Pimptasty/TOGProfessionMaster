@@ -206,7 +206,7 @@ function GuildTab:BuildCounts()
         for specSpell, memberSet in pairs(bySpec) do
             specList[#specList + 1] = {
                 key       = specSpell,
-                name      = GetSpellInfo(specSpell) or ("Spell " .. specSpell),
+                name      = addon.Spell.GetInfo(specSpell) or ("Spell " .. specSpell),
                 count     = countSet(memberSet),
                 memberSet = memberSet,
             }
@@ -222,7 +222,7 @@ function GuildTab:BuildCounts()
                 if not present[specSpell] then
                     specList[#specList + 1] = {
                         key       = specSpell,
-                        name      = GetSpellInfo(specSpell) or ("Spell " .. specSpell),
+                        name      = addon.Spell.GetInfo(specSpell) or ("Spell " .. specSpell),
                         count     = 0,
                         memberSet = {},
                     }
@@ -336,6 +336,7 @@ function GuildTab:FillContent(scroll)
         empty:SetFullWidth(true)
         empty:SetText(L["GuildTabEmpty"])
         scroll:AddChild(empty)
+        self:SetTree({})
         return
     end
 
@@ -354,131 +355,113 @@ function GuildTab:FillContent(scroll)
         tooltipTitle = L["GuildColCount"], tooltipDesc = L["GuildColCountDesc"],
     })
 
-    local brand        = "|c" .. (addon.BrandColor or "ffFF8000")
-    local colorOnline  = "|c" .. (addon.ColorOnline  or "ffffffff")
-    local colorOffline = "|c" .. (addon.ColorOffline or "ff888888")
-    local colorYou     = "|c" .. (addon.ColorYou     or addon.BrandColor or "ffFF8000")
-
-    -- One expandable [+]/[-] row: name (indented, coloured) + right-aligned count,
-    -- clickable across the name to toggle. Both the profession and each spec use it.
-    local function addExpandRow(isOpen, indent, nameColor, name, count, onClick)
-        local row = AceGUI:Create("SimpleGroup")
-        row:SetFullWidth(true)
-        row:SetLayout("Flow")
-        local nameLbl = AceGUI:Create("InteractiveLabel")
-        nameLbl:SetWidth(NAME_W)
-        nameLbl:SetText(indent .. brand .. (isOpen and "[-]" or "[+]") .. "|r "
-                        .. nameColor .. name .. "|r")
-        nameLbl:SetCallback("OnClick", onClick)
-        row:AddChild(nameLbl)
-        local countLbl = AceGUI:Create("Label")
-        countLbl:SetWidth(COUNT_W)
-        countLbl:SetText(nameColor .. count .. "|r")
-        row:AddChild(countLbl)
-        scroll:AddChild(row)
-    end
-
-    -- A non-expandable row (name + count), aligned under the expandable rows by
-    -- padding where their "[+] " marker sits. Used for 0-count specs so an empty
-    -- specialization is visible without a misleading expand affordance.
-    local function addPlainRow(indent, nameColor, name, count)
-        local row = AceGUI:Create("SimpleGroup")
-        row:SetFullWidth(true)
-        row:SetLayout("Flow")
-        local nameLbl = AceGUI:Create("Label")
-        nameLbl:SetWidth(NAME_W)
-        nameLbl:SetText(indent .. "     " .. nameColor .. name .. "|r")
-        row:AddChild(nameLbl)
-        local countLbl = AceGUI:Create("Label")
-        countLbl:SetWidth(COUNT_W)
-        countLbl:SetText(nameColor .. count .. "|r")
-        row:AddChild(countLbl)
-        scroll:AddChild(row)
-    end
-
-    -- Member leaf rows, coloured online/offline exactly like the Professions tab
-    -- (white online, grey offline, brand-colour "You"; an online alt surfaces its
-    -- offline main). indent sets the tree depth.
-    local function addMemberRows(memberSet, indent, profId)
-        for _, m in ipairs(self:BuildMemberList(memberSet, profId)) do
-            local col = m.isYou and colorYou or (m.online and colorOnline or colorOffline)
-            local lbl = AceGUI:Create("Label")
-            lbl:SetFullWidth(true)
-            lbl:SetText(indent .. col .. m.name .. "|r" .. (m.skillText or ""))
-            scroll:AddChild(lbl)
-        end
-    end
-
-    for _, prof in ipairs(data) do
-        local pOpen = self._expanded and self._expanded[prof.profId]
-
-        -- A 0-count profession (a gathering profession nobody has yet) renders
-        -- dimmed and non-expandable — the coverage gap is visible, but there's
-        -- nothing to drill into.
-        if prof.total == 0 then
-            addPlainRow("", "|cff888888", prof.name, prof.total)
-        else
-        -- Level 1: profession. Expands to show its specs (or, for spec-less
-        -- professions like First Aid, a flat member list).
-        addExpandRow(pOpen, "", "|cffffffff", prof.name, prof.total, function()
-            self._expanded = self._expanded or {}
-            self._expanded[prof.profId] = not self._expanded[prof.profId]
-            self:Refresh()
-        end)
-
-        if pOpen then
-            if #prof.specs > 0 then
-                for _, spec in ipairs(prof.specs) do
-                    if spec.count > 0 then
-                        -- Level 2: spec. Its own [+]/[-] expands to the people in it.
-                        local sKey  = tostring(prof.profId) .. ":" .. tostring(spec.key)
-                        local sOpen = self._specExpanded and self._specExpanded[sKey]
-                        addExpandRow(sOpen, "      ", "|cffaaaaaa", spec.name, spec.count,
-                            function()
-                                self._specExpanded = self._specExpanded or {}
-                                self._specExpanded[sKey] = not self._specExpanded[sKey]
-                                self:Refresh()
-                            end)
-                        -- Level 3: the members of this spec.
-                        if sOpen and spec.memberSet then
-                            addMemberRows(spec.memberSet, "            ", prof.profId)
-                        end
-                    else
-                        -- Nobody has this spec: show it dimmed and non-expandable so
-                        -- the coverage gap is visible ("no one does that thing").
-                        addPlainRow("      ", "|cff666666", spec.name, spec.count)
-                    end
-                end
-            elseif prof.memberSet then
-                -- No specializations recorded — expand straight to the member list.
-                addMemberRows(prof.memberSet, "      ", prof.profId)
-            end
-        end
-        end  -- close the `else` (prof.total > 0) branch
-    end
+    self:SetTree(self:BuildTree(data))
 end
 
--- Re-render in place after an expand/collapse toggle. Mirrors MainWindow's
--- tab-switch path (ReleaseChildren + Draw) so PersistentScroll restores the
--- scroll position across the rebuild.
+-- "ffRRGGBB" -> { r, g, b } for the expandable list's `color`.
+local function rgb(hex)
+    hex = hex or "ffffffff"
+    return { tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255,
+             tonumber(hex:sub(7, 8), 16) / 255 }
+end
+
+--- The profession -> specialisation -> member tree as LibAceGUIWidgets'
+--- CreateExpandableList nodes (MINOR 36, TOGPM contract 7ab1cb56). Keys are the
+--- profession id and the spec key, and the list keys its expand state by the
+--- PATH, so two specs sharing a name under two professions keep their own state.
+---   * A 0-count profession (a gathering one nobody has yet) is a dimmed leaf:
+---     the coverage gap is visible, and there is nothing to drill into.
+---   * A 0-count spec is a dimmed leaf too ("no one does that thing").
+---   * A profession with no specialisations recorded expands straight to its
+---     members.
+---   * Members are coloured like the Professions tab: white online, grey
+---     offline, brand colour for You; the skill level follows in grey.
+function GuildTab:BuildTree(data)
+    local cOnline  = rgb(addon.ColorOnline  or "ffffffff")
+    local cOffline = rgb(addon.ColorOffline or "ff888888")
+    local cYou     = rgb(addon.ColorYou     or addon.BrandColor or "ffFF8000")
+    local DIM, DIMMER, SPEC = rgb("ff888888"), rgb("ff666666"), rgb("ffaaaaaa")
+
+    local function members(memberSet, profId)
+        local out = {}
+        for _, m in ipairs(self:BuildMemberList(memberSet, profId)) do
+            out[#out + 1] = {
+                label = m.name .. (m.skillText or ""),
+                color = m.isYou and cYou or (m.online and cOnline or cOffline),
+            }
+        end
+        return out
+    end
+
+    local tree = {}
+    for _, prof in ipairs(data) do
+        local node = { key = prof.profId, label = prof.name, valueText = tostring(prof.total) }
+        if prof.total == 0 then
+            node.color = DIM
+        elseif #prof.specs > 0 then
+            node.children = {}
+            for _, spec in ipairs(prof.specs) do
+                local s = { key = spec.key, label = spec.name, valueText = tostring(spec.count) }
+                if spec.count > 0 and spec.memberSet then
+                    s.color, s.children = SPEC, members(spec.memberSet, prof.profId)
+                else
+                    s.color = DIMMER
+                end
+                node.children[#node.children + 1] = s
+            end
+        elseif prof.memberSet then
+            node.children = members(prof.memberSet, prof.profId)
+        end
+        tree[#tree + 1] = node
+    end
+    return tree
+end
+
+--- Hand the tree to the list. The list is built ONCE per session and parked in
+--- each draw's host group: its rows are pooled and its expand state survives a
+--- redraw, so a guild-data refresh keeps what the player had open, and a toggle
+--- re-lays the rows without rebuilding the tab.
+function GuildTab:SetTree(tree)
+    if self._list then self._list:SetData(tree) end
+end
+
+function GuildTab:Draw(container)
+    self._container = container
+    container:SetLayout("Flow")
+
+    -- Column headers first (FillContent), then the tree in a group that fills
+    -- the rest of the tab.
+    local top = AceGUI:Create("SimpleGroup")
+    top:SetFullWidth(true)
+    top:SetLayout("List")
+    container:AddChild(top)
+
+    local host = AceGUI:Create("SimpleGroup")
+    host:SetFullWidth(true)
+    host:SetFullHeight(true)
+    host:SetLayout("Fill")
+    container:AddChild(host)
+
+    if addon.W then
+        if not self._list then
+            self._list = addon.W:CreateExpandableList(host.content, { indent = 14 })
+        end
+        local frame = self._list.frame
+        frame:SetParent(host.content)
+        frame:ClearAllPoints()
+        frame:SetAllPoints(host.content)
+        frame:Show()
+        -- The list's frame is ours on a pooled widget: handed back to UIParent
+        -- when this group is released (a tab switch or the window closing).
+        addon.W:AttachRawFrames(host, frame)
+    end
+
+    self:FillContent(top)
+end
+
+-- Kept for callers that redraw the tab after its data changed.
 function GuildTab:Refresh()
     if not self._container then return end
     self._container:ReleaseChildren()
     self:Draw(self._container)
-end
-
-function GuildTab:Draw(container)
-    self._container = container   -- kept so Refresh() (expand toggle) can rebuild
-    container:SetLayout("Fill")
-
-    local scroll, saved = addon.GUI.PersistentScroll.Acquire(self, {
-        key = "guild", layout = "List", fullWidth = true, fullHeight = true,
-    })
-    container:AddChild(scroll)
-    self._scroll = scroll
-
-    self:FillContent(scroll)
-
-    if scroll.DoLayout then scroll:DoLayout() end
-    addon.GUI.PersistentScroll.Restore(scroll, saved)
 end

@@ -86,7 +86,7 @@ describe("ScanCooldowns", function()
 
 	it("seeds a known idle cooldown as Ready", function()
 		local spellId = plainCooldown()
-		_G.IsSpellKnown = function(id) return id == spellId end
+		env.wow.knownSpells[spellId] = true   -- read through C_SpellBook
 		S:ScanCooldowns()
 		assert.equal(NOW - 1, gdb.cooldowns[ME][spellId])
 	end)

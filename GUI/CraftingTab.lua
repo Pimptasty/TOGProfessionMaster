@@ -167,33 +167,33 @@ function CraftingTab:Draw(container)
     -- is permitted; the async re-show redraws with the target open and FillList →
     -- TrySelectPending resolves the selection then.
     if allowAuto and pendEntry and info and info.profId ~= pendEntry.profId and not inCombat then
-        if Engine then Engine:OpenProfession(pendEntry.castName or pendEntry.name) end
+        if Engine then Engine:OpenProfession(pendEntry.castName or pendEntry.name, "jump") end
     end
 
-    local list, order = {}, {}
+    local profItems = {}
     for _, p in ipairs(professions) do
-        list[p.name]    = ("%s (%d/%d)"):format(p.name, p.rank, p.max)
-        order[#order+1] = p.name
+        profItems[#profItems + 1] = { value = p.name, text = ("%s (%d/%d)"):format(p.name, p.rank, p.max) }
     end
-    local profDD = AceGUI:Create("Dropdown")
-    profDD:SetWidth(230)
-    profDD:SetList(list, order)
-    profDD:SetValue(active)
-    profDD:SetCallback("OnValueChanged", function(_w, _e, name)
-        setSavedProf(name)
-        if not (info and info.name == name) then
-            -- Queue is kept across profession switches by design (bounce between
-            -- professions toward one goal). Opt-in setting clears it on switch.
-            if Ace.db and Ace.db.profile and Ace.db.profile.clearQueueOnProfSwitch
-               and addon.CraftQueue then
-                addon.CraftQueue:Clear()
+    addon.GUI.ToolbarDropdown(self, "prof", toolbar, {
+        width    = 230,
+        items    = function() return profItems end,
+        value    = active,
+        onChange = function(name)
+            setSavedProf(name)
+            if not (info and info.name == name) then
+                -- Queue is kept across profession switches by design (bounce between
+                -- professions toward one goal). Opt-in setting clears it on switch.
+                if Ace.db and Ace.db.profile and Ace.db.profile.clearQueueOnProfSwitch
+                   and addon.CraftQueue then
+                    addon.CraftQueue:Clear()
+                end
+                local p = findProf(professions, name)
+                if Engine then Engine:OpenProfession(p and p.castName or name, "dropdown") end
             end
-            local p = findProf(professions, name)
-            if Engine then Engine:OpenProfession(p and p.castName or name) end
-        end
-    end)
-    addon.GUI.AttachTooltip(profDD, L["CraftColRecipe"], L["CraftProfessionDesc"])
-    toolbar:AddChild(profDD)
+        end,
+        tipTitle = L["CraftColRecipe"],
+        tipBody  = L["CraftProfessionDesc"],
+    })
 
     if not info then
         -- No profession window is open yet. If the player just NAVIGATED to the
@@ -209,50 +209,61 @@ function CraftingTab:Draw(container)
         -- allowAuto / inCombat are read+consumed once near the top of Draw so the
         -- pending-jump profession switch and this auto-open share the one-shot gate.
         local activeEntry = active and findProf(professions, active) or nil
+        -- A client with no trade-skill API this engine can read (neither the
+        -- classic one nor WoW Forever's C_TradeSkillUI): say so instead of
+        -- offering a button that cannot work.
+        if Engine and not Engine:HasTradeSkillAPI() then
+            local note = AceGUI:Create("Label")
+            note:SetFullWidth(true)
+            note:SetText("\n" .. Color("ffffffff", L["CraftUnsupportedClient"]))
+            container:AddChild(note)
+            return
+        end
         if allowAuto and Engine and activeEntry and not inCombat then
-            Engine:OpenProfession(activeEntry.castName or active)
+            Engine:OpenProfession(activeEntry.castName or active, "tab")
         end
 
         local prompt = AceGUI:Create("Label")
         prompt:SetFullWidth(true)
         prompt:SetText("\n" .. Color("ffffffff", L["CraftOpenToView"]:format(active or "")))
         container:AddChild(prompt)
+        -- WoW Forever: no Open button (operator, 2026-09-29: "you should not
+        -- have added the button"). The tab click and the dropdown open it.
+        if Engine and Engine:UsesModernAPI() then return end
 
         local openBtn = AceGUI:Create("Button")
         openBtn:SetWidth(220)
         openBtn:SetText(L["CraftOpenButton"]:format(active or ""))
         openBtn:SetCallback("OnClick", function()
-            if Engine and activeEntry then Engine:OpenProfession(activeEntry.castName or active) end
+            if activeEntry then Engine:OpenProfession(activeEntry.castName or active, "button") end
         end)
         container:AddChild(openBtn)
         return
     end
 
-    local search = AceGUI:Create("EditBox")
-    search:SetWidth(165)
-    search:SetText(self._search or "")
-    search:DisableButton(true)
-    search:SetCallback("OnTextChanged", function(_w, _e, text)
-        self._search = text or ""
-        self:FillList()
-    end)
-    addon.GUI.AttachTooltip(search, L["SearchPlaceholder"], L["CraftSearchDesc"])
-    -- TSM-style search field: magnifying-glass icon instead of a text label.
-    -- No keepLabelSpace — this search sits next to an unlabeled checkbox, so the
-    -- box stays at the unlabeled height to line up with it.
-    addon.GUI.StyleSearchBox(search)
-    toolbar:AddChild(search)
+    -- This toolbar has no labelled controls, so nothing here is `aligned`.
+    addon.GUI.ToolbarSearch(toolbar, {
+        width     = 165,
+        text      = self._search or "",
+        onChanged = function(text)
+            self._search = text or ""
+            self:FillList()
+        end,
+        tipTitle  = L["SearchPlaceholder"],
+        tipBody   = L["CraftSearchDesc"],
+    })
 
-    local haveBtn = AceGUI:Create("CheckBox")
-    haveBtn:SetLabel(L["CraftHaveMaterials"])
-    haveBtn:SetWidth(130)
-    haveBtn:SetValue(self._haveOnly and true or false)
-    haveBtn:SetCallback("OnValueChanged", function(_w, _e, val)
-        self._haveOnly = val and true or false
-        self:FillList()
-    end)
-    addon.GUI.AttachTooltip(haveBtn, L["CraftHaveMaterials"], L["CraftHaveMaterialsDesc"])
-    toolbar:AddChild(haveBtn)
+    addon.GUI.ToolbarCheckbox(self, "haveOnly", toolbar, {
+        width    = 130,
+        label    = L["CraftHaveMaterials"],
+        get      = function() return self._haveOnly and true or false end,
+        set      = function(val)
+            self._haveOnly = val and true or false
+            self:FillList()
+        end,
+        tipTitle = L["CraftHaveMaterials"],
+        tipBody  = L["CraftHaveMaterialsDesc"],
+    })
 
     -- Scan AH for the selected recipe: the CRAFTED item first, so the AH price
     -- and Profit line in the detail panel have a number to show, then every
@@ -444,6 +455,9 @@ function CraftingTab:ShowItemTooltip(anchorFrame, index, link, recipeId)
         addon.ItemLink.SetItem(GameTooltip, link)
     elseif info and info.isCraftWindow and GameTooltip.SetCraftItem then
         GameTooltip:SetCraftItem(index)
+    elseif Engine and Engine:UsesModernAPI() then
+        -- WoW Forever: `index` is the recipe's spell id (CraftingEngine).
+        if GameTooltip.SetSpellByID then GameTooltip:SetSpellByID(index) end
     elseif GameTooltip.SetTradeSkillItem then
         GameTooltip:SetTradeSkillItem(index)
     end
@@ -631,10 +645,9 @@ end
 -- repopulates it for the current selection. Tooltips on every element route
 -- through the global addon.Tooltip.Owner anchor helper.
 -- ===========================================================================
-local DREAG_POOL = 12      -- reagent rows (most recipes have ≤ 8)
 local DCTRL_W    = 230     -- right-hand controls column width
 local DREAG_H    = 13      -- reagent row height (tight, ~ font height)
-local DREAG_TOP  = 42      -- y-offset of the first reagent row from the panel top
+local DREAG_TOP  = 24      -- y-offset of the reagent list (its header bar first) from the panel top
 -- controls block bottom offset (Craft Max button bottom:
 -- stepper -6, Craft -34, Queue -62, Craft Max -90..-114)
 local DCTRL_BOT  = 114
@@ -673,6 +686,71 @@ end
 function CraftingTab:SetQty(n)
     self._qty = math.max(1, math.floor(n or 1))
     if self._dpStepper then self._dpStepper:SetValue(self._qty) end
+end
+
+-- The detail panel's reagent list. One row per reagent of the selected recipe:
+--   { r = <reagent>, need, enough, cntText, costText }
+-- worked out by RefreshDetail, which runs on every bag update. Columns, left to
+-- right: icon, "<need>x name", the line cost under the "Cost" heading, [Bank],
+-- [AH], and bags/bank (green when bags + bank cover the need, else red).
+function CraftingTab:BuildReagentList(host)
+    return addon.W.RowList:New(host, {
+        rowHeight  = DREAG_H,
+        fitContent = true,
+        headerFont = "GameFontNormalSmall",
+        columns = {
+            { key = "_icon", width = 14, iconSize = 12, iconTexCoord = true, sortable = false,
+              icon = function(e) return e.r.texture or 134400 end },
+            -- The required count is a "<n>x " prefix on the name ("12x Greater
+            -- Eternal Essence"): as a third number in the count column it read
+            -- as an inventory figure.
+            { key = "name", header = L["CraftReagents"], headerTip = L["CraftReagentsDesc"], sortable = false,
+              format = function(_, e) return Color("ffa0a0a0", e.need .. "x ") .. (e.r.name or "?") end },
+            { key = "cost", width = DREAG_COST_W, align = "RIGHT", sortable = false,
+              header = L["CraftColCostHdr"], headerTip = L["CraftColCostHdrDesc"],
+              format = function(_, e) return e.costText end },
+            { key = "bankBtn", width = 54, button = true, sortable = false, gapBefore = 4,
+              show = function(e)
+                  local id = e.r.itemId
+                  return id and addon.Bank and addon.Bank.GetStock and addon.Bank.GetStock(id) > 0
+              end,
+              text = function(e) return addon.Bank.ButtonText(e.r.itemId) end,
+              tip  = function(e)
+                  local body = L["CraftBankReagentDesc"]
+                  local status = addon.Bank.StatusText(e.r.itemId)
+                  if status then body = body .. "\n\n" .. status end
+                  return L["TooltipBankTitle"], body
+              end,
+              onClick = function(e)
+                  if addon.Bank.ShowRequestDialog then
+                      addon.Bank.ShowRequestDialog(e.r.itemId, e.r.name, e.r.link)
+                  end
+              end },
+            { key = "ahBtn", width = 30, button = true, sortable = false,
+              show = function(e)
+                  local id = e.r.itemId
+                  local listings = id and addon.AH and addon.AH.GetListingsFor and addon.AH.GetListingsFor(id)
+                  return listings and (listings.count or 0) > 0 or false
+              end,
+              text = function() return "|cFF88CCFF[AH]|r" end,
+              tip  = function() return L["TooltipAHTitle"], L["CraftAHReagentDesc"] end,
+              onClick = function(e)
+                  if addon.AH.SearchFor then addon.AH.SearchFor(e.r.name) end
+              end },
+            { key = "cnt", width = 60, align = "RIGHT", sortable = false, gapBefore = 2,
+              format = function(_, e) return e.cntText end },
+        },
+        onRowEnter = function(e, _, _, rowFrame)
+            if not e.r.link then return end
+            addon.Tooltip.Owner(rowFrame)
+            addon.ItemLink.SetItem(GameTooltip, e.r.link)
+            GameTooltip:Show()
+        end,
+        onRowLeave = function()
+            addon.ItemLink.EndHover(GameTooltip)
+            GameTooltip:Hide()
+        end,
+    })
 end
 
 function CraftingTab:BuildDetailPanel(parent)
@@ -733,111 +811,24 @@ function CraftingTab:BuildDetailPanel(parent)
     self._dpCost = cost
     headerTip(cost, true, 110, L["CraftCostLabel"], L["CraftCostDesc"])
 
-    local reHdr = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    reHdr:SetPoint("TOPLEFT", panel, "TOPLEFT", 10, -26)
-    reHdr:SetText(Brand(L["CraftReagents"]))
-    self._dpReagHdr = reHdr
-    headerTip(reHdr, false, nil, L["CraftReagents"], L["CraftReagentsDesc"])
-
-    -- "Cost" column header — right edge aligns with the per-reagent cost values,
-    -- which sit just left of the [Bank]/[AH] buttons. The buttons/count occupy a
-    -- fixed 148px on the right of each row (bank 44 + ah 30 + count 60 + gaps);
-    -- the count column is 60 wide to fit a bags/bank pair with 3-digit counts —
-    -- so the cost column's right edge is the row's right inset (DCTRL_W+14) + 148.
-    local costHdr = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    costHdr:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(DCTRL_W + 162), -26)
-    costHdr:SetWidth(DREAG_COST_W)
-    costHdr:SetJustifyH("RIGHT")
-    costHdr:SetText(Brand(L["CraftColCostHdr"]))
-    self._dpCostHdr = costHdr
-    headerTip(costHdr, true, DREAG_COST_W, L["CraftColCostHdr"], L["CraftColCostHdrDesc"])
-
-    -- Reagent row pool (icon · name · have/need). Icons sized to the font.
-    self._dpReagPool = {}
-    for _ = 1, DREAG_POOL do
-        local row = CreateFrame("Button", nil, panel)
-        row:SetHeight(DREAG_H)
-        row:Hide()
-
-        local ri = row:CreateTexture(nil, "ARTWORK")
-        ri:SetSize(12, 12)
-        ri:SetPoint("LEFT", row, "LEFT", 0, 0)
-        ri:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        row.icon = ri
-
-        -- Count column shows the bags/bank inventory pair (the needed count is a
-        -- prefix on the name instead). 60 wide to fit 3-digit values comfortably;
-        -- kept in sync with the costHdr offset above.
-        local cnt = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        cnt:SetPoint("RIGHT", row, "RIGHT", -2, 0)
-        cnt:SetWidth(60)
-        cnt:SetJustifyH("RIGHT")
-        cnt:SetWordWrap(false)
-        row.cnt = cnt
-
-        -- [AH] / [Bank] just left of the count (no header, compact). Shown only
-        -- when the reagent has AH listings / guild-bank stock.
-        local ahBtn = CreateFrame("Button", nil, row)
-        ahBtn:SetSize(30, 13)
-        ahBtn:SetPoint("RIGHT", cnt, "LEFT", -6, 0)
-        ahBtn:SetNormalFontObject(GameFontNormalSmall)
-        ahBtn:SetText("|cFF88CCFF[AH]|r")
-        ahBtn:Hide()
-        ahBtn:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(ahBtn)
-            GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1, 1, true)
-            GameTooltip:AddLine(L["CraftAHReagentDesc"], nil, nil, nil, true)
-            GameTooltip:Show()
-        end)
-        ahBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        row.ahBtn = ahBtn
-
-        local bankBtn = CreateFrame("Button", nil, row)
-        bankBtn:SetSize(54, 13)   -- room for the staleness dot
-        bankBtn:SetPoint("RIGHT", ahBtn, "LEFT", -2, 0)
-        bankBtn:SetNormalFontObject(GameFontNormalSmall)
-        bankBtn:SetText(addon.Bank.ButtonText(nil))
-        bankBtn:Hide()
-        bankBtn:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(bankBtn)
-            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
-            GameTooltip:AddLine(L["CraftBankReagentDesc"], nil, nil, nil, true)
-            addon.Bank.AddStatusLines(bankBtn)
-            GameTooltip:Show()
-        end)
-        bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        row.bankBtn = bankBtn
-
-        -- Per-reagent line cost (unit price × needed), sitting just left of the
-        -- [Bank]/[AH] buttons and the have/need count. Filled by RefreshDetail
-        -- from addon.Price; right-aligned under the "Cost" column header.
-        local rcost = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        rcost:SetPoint("RIGHT", bankBtn, "LEFT", -4, 0)
-        rcost:SetWidth(DREAG_COST_W)
-        rcost:SetJustifyH("RIGHT")
-        rcost:SetWordWrap(false)   -- keep coin strings on one right-aligned line (no wrap into row 2)
-        row.cost = rcost
-
-        local nm = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        nm:SetPoint("LEFT", ri, "RIGHT", 4, 0)
-        nm:SetPoint("RIGHT", rcost, "LEFT", -4, 0)
-        nm:SetJustifyH("LEFT")
-        nm:SetWordWrap(false)
-        row.nm = nm
-
-        row:SetScript("OnEnter", function(rf)
-            if not rf._link then return end
-            addon.Tooltip.Owner(rf)
-            addon.ItemLink.SetItem(GameTooltip, rf._link)
-            GameTooltip:Show()
-        end)
-        row:SetScript("OnLeave", function()
-            addon.ItemLink.EndHover(GameTooltip)
-            GameTooltip:Hide()
-        end)
-
-        self._dpReagPool[#self._dpReagPool + 1] = row
-    end
+    -- The reagents: a library RowList whose header bar carries the "Reagents"
+    -- and "Cost" headings (each with its tooltip), sized to its rows
+    -- (fitContent) so the panel can size itself to the taller column. Its host
+    -- is a child of this panel, which lives for the session.
+    local host = CreateFrame("Frame", nil, panel)
+    host:SetPoint("TOPLEFT",  panel, "TOPLEFT",  10,               -DREAG_TOP)
+    host:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(DCTRL_W + 14),  -DREAG_TOP)
+    host:SetHeight(1)
+    self._dpReagHost = host
+    self._dpReagList = self:BuildReagentList(host)
+    -- "Missing Materials" sits IN the list's header bar, right-aligned and
+    -- vertically centred on it, over the [Bank] / [AH] / count columns that
+    -- have no heading of their own (in game 2026-10-01: it floated above the
+    -- bar and ran past its right end). 20 = the list's scrollbar lane (16)
+    -- plus a 4 px inset, so the label ends where the bar's coloured strip does.
+    self._dpMiss:ClearAllPoints()
+    self._dpMiss:SetPoint("RIGHT", host, "TOPRIGHT", -20,
+        -((self._dpReagList.headerHeight or 20) / 2))
 
     -- Controls (right). The stepper row sits at the TOP (no dead space above),
     -- then Craft, then Queue — all the same width (CW) so the column reads as a
@@ -1022,7 +1013,7 @@ function CraftingTab:RefreshDetail()
 
     -- The secure Craft button is NOT in this list: showing or hiding it is
     -- protected in combat, so SyncCraftButton owns its visibility.
-    local widgets = { self._dpIcon, self._dpNameBtn, self._dpReagHdr, self._dpCostHdr,
+    local widgets = { self._dpIcon, self._dpNameBtn, self._dpReagHost,
                       self._dpStepper, self._dpMax,
                       self._dpQueue, self._dpCraftMax }
     if not sel then
@@ -1030,7 +1021,6 @@ function CraftingTab:RefreshDetail()
         self._dpMiss:Hide()
         if self._dpCost then self._dpCost:Hide() end
         for _, w in ipairs(widgets) do w:Hide() end
-        for _, row in ipairs(self._dpReagPool) do row:Hide() end
         self:SyncCraftButton()
         self._detailH = 56          -- compact: just the hint
         self:ApplyDetailHeight()
@@ -1115,78 +1105,35 @@ function CraftingTab:RefreshDetail()
     self:SyncCraftButton()
 
     local reagents = Engine:GetReagents(self._selIndex)
-    local missing, shown = false, 0
-    for i = 1, #self._dpReagPool do
-        local row = self._dpReagPool[i]
-        local r   = reagents[i]
-        if r then
-            shown = i
-            -- The recipe's required count is shown as a "<n>x " PREFIX on the
-            -- name (reads "12x Greater Eternal Essence") — it used to be a third
-            -- number in the count column, which looked like an inventory figure.
-            -- The count column is now just your inventory: bags / bank — bags is
-            -- live (GetItemCount), bank is the cached snapshot from your last bank
-            -- visit (ReagentWatch persists it on BANKFRAME_CLOSED). "Enough" (and
-            -- the Missing-Materials flag) counts bags + bank together, so a
-            -- reagent stashed in the bank doesn't read as missing.
-            local need = r.need or 0
-            local bags = (r.itemId and addon.Item.GetCount(r.itemId)) or r.have or 0
-            local bankq = (r.itemId and addon.ReagentWatch and addon.ReagentWatch:GetBankCount(r.itemId)) or 0
-            local enough = (bags + bankq) >= need
-            if not enough then missing = true end
-            row._link = r.link
-            row.icon:SetTexture(r.texture or 134400)
-            row.nm:SetText(Color("ffa0a0a0", need .. "x ") .. (r.name or "?"))
-            row.cnt:SetText(Color(enough and "ff40c040" or "ffff4040",
-                ("%d/%d"):format(bags, bankq)))
+    local missing, rows = false, {}
+    for _, r in ipairs(reagents) do
+        -- The count column is your inventory, bags / bank: bags is live
+        -- (GetItemCount), bank is the snapshot from your last bank visit
+        -- (ReagentWatch persists it on BANKFRAME_CLOSED). "Enough" (and the
+        -- Missing-Materials flag) counts both, so a reagent stashed in the bank
+        -- doesn't read as missing.
+        local need = r.need or 0
+        local bags = (r.itemId and addon.Item.GetCount(r.itemId)) or r.have or 0
+        local bankq = (r.itemId and addon.ReagentWatch and addon.ReagentWatch:GetBankCount(r.itemId)) or 0
+        local enough = (bags + bankq) >= need
+        if not enough then missing = true end
 
-            -- Per-reagent line cost: unit price × needed. "—" when unpriced.
-            -- GetReagentCost, not Get: a vendor-sold reagent is costed at the
-            -- vendor price, so this line agrees with the total below it.
-            if addon.Price and r.itemId then
-                local p, src = addon.Price.GetReagentCost(r.itemId)
-                if p then
-                    row.cost:SetText(addon.Price.Money(p * (r.need or 1)) .. PriceSourceTag(src))
-                else
-                    row.cost:SetText(Color("ff888888", "—"))
-                end
-            else
-                row.cost:SetText("")
-            end
-
-            -- [Bank] when a guild-bank character has stock; [AH] when a scan
-            -- found live listings (mirrors Browser/Missing). Both reuse the
-            -- shared addon.Bank / addon.AH integrations.
-            local id = r.itemId
-            if id and addon.Bank and addon.Bank.GetStock and addon.Bank.GetStock(id) > 0 then
-                addon.Bank.Decorate(row.bankBtn, id)
-                row.bankBtn:SetScript("OnClick", function()
-                    if addon.Bank.ShowRequestDialog then addon.Bank.ShowRequestDialog(id, r.name, r.link) end
-                end)
-                row.bankBtn:Show()
-            else
-                row.bankBtn:Hide()
-            end
-            local listings = id and addon.AH and addon.AH.GetListingsFor and addon.AH.GetListingsFor(id)
-            if listings and (listings.count or 0) > 0 then
-                row.ahBtn:SetScript("OnClick", function()
-                    if addon.AH.SearchFor then addon.AH.SearchFor(r.name) end
-                end)
-                row.ahBtn:Show()
-            else
-                row.ahBtn:Hide()
-            end
-
-            local y = -(DREAG_TOP + (i - 1) * DREAG_H)
-            row:ClearAllPoints()
-            row:SetPoint("TOPLEFT",  panel, "TOPLEFT",  12,              y)
-            row:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(DCTRL_W + 14), y)
-            row:Show()
-        else
-            row._link = nil
-            row:Hide()
+        -- Per-reagent line cost: unit price × needed. "—" when unpriced.
+        -- GetReagentCost, not Get: a vendor-sold reagent is costed at the
+        -- vendor price, so this line agrees with the total below it.
+        local costText = ""
+        if addon.Price and r.itemId then
+            local p, src = addon.Price.GetReagentCost(r.itemId)
+            costText = p and (addon.Price.Money(p * (r.need or 1)) .. PriceSourceTag(src))
+                or Color("ff888888", "—")
         end
+
+        rows[#rows + 1] = {
+            r = r, need = need, enough = enough, costText = costText,
+            cntText = Color(enough and "ff40c040" or "ffff4040", ("%d/%d"):format(bags, bankq)),
+        }
     end
+    self._dpReagList:SetData(rows)
     if missing then self._dpMiss:Show() else self._dpMiss:Hide() end
 
     -- Crafting cost (per single craft, matching the reagent have/need rows).
@@ -1242,7 +1189,8 @@ function CraftingTab:RefreshDetail()
 
     -- Auto-size the panel to its taller column (reagents vs controls) so there's
     -- no dead space below — the recipe list above grows into the freed room.
-    local reagentsBottom = DREAG_TOP + shown * DREAG_H
+    -- The list sized its host to its header plus its rows (fitContent).
+    local reagentsBottom = DREAG_TOP + (self._dpReagHost:GetHeight() or 0)
     -- Enchanting shows only the single Enchant button (top of the column), so its
     -- controls block is short; trade skills use the full stepper/Craft/Max/Queue.
     local ctrlBottom = isEnchant and 30 or DCTRL_BOT
@@ -1399,6 +1347,18 @@ end
 -- KNOWN GAP (not verified in a client): if the driver re-shows the holder before
 -- PLAYER_REGEN_ENABLED fires, a button for a window closed in combat can show
 -- until that event, expected to be the same frame.
+-- How far above the panel the button is stacked: the panel's own children (the
+-- reagent list's rows and header) sit a few levels above it. Same margin the
+-- Cooldowns popup uses over the window.
+local CRAFT_BTN_LEVEL_ABOVE = 100
+
+-- Where and how the button was last placed: position, scale and stacking. Any
+-- change re-places it.
+local function craftBtnKey(panel, right, top)
+    return string.format("%.2f:%.2f:%.4f:%d", right, top,
+        panel:GetEffectiveScale(), panel:GetFrameLevel())
+end
+
 function CraftingTab:SyncCraftButton()
     if InCombatLockdown and InCombatLockdown() then return end
     local btn, holder, panel = self._dpCraft, self._dpCraftHolder, self._detailPanel
@@ -1415,12 +1375,17 @@ function CraftingTab:SyncCraftButton()
         holder:SetFrameStrata(panel:GetFrameStrata())
         local uiScale = UIParent:GetEffectiveScale()
         if uiScale and uiScale > 0 then holder:SetScale(panel:GetEffectiveScale() / uiScale) end
-        btn:SetFrameLevel(panel:GetFrameLevel() + 10)
+        -- The window is Toplevel (AceGUIContainer-Frame.lua:194): every click on
+        -- it Raises it within FULLSCREEN_DIALOG, above this button, which is not
+        -- its descendant. The button then sat dimmed under the panel and took no
+        -- clicks (Discord, 2026-09-29, Enchanting). So the level is part of the
+        -- watcher's key, and the margin clears the panel's own children.
+        btn:SetFrameLevel(panel:GetFrameLevel() + CRAFT_BTN_LEVEL_ABOVE)
         btn:ClearAllPoints()
         btn:SetPoint("TOPRIGHT", holder, "BOTTOMLEFT",
             right - (self._dpCraftRight or 12), top + (self._dpCraftY or -34))
         btn:Show()
-        self._craftBtnPlacedAt = string.format("%.2f:%.2f:%.4f", right, top, panel:GetEffectiveScale())
+        self._craftBtnPlacedAt = craftBtnKey(panel, right, top)
     else
         btn:Hide()
         self._craftBtnPlacedAt = nil
@@ -1444,7 +1409,7 @@ watcher:SetScript("OnUpdate", function()
     local panel = CraftingTab._detailPanel
     local right, top = panel and panel:GetRight(), panel and panel:GetTop()
     if not (right and top) then return end
-    local key = string.format("%.2f:%.2f:%.4f", right, top, panel:GetEffectiveScale())
+    local key = craftBtnKey(panel, right, top)
     if key ~= CraftingTab._craftBtnPlacedAt then CraftingTab:SyncCraftButton() end
 end)
 CraftingTab._craftBtnWatcher = watcher

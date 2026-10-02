@@ -1014,8 +1014,6 @@ function CooldownsTab:Draw(container)
     -- doesn't get janky for alchemists with 11 individual transmute spells.
     -- When profession is "All", the cooldown dropdown is hidden — there's
     -- nothing meaningful to filter by until the user narrows the scope.
-    local brand = addon.BrandColor or "ffFF8000"
-
     -- Build the profession dropdown from COOLDOWN_BY_PROFESSION (only
     -- professions that have at least one cooldown applicable to the
     -- current client version make the cut). Belt-and-suspenders the
@@ -1062,19 +1060,19 @@ function CooldownsTab:Draw(container)
         profDropdownOrder[#profDropdownOrder + 1] = profId
     end
 
-    local profDropdown = AceGUI:Create("Dropdown")
-    profDropdown:SetLabel("|c" .. brand .. L["FilterColProfession"] .. "|r")
-    profDropdown:SetWidth(135)
-    addon.GUI.OffsetInputLabel(profDropdown)
-    profDropdown:SetList(profDropdownList, profDropdownOrder)
-    profDropdown:SetValue(self._filterProfId or 0)
-    profDropdown:SetCallback("OnValueChanged", function(_w, _e, value)
-        self._filterProfId = value
-        self._filterCd = "all"  -- reset specific-cooldown filter on profession change
-        self:RedrawTable(container)
-    end)
-    addon.GUI.AttachTooltip(profDropdown, L["FilterColProfession"], "Pick a profession to filter cooldowns.")
-    toolbar:AddChild(profDropdown)
+    addon.GUI.ToolbarDropdown(self, "prof", toolbar, {
+        label    = L["FilterColProfession"],
+        width    = 135,
+        items    = function() return addon.GUI.MenuItems(profDropdownList, profDropdownOrder) end,
+        value    = self._filterProfId or 0,
+        onChange = function(value)
+            self._filterProfId = value
+            self._filterCd = "all"  -- reset specific-cooldown filter on profession change
+            self:RedrawTable(container)
+        end,
+        tipTitle = L["FilterColProfession"],
+        tipBody  = "Pick a profession to filter cooldowns.",
+    })
 
     -- Cooldown dropdown is only meaningful once a specific profession is
     -- selected. Skip rendering it when profession is "All" — keeps the
@@ -1096,18 +1094,18 @@ function CooldownsTab:Draw(container)
 
         if not cdList[self._filterCd] then self._filterCd = "all" end
 
-        local cdDD = AceGUI:Create("Dropdown")
-        cdDD:SetLabel("|c" .. brand .. L["FilterColCooldown"] .. "|r")
-        cdDD:SetWidth(155)
-        cdDD:SetList(cdList, cdOrder)
-        cdDD:SetValue(self._filterCd or "all")
-        addon.GUI.OffsetInputLabel(cdDD)
-        cdDD:SetCallback("OnValueChanged", function(_w, _e, value)
-            self._filterCd = value
-            self:RedrawTable(container)
-        end)
-        addon.GUI.AttachTooltip(cdDD, L["FilterColCooldown"], L["FilterCooldownDesc"])
-        toolbar:AddChild(cdDD)
+        addon.GUI.ToolbarDropdown(self, "cd", toolbar, {
+            label    = L["FilterColCooldown"],
+            width    = 155,
+            items    = function() return addon.GUI.MenuItems(cdList, cdOrder) end,
+            value    = self._filterCd or "all",
+            onChange = function(value)
+                self._filterCd = value
+                self:RedrawTable(container)
+            end,
+            tipTitle = L["FilterColCooldown"],
+            tipBody  = L["FilterCooldownDesc"],
+        })
     end
 
     -- Scope dropdown: Guild (every guild member) vs My Characters (own alts
@@ -1115,21 +1113,21 @@ function CooldownsTab:Draw(container)
     -- behave the same way when the user wants to focus on their own
     -- cooldowns. State is session-only (not persisted to AceDB) to match
     -- the existing profession/cooldown filters above.
-    local viewDD = AceGUI:Create("Dropdown")
-    viewDD:SetLabel("|c" .. brand .. L["FilterColView"] .. "|r")
-    viewDD:SetWidth(115)
     -- Shared with the Browser tab via `UI.ScopeList` rather than re-listed
     -- here. This tab passes no extras: guild/mine is the whole of its scope
     -- filter, and the Browser's third mode is Browser-only.
-    viewDD:SetList(addon.UI.ScopeList())
-    viewDD:SetValue(self._viewMode or addon.UI.SCOPE_DEFAULT)
-    addon.GUI.OffsetInputLabel(viewDD)
-    viewDD:SetCallback("OnValueChanged", function(_w, _e, value)
-        self._viewMode = value
-        self:RedrawTable(container)
-    end)
-    addon.GUI.AttachTooltip(viewDD, L["FilterColView"], L["FilterViewDesc"])
-    toolbar:AddChild(viewDD)
+    addon.GUI.ToolbarDropdown(self, "view", toolbar, {
+        label    = L["FilterColView"],
+        width    = 115,
+        items    = function() return addon.GUI.MenuItems(addon.UI.ScopeList()) end,
+        value    = self._viewMode or addon.UI.SCOPE_DEFAULT,
+        onChange = function(value)
+            self._viewMode = value
+            self:RedrawTable(container)
+        end,
+        tipTitle = L["FilterColView"],
+        tipBody  = L["FilterViewDesc"],
+    })
 
     -- 8px spacer matching the existing toolbar gap convention.
     local sp4 = AceGUI:Create("Label"); sp4:SetWidth(8); toolbar:AddChild(sp4)
@@ -1246,12 +1244,14 @@ function CooldownsTab:Draw(container)
     self:FillRows(section)
 end
 
+-- The popup shell and its click-outside overlay are parented to UIParent for
+-- their whole life (ShowGroupPopup), never to an AceGUI widget, so closing
+-- them is all a release needs; the next open re-anchors both.
 function CooldownsTab:DetachPopup()
-    if self._groupPopup then
-        if self._groupPopup._closeOnClick then
-            addon.GUI.DetachPool(self._groupPopup._closeOnClick)
-        end
-        addon.GUI.DetachPool(self._groupPopup)
+    local popup = self._groupPopup
+    if popup then
+        popup:Hide()
+        if popup._closeOnClick then popup._closeOnClick:Hide() end
         self._groupPopup = nil
     end
 end
@@ -1590,7 +1590,11 @@ function CooldownsTab:BuildRowList(host)
         end,
         onClick = function(row)
             local id = row.reagentItemId
-            addon.Bank.ShowRequestDialog(id, addon.Item.GetInfo(id), select(2, addon.Item.GetInfo(id)))
+            -- The parentheses keep select() to ONE value: bare, as the last
+            -- argument it passed every return after the link, and GetInfo's
+            -- quality landed in ShowRequestDialog's anchorBelow (in game,
+            -- 2026-09-30: "attempt to index local 'anchorBelow' (a number)").
+            addon.Bank.ShowRequestDialog(id, addon.Item.GetInfo(id), (select(2, addon.Item.GetInfo(id))))
         end }
     columns[#columns + 1] = { key = "mailBtn", width = COL.mail, button = true, sortable = false,
         show = function(row) return row.reagentItemId ~= nil end,
@@ -1658,34 +1662,148 @@ function CooldownsTab:OnSortChanged(key, desc)
     end
 end
 
--- One popup row's frames and regions, built once per row slot and reused on
--- every later open (see ShowGroupPopup). Only the parts that never change per
--- open are set here.
-local function NewPopupRow(popup)
-    local s = {}
-    s.frame = CreateFrame("Frame", nil, popup)
-    s.nameLbl = s.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    s.nameLbl:SetJustifyH("LEFT")
-    -- The font's own colour, restored on reuse: hovering a name leaves it white.
-    s.nameColor = { s.nameLbl:GetTextColor() }
-    s.nameZone = CreateFrame("Frame", nil, s.frame)
-    s.nameZone:EnableMouse(true)
-    s.reagentLbl = s.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    s.reagentLbl:SetJustifyH("RIGHT")
-    s.reagentLbl:SetWordWrap(false)
-    s.reagentZone = CreateFrame("Frame", nil, s.frame)
-    s.reagentZone:EnableMouse(true)
-    s.ahBtn = CreateFrame("Button", nil, s.frame)
-    s.ahBtn:SetNormalFontObject(GameFontNormalSmall)
-    s.ahBtn:SetText("|cFF88CCFF[AH]|r")
-    s.bankBtn = CreateFrame("Button", nil, s.frame)
-    s.bankBtn:SetNormalFontObject(GameFontNormalSmall)
-    s.mailBtn = CreateFrame("Button", nil, s.frame)
-    s.mailBtn:SetSize(16, 16)
-    s.mailBtn:SetNormalTexture("Interface\\Icons\\INV_Letter_15")
-    s.mailBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-    s.optional = { s.reagentLbl, s.reagentZone, s.ahBtn, s.bankBtn, s.mailBtn }
-    return s
+local POPUP_MAIL_ICON = "Interface\\Icons\\INV_Letter_15"
+
+-- The crafted-output name a supply mail's body asks for. The PRODUCT first --
+-- "Arcanite Bar", from the recipe's crafted item, so the body does not read
+-- "make Transmute: Arcanite ... send me the Transmute: Arcanite" (the user's
+-- first in-game mail, 2026-09-14). Then the fallbacks for an entry with no
+-- recipe: the row's display name, the spell name, the output item (recipeId IS
+-- the output itemId for non-spell recipes), else a blank rather than a raw id.
+local function popupOutputName(e, spellName)
+    local craftedId = e.recipeId and addon:GetRecipeCraftedItemId(171, e.recipeId)
+    local craftedName = craftedId and addon.Item.GetInfo(craftedId)
+    if craftedName and craftedName ~= "" then return craftedName end
+    if e.name and e.name ~= "" then return e.name end
+    if spellName and spellName ~= "" then return spellName end
+    if e.recipeId then return addon.Item.GetInfo(e.recipeId) or spellName or "" end
+    return spellName or ""
+end
+
+-- The group popup's rows, one per entry (see ShowGroupPopup for the shapes):
+--   { e = <entry>, charKey = <crafter>, mail = <reagent list> | nil }
+-- `mail` is set on the first row of each cooldown only. Reagent columns exist
+-- for a transmute group only; ShowGroupPopup swaps the set with SetColumns.
+function CooldownsTab:PopupColumns(hasReagents, popup)
+    local cols = {
+        -- Spell name (blank on the 2nd+ row of a multi-reagent transmute, so the
+        -- grouping reads cleanly). Hover: the spell's tooltip, or the output
+        -- item's (recipeId IS the output itemId) when the spellId is unknown.
+        { key = "name", sortable = false,
+          format = function(_, row)
+              local e = row.e
+              if e.showName == false then return "" end
+              return e.name or (e.spellId and ("Spell " .. e.spellId)) or "?"
+          end,
+          onCellEnter = function(row, _, _, cell)
+              local e = row.e
+              if e.spellId then
+                  addon.Tooltip.Owner(cell)
+                  GameTooltip:SetHyperlink("spell:" .. e.spellId)
+                  -- A `spell:` tooltip carries no item, so the global
+                  -- OnTooltipSetItem hook never fires on it.
+                  addon.ItemLink.AppendRecipeBlocks(GameTooltip, nil, e.spellId)
+                  GameTooltip:Show()
+              elseif e.recipeId then
+                  addon.Tooltip.Owner(cell)
+                  GameTooltip:SetHyperlink("item:" .. e.recipeId)
+                  GameTooltip:Show()
+              end
+          end,
+          onCellLeave = function() GameTooltip:Hide() end },
+    }
+    if not hasReagents then return cols end
+
+    -- The reagent: white when the viewer's bags hold enough to send, grey when
+    -- not, recomputed on every refresh. A name the client has not cached yet is
+    -- requested, and the list redraws when it arrives (for this open only).
+    cols[#cols + 1] = { key = "reagent", width = 180, align = "RIGHT", sortable = false,
+        format = function(_, row)
+            local id = row.e.reagentId
+            if not id then return "" end
+            local name = addon.Item.GetInfo(id)
+            if not name then
+                if not row.loading and Item and Item.CreateFromItemID then
+                    row.loading = true
+                    local gen = popup._gen
+                    local it = Item:CreateFromItemID(id)
+                    it:ContinueOnItemLoad(function()
+                        if popup._gen == gen and popup:IsShown() then popup._list:Refresh() end
+                    end)
+                end
+                return ""
+            end
+            local enough = CdMail_CountItemInBags(id) >= (row.e.reagentQty or 1)
+            return (enough and "|cffffffff" or "|cffa6a6a6") .. name .. "|r"
+        end,
+        onCellEnter = function(row, _, _, cell)
+            if not row.e.reagentId then return end
+            addon.Tooltip.Owner(cell)
+            addon.ItemLink.SetItem(GameTooltip, nil, row.e.reagentId)
+            GameTooltip:Show()
+        end,
+        onCellLeave = function() GameTooltip:Hide() end,
+        onCellClick = function(row, _, _, button)
+            if button == "LeftButton" and row.e.reagentId then
+                addon.ItemLink.Click((select(2, addon.Item.GetInfo(row.e.reagentId))))
+                return true
+            end
+        end }
+    cols[#cols + 1] = { key = "ahBtn", width = 40, button = true, sortable = false,
+        show = function(row)
+            local id = row.e.reagentId
+            local listings = id and addon.AH and addon.AH.GetListingsFor(id)
+            return listings and (listings.count or 0) > 0 or false
+        end,
+        text = function() return "|cFF88CCFF[AH]|r" end,
+        tip  = function() return L["TooltipAHTitle"], L["TooltipAHDescReagent"] end,
+        onClick = function(row)
+            local name = addon.Item.GetInfo(row.e.reagentId)
+            if name then addon.AH.SearchFor(name) end
+        end }
+    -- [Bank] is asked on every refresh, and the popup refreshes on show and
+    -- again a moment later: TOGBankClassic builds its alt list lazily, and its
+    -- first stock query of a session answers 0.
+    cols[#cols + 1] = { key = "bankBtn", width = 58, button = true, sortable = false,
+        show = function(row)
+            local id = row.e.reagentId
+            return id and addon.Bank and addon.Bank.GetStock(id) > 0 or false
+        end,
+        text = function(row) return addon.Bank.ButtonText(row.e.reagentId) end,
+        tip  = function(row)
+            local body = L["TooltipBankDescGeneric"]
+            local status = addon.Bank.StatusText(row.e.reagentId)
+            if status then body = body .. "\n\n" .. status end
+            return L["TooltipBankTitle"], body
+        end,
+        onClick = function(row)
+            local id = row.e.reagentId
+            -- The parentheses keep select() to ONE value: bare, as the last
+            -- argument it passed every return after the link, and GetInfo's
+            -- quality landed in ShowRequestDialog's anchorBelow (in game,
+            -- 2026-09-30: "attempt to index local 'anchorBelow' (a number)").
+            addon.Bank.ShowRequestDialog(id, addon.Item.GetInfo(id), (select(2, addon.Item.GetInfo(id))))
+        end }
+    -- One mail per COOLDOWN: the icon is on the cooldown's first row, and it
+    -- mails EVERY reagent of that cooldown.
+    cols[#cols + 1] = { key = "mail", width = 20, iconSize = 16, sortable = false,
+        icon = function(row) return row.mail and POPUP_MAIL_ICON or nil end,
+        onCellEnter = function(row, _, _, cell)
+            if not row.mail then return end
+            addon.Tooltip.Owner(cell)
+            GameTooltip:SetText(L["MailBtnTooltip"], 1, 1, 1, 1, true)
+            GameTooltip:AddLine(L["MailBtnTooltipDesc"], nil, nil, nil, true)
+            GameTooltip:Show()
+        end,
+        onCellLeave = function() GameTooltip:Hide() end,
+        onCellClick = function(row, _, _, button)
+            if not row.mail or button ~= "LeftButton" then return end
+            local e = row.e
+            local spellName = (e.spellId and addon.Spell.GetInfo(e.spellId)) or e.name
+            CdMail_PrepareSupplyMail(row.charKey, spellName, popupOutputName(e, spellName), row.mail)
+            return true
+        end }
+    return cols
 end
 
 --- Show a popup listing all individual spells inside a cooldown group.
@@ -1750,24 +1868,24 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
         end
     end
 
-    local rowH   = 14
     local pad    = 6
-    -- popupW = 500: name + reagent + [AH]/[Bank]/mail + time all tile inside this
-    -- width. The name/reagent split is chosen per popup type below — transmute
-    -- popups have long names + short reagents; multi-reagent cooldown popups
-    -- (cloths, Brilliant Glass) are the reverse — so we don't need extra width,
-    -- just a different division of the same space.
+    -- 500 wide: the name, and for a transmute group its 180-wide reagent,
+    -- [AH], [Bank] and mail columns, all fit.
     local popupW = 500
-    local totalH = pad + #entries * rowH + pad
 
-    -- The popup shell, its click-outside overlay and its rows are built once and
-    -- reused: WoW never frees a frame, and up to v1.1.2 every open built a new
-    -- shell, overlay and ~6 frames per row. `_gen` is bumped per open so an
+    -- The popup shell, its click-outside overlay and its list are built once
+    -- and reused: WoW never frees a frame, and up to v1.1.2 every open built a
+    -- new shell, overlay and ~6 frames per row. `_gen` is bumped per open so an
     -- item-load callback from an earlier open does nothing.
     local popup = self._popupShell
     if not popup then
         popup = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
-        popup:SetFrameStrata("TOOLTIP")
+        -- The main window's strata (AceGUI's Frame is FULLSCREEN_DIALOG), with a
+        -- higher frame level set on every open (below), and below GameTooltip's
+        -- TOOLTIP strata. At TOOLTIP itself a tooltip lost to the popup's own
+        -- frame levels and drew behind the rows; at FULLSCREEN_DIALOG with no
+        -- level of its own (v1.2.0 draft) it opened behind the window.
+        popup:SetFrameStrata("FULLSCREEN_DIALOG")
         popup:SetBackdrop({
             bgFile   = [[Interface\Tooltips\UI-Tooltip-Background]],
             edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]],
@@ -1778,7 +1896,22 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
         popup:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
         popup:EnableMouse(true)
         popup:SetScript("OnMouseDown", function() end)  -- block click-through
-        popup._rows, popup._gen = {}, 0
+        popup._gen = 0
+
+        -- The rows: a library RowList that sizes its host to its rows, and the
+        -- popup to the host.
+        local host = CreateFrame("Frame", nil, popup)
+        host:SetPoint("TOPLEFT",  popup, "TOPLEFT",  pad, -pad)
+        host:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -pad, -pad)
+        host:SetHeight(1)
+        popup._list = addon.W.RowList:New(host, {
+            rowHeight       = 14,
+            hoverHighlight  = true,
+            fitContent      = true,
+            columns         = self:PopupColumns(false, popup),
+            onHeightChanged = function(_, h) popup:SetHeight(h + pad * 2) end,
+        })
+        popup._listHost = host
 
         -- Click-outside-to-close overlay
         local closeOnClick = CreateFrame("Frame", nil, UIParent)
@@ -1794,7 +1927,6 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
     end
     popup:Hide()  -- hidden so popup:Show() at the end fires OnShow
     popup._gen = popup._gen + 1
-    local popupGen = popup._gen
     local closeOnClick = popup._closeOnClick
     -- DetachPopup may have detached them from a released window.
     popup:SetParent(UIParent)
@@ -1803,7 +1935,14 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
     closeOnClick:SetAllPoints(UIParent)
     closeOnClick:Show()
     popup:SetWidth(popupW)
-    popup:SetHeight(totalH)
+    -- The rows, then the height they need (fitContent sized the host).
+    local rows = {}
+    for _, e in ipairs(entries) do
+        rows[#rows + 1] = { e = e, charKey = charKey, mail = mailEntry[e] }
+    end
+    popup._list:SetColumns(self:PopupColumns(hasReagents, popup))
+    popup._list:SetData(rows)
+    popup:SetHeight(popup._listHost:GetHeight() + pad * 2)
     popup:ClearAllPoints()
     -- Position under the clicked row, or over it when there is no room below,
     -- kept on screen horizontally: LibAceGUIWidgets' AnchorPopup (MINOR 36,
@@ -1817,302 +1956,29 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
         popup:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     end
     popup._sourceRow = row
+    -- Above the main window: it is an AceGUI Frame at the same FULLSCREEN_DIALOG
+    -- strata, so the popup needs a higher LEVEL there, or it opens behind the
+    -- window (in game 2026-10-01: "the transmute popup is hidden"). Within the
+    -- strata, and still below TOOLTIP, so every tooltip its rows open draws on
+    -- top of it. Set on every open: the window's level can change between opens.
+    local mainFrame = addon.MainWindow and addon.MainWindow.frame and addon.MainWindow.frame.frame
+    local base = (mainFrame and mainFrame.GetFrameLevel and mainFrame:GetFrameLevel()) or 0
+    popup:SetFrameLevel(math.min(base + 100, 9000))
 
-    -- The popup itself sits at TOOLTIP strata, which is the same strata as
-    -- GameTooltip — so GameTooltip's default frame level loses to the popup's
-    -- inner buttons/labels and tooltips render visually behind them.  Bumping
-    -- the GameTooltip frame level after every Show() forces it on top.  Used
-    -- by every OnEnter handler in the popup that opens a tooltip.
-    local function showAbovePopup()
-        GameTooltip:Show()
-        GameTooltip:SetFrameLevel(popup:GetFrameLevel() + 20)
+    -- [Bank], [AH] and the reagent's white/grey are asked again on show and a
+    -- moment later: TOGBankClassic builds its alt list lazily and answers 0 to
+    -- the first stock query of a session, and a late answer then shows without
+    -- the player closing and reopening the popup.
+    local function refreshRows()
+        if popup:IsShown() then popup._list:Refresh() end
     end
-
-    -- Per-row [Bank] / [AH] button visibility refreshers. TOGBankClassic
-    -- constructs its `_G.TOGBankClassic_Guild.Info.alts` lazily — the
-    -- first call that queries it during its uninitialized state returns
-    -- 0 and we'd skip creating the button. Solution: always create the
-    -- button, hide it when stock is 0, and re-evaluate on popup OnShow
-    -- plus a short deferred tick so a late-loading TOGBank populates
-    -- correctly without requiring the user to close and reopen the popup.
-    -- AH refreshers piggyback on the same list so all per-row visibility
-    -- updates run together — the gating data (Bank.GetStock and
-    -- AH.GetListingsFor) are both queried fresh per refresh.
-    local rowRefreshers = {}
     popup:SetScript("OnHide", function() closeOnClick:Hide() end)
     popup:SetScript("OnShow", function()
-        for _, fn in ipairs(rowRefreshers) do fn() end
-        C_Timer.After(0.1, function()
-            if popup:IsShown() then
-                for _, fn in ipairs(rowRefreshers) do fn() end
-            end
-        end)
+        refreshRows()
+        C_Timer.After(0.1, refreshRows)
     end)
-
-    local mailW    = hasReagents and 20 or 0
-    local bankW    = hasReagents and 58 or 0   -- +10 for the staleness dot
-    -- AH button column. 40px matches the per-row [AH] width used in the
-    -- main cooldown row (C2_AH_BTN). Sits to the LEFT of [Bank], to the
-    -- RIGHT of the reagent label — same ordering as the main row.
-    local ahW      = hasReagents and 40 or 0
-    -- Reagent column: 180px so long names ("Bolt of Imbued Netherweave") fit on
-    -- ONE line. There's no time/status column in the popup (removed as redundant
-    -- — the main cooldown row already shows readiness), so both a wide reagent
-    -- column AND a wide name column fit inside the unchanged 500px width.
-    local reagentW = hasReagents and 180 or 0
-    local nameW    = popupW - pad * 2 - reagentW - ahW - bankW - mailW - 8
-
-    for i = #entries + 1, #popup._rows do popup._rows[i].frame:Hide() end
-    for i, e in ipairs(entries) do
-        local spellId    = e.spellId
-        local recipeId   = e.recipeId
-        local entryName  = e.name or (spellId and ("Spell " .. spellId)) or "?"
-        local reagentId  = e.reagentId
-        local reagentQty = e.reagentQty or 1
-        local showName   = e.showName ~= false
-        -- No time/status column in the popup — it was redundant with the main
-        -- cooldown row's own readiness, so the per-entry cooldown lookup is gone.
-
-        local yOff = -(pad + (i - 1) * rowH)
-
-        local slot = popup._rows[i]
-        if not slot then
-            slot = NewPopupRow(popup)
-            popup._rows[i] = slot
-        end
-        for _, f in ipairs(slot.optional) do f:Hide() end
-        local rowFrame = slot.frame
-        rowFrame:ClearAllPoints()
-        rowFrame:SetHeight(rowH)
-        rowFrame:SetPoint("TOPLEFT",  popup, "TOPLEFT",  pad, yOff)
-        rowFrame:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -pad, yOff)
-        rowFrame:Show()
-
-        -- Spell name (blank on the 2nd+ row of a multi-reagent transmute so
-        -- the visual grouping stays clean).
-        local nameLbl = slot.nameLbl
-        nameLbl:ClearAllPoints()
-        nameLbl:SetPoint("LEFT", 0, 0)
-        nameLbl:SetWidth(nameW)
-        nameLbl:SetTextColor(unpack(slot.nameColor))
-        nameLbl:SetText(showName and entryName or "")
-
-        -- Mouseover tooltip for the name zone: spell tooltip when we have a
-        -- spellId, falls back to the recipe's output-item tooltip via recipeId
-        -- (which IS the output itemId for non-spell recipes).  Either way the
-        -- user gets some hover info on every row.
-        local nameZone = slot.nameZone
-        nameZone:ClearAllPoints()
-        nameZone:SetPoint("TOPLEFT",     rowFrame, "TOPLEFT",    0, 0)
-        nameZone:SetPoint("BOTTOMRIGHT", rowFrame, "BOTTOMLEFT", nameW, 0)
-        nameZone:SetScript("OnEnter", function()
-            if showName then nameLbl:SetTextColor(1, 1, 0, 1) end
-            if spellId then
-                addon.Tooltip.Owner(nameZone)
-                GameTooltip:SetHyperlink("spell:" .. spellId)
-                -- Explicit: a `spell:` tooltip carries no item, so the global
-                -- OnTooltipSetItem hook never fires on it.
-                addon.ItemLink.AppendRecipeBlocks(GameTooltip, nil, spellId)
-                showAbovePopup()
-            elseif recipeId then
-                addon.Tooltip.Owner(nameZone)
-                GameTooltip:SetHyperlink("item:" .. recipeId)
-                showAbovePopup()
-            end
-        end)
-        nameZone:SetScript("OnLeave", function()
-            nameLbl:SetTextColor(1, 1, 1, 1)
-            GameTooltip:Hide()
-        end)
-
-        -- Reagent and mail button (transmute groups only)
-        if reagentId then
-            local reagentLbl = slot.reagentLbl
-            reagentLbl:Show()
-            reagentLbl:ClearAllPoints()
-            -- Sit to the LEFT of [AH] [Bank] [mail] (the +6 is per-button
-            -- gap padding × 3 stacked widgets). Order right-to-left:
-            --   mailBtn   at -(mailW + 2)
-            --   bankBtn   at -(bankW + mailW + 4)
-            --   ahBtn     at -(ahW + bankW + mailW + 6)
-            --   reagent   at -(reagentW + ahW + bankW + mailW + 8)
-            reagentLbl:SetPoint("RIGHT", rowFrame, "RIGHT", -(ahW + bankW + mailW + 6), 0)
-            reagentLbl:SetWidth(reagentW)
-            -- One line only (SetWordWrap(false) in NewPopupRow): the row is a
-            -- fixed rowH tall, so a wrapped name would overlap the row below.
-            -- Resting colour reflects bag stock: WHITE when the viewer holds
-            -- enough of this reagent to fulfill the mail (>= reagentQty), GREY
-            -- otherwise — a glance shows which reagents you can actually send.
-            -- Yellow on hover, then restored to the correct rest colour on leave.
-            -- A refresher recomputes it (cheap bag scan) on popup show + the
-            -- deferred tick, so acquiring/sending items updates it live.
-            local reagentHovered = false
-            local function reagentRestColor()
-                local inBags = CdMail_CountItemInBags(reagentId)
-                if inBags >= reagentQty then return 1, 1, 1, 1 end
-                return 0.65, 0.65, 0.65, 1
-            end
-            local function applyReagentRestColor()
-                if not reagentHovered then reagentLbl:SetTextColor(reagentRestColor()) end
-            end
-            applyReagentRestColor()
-            rowRefreshers[#rowRefreshers + 1] = applyReagentRestColor
-            local rName = addon.Item.GetInfo(reagentId)
-            if rName then
-                reagentLbl:SetText(rName)
-            else
-                reagentLbl:SetText("")
-                local rItem = Item:CreateFromItemID(reagentId)
-                rItem:ContinueOnItemLoad(function()
-                    if popup._gen ~= popupGen then return end  -- a later open owns the row
-                    reagentLbl:SetText(rItem:GetItemName() or "")
-                end)
-            end
-
-            local reagentZone = slot.reagentZone
-            reagentZone:ClearAllPoints()
-            reagentZone:SetPoint("TOPLEFT",     rowFrame, "TOPRIGHT",    -(reagentW + ahW + bankW + mailW + 6), 0)
-            reagentZone:SetPoint("BOTTOMRIGHT", rowFrame, "BOTTOMRIGHT", -(ahW + bankW + mailW + 6), 0)
-            reagentZone:Show()
-            reagentZone:SetScript("OnEnter", function()
-                reagentHovered = true
-                reagentLbl:SetTextColor(1, 1, 0, 1)
-                addon.Tooltip.Owner(reagentZone)
-                addon.ItemLink.SetItem(GameTooltip, nil, reagentId)
-                showAbovePopup()
-            end)
-            reagentZone:SetScript("OnLeave", function()
-                reagentHovered = false
-                reagentLbl:SetTextColor(reagentRestColor())
-                GameTooltip:Hide()
-            end)
-            reagentZone:SetScript("OnMouseUp", function(_, button)
-                if button == "LeftButton" then
-                    addon.ItemLink.Click((select(2, addon.Item.GetInfo(reagentId))))
-                end
-            end)
-
-            -- [AH] button — always created, visibility toggled per row by
-            -- a refresher that queries addon.AH.GetListingsFor(reagentId)
-            -- (gates same way [Bank] gates on Bank.GetStock). The refresher
-            -- runs on popup OnShow + the deferred tick alongside the bank
-            -- refreshers so a Scan AH that completes BEFORE the user opens
-            -- the popup is reflected in row visibility immediately.
-            if addon.AH then
-                local ahBtn = slot.ahBtn  -- hidden above; the refresher reveals it
-                ahBtn:ClearAllPoints()
-                ahBtn:SetSize(ahW, rowH)
-                ahBtn:SetPoint("RIGHT", rowFrame, "RIGHT", -(bankW + mailW + 4), 0)
-                ahBtn:SetScript("OnClick", function()
-                    local name = addon.Item.GetInfo(reagentId)
-                    if name then addon.AH.SearchFor(name) end
-                end)
-                ahBtn:SetScript("OnEnter", function()
-                    addon.Tooltip.Owner(ahBtn)
-                    GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1, 1, true)
-                    GameTooltip:AddLine(L["TooltipAHDescReagent"], nil, nil, nil, true)
-                    showAbovePopup()
-                end)
-                ahBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-                rowRefreshers[#rowRefreshers + 1] = function()
-                    local listings = addon.AH.GetListingsFor(reagentId)
-                    if listings and (listings.count or 0) > 0 then
-                        ahBtn:Show()
-                    else
-                        ahBtn:Hide()
-                    end
-                end
-            end
-
-            -- [Bank] button — always created, visibility toggled per row by
-            -- a refresher that runs on popup OnShow + a deferred tick (handles
-            -- TOGBankClassic's lazy Info.alts initialization that returns 0
-            -- on the first GetStock query of a session).
-            if addon.Bank then
-                local bankBtn = slot.bankBtn  -- hidden above; the refresher reveals it
-                bankBtn._bankItemId = nil
-                bankBtn:ClearAllPoints()
-                bankBtn:SetSize(bankW, rowH)
-                bankBtn:SetPoint("RIGHT", rowFrame, "RIGHT", -(mailW + 2), 0)
-                bankBtn:SetText(addon.Bank.ButtonText(nil))
-                bankBtn:SetScript("OnClick", function()
-                    local name = addon.Item.GetInfo(reagentId)
-                    local link = select(2, addon.Item.GetInfo(reagentId))
-                    addon.Bank.ShowRequestDialog(reagentId, name, link)
-                end)
-                bankBtn:SetScript("OnEnter", function()
-                    addon.Tooltip.Owner(bankBtn)
-                    GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
-                    GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
-                    addon.Bank.AddStatusLines(bankBtn)
-                    showAbovePopup()
-                end)
-                bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-                rowRefreshers[#rowRefreshers + 1] = function()
-                    if addon.Bank.GetStock(reagentId) > 0 then
-                        addon.Bank.Decorate(bankBtn, reagentId)
-                        bankBtn:Show()
-                    else
-                        bankBtn:Hide()
-                    end
-                end
-            end
-
-            -- Mail icon button -- on the first row of the cooldown only, and it
-            -- mails EVERY reagent in the group (see groupReagents above).
-            local mailReagents = mailEntry[e]
-            if mailReagents then
-                local mailBtn = slot.mailBtn
-                mailBtn:ClearAllPoints()
-                mailBtn:SetPoint("RIGHT", rowFrame, "RIGHT", 0, 0)
-                mailBtn:Show()
-                mailBtn:SetScript("OnClick", function()
-                    local spellName = (spellId and addon.Spell.GetInfo(spellId)) or entryName
-                    -- Resolve the crafted-output name for the mail body. The
-                    -- PRODUCT first -- "Arcanite Bar", from the recipe's crafted
-                    -- item, so the body does not read "make Transmute: Arcanite ...
-                    -- send me the Transmute: Arcanite" (which is what the user's
-                    -- first in-game mail said, 2026-09-14). Then the fallbacks for
-                    -- an entry with no recipe: the row's display name, the spell
-                    -- name, the output item (recipeId IS the output itemId for
-                    -- non-spell recipes), else a blank rather than a raw id.
-                    local craftedId = recipeId and addon:GetRecipeCraftedItemId(171, recipeId)
-                    local craftedName = craftedId and addon.Item.GetInfo(craftedId)
-                    local outputName
-                    if craftedName and craftedName ~= "" then
-                        outputName = craftedName
-                    elseif entryName and entryName ~= "" then
-                        outputName = entryName
-                    elseif spellName and spellName ~= "" then
-                        outputName = spellName
-                    elseif recipeId then
-                        outputName = addon.Item.GetInfo(recipeId) or spellName or ""
-                    else
-                        outputName = spellName or ""
-                    end
-                    CdMail_PrepareSupplyMail(charKey, spellName, outputName, mailReagents)
-                end)
-                mailBtn:SetScript("OnEnter", function()
-                    addon.Tooltip.Owner(mailBtn)
-                    GameTooltip:SetText(L["MailBtnTooltip"], 1, 1, 1, 1, true)
-                    GameTooltip:AddLine(L["MailBtnTooltipDesc"], nil, nil, nil, true)
-                    showAbovePopup()
-                end)
-                mailBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-            end
-        end
-    end
 
     popup:Show()
-    -- Belt-and-suspenders: invoke refreshers directly even if OnShow already
-    -- did so, in case something about the WoW frame lifecycle skips it.  The
-    -- refreshers are idempotent (just toggle Show/Hide based on current stock).
-    for _, fn in ipairs(rowRefreshers) do fn() end
-    C_Timer.After(0.1, function()
-        if popup:IsShown() then
-            for _, fn in ipairs(rowRefreshers) do fn() end
-        end
-    end)
     self._groupPopup = popup
     -- Escape closes this popup before the main window.
     if addon.MainWindow then addon.MainWindow:AddEscapeChild(popup) end

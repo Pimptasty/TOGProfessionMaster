@@ -188,6 +188,89 @@ describe("selecting a recipe", function()
 	end)
 end)
 
+-- The reagents under a selected recipe are a LibAceGUIWidgets RowList
+-- (CT._dpReagList) since v1.2.0; these read what its columns draw.
+describe("the detail panel's reagent list", function()
+	local function pick(index)
+		env.drawTab(CT)
+		CT._selIndex = index
+		CT:RefreshDetail()
+		assert.equal(index, CT._selIndex)
+	end
+
+	local function cell(key, e)
+		for _, col in ipairs(CT._dpReagList.columns) do
+			if col.key == key then return col.format(nil, e) end
+		end
+		error("no column " .. key)
+	end
+
+	local function column(key)
+		for _, col in ipairs(CT._dpReagList.columns) do
+			if col.key == key then return col end
+		end
+	end
+
+	it("draws one row per reagent, the needed count before the name", function()
+		pick(2)
+		local data = CT._dpReagList.data
+		assert.equal(2, #data)
+		assert.is_truthy(cell("name", data[1]):find("1x ", 1, true))
+		assert.is_truthy(cell("name", data[1]):find("Peacebloom", 1, true))
+		assert.is_truthy(cell("name", data[2]):find("Silverleaf", 1, true))
+	end)
+
+	it("shows bags / bank, green when they cover the need", function()
+		pick(2)
+		local cnt = cell("cnt", CT._dpReagList.data[1])
+		assert.is_truthy(cnt:find("20/0", 1, true))
+		assert.is_truthy(cnt:find("ff40c040", 1, true))
+		assert.is_false(CT._dpMiss:IsShown())
+	end)
+
+	it("shows a short reagent in red and flags Missing Materials", function()
+		pick(3)
+		local cnt = cell("cnt", CT._dpReagList.data[1])
+		assert.is_truthy(cnt:find("0/0", 1, true))
+		assert.is_truthy(cnt:find("ffff4040", 1, true))
+		assert.is_true(CT._dpMiss:IsShown())
+	end)
+
+	it("replaces the rows when another recipe is picked", function()
+		pick(2)
+		assert.equal(2, #CT._dpReagList.data)
+		CT._selIndex = 3
+		CT:RefreshDetail()
+		assert.equal(1, #CT._dpReagList.data)
+		assert.is_truthy(cell("name", CT._dpReagList.data[1]):find("Goldthorn", 1, true))
+	end)
+
+	it("sizes itself to its rows, so the panel can shrink to fit", function()
+		pick(2)
+		local two = CT._dpReagHost:GetHeight()
+		CT._selIndex = 3
+		CT:RefreshDetail()
+		local one = CT._dpReagHost:GetHeight()
+		assert.is_true(two > one, ("two rows %s, one row %s"):format(two, one))
+	end)
+
+	it("hides the list when nothing is selected", function()
+		pick(2)
+		CT._selIndex = nil
+		CT:RefreshDetail()
+		assert.is_false(CT._dpReagHost:IsShown())
+	end)
+
+	it("heads its name and cost columns, each with its explanation", function()
+		pick(2)
+		local L = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
+		assert.equal(L["CraftReagents"], column("name").header)
+		assert.equal(L["CraftReagentsDesc"], column("name").headerTip)
+		assert.equal(L["CraftColCostHdr"], column("cost").header)
+		assert.equal(L["CraftColCostHdrDesc"], column("cost").headerTip)
+	end)
+end)
+
 -- In game 2026-09-26: closing TOGPM in combat raised ADDON_ACTION_BLOCKED
 -- "Frame:Hide()" from AceGUIContainer-Frame. The secure Craft button made every
 -- ancestor protected, and its ancestors were AceGUI's pooled window. It now lives
@@ -256,6 +339,19 @@ describe("the secure Craft button", function()
 		CT._craftBtnWatcher:GetScript("OnUpdate")(CT._craftBtnWatcher, 0)
 		assert.is_near(panel:GetRight() - 12, btn:GetRight(), 0.01)
 		assert.is_near(panel:GetTop() - 34, btn:GetTop(), 0.01)
+	end)
+
+	-- Discord 2026-09-29: the Enchant button sat dimmed under the panel and took
+	-- no clicks. The window is Toplevel, so a click Raises it above the button,
+	-- which is not its descendant; the watcher only followed the panel's rect.
+	it("stays above the panel when the window is raised", function()
+		selectCraftable()
+		local btn, panel = CT._dpCraft, CT._detailPanel
+		assert.is_true(btn:GetFrameLevel() > panel:GetFrameLevel())
+		panel:SetFrameLevel(btn:GetFrameLevel() + 5)
+		CT._craftBtnWatcher:GetScript("OnUpdate")(CT._craftBtnWatcher, 0)
+		assert.is_true(btn:GetFrameLevel() > panel:GetFrameLevel(),
+			("button %d, panel %d"):format(btn:GetFrameLevel(), panel:GetFrameLevel()))
 	end)
 
 	it("shows with a recipe selected and hides with none", function()

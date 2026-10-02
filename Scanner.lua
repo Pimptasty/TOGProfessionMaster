@@ -1026,9 +1026,22 @@ end
 
 function Scanner:OnTradeSkillEvent()
     if UnitAffectingCombat("player") then return end
-    -- WoW Forever: the recipe scan below is built on the classic trade-skill
-    -- API. A Forever scan on C_TradeSkillUI is NOT BUILT YET, so there the
-    -- event is ignored (Compat.lua, HasClassicTradeSkillAPI).
+    -- WoW Forever has no classic trade-skill API; it scans through
+    -- C_TradeSkillUI (Compat.lua, HasModernTradeSkillAPI).
+    if addon:HasModernTradeSkillAPI() then
+        -- Only the player's own window: a linked or NPC-crafting session is
+        -- someone else's recipes, and the classic path stores a link only for
+        -- a verified guildmate, which needs the link's owner this API does not
+        -- hand over in anything documented.
+        local T = C_TradeSkillUI
+        if (T.IsTradeSkillLinked and T.IsTradeSkillLinked())
+           or (T.IsNPCCrafting and T.IsNPCCrafting()) then return end
+        self:ScanModernTradeSkillInto(addon:GetCharacterKey())
+        self:ScanCooldowns()
+        self:DetectSpecializations()
+        self:ScheduleBroadcast()
+        return
+    end
     if not addon:HasClassicTradeSkillAPI() then return end
 
     local isLinked, linkedPlayer = IsTradeSkillLinked()
@@ -1482,6 +1495,69 @@ function Scanner:ScanTradeSkillInto(charKey, _isLinked)
     -- Refresh the UI for our own freshly-scanned recipes, but only when the set
     -- actually changed, so crafting's repeated TRADE_SKILL_UPDATE events don't
     -- churn the active tab.
+    if changed then self:RefreshAfterLocalScan(charKey) end
+end
+
+--- WoW Forever's counterpart of ScanTradeSkillInto, on C_TradeSkillUI. The
+--- recipe id there IS the spell id addon.recipeDB is keyed by, so no item->spell
+--- remap is needed (MergeRecipesIntoGdb's remap is a no-op on a spell id).
+--- An empty list is NOT merged: the data may not be ready yet, and merging it
+--- would strip every recipe from this character's crafter set.
+function Scanner:ScanModernTradeSkillInto(charKey)
+    local p = addon:GetModernOpenProfession()
+    if not p then return end
+    local skillName = p.parentProfessionName or p.professionName
+    local profId = self:ResolveProfessionId(p.professionName)
+        or (p.parentProfessionName and self:ResolveProfessionId(p.parentProfessionName))
+    if not profId then
+        addon:DebugPrint("Scanner: unrecognised profession name:", tostring(skillName))
+        return
+    end
+
+    -- Mid-switch the recipe list is still the previous profession's. Blizzard's
+    -- own window waits this out (Blizzard_ProfessionsFrame.lua:142).
+    local T = C_TradeSkillUI
+    if T.IsDataSourceChanging and T.IsDataSourceChanging() then return end
+
+    -- Keep only recipes the client says belong to THIS profession. In game
+    -- 2026-09-29 every profession switched to scanned "16 recipes" -- the
+    -- Blacksmithing count -- and was broadcast, so the list handed back did
+    -- not follow the open profession, and those recipes were stored as that
+    -- character's Mining / Cooking / Fishing / First Aid crafts. The check is
+    -- Blizzard's own: GetTradeSkillLineForRecipe returns the recipe's skill
+    -- line and its parent (ProfessionsUtil.lua:79-82). A recipe it cannot
+    -- place is kept, as before; one it places elsewhere is dropped.
+    local base = T.GetBaseProfessionInfo and T.GetBaseProfessionInfo()
+    local baseLine = base and base.professionID
+    local recipeIds, count, dropped = {}, 0, 0
+    for _, id in ipairs(addon:GetModernLearnedRecipeIDs()) do
+        local line, parent
+        if baseLine and T.GetTradeSkillLineForRecipe then
+            local l, _, pl = T.GetTradeSkillLineForRecipe(id)
+            line, parent = l, pl
+        end
+        if line and (parent or line) ~= baseLine then
+            dropped = dropped + 1
+        else
+            recipeIds[id] = true
+            count = count + 1
+        end
+    end
+    if dropped > 0 then
+        addon:DebugPrint("Scanner: dropped", dropped, "recipe(s) that belong to another profession than",
+            tostring(p.parentProfessionName or p.professionName))
+    end
+    if count == 0 then return end
+
+    local gdb = addon:GetGuildDb()
+    if not gdb then return end
+    local changed = self:MergeRecipesIntoGdb(gdb, charKey, profId, p.skillLevel, p.maxSkillLevel, recipeIds)
+    if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
+    gdb.lastScan[charKey][profId] = GetServerTime()
+    if self.DS then
+        addon.HashManager:InvalidateProfession(self.DS, gdb, profId)
+    end
+    addon:DebugPrint("Scanner: scanned", skillName, "for", charKey, "—", count, "recipes (C_TradeSkillUI)")
     if changed then self:RefreshAfterLocalScan(charKey) end
 end
 

@@ -280,6 +280,30 @@ describe("the reagent column", function()
 	end)
 end)
 
+-- In game 2026-09-30: "attempt to index local 'anchorBelow' (a number value)"
+-- from this exact click. select(2, GetInfo(id)) as the LAST argument handed the
+-- dialog every return after the link; the 4th landed in anchorBelow.
+describe("a cooldown row's [Bank] button", function()
+	it("hands the [Bank] dialog exactly the item, its name and its link", function()
+		local ITEM = 12359
+		local LINK = "|Hitem:" .. ITEM .. "|h[Thorium Bar]|h"
+		env.wow.items[ITEM] = { name = "Thorium Bar", link = LINK }
+		env.drawTab(CD)
+		local bank
+		for _, col in ipairs(CD._rowList.columns) do
+			if col.key == "bankBtn" then bank = col end
+		end
+		assert.is_truthy(bank, "the cooldown list has no [Bank] column")
+		local got, saved = nil, ns.Bank.ShowRequestDialog
+		ns.Bank.ShowRequestDialog = function(...) got = { n = select("#", ...), ... } end
+		local ok, err = pcall(bank.onClick, { reagentItemId = ITEM })
+		ns.Bank.ShowRequestDialog = saved
+		assert.is_true(ok, tostring(err))
+		assert.equal(3, got.n)
+		assert.same({ ITEM, "Thorium Bar", LINK }, { got[1], got[2], got[3] })
+	end)
+end)
+
 -- ---------------------------------------------------------------------------
 -- The group popup
 -- ---------------------------------------------------------------------------
@@ -335,6 +359,21 @@ describe("the transmute popup", function()
 		return out
 	end
 
+	-- The popup's rows are a LibAceGUIWidgets RowList (popup._list) since v1.2.0.
+	local function popupColumn(popup, key)
+		for _, col in ipairs(popup._list.columns) do
+			if col.key == key then return col end
+		end
+	end
+
+	--- The reagent cell as drawn for the row that carries `name`, colour code and all.
+	local function reagentCell(popup, name)
+		local col = assert(popupColumn(popup, "reagent"))
+		for _, row in ipairs(popup._list.data) do
+			local text = col.format(nil, row)
+			if text:find(name, 1, true) then return text end
+		end
+	end
 	it("opens on a left click on the group row", function()
 		setUpTransmuteRow()
 		local popup = openPopup()
@@ -377,13 +416,9 @@ describe("the transmute popup", function()
 		env.wow.items[IRON] = { name = "Iron Bar", link = "|Hitem:" .. IRON .. "|h" }
 		setUpTransmuteRow()
 		local popup = openPopup()
-		local lbl
-		for _, fs in ipairs(frames.findAll(popup, function(o) return o._type == "FontString" end)) do
-			if (fs:GetText() or "") == "Iron Bar" then lbl = fs end
-		end
-		assert.is_truthy(lbl)
-		local r = lbl:GetTextColor()
-		assert.is_true(r < 1)
+		local cell = reagentCell(popup, "Iron Bar")
+		assert.is_truthy(cell)
+		assert.equal("|cffa6a6a6Iron Bar|r", cell)
 	end)
 
 	it("whitens it once the reagent is in the viewer's bags", function()
@@ -391,13 +426,9 @@ describe("the transmute popup", function()
 		env.wow.bags[0] = { slots = 1, [1] = { itemID = IRON, count = 5, link = "|Hitem:" .. IRON .. "|h" } }
 		setUpTransmuteRow()
 		local popup = openPopup()
-		local lbl
-		for _, fs in ipairs(frames.findAll(popup, function(o) return o._type == "FontString" end)) do
-			if (fs:GetText() or "") == "Iron Bar" then lbl = fs end
-		end
-		assert.is_truthy(lbl)
-		local r = lbl:GetTextColor()
-		assert.equal(1, r)
+		local cell = reagentCell(popup, "Iron Bar")
+		assert.is_truthy(cell)
+		assert.equal("|cffffffffIron Bar|r", cell)
 	end)
 
 	-- One mail per COOLDOWN (v1.1.0). A two-reagent transmute draws a row per
@@ -432,14 +463,14 @@ describe("the transmute popup", function()
 			return t
 		end
 
-		-- SHOWN mail buttons: since v1.1.2 the popup's rows are pooled, so every
-		-- row slot owns a mail button and those without one to show keep it hidden.
+		-- The rows that draw the mail icon. Since v1.2.0 the mail button is the
+		-- list's `mail` icon column: the icon shows on a row that carries a mail.
 		local function mailButtons(popup)
-			return frames.findAll(popup, function(o)
-				local tex = o._type == "Button" and o:IsShown()
-					and o.GetNormalTexture and o:GetNormalTexture()
-				return tex and tex:GetTexture() == "Interface\\Icons\\INV_Letter_15" or false
-			end)
+			local col, out = assert(popupColumn(popup, "mail")), {}
+			for _, row in ipairs(popup._list.data) do
+				if col.icon(row) == "Interface\\Icons\\INV_Letter_15" then out[#out + 1] = row end
+			end
+			return out
 		end
 
 		it("draws a row per reagent but ONE mail button", function()
@@ -449,6 +480,64 @@ describe("the transmute popup", function()
 			assert.is_truthy(anyMatching(texts, "Thorium Bar"))
 			assert.is_truthy(anyMatching(texts, "Arcane Crystal"))
 			assert.equal(1, #mailButtons(popup))
+		end)
+
+		it("draws each reagent white or grey by what the viewer's bags hold", function()
+			-- One Thorium Bar carried, no Arcane Crystal: one can be sent, one not.
+			env.wow.bags[0] = { slots = 1, [1] = { itemID = THORIUM, count = 1, link = "|Hitem:" .. THORIUM .. "|h" } }
+			setUpArcaniteRow()
+			local popup = openPopup()
+			local col, seen = assert(popupColumn(popup, "reagent")), {}
+			for _, row in ipairs(popup._list.data) do seen[#seen + 1] = col.format(nil, row) end
+			assert.is_truthy(anyMatching(seen, "|cffffffffThorium Bar|r"))
+			assert.is_truthy(anyMatching(seen, "|cffa6a6a6Arcane Crystal|r"))
+		end)
+
+		it("mails the cooldown from its mail icon, and only that row has one", function()
+			env.wow.bags[0] = {
+				slots = 4,
+				[1] = { itemID = THORIUM, count = 1, link = "|Hitem:" .. THORIUM .. "|h" },
+				[2] = { itemID = CRYSTAL, count = 1, link = "|Hitem:" .. CRYSTAL .. "|h" },
+			}
+			MailFrame:Show()
+			_G.MailEditBox = { SetText = function() end }
+			setUpArcaniteRow()
+			local popup = openPopup()
+			local mail = assert(popupColumn(popup, "mail"))
+			local rows = mailButtons(popup)
+			assert.equal(1, #rows)
+			-- A row without the icon ignores the click and leaves it unhandled.
+			for _, row in ipairs(popup._list.data) do
+				if row ~= rows[1] then assert.is_nil(mail.onCellClick(row, 1, popup._list, "LeftButton")) end
+			end
+			assert.is_true(mail.onCellClick(rows[1], 1, popup._list, "LeftButton"))
+			_G.MailEditBox = nil
+			local onMail = {}
+			for i = 1, ATTACHMENTS_MAX_SEND do
+				local it = env.wow.sendMailItems[i]
+				if it then onMail[it.itemID] = (onMail[it.itemID] or 0) + it.count end
+			end
+			assert.same({ [THORIUM] = 1, [CRYSTAL] = 1 }, onMail)
+		end)
+
+		-- In game 2026-09-30: "attempt to index local 'anchorBelow' (a number
+		-- value)" from the [Bank] click. A bare select(2, GetInfo(id)) as the
+		-- last argument handed the dialog every return after the link.
+		it("hands the [Bank] dialog exactly the item, its name and its link", function()
+			setUpArcaniteRow()
+			env.wow.items[THORIUM].link = "|Hitem:" .. THORIUM .. "|h[Thorium Bar]|h"
+			local popup = openPopup()
+			local got, saved = nil, ns.Bank.ShowRequestDialog
+			ns.Bank.ShowRequestDialog = function(...) got = { n = select("#", ...), ... } end
+			local bank = assert(popupColumn(popup, "bankBtn"))
+			for _, row in ipairs(popup._list.data) do
+				if row.e.reagentId == THORIUM then bank.onClick(row) end
+			end
+			ns.Bank.ShowRequestDialog = saved
+			assert.is_truthy(got)
+			assert.equal(3, got.n)
+			assert.same({ THORIUM, "Thorium Bar", "|Hitem:" .. THORIUM .. "|h[Thorium Bar]|h" },
+				{ got[1], got[2], got[3] })
 		end)
 
 		it("builds no new frames when it is opened again", function()
@@ -482,8 +571,8 @@ describe("the transmute popup", function()
 			_G.MailEditBox = { SetText = function(_, t) body = t end }
 			setUpArcaniteRow()
 			local popup = openPopup()
-			local btn = mailButtons(popup)[1]
-			btn:GetScript("OnClick")(btn)
+			local mailRow = mailButtons(popup)[1]
+			assert.is_true(popupColumn(popup, "mail").onCellClick(mailRow, 1, popup._list, "LeftButton"))
 			_G.MailEditBox = nil
 			local onMail = {}
 			for i = 1, ATTACHMENTS_MAX_SEND do

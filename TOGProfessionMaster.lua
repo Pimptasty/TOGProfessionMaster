@@ -645,6 +645,7 @@ local SLASH_COMMANDS = {
     ["xgdiag"]       = "PrintCrossGuildDiagnostics",
     ["whyvisible"]   = "ExplainVisibility",
     ["commtest"]     = "RunCommTest",
+    ["opendebug"]    = "DumpOpenDebug",
     ["help"]         = "PrintHelp",
 }
 
@@ -1903,8 +1904,17 @@ function Ace:PrintHelp()
     self:Print("  /togpm whyvisible <name> \226\128\148 Explain why a character is still shown (or hidden)")
     self:Print("  /togpm perf         \226\128\148 Timings of the last opens, draws, builds and syncs;"
         .. " every addon's worst frame; the saved data's size")
+    self:Print("  /togpm opendebug    \226\128\148 Every attempt this session to open a profession"
+        .. " from the Crafting tab, with what blocked it")
     self:Print("  /togpm debug        \226\128\148 " .. L["SlashHelpDebug"])
     self:Print("  /togpm help         \226\128\148 " .. L["SlashHelpHelp"])
+end
+
+--- /togpm opendebug -- the Crafting tab's profession-open attempts (WoW
+--- Forever's OpenTradeSkill, blocked on some clicks only, 2026-09-29).
+function Ace:DumpOpenDebug()
+    local E = addon.CraftingEngine
+    if E and E.DumpOpenLog then E:DumpOpenLog() else self:Print("Crafting engine not loaded.") end
 end
 
 --- /togpm perf -- what the last opens cost, and what the database weighs.

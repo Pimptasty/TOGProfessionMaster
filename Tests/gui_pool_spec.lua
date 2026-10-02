@@ -33,96 +33,10 @@ before_each(function()
 	GUI = env.aceGUI()
 end)
 
---- A tab's virtual-scroll row pool: raw frames parented to an AceGUI widget's
---- content frame, exactly as BrowserTab and CooldownsTab build them.
-local function newPool(parent, count)
-	local pool = {}
-	for i = 1, count do
-		local row = CreateFrame("Frame", nil, parent)
-		row:SetSize(400, 20)
-		row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -20 * (i - 1))
-		row:Show()
-		pool[i] = row
-	end
-	return pool
-end
-
-describe("GUI.DetachPool", function()
-	it("orphans every pooled row onto UIParent", function()
-		local group = GUI:Create("SimpleGroup")
-		local pool  = newPool(group.content, 5)
-
-		-- Precondition, asserted rather than assumed: without it a passing
-		-- detach test could be passing because nothing was ever attached.
-		for _, row in ipairs(pool) do
-			assert.equal(group.content, row:GetParent())
-		end
-
-		ns.GUI.DetachPool(pool)
-
-		for _, row in ipairs(pool) do
-			assert.equal(UIParent, row:GetParent())
-			assert.is_false(row:IsShown())
-			-- Unanchored, so it cannot be dragged along by the old parent's
-			-- geometry if the widget is repositioned by its next owner.
-			assert.is_nil(row:GetLeft())
-		end
-	end)
-
-	it("keeps the frames in the pool for the next attach", function()
-		-- Raw frames are session-lifetime and never GC'd; detaching must orphan
-		-- them, not discard them, or every tab switch leaks a new pool.
-		local group = GUI:Create("SimpleGroup")
-		local pool  = newPool(group.content, 3)
-		local first = pool[1]
-
-		ns.GUI.DetachPool(pool)
-
-		assert.equal(3, #pool)
-		assert.equal(first, pool[1])
-	end)
-
-	it("takes a single frame as well as a pool", function()
-		-- MainWindow's help "i" icon: one CreateFrame parented to the AceGUI
-		-- Frame, no pool, same cleanup required.
-		local group = GUI:Create("SimpleGroup")
-		local icon  = CreateFrame("Frame", nil, group.content)
-		icon:SetSize(16, 16)
-		icon:SetPoint("TOPRIGHT", group.content, "TOPRIGHT", 0, 0)
-		icon:Show()
-
-		ns.GUI.DetachPool(icon)
-
-		assert.equal(UIParent, icon:GetParent())
-		assert.is_false(icon:IsShown())
-	end)
-
-	it("does nothing when handed nil", function()
-		assert.has_no.errors(function() ns.GUI.DetachPool(nil) end)
-	end)
-
-	it("survives a hole in the pool array", function()
-		local group = GUI:Create("SimpleGroup")
-		local pool  = newPool(group.content, 2)
-		pool[3] = false   -- a slot a tab cleared without shrinking the array
-		assert.has_no.errors(function() ns.GUI.DetachPool(pool) end)
-		assert.equal(UIParent, pool[1]:GetParent())
-	end)
-
-	it("leaves nothing of ours on the widget AceGUI hands out next", function()
-		-- The actual bug this helper exists for. Release the group and take it
-		-- back out of the pool: the rows must not still be riding on it.
-		local group = GUI:Create("SimpleGroup")
-		local pool  = newPool(group.content, 4)
-		ns.GUI.DetachPool(pool)
-		GUI:Release(group)
-
-		local recycled = GUI:Create("SimpleGroup")
-		for _, row in ipairs(pool) do
-			assert.is_not.equal(recycled.content, row:GetParent())
-		end
-	end)
-end)
+-- GUI.DetachPool was removed in v1.1.3 (LAGW adoption step 7): no tab keeps a
+-- raw row pool any more. Every list is a library RowList parked through
+-- GUI.ParkList, whose host goes back to UIParent through the library's
+-- AttachRawFrames when the draw's group is released.
 
 describe("AceGUIFrameScripts", function()
 	it("installs the script on the widget's own frame", function()

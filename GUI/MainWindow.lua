@@ -19,6 +19,11 @@ local L      = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 local MainWindow = {}
 addon.MainWindow = MainWindow
 
+-- Questbook's stop icon and its idle dim (Questbook Modules/Chrome.lua
+-- STOP_TEXTURE / STOP_IDLE_ALPHA), used for the same control on this window.
+local GUIDE_STOP_TEXTURE    = "Interface\\RaidFrame\\ReadyCheck-NotReady"
+local GUIDE_STOP_IDLE_ALPHA = 0.4
+
 -- ---------------------------------------------------------------------------
 -- AceGUI shared utility — leak-safe raw frame scripts on AceGUI widgets.
 -- ---------------------------------------------------------------------------
@@ -341,7 +346,7 @@ function MainWindow:Open(tabKey)
     end
 
     if addon.W then
-        local icons = addon.W:DressBottomRow(f, {
+        local specs = {
             { key = "help", texture = "Interface\\Common\\help-i",
               tipTitle = helpTitle, tipBody = helpBody, tipMinWidth = 280 },
             -- The settings gear opens the options panel (same target as
@@ -358,9 +363,32 @@ function MainWindow:Open(tabKey)
               tipTitle = "|c" .. (addon.BrandColor or "ffFF8000") .. L["TooltipSettingsTitle"] .. "|r",
               tipBody = L["TooltipSettingsDesc"],
               onClick = function() if addon.OpenSettings then addon:OpenSettings() end end },
-        })
+        }
+        -- Questbook's own stop control, left of the gear exactly as on
+        -- Questbook's window (Questbook Modules/Chrome.lua `Specs`): its red X,
+        -- dimmed to 0.4 while nothing is guided, a tooltip read at hover, and
+        -- its universal stop. Only with Questbook installed (operator,
+        -- 2026-10-01: "use the same button/function from questbook").
+        local MR = addon.MissingRecipesTab
+        local guide = MR and MR.CanGuide and MR:CanGuide()
+        if guide then
+            specs[#specs + 1] = { key = "stop", texture = GUIDE_STOP_TEXTURE,
+                alpha = MR:IsGuiding() and 1 or GUIDE_STOP_IDLE_ALPHA,
+                tipTitle = L["GuideStopTitle"],
+                tipBody = function()
+                    return MR:IsGuiding() and L["GuideStopDesc"] or L["GuideStopIdle"]
+                end,
+                onClick = function()
+                    MR:StopGuide()
+                    MainWindow:ShowGuideState()
+                end }
+        end
+        local icons = addon.W:DressBottomRow(f, specs)
         self._helpIcon = icons and icons.help
         self._gearIcon = icons and icons.gear
+        self._stopIcon = guide and icons and icons.stop or nil
+        self._stopShown = nil
+        self:ShowGuideState()
     end
 
     -- TabGroup
@@ -497,6 +525,36 @@ function MainWindow:ApplyTabSize(tabKey)
     end
 end
 
+-- Dim the stop icon while Questbook guides to nothing, full while it guides to
+-- something (Questbook's own rule, Chrome:ShowStopState). Guiding can start or
+-- stop from Questbook's window or HUD with no event TOGPM can hear, so a plain
+-- frame re-checks a few times a second while the icon is up, touching the icon
+-- only on a change.
+local GUIDE_POLL = 0.25
+local guideWatch = CreateFrame("Frame")
+guideWatch:Hide()
+guideWatch:SetScript("OnUpdate", function(f, elapsed)
+    f.t = (f.t or 0) + (elapsed or 0)
+    if f.t < GUIDE_POLL then return end
+    f.t = 0
+    MainWindow:ShowGuideState()
+end)
+MainWindow._guideWatch = guideWatch
+
+function MainWindow:ShowGuideState()
+    local icon, MR = self._stopIcon, addon.MissingRecipesTab
+    if not (icon and MR) then
+        guideWatch:Hide()
+        return
+    end
+    guideWatch:Show()
+    local guiding = MR:IsGuiding()
+    if self._stopShown ~= guiding then
+        icon:SetAlpha(guiding and 1 or GUIDE_STOP_IDLE_ALPHA)
+        self._stopShown = guiding
+    end
+end
+
 --- Shared release-and-cleanup path used by BOTH OnClose (X-button) and
 --- the programmatic Close()/Toggle() path. AceGUI:Release does NOT fire
 --- OnClose, so any escape route that ends in Release (ESC key, /togpm
@@ -513,10 +571,15 @@ function MainWindow:_ReleaseFrame(widget)
         widget.frame:SetClampedToScreen(self._priorClamp and true or false)
     end
     self._priorClamp = nil
-    self._helpIcon, self._gearIcon = nil, nil
+    self._helpIcon, self._gearIcon, self._stopIcon = nil, nil, nil
+    self:ShowGuideState()
     self.frame = nil
     self.tabs  = nil
     if widget then AceGUI:Release(widget) end
+    -- WoW Forever: Blizzard's profession window may be open but invisible
+    -- behind ours; closing ours closes it too (CraftingEngine.lua).
+    local Engine = addon.CraftingEngine
+    if Engine and Engine.OnMainWindowClosed then Engine:OnMainWindowClosed() end
 end
 
 function MainWindow:Close()
@@ -655,31 +718,29 @@ function MainWindow:Refresh()
         return
     end
 
-    -- Defer the refresh while any toolbar dropdown's pullout is open.
-    -- Releasing the tab's children tears down the Dropdown widget,
-    -- which closes its pullout mid-interaction — annoying when a guild
-    -- sync arrives every few seconds and the user is mid-pick. Re-queue
-    -- and re-test on a longer cadence; the user closing the pullout
-    -- (either by picking a value or clicking elsewhere) is the natural
-    -- gating event. addon.GUI.IsAnyDropdownPulloutOpen lives in
-    -- GUI/SharedWidgets.lua and walks AceGUI's global pullout pool.
-    -- Defer ONLY while one of OUR OWN dropdown pullouts is open (releasing the
-    -- tab's children would shut it mid-pick). Two guards against the bug that
-    -- froze refreshes indefinitely — purge/sync never redrawing until a manual
-    -- tab switch:
-    --   1. Scope to our window frame. The AceGUI30PulloutN frames are GLOBAL,
-    --      shared across every AceGUI-3.0 addon, so a foreign or leaked-shown
-    --      pullout used to make the old global check return true forever.
-    --   2. Cap the retries, so even our own open pullout can't hang us.
+    -- Never redraw under the player's hands. A redraw releases the tab's
+    -- toolbar, which would shut a menu the player is choosing from and drop
+    -- the caret out of a box they are typing in -- and a guild sync asks for a
+    -- redraw every few seconds. Both questions are LibAceGUIWidgets' (TOGPM
+    -- contract 8f507ee7), because the toolbars' menus and search boxes are its:
+    --   * a menu open inside this window: wait for it to close (a pick or a
+    --     click away), then redraw once. Another addon's open menu answers no,
+    --     so it can never hold this window's redraws the way AceGUI's global
+    --     pullouts once did.
+    --   * a box inside this window focused: re-test every 0.25s, capped so a
+    --     box left focused while the player walks away still redraws. Each
+    --     keystroke resets the count (ToolbarSearch), so typing keeps it off.
+    local W = addon.W
     local rootFrame = self.frame and self.frame.frame
-    local pulloutOpen = rootFrame and addon.GUI and addon.GUI.IsAnyDropdownPulloutOpen
-                        and addon.GUI.IsAnyDropdownPulloutOpen(rootFrame)
-    local typing      = addon.GUI and addon.GUI.IsAnySearchFocused
-                        and addon.GUI.IsAnySearchFocused()
-    if (pulloutOpen or typing) and (self._refreshDeferrals or 0) < 8 then
+    if W and rootFrame and W:IsMenuOpenFor(rootFrame) then
+        addon:DebugPrint("MainWindow:Refresh DEFERRED — a menu is open; redraw when it closes")
+        W:OnMenuClosed(rootFrame, function() self:QueueRefresh() end)
+        return
+    end
+    local typing = W and rootFrame and W:IsInputFocusedIn(rootFrame)
+    if typing and (self._refreshDeferrals or 0) < 8 then
         self._refreshDeferrals = (self._refreshDeferrals or 0) + 1
-        addon:DebugPrint("MainWindow:Refresh DEFERRED —",
-            typing and "search field focused" or "our dropdown pullout open",
+        addon:DebugPrint("MainWindow:Refresh DEFERRED — search field focused",
             "(", self._refreshDeferrals, "/8); re-try in 0.25s")
         if self._refreshTimer then self._refreshTimer:Cancel() end
         self._refreshTimer = C_Timer.NewTimer(0.25, function()

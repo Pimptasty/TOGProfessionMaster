@@ -59,20 +59,45 @@ local function entryWith(fields)
 	return e
 end
 
-local function shownReagentRows(tab)
+-- The reagents / Known By list is a library RowList (tab._dpList). These read
+-- its rows and the text its columns draw for them -- what the player sees.
+local function rowsWhere(tab, pred)
 	local out = {}
-	for _, rf in ipairs(tab._dpReagPool or {}) do
-		if rf:IsShown() then out[#out + 1] = rf end
+	for _, e in ipairs(tab._dpList and tab._dpList.data or {}) do
+		if pred(e) then out[#out + 1] = e end
 	end
 	return out
 end
 
+local function shownReagentRows(tab)
+	return rowsWhere(tab, function(e) return e.kind == "reagent" end)
+end
+
+-- A crafter row, or the one "no data yet" row that stands in for none.
 local function shownCrafterRows(tab)
-	local out = {}
-	for _, cf in ipairs(tab._dpCraftPool or {}) do
-		if cf:IsShown() then out[#out + 1] = cf end
+	return rowsWhere(tab, function(e) return e.kind == "crafter" or e.kind == "none" end)
+end
+
+local function cell(tab, key, e)
+	for _, col in ipairs(tab._dpList.columns) do
+		if col.key == key then return col.format(nil, e) end
 	end
-	return out
+	error("no column " .. key)
+end
+
+local function hasHeading(tab, text)
+	return #rowsWhere(tab, function(e) return e._header == text end) == 1
+end
+
+-- Right-click a row the way the list does, and report who was whispered.
+local function rightClick(tab, e)
+	local whispered
+	local savedMenu, savedWhisper = _G.Menu, ns.UI.OpenWhisper
+	_G.Menu = nil
+	ns.UI.OpenWhisper = function(who) whispered = who end
+	tab._dpList.onRowClick(e, 1, tab._dpList, "RightButton", UIParent)
+	_G.Menu, ns.UI.OpenWhisper = savedMenu, savedWhisper
+	return whispered
 end
 
 -- ---------------------------------------------------------------------------
@@ -100,11 +125,11 @@ describe("the header", function()
 		assert.is_truthy(tab._dpName:GetText():find("|cffffd100", 1, true))
 	end)
 
-	it("hides the placeholder and shows the scroll frame", function()
+	it("hides the placeholder and shows the panel's body", function()
 		local tab = panel()
 		tab:DrawDetail(entryWith())
 		assert.is_false(tab._dpPH:IsShown())
-		assert.is_true(tab._dpSF:IsShown())
+		assert.is_true(tab._dpBody:IsShown())
 	end)
 
 	it("puts the placeholder back when the selection is cleared", function()
@@ -112,7 +137,7 @@ describe("the header", function()
 		tab:DrawDetail(entryWith())
 		tab:ClearDetail()
 		assert.is_true(tab._dpPH:IsShown())
-		assert.is_false(tab._dpSF:IsShown())
+		assert.is_false(tab._dpBody:IsShown())
 		assert.is_nil(tab._selectedEntry)
 	end)
 end)
@@ -148,13 +173,13 @@ describe("the reagent rows", function()
 	it("names each reagent", function()
 		local tab = panel()
 		tab:DrawDetail(entryWith())
-		assert.equal("Rough Stone", shownReagentRows(tab)[1].nameLbl:GetText())
+		assert.equal("Rough Stone", cell(tab, "name", shownReagentRows(tab)[1]))
 	end)
 
 	it("shows the recipe's own count when nothing is on the shopping list", function()
 		local tab = panel()
 		tab:DrawDetail(entryWith({ reagents = { { name = "Rough Stone", itemId = COPPER, count = 4 } } }))
-		assert.is_truthy(shownReagentRows(tab)[1].countLbl:GetText():find("4", 1, true))
+		assert.is_truthy(cell(tab, "count", shownReagentRows(tab)[1]):find("4", 1, true))
 	end)
 
 	it("multiplies the count by the shopping-list quantity", function()
@@ -165,7 +190,7 @@ describe("the reagent rows", function()
 		local entry = entryWith({ reagents = { { name = "Rough Stone", itemId = COPPER, count = 4 } } })
 		Ace.db.char.shoppingList[entry.id] = { name = entry.name, quantity = 3 }
 		tab:DrawDetail(entry)
-		assert.is_truthy(shownReagentRows(tab)[1].countLbl:GetText():find("12", 1, true))
+		assert.is_truthy(cell(tab, "count", shownReagentRows(tab)[1]):find("12", 1, true))
 	end)
 
 	it("does not multiply by zero for a recipe that is not on the list", function()
@@ -173,13 +198,14 @@ describe("the reagent rows", function()
 		local entry = entryWith({ reagents = { { name = "Rough Stone", itemId = COPPER, count = 4 } } })
 		Ace.db.char.shoppingList[entry.id] = { name = entry.name, quantity = 0 }
 		tab:DrawDetail(entry)
-		assert.is_truthy(shownReagentRows(tab)[1].countLbl:GetText():find("4", 1, true))
+		assert.is_truthy(cell(tab, "count", shownReagentRows(tab)[1]):find("4", 1, true))
 	end)
 
 	it("hides the reagent header entirely for a recipe with none", function()
 		local tab = panel()
 		tab:DrawDetail(entryWith({ reagents = {} }))
-		assert.is_false(tab._dpReagHdr:IsShown())
+		assert.is_false(hasHeading(tab, "Reagents"))
+		assert.is_true(hasHeading(tab, "Known By"))
 		assert.equal(0, #shownReagentRows(tab))
 	end)
 
@@ -187,7 +213,16 @@ describe("the reagent rows", function()
 		local tab = panel()
 		tab:DrawDetail(entryWith({ reagents = {} }))
 		tab:DrawDetail(entryWith())
-		assert.is_true(tab._dpReagHdr:IsShown())
+		assert.is_true(hasHeading(tab, "Reagents"))
+	end)
+
+	it("lists the reagents under their heading, before Known By", function()
+		local tab = panel()
+		tab:DrawDetail(entryWith())
+		local data = tab._dpList.data
+		assert.equal("Reagents", data[1]._header)
+		assert.equal("reagent", data[2].kind)
+		assert.equal("Known By", data[3]._header)
 	end)
 end)
 
@@ -274,7 +309,7 @@ describe("the shopping-list controls", function()
 		tab:DrawDetail(entry)
 		tab._dpPlus:GetScript("OnClick")(tab._dpPlus)
 		tab._dpPlus:GetScript("OnClick")(tab._dpPlus)
-		assert.is_truthy(shownReagentRows(tab)[1].countLbl:GetText():find("4", 1, true))
+		assert.is_truthy(cell(tab, "count", shownReagentRows(tab)[1]):find("4", 1, true))
 	end)
 end)
 
@@ -284,7 +319,7 @@ describe("the Known By list", function()
 		tab:DrawDetail(entryWith({ crafters = {} }))
 		local rows = shownCrafterRows(tab)
 		assert.equal(1, #rows)
-		assert.is_truthy(rows[1].lbl:GetText():find(L["NoDataYet"], 1, true))
+		assert.is_truthy(cell(tab, "name", rows[1]):find(L["NoDataYet"], 1, true))
 	end)
 
 	it("lists every crafter", function()
@@ -301,7 +336,7 @@ describe("the Known By list", function()
 		tab:DrawDetail(entryWith({ crafters = {
 			{ name = "Testchar", charKey = ME, online = true, isYou = true },
 		} }))
-		local you = shownCrafterRows(tab)[1].lbl:GetText()
+		local you = cell(tab, "name", shownCrafterRows(tab)[1])
 		assert.is_truthy(you:find("|c" .. (ns.ColorYou or ns.BrandColor or "ffDA8CFF"), 1, true))
 	end)
 
@@ -310,14 +345,32 @@ describe("the Known By list", function()
 		tab:DrawDetail(entryWith({ crafters = {
 			{ name = "Bob", charKey = MATE, online = false },
 		} }))
-		local offline = shownCrafterRows(tab)[1].lbl:GetText()
+		local offline = cell(tab, "name", shownCrafterRows(tab)[1])
 		assert.is_truthy(offline:find("|c" .. (ns.ColorOffline or "ffaaaaaa"), 1, true))
 
 		tab:DrawDetail(entryWith({ crafters = {
 			{ name = "Bob", charKey = MATE, online = true },
 		} }))
-		local online = shownCrafterRows(tab)[1].lbl:GetText()
+		local online = cell(tab, "name", shownCrafterRows(tab)[1])
 		assert.is_nil(online:find("|c" .. (ns.ColorOffline or "ffaaaaaa"), 1, true))
+	end)
+
+	it("whispers a guildmate on a right-click, and nobody for your own row", function()
+		local tab = panel()
+		tab:DrawDetail(entryWith({ crafters = {
+			{ name = "Bob",      charKey = MATE, online = true },
+			{ name = "Testchar", charKey = ME,   online = true, isYou = true },
+		} }))
+		local whispered = {}
+		local savedMenu, savedWhisper = _G.Menu, ns.UI.OpenWhisper
+		_G.Menu = nil
+		ns.UI.OpenWhisper = function(who) whispered[#whispered + 1] = who end
+		for _, e in ipairs(shownCrafterRows(tab)) do
+			tab._dpList.onRowClick(e, 1, tab._dpList, "RightButton", UIParent)
+			tab._dpList.onRowClick(e, 1, tab._dpList, "LeftButton", UIParent)
+		end
+		_G.Menu, ns.UI.OpenWhisper = savedMenu, savedWhisper
+		assert.same({ MATE }, whispered)
 	end)
 
 	it("hides the crafters a shorter list no longer needs", function()
@@ -332,20 +385,20 @@ describe("the Known By list", function()
 		assert.equal(1, #shownCrafterRows(tab))
 	end)
 
-	it("leaves your own row unclickable — there is nobody to whisper", function()
+	it("does nothing on a right-click of your own row -- there is nobody to whisper", function()
 		local tab = panel()
 		tab:DrawDetail(entryWith({ crafters = {
 			{ name = "Testchar", charKey = ME, online = true, isYou = true },
 		} }))
-		assert.is_nil(shownCrafterRows(tab)[1]:GetScript("OnClick"))
+		assert.is_nil(rightClick(tab, shownCrafterRows(tab)[1]))
 	end)
 
-	it("makes a guildmate's row right-clickable to whisper", function()
+	it("whispers a guildmate on a right-click of their row", function()
 		local tab = panel()
 		tab:DrawDetail(entryWith({ crafters = {
 			{ name = "Bob", charKey = MATE, online = true },
 		} }))
-		assert.is_truthy(shownCrafterRows(tab)[1]:GetScript("OnClick"))
+		assert.equal(MATE, rightClick(tab, shownCrafterRows(tab)[1]))
 	end)
 end)
 
@@ -380,7 +433,7 @@ describe("a reagent the client had not cached when the list was built", function
 	--- recipe DB, so a spec asks "is this name drawn" rather than "is it first".
 	local function drawnNames(tab)
 		local out = {}
-		for _, rf in ipairs(shownReagentRows(tab)) do out[rf.nameLbl:GetText()] = true end
+		for _, e in ipairs(shownReagentRows(tab)) do out[cell(tab, "name", e)] = true end
 		return out
 	end
 
@@ -448,13 +501,18 @@ describe("a reagent the client had not cached when the list was built", function
 		}
 		local tab = panel()
 		tab._slExpanded = { [SPELL] = true }
-		-- The AceGUI container: rows parent to .content, and the section sets the
-		-- widget's height when it is done laying out.
+		-- The AceGUI container: the list parks in .content, and the fill sets
+		-- the widget's height.
 		tab:FillShoppingListSection({ content = CreateFrame("Frame", nil, UIParent),
 		                              SetHeight = function() end })
-		local row = tab._slReagentPool[1]
-		assert.is_true(row:IsShown())
-		assert.equal("Devilsaur Leather", row.nameLbl:GetText())
+		local rl, reagentRow = tab._slList, nil
+		for _, row in ipairs(rl.data) do
+			if row.kind == "reagent" then reagentRow = row end
+		end
+		assert.is_truthy(reagentRow, "the expanded recipe drew no reagent row")
+		local nameCol
+		for _, col in ipairs(rl.columns) do if col.key == "name" then nameCol = col end end
+		assert.equal("Devilsaur Leather", nameCol.format(nil, reagentRow))
 		assert.equal("Devilsaur Leather", Ace.db.char.shoppingList[SPELL].reagents[1].name)
 	end)
 end)
@@ -470,16 +528,31 @@ describe("the shopping-list section against a window it would overflow", functio
 	local CAP = math.floor(TAB_H * 0.4)       -- what the section may show
 
 	--- A tab whose container has a real height, and a section widget that
-	--- records the height the fill gives it -- the InlineGroup's role.
+	--- records the height the fill gives it and passes it on to its content,
+	--- less the 40 px of InlineGroup chrome -- the InlineGroup's role.
 	local function tabAndSection()
 		local tab = panel()
 		local cont = CreateFrame("Frame", nil, UIParent)
 		cont:SetHeight(TAB_H)
 		tab._container = { frame = cont }
-		local section = { content = CreateFrame("Frame", nil, UIParent), height = nil }
-		function section:SetHeight(h) self.height = h end
+		local content = CreateFrame("Frame", nil, UIParent)
+		content:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
+		content:SetSize(500, 100)
+		local section = { content = content, height = nil }
+		function section:SetHeight(h)
+			self.height = h
+			self.content:SetHeight(h - 40)
+		end
 		return tab, section
 	end
+
+	-- The list's rows, the rows it has room to draw, and how far it scrolls.
+	local function listState(tab)
+		local rl = tab._slList
+		local _, maxScroll = rl.scrollbar:GetMinMaxValues()
+		return #rl.data, rl.visibleRowCount, maxScroll
+	end
+	local CAP_ROWS = math.floor(CAP / ROW)    -- whole rows only
 
 	--- N recipes, each with `reagents` reagents, every one expanded.
 	local function listOf(n, reagents)
@@ -499,11 +572,12 @@ describe("the shopping-list section against a window it would overflow", functio
 		tab._slExpanded = listOf(6, 4)                 -- 6 headers + 24 reagent rows
 		tab:FillShoppingListSection(section)
 		local rows = 6 + 24
-		assert.equal(rows * ROW, tab._slContent:GetHeight())   -- every row still exists...
-		assert.equal(CAP + 40, section.height)                 -- ...but the section is capped
-		assert.is_true(tab._slSB:IsShown())
-		local _, maxScroll = tab._slSB:GetMinMaxValues()
-		assert.equal(rows * ROW - CAP, maxScroll)
+		local data, visible, maxScroll = listState(tab)
+		assert.equal(rows, data)                               -- every row still exists...
+		assert.equal(CAP_ROWS * ROW + 40, section.height)      -- ...but the section is capped
+		assert.equal(CAP_ROWS, visible)
+		assert.is_true(tab._slList.scrollbar:IsShown())
+		assert.equal(rows - CAP_ROWS, maxScroll)
 	end)
 
 	it("does not reserve a scrollbar or cap a list that fits", function()
@@ -511,24 +585,47 @@ describe("the shopping-list section against a window it would overflow", functio
 		tab._slExpanded = listOf(2, 1)                 -- 4 rows
 		tab:FillShoppingListSection(section)
 		assert.equal(4 * ROW + 40, section.height)
-		assert.is_false(tab._slSB:IsShown())
-		local _, maxScroll = tab._slSB:GetMinMaxValues()
+		local _, visible, maxScroll = listState(tab)
+		assert.equal(4, visible)
+		assert.is_false(tab._slList.scrollbar:IsShown())
 		assert.equal(0, maxScroll)
 	end)
 
-	it("scrolls the rows by the slider and clamps when the list shrinks", function()
+	it("scrolls the rows and clamps when the list shrinks", function()
 		local tab, section = tabAndSection()
 		tab._slExpanded = listOf(6, 4)
 		tab:FillShoppingListSection(section)
-		tab._slSB:SetValue(ROW * 5)
-		assert.equal(ROW * 5, tab._slSF:GetVerticalScroll())
+		tab._slList:SetScrollOffset(5)
+		assert.equal(5, tab._slList:GetScrollOffset())
 
 		-- Collapse everything: 6 rows fit, so the offset must come back to 0
 		-- rather than leave the rows scrolled out of an unscrollable section.
 		tab._slExpanded = {}
 		tab:FillShoppingListSection(section)
-		assert.equal(0, tab._slSF:GetVerticalScroll())
-		assert.is_false(tab._slSB:IsShown())
+		assert.equal(0, tab._slList:GetScrollOffset())
+		assert.is_false(tab._slList.scrollbar:IsShown())
+	end)
+
+	it("keeps the player's place when a row is added", function()
+		-- Every [+] / [-] / toggle refills the list; a refill that jumped to the
+		-- top would lose the row the player just clicked.
+		local tab, section = tabAndSection()
+		tab._slExpanded = listOf(6, 4)
+		tab:FillShoppingListSection(section)
+		tab._slList:SetScrollOffset(5)
+		tab:FillShoppingListSection(section)
+		assert.equal(5, tab._slList:GetScrollOffset())
+	end)
+
+	it("draws whole rows only, as many as the cap has room for", function()
+		-- The cap is a share of the tab's height, which is rarely a multiple of
+		-- a row; a section sized to it exactly would cut the last row in half.
+		local tab, section = tabAndSection()
+		tab._slExpanded = listOf(6, 4)
+		tab:FillShoppingListSection(section)
+		local _, visible = listState(tab)
+		assert.equal(CAP_ROWS, visible)
+		assert.equal(0, (section.height - 40) % ROW)
 	end)
 
 	it("falls back to a fixed row count before the tab has a height", function()
@@ -536,13 +633,16 @@ describe("the shopping-list section against a window it would overflow", functio
 		assert.equal(ROW * 10, tab:ShoppingListMaxHeight())
 	end)
 
-	it("detaches the scroll frame from the pooled section on release", function()
-		local tab, section = tabAndSection()
+	it("detaches the list from the pooled section on release", function()
+		-- A real InlineGroup: the hand-back rides AceGUI's own release.
+		local AceGUI = LibStub("AceGUI-3.0")
+		local tab = tabAndSection()
+		local section = AceGUI:Create("InlineGroup")
 		tab._slExpanded = listOf(2, 1)
 		tab:FillShoppingListSection(section)
-		assert.equal(section.content, tab._slSF:GetParent())
-		tab:DetachShoppingListPool()
-		assert.equal(UIParent, tab._slSF:GetParent())
-		assert.is_false(tab._slSF:IsShown())
+		assert.equal(section.content, tab._slListHost:GetParent())
+		AceGUI:Release(section)
+		assert.equal(UIParent, tab._slListHost:GetParent())
+		assert.is_false(tab._slListHost:IsShown())
 	end)
 end)

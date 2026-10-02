@@ -19,7 +19,12 @@ if not LDB then
     return
 end
 
-local dataObj = LDB:NewDataObject("TOGProfessionMaster", {
+-- FOR THE OFFLINE TEST SUITE, not a production requirement: in game this file
+-- loads once and GetDataObjectByName is always nil here. The suite reloads the
+-- file (Tests/reloadleak_spec.lua) while LibDataBroker lives for the whole run,
+-- and NewDataObject answers nil for a name it already holds, which left the
+-- reloaded copy with no object to register. Peer Review 427847d6.
+local dataObj = LDB:GetDataObjectByName("TOGProfessionMaster") or LDB:NewDataObject("TOGProfessionMaster", {
     type  = "launcher",
     label = "TOG Profession Master",
     icon  = "Interface\\AddOns\\TOGProfessionMaster\\icons\\TOGPM_MMB_Icon",

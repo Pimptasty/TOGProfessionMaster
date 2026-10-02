@@ -352,7 +352,7 @@ describe("Unlearned — which of YOUR characters could still learn it", function
 		knows(ALT, 285)
 		local gdb = ns:GetGuildDb()
 		gdb.specializations[ALT] = { [ALCHEMY] = 28677 }
-		_G.GetSpellInfo = function(id) return id == 28677 and "Elixir Master" or nil end
+		env.wow.spells[28677] = { name = "Elixir Master" }   -- served through C_Spell
 		local out = IL.UnlearnedBy(ALCHEMY, TRANSMUTE)
 		assert.equal("Elixir Master", out[1].spec)
 	end)
@@ -370,7 +370,7 @@ describe("Unlearned — which of YOUR characters could still learn it", function
 		knows(ALT, 71)
 		local gdb = ns:GetGuildDb()
 		gdb.specializations[ALT] = { [ALCHEMY] = 28677 }
-		_G.GetSpellInfo = function() return "Elixir Master" end
+		env.wow.spells[28677] = { name = "Elixir Master" }   -- served through C_Spell
 		local tip = fakeTooltip()
 		IL.AppendRecipeDetails(tip, ALCHEMY, TRANSMUTE)
 		assert.is_true(tip.has("Unlearned:"))

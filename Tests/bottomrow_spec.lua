@@ -178,39 +178,7 @@ describe("the sweep — nothing else on the window sits under a sizer", function
 	end)
 end)
 
-describe("LiftAboveSizers", function()
-	it("raises a button clear of its parent", function()
-		local parent = CreateFrame("Frame", nil, UIParent)
-		parent:SetFrameLevel(100)
-		local btn = CreateFrame("Button", nil, parent)
-		btn:SetFrameLevel(100)
-		ns.GUI.LiftAboveSizers(btn)
-		assert.is_true(btn:GetFrameLevel() > 101)
-	end)
-
-	it("clears the sizers by a margin, not by exactly one", function()
-		-- The sizers sit at parent+1, so parent+1 would be a tie. What a tie
-		-- resolves to is NOT something I have established -- AceGUI's own close
-		-- button ties with them and works fine -- so the margin is here because
-		-- FGI's fix used one and it worked, not because I can explain the
-		-- tiebreak. Clearing by 5 removes the question.
-		local parent = CreateFrame("Frame", nil, UIParent)
-		parent:SetFrameLevel(100)
-		local btn = CreateFrame("Button", nil, parent)
-		ns.GUI.LiftAboveSizers(btn)
-		assert.is_true(btn:GetFrameLevel() >= 105)
-	end)
-
-	it("honours an explicit offset", function()
-		local parent = CreateFrame("Frame", nil, UIParent)
-		parent:SetFrameLevel(50)
-		local btn = CreateFrame("Button", nil, parent)
-		ns.GUI.LiftAboveSizers(btn, 9)
-		assert.equal(59, btn:GetFrameLevel())
-	end)
-
-	it("does nothing, and does not raise, on a nil or level-less object", function()
-		assert.has_no.errors(function() ns.GUI.LiftAboveSizers(nil) end)
-		assert.has_no.errors(function() ns.GUI.LiftAboveSizers({}) end)
-	end)
-end)
+-- GUI.LiftAboveSizers was removed in v1.1.3 (LAGW adoption step 7): nothing
+-- called it once the bottom-row icons moved to the library. The behaviour it
+-- served -- the gear and help icon sit above the resize strips -- is still
+-- asserted on the real window by the two blocks above.

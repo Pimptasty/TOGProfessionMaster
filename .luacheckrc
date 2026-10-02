@@ -99,6 +99,12 @@ read_globals = {
 	"GetSpellCooldown", "GetItemCooldown", "CastSpellByName",
 	-- The namespaced spell API; the only spelling WoW Forever has (Compat.lua).
 	"C_Spell", "C_SpellBook",
+	-- The trade-skill API WoW Forever reads and crafts through (CraftingEngine.lua).
+	"C_TradeSkillUI",
+	-- The player's map, for the Missing Recipes [Guide] pick (feature-detected).
+	"C_Map",
+	-- Key bindings: the K key uncloaks WoW Forever's ProfessionsFrame (CraftingEngine.lua).
+	"GetBindingKey", "SetOverrideBindingClick", "ClearOverrideBindings",
 	-- The modern tooltip helpers (Tooltip.lua's TooltipLink, WoW Forever).
 	"TooltipUtil",
 	-- Group / guild / instance state.

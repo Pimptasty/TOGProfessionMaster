@@ -297,16 +297,19 @@ describe("a long shopping list inside the real window", function()
 		local BT = ns.BrowserTab
 		local tabH = BT._container.frame:GetHeight()
 		assert.is_true(tabH > 0)
-		-- 30 rows exist, at full height, in the scroll child...
-		assert.equal(30 * 14, BT._slContent:GetHeight())
-		-- ...the section is capped at its share of the tab, well inside it...
+		-- 30 rows exist in the list...
+		local rl = BT._slList
+		assert.equal(30, #rl.data)
+		-- ...the section is capped at its share of the tab, in whole rows, well
+		-- inside it...
+		local shown = math.floor(BT:ShoppingListMaxHeight() / 14)
 		local sectionH = BT._slSection.frame:GetHeight()
-		assert.equal(BT:ShoppingListMaxHeight() + 40, sectionH)
+		assert.equal(shown * 14 + 40, sectionH)
 		assert.is_true(sectionH < tabH * 0.6)
-		-- ...and the slider is what reaches the rest.
-		assert.is_true(BT._slSB:IsShown())
-		local _, maxScroll = BT._slSB:GetMinMaxValues()
-		assert.equal(30 * 14 - BT:ShoppingListMaxHeight(), maxScroll)
+		-- ...and the scrollbar is what reaches the rest.
+		assert.is_true(rl.scrollbar:IsShown())
+		local _, maxScroll = rl.scrollbar:GetMinMaxValues()
+		assert.equal(30 - shown, maxScroll)
 	end)
 
 	it("REPRODUCES the report when the cap is taken away: the section outgrows the tab", function()

@@ -9,7 +9,7 @@
 ## SavedVariablesPerCharacter:
 ## X-Curse-Project-ID: 1513588
 ## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0, DeltaSync, GuildRoster, ProfessionDB, ItemDB, LibDBIcon-1.0, LibAceGUIWidgets
-## OptionalDeps: TOGBankClassic, GreenWall, Auctionator, Auc-Advanced, TradeSkillMaster, TradeSkillMaster_AppHelper
+## OptionalDeps: TOGBankClassic, GreenWall, Auctionator, Auc-Advanced, TradeSkillMaster, TradeSkillMaster_AppHelper, Questbook
 
 Locale\_init.lua
 Locale\enUS.lua

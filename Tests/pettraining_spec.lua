@@ -13,7 +13,9 @@
 -- and assert which window the player ends up with.
 
 ---@diagnostic disable: duplicate-set-field, redundant-return-value, redundant-parameter
-local wow = require("env.wow")
+package.path = "./Tests/?.lua;" .. package.path
+local env = require("env_togpm")
+local wow = env.wow
 
 local ns, Engine, calls
 
@@ -30,6 +32,10 @@ local function installGlobals()
 	-- The two session probes. A spec flips the craft one to model Beast Training.
 	_G.GetTradeSkillLine        = function() return "Tailoring", 300, 300 end
 	_G.GetCraftDisplaySkillLine = function() return "Enchanting", 300, 300 end
+	-- The rest of the classic trade-skill API a TBC client has, which the real
+	-- Compat.lua checks to keep the engine off WoW Forever's path.
+	_G.GetNumTradeSkills = function() return 0 end
+	_G.GetTradeSkillInfo = function() return nil end
 end
 
 --- Beast Training's answer: no skill line at all.
@@ -40,7 +46,13 @@ end
 setup(function()
 	calls = { uiparent = {}, open = {}, close = 0 }
 	installGlobals()
-	ns = { isTBC = true, lib = { OnEnable = function() end } }
+	-- The real Compat.lua, which the engine asks on every event which API path
+	-- the client takes; the namespace inherits a booted addon, as
+	-- craftsuppress_spec does.
+	ns = setmetatable({ lib = { OnEnable = function() end } }, { __index = env.boot() })
+	wow.loadAddonFile("Compat.lua", "TOGProfessionMaster", ns)
+	installGlobals()
+	ns.isTBC, ns.isVanilla = true, false
 	function ns:DebugPrint() end
 	ns.MainWindow = {
 		Open  = function(_, tab) calls.open[#calls.open + 1] = tab end,

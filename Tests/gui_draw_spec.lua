@@ -129,15 +129,17 @@ describe("every tab builds against real AceGUI, with data in it", function()
 		assert.is_true(rowCount(ns.BrowserTab._recipes) > 0)
 	end)
 
-	it("Professions reuses one column-header bar across redraws", function()
+	it("Professions reuses one recipe list across redraws", function()
 		-- Draw re-runs on every GUILD_DATA_UPDATED. WoW never frees a frame, so a
-		-- fresh header bar per Draw (as up to v1.1.2) leaked three frames each time.
+		-- fresh list (or, up to v1.1.2, a fresh header bar) per Draw leaks frames
+		-- each time. The column headers are the list's own since v1.1.3.
 		local container = env.drawTab(ns.BrowserTab)
-		local first = ns.BrowserTab._headerBar
+		local first, host = ns.BrowserTab._rowList, ns.BrowserTab._rowListHost
 		assert.is_not_nil(first)
 		ns.BrowserTab:Draw(container)
-		assert.equal(first, ns.BrowserTab._headerBar)
-		assert.equal(container.content, first:GetParent())
+		assert.equal(first, ns.BrowserTab._rowList)
+		assert.equal(host, ns.BrowserTab._rowListHost)
+		assert.equal(ns.BrowserTab._listSection.content, host:GetParent())
 	end)
 
 	it("the Scan AH button explains itself while disabled, and hands back a clean frame", function()

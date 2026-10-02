@@ -47,6 +47,8 @@
         "C_AddOns",
         "C_Item",
         "C_Container",
+        "C_TradeSkillUI",
+        "C_Map",
         "GetRealmName",
         "GetNormalizedRealmName",
         "UnitName",

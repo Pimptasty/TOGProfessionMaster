@@ -91,8 +91,80 @@ M.installIdentity = installIdentity
 -- had been swallowing the call. Steer it through `_G.GameTooltip` directly;
 -- `Tests/tooltipminwidth_spec.lua` is the consumer.
 
+-- Containers M.drawTab made and nothing has released yet. Released at the next
+-- install(), see releaseDrawn.
+local drawn = {}
+-- What releaseDrawn could not release, raised at the END of install().
+---@type string|nil
+local releaseFailure
+
+-- Module reloads and hooksecurefunc: Scanner, CraftingEngine, MainWindow and
+-- MinimapButton hook `Ace.OnEnable` at file scope, and Ace lives for the whole
+-- suite. The harness replaces a hook re-made from the same source line after a
+-- reset instead of stacking a wrapper (pin 515873b, TOGPM request d229d4d6);
+-- TOGPM's own layer for that was removed on adoption. Tests/reloadleak_spec.lua
+-- is the check.
+
+-- RELEASE WHAT drawTab LEFT DRAWN, before the frame model is replaced. AceGUI is
+-- loaded once for the suite and names many of its frames in _G
+-- (AceGUI30Button1, AceGUITabGroup1Tab2, ...); an unreleased widget stays
+-- reachable from those names, and with it every callback a tab set on it -- and
+-- through those callbacks the tab module, so each spec file's reload of a tab
+-- kept the previous one alive with every frame it built. Found by
+-- Tests/reloadleak_spec.lua (WoWAPITesting thread 83f92459: the suite's heap
+-- reached 377-720 MB). A container a spec already released is skipped: AceGUI
+-- raises on a second release, and a pooled widget released twice corrupts the
+-- pool for every later file.
+local function releaseDrawn()
+	if #drawn == 0 then return end
+	local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
+	-- Every container is released even when one raises, so one bad release
+	-- cannot leave the rest alive; the failures are then raised together, so a
+	-- real bug in a tab's OnRelease still turns the suite red (Peer Review
+	-- 68a5b2fa).
+	local failed = {}
+	for i = #drawn, 1, -1 do
+		local c = drawn[i]
+		drawn[i] = nil
+		if AceGUI and not c._togpmEnvReleased then
+			local ok, err = pcall(AceGUI.Release, AceGUI, c)
+			if not ok then failed[#failed + 1] = tostring(err) end
+		end
+	end
+	if #failed > 0 then
+		releaseFailure = "env_togpm: releasing a drawn container raised: " .. table.concat(failed, " | ")
+	end
+end
+
+-- ONE FULL COLLECTION PER SPEC FILE, not per example (WoWAPITesting thread
+-- 48754b3d: 89% of this suite's example time was full collections inside the
+-- reset, median 251 s). The harness's opt-in deferral (wow.deferCollection,
+-- Adoption log 2026-09-30) makes frames.reset() skip its collection, and this
+-- env runs wow.collect() itself the first time a new spec file installs.
+-- KNOWN COST, the harness's own words: until that collect runs, a frame an
+-- earlier example of the SAME file discarded is still alive and still hears
+-- events. Across files the isolation is unchanged. Tests/reloadleak_spec.lua
+-- collects explicitly and is unaffected.
+wow.deferCollection(true)
+local collectedFor   -- the spec file the last collection was made for
+
+-- The spec file on the call stack (install runs from a spec's before_each or
+-- setup), or nil when the env itself is loading.
+local function currentSpecFile()
+	for level = 2, 60 do
+		local info = debug.getinfo(level, "S")
+		if not info then return nil end
+		local src = info.source or ""
+		if src:find("_spec%.lua$") then return src end
+	end
+	return nil
+end
+
 function M.install()
-	for k, v in pairs(M.DEFAULTS) do M[k] = v end
+	releaseDrawn()
+	-- rawset: M's fields have mixed types and the language server types M[k]
+	-- from the first one it saw.
+	for k, v in pairs(M.DEFAULTS) do rawset(M, k, v) end
 	-- The base env first: it owns C_ChatInfo, Enum, geterrorhandler, GetTime,
 	-- hooksecurefunc, xpcall, bit and the rest of the plumbing Ace3 and
 	-- ChatThrottleLib read. It must run BEFORE the guild model, which replaces
@@ -225,6 +297,21 @@ function M.install()
 	-- env.wow now ships Enum.SendAddonMessageResult with Blizzard's REAL values,
 	-- which is what makes a delivery-verdict spec mean anything — keeping the
 	-- stand-in would shadow it and make every result compare equal to 0.
+
+	-- The one collection, for a spec file this env has not collected for yet --
+	-- after the reset, so the previous file's whole generation is unreachable.
+	local file = currentSpecFile()
+	if file ~= collectedFor then
+		collectedFor = file
+		wow.collect()
+	end
+
+	-- LAST, so the reset is complete before anything raises.
+	if releaseFailure then
+		local msg = releaseFailure
+		releaseFailure = nil
+		error(msg, 0)
+	end
 end
 
 M.install()
@@ -495,6 +582,13 @@ function M.drawTab(tab, opts)
 	opts = opts or {}
 	local GUI = M.aceGUI()
 	local container = GUI:Create(opts.widget or "SimpleGroup")
+	-- Marked when released, by a spec or by the tab itself, so releaseDrawn
+	-- never releases it a second time. The flag is cleared here because AceGUI
+	-- hands a pooled widget back out: a flag left over from its last life would
+	-- skip a release it needs. The container is ours, so its one OnRelease slot is.
+	container._togpmEnvReleased = nil
+	container:SetCallback("OnRelease", function(w) w._togpmEnvReleased = true end)
+	drawn[#drawn + 1] = container
 	-- The container keeps its size, as the window's TabGroup does: AceGUI's
 	-- Fill layout anchors that container on all four sides, so its auto-height
 	-- never shrinks it. Set BEFORE the size: the frame's OnSizeChanged re-lays
@@ -508,6 +602,12 @@ function M.drawTab(tab, opts)
 	-- laid out inside the container resolves a rect.
 	container.frame:ClearAllPoints()
 	container.frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
+	-- Shown, as AddChild would: a pooled container comes back from AceGUI with
+	-- the frame its release hid, and a real tab container is always shown by
+	-- its parent's AddChild. Without this, once releaseDrawn returned an earlier
+	-- container to the pool, every list drawn into the reused one was invisible.
+	container.frame:SetParent(UIParent)
+	container.frame:Show()
 	tab:Draw(container)
 	return container, GUI
 end
@@ -526,9 +626,52 @@ function M.countWidgets(container)
 	return n
 end
 
+--- Drop every callback and event `owner` registered on the objects that live
+--- for the whole suite: the addon's own CallbackHandler registry and AceEvent's.
+--- Both key a registration by its owner, so a module that registers as itself
+--- (addon.RegisterCallback(Module, ...)) leaves one entry per reload -- and
+--- that entry's KEY is the old module, which keeps it and everything it built
+--- alive (Tests/reloadleak_spec.lua). In game a module loads once and this
+--- never arises; it is the suite's per-file reload that needs it.
+local function forgetOwner(ns, owner)
+	local registries = {
+		ns.callbacks and ns.callbacks.events,
+		ns.lib and ns.lib.callbacks and ns.lib.callbacks.events,
+		-- The roster library a module registers OnMemberOnline & co. on.
+		guild.lib and guild.lib.callbacks and guild.lib.callbacks.events,
+		-- LibItemDB, where AHScanner registers LibItemDB_ScanComplete as ns.AH.
+		-- Only the real library (env.priceDB) has a registry; a spec's stub has none.
+		type(ns._itemDB) == "table" and ns._itemDB.callbacks and ns._itemDB.callbacks.events,
+	}
+	local AceEvent = LibStub and LibStub("AceEvent-3.0", true)
+	if AceEvent then
+		registries[#registries + 1] = AceEvent.events and AceEvent.events.events
+		registries[#registries + 1] = AceEvent.messages and AceEvent.messages.events
+	end
+	for i = 1, #registries do
+		local events = registries[i]
+		if type(events) == "table" then
+			for _, byOwner in pairs(events) do
+				if type(byOwner) == "table" then byOwner[owner] = nil end
+			end
+		end
+	end
+end
+
 --- Load one more addon file into the booted namespace (e.g. a Module under test).
+--- A reload replaces the module's table in the namespace; the replaced one's
+--- registrations are dropped (forgetOwner) so it can be collected.
 function M.loadModule(path)
-	return wow.loadAddonFile(path, "TOGProfessionMaster", M.boot())
+	local ns = M.boot()
+	local before = {}
+	for k, v in pairs(ns) do
+		if type(v) == "table" then before[k] = v end
+	end
+	local result = wow.loadAddonFile(path, "TOGProfessionMaster", ns)
+	for k, old in pairs(before) do
+		if ns[k] ~= old then forgetOwner(ns, old) end
+	end
+	return result
 end
 
 local dbInit

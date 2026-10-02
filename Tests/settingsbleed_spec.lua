@@ -87,12 +87,13 @@ after_each(function()
 	if MW and MW.Close then pcall(function() MW:Close() end) end
 end)
 
---- Every raw frame the Browser tab parents into an AceGUI widget.
+--- Every raw frame the Browser tab parents into an AceGUI widget. Since
+--- v1.1.3 that is the recipe list's host and the detail panel; the list's
+--- rows, header and scrollbar are children of the host.
 local function browserRawFrames()
 	local BT = ns.BrowserTab
 	local out = {}
-	for _, f in ipairs(BT._pool or {}) do out[#out + 1] = f end
-	if BT._headerBar   then out[#out + 1] = BT._headerBar end
+	if BT._rowListHost then out[#out + 1] = BT._rowListHost end
 	if BT._detailOuter then out[#out + 1] = BT._detailOuter end
 	return out
 end
@@ -110,72 +111,72 @@ local function isDescendantOf(frame, ancestor)
 end
 
 describe("opening Settings with the main window open", function()
-	it("draws the main window with a Professions scroll frame to begin with", function()
-		-- Precondition, stated as its own case: if the window or the scroll
+	it("draws the main window with a Professions recipe list to begin with", function()
+		-- Precondition, stated as its own case: if the window or the list
 		-- never built, every assertion below would pass vacuously.
 		ns:OpenBrowser()
 		assert.is_truthy(MW.frame)
-		assert.is_truthy(ns.BrowserTab._scroll)
-		assert.is_truthy(ns.BrowserTab._scroll.frame)
+		assert.is_truthy(ns.BrowserTab._rowList)
+		assert.is_truthy(ns.BrowserTab._rowListHost)
 	end)
 
-	it("leaves the scroll frame parented inside the main window", function()
+	it("leaves the recipe list parented inside the main window", function()
 		ns:OpenBrowser()
-		local scroll = assert(ns.BrowserTab._scroll)
-		assert.is_true(isDescendantOf(scroll.frame, MW.frame.frame or MW.frame))
+		local host = assert(ns.BrowserTab._rowListHost)
+		assert.is_true(isDescendantOf(host, MW.frame.frame or MW.frame))
 
 		ns:OpenSettings()
 
-		assert.is_true(isDescendantOf(scroll.frame, MW.frame.frame or MW.frame))
+		assert.is_true(isDescendantOf(host, MW.frame.frame or MW.frame))
 	end)
 
-	it("does not hand the main window's scroll widget to the Settings dialog", function()
+	it("does not hand the main window's recipe list to the Settings dialog", function()
 		-- The widget-bleed shape: AceGUI pools account-wide, so a widget
 		-- released while our raw frames are still parented into it gets handed
 		-- to the next consumer, and our frames ride along into their layout.
 		ns:OpenBrowser()
-		local scroll = assert(ns.BrowserTab._scroll)
+		local host = assert(ns.BrowserTab._rowListHost)
 
 		ns:OpenSettings()
 
 		local AceDialog = LibStub("AceConfigDialog-3.0")
 		local dlg = AceDialog.OpenFrames and AceDialog.OpenFrames["TOGProfessionMaster"]
 		if not dlg then return pending("Settings dialog did not open in the harness") end
-		assert.is_false(isDescendantOf(scroll.frame, dlg.frame))
+		assert.is_false(isDescendantOf(host, dlg.frame))
 	end)
 
-	it("never re-anchors the scroll to chrome that has been detached", function()
-		-- THE BUG. BrowserTab installs `container.LayoutFinished =
-		-- AnchorScrollToFill`, which anchors the scroll frame to _headerBar and
-		-- _detailOuter. Both are raw frames that DetachPool re-parents to
-		-- UIParent and strips of anchors when the scroll is released. Nothing
-		-- stops a later layout pass from running that hook anyway — and
-		-- anchoring the scroll to a frame sitting at UIParent's origin is
-		-- precisely "the scroll frame gets pushed outside the window".
+	it("never re-anchors the list to chrome that has been detached", function()
+		-- THE v1.0.6 BUG. The old scroll was anchored, by a layout hook on the
+		-- tab container, to a header bar and the detail panel -- raw frames
+		-- that its own release re-parented to UIParent. A later layout pass
+		-- ran the hook anyway and anchored the scroll to a frame at UIParent's
+		-- origin: "the scroll frame gets pushed outside the window". The list
+		-- host is anchored to the detail panel too, so the same shape is
+		-- checked: release the group they sit in, then run a layout pass.
 		ns:OpenBrowser()
-		local BT     = ns.BrowserTab
-		local scroll = assert(BT._scroll)
+		local BT        = ns.BrowserTab
+		local host      = assert(BT._rowListHost)
 		local container = assert(BT._container)
 
-		-- Release the scroll the way AceGUI actually does it: Fire("OnRelease")
-		-- — which is where our DetachPool of the chrome lives — and only THEN
-		-- ClearAllPoints on the widget's own frame (AceGUI-3.0.lua:177 and
-		-- :196). Detaching without releasing is not a state the game reaches,
-		-- and a spec built on it proves nothing.
-		LibStub("AceGUI-3.0"):Release(scroll)
+		local section = assert(BT._listSection)
+		LibStub("AceGUI-3.0"):Release(section)
+		-- Take it out of its parent's child list too, as AceGUI's own
+		-- ReleaseChildren does. Left listed, the pooled widget is released again
+		-- when the window closes, while another owner may already hold it; that
+		-- left a TabGroup in the shared pool whose next ReleaseChildren hit a
+		-- nil child, and every later spec file's Professions draw failed.
+		for i = #container.children, 1, -1 do
+			if container.children[i] == section then table.remove(container.children, i) end
+		end
 
-		-- Then let a layout pass fire, which is all opening Settings has to do.
 		if type(container.LayoutFinished) == "function" then
 			container:LayoutFinished(0, 0)
 		end
 
-		-- The scroll must still be anchored inside the window, not to a frame
-		-- that is now floating on UIParent.
-		local _, relTo = scroll.frame:GetPoint(1)
-		if relTo then
-			assert.is_true(isDescendantOf(relTo, MW.frame.frame or MW.frame),
-				"scroll anchored to a detached frame")
-		end
+		-- Detached means hidden and anchored to nothing, not shown at the
+		-- world's origin.
+		assert.is_false(host:IsShown())
+		assert.is_nil((host:GetPoint(1)))
 	end)
 
 	it("keeps every pooled row inside the main window, or hidden", function()

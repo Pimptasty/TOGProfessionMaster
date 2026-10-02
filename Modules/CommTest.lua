@@ -127,7 +127,9 @@ local function addProbe(label, send)
 
     local ok, err = pcall(send, nonce .. "|" .. label, probe)
     probe.sentOk  = ok
-    probe.sentErr = ok and nil or tostring(err)
+    -- Not `ok and nil or tostring(err)`, which yields the string "nil" on
+    -- success (`true and nil` is nil). Read only when the send failed.
+    if not ok then probe.sentErr = tostring(err) end
     return probe
 end
 

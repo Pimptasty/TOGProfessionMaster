@@ -6,7 +6,7 @@
 
 Stop whispering every alchemist in your guild to ask "is your transmute up?" and stop logging into five different alts to remember who knows the recipe you need. TOG Profession Master keeps a live, shared view of every guildmate's professions, recipes, and cooldowns — and lets you mail reagents straight to the crafter without typing a single character name.
 
-Works on Classic Era / Anniversary, TBC Classic, Wrath Classic, Cataclysm Classic, and Mists of Pandaria Classic, with early support for WoW Forever (reading recipes from the profession window is not available there yet).
+Works on Classic Era / Anniversary, TBC Classic, Wrath Classic, Cataclysm Classic, and Mists of Pandaria Classic, with early support for WoW Forever.
 
 ## Quickstart
 
@@ -23,7 +23,7 @@ That's it. Within a minute or two you'll see your guildmates' recipes and cooldo
 
 **Cooldowns Tab** — Every guildmate's active and ready profession cooldowns in one view: transmutes, Mooncloth, Salt Shaker, Northrend Research, Icy Prism, Truegold, Living Steel, JC daily cuts, and more. Hit the one-click **[Mail]** button to send the crafter a pre-composed supply mail with every reagent of that cooldown on it — one mail per cooldown, even for a two-reagent transmute like Arcanite; the click splits whatever stacks need splitting, attaches them all and fills in the recipient, and it sends nothing at all if you are short of any reagent. The reagent column is white when your bags hold enough of it to fill that mail and grey when they don't, so a glance down the list tells you which cooldowns you can actually feed — and it recolours as you loot or send things, without a tab switch.
 
-**Missing Recipes Tab** — Pick a character and a profession and see every recipe scroll they haven't learned yet, with where to obtain it (vendor, drop, quest, container, fishing). Filter to a single profession or search by name. A **Guild** view shows recipes *nobody* in the guild knows, which is the coverage gap worth acting on. Rank-up books (Expert, Artisan and so on) drop off the list once you have outgrown them. On TBC there is an optional filter to hide recipes from content phases that are not live yet — it ships off, so by default nothing is hidden from you.
+**Missing Recipes Tab** — Pick a character and a profession and see every recipe scroll they haven't learned yet, with where to obtain it (vendor, drop, quest, container, fishing). Filter to a single profession or search by name. A **Guild** view shows recipes *nobody* in the guild knows, which is the coverage gap worth acting on. Rank-up books (Expert, Artisan and so on) drop off the list once you have outgrown them. A **[Where]** button opens every vendor, drop and zone for the recipe's scroll, with drop chances and map coordinates (from ItemDB). With **Questbook** installed, a **[Guide]** button starts the route to the best place for the scroll in one click — one in your current zone first, then a vendor, then the best drop chance — and clicking any place in the [Where] window guides you there instead. Questbook's own stop button sits in the main window's bottom row, beside the gear, on every tab, to cancel the route. On TBC there is an optional filter to hide recipes from content phases that are not live yet — it ships off, so by default nothing is hidden from you.
 
 **Guild Tab** — Who in the guild has which profession, at what skill, and with which specialization. Specializations are inferred from the spec-gated recipes a crafter knows, so they show up even for people who never announced them. Gathering professions are included, and a profession with nobody in it is shown at zero — coverage gaps are the thing you actually want to see.
 
@@ -120,7 +120,7 @@ Bug reports, feature requests, questions, or just chatting: **[Join the Discord]
 
 Built on the [Ace3](https://www.curseforge.com/wow/addons/ace3) library suite (AceAddon, AceGUI, AceDB, AceConfig, AceComm, AceSerializer, AceTimer, AceConsole), plus [DeltaSync](https://www.curseforge.com/wow/addons/deltasync) for the peer-to-peer sync engine, [GuildRoster](https://www.curseforge.com/wow/addons/libguildroster) for guild membership and online state, [ItemDB](https://www.curseforge.com/wow/addons/libitemdb) for item stats, vendor prices and recipe-scroll data, [AceCommQueue](https://www.curseforge.com/wow/addons/acecommqueue), [VersionCheck](https://www.curseforge.com/wow/addons/versioncheck), LibAceGUIWidgets for the shared window and list widgets, LibDataBroker, and LibDBIcon.
 
-Optional integrations: [TOGBankClassic](https://www.curseforge.com/wow/addons/togbankclassic) for guild-bank reagent buttons; [GreenWall](https://www.curseforge.com/wow/addons/greenwall) for confederate-guild cooldown announcements.
+Optional integrations: [TOGBankClassic](https://www.curseforge.com/wow/addons/togbankclassic) for guild-bank reagent buttons; [GreenWall](https://www.curseforge.com/wow/addons/greenwall) for confederate-guild cooldown announcements; Questbook for guiding you to where a missing recipe's scroll is sold or drops.
 
 ### Data sources
 

@@ -608,10 +608,6 @@ MissingRecipesTab._GetCharactersWithProfessions = GetCharactersWithProfessions
 MissingRecipesTab._GetProfessionsForCharacter   = GetProfessionsForCharacter
 MissingRecipesTab._GetGuildProfessions          = GetGuildProfessions
 
-local function AttachWidgetTooltip(widget, title, desc)
-    addon.GUI.AttachTooltip(widget, title, desc)
-end
-
 -- ---------------------------------------------------------------------------
 -- Draw
 -- ---------------------------------------------------------------------------
@@ -726,21 +722,21 @@ function MissingRecipesTab:DrawScope(container)
             charList[ck] = label
             table.insert(charOrder, ck)
         end
-        local charDD = AceGUI:Create("Dropdown")
-        charDD:SetLabel(L["MissingCharacterLabel"])
-        charDD:SetWidth(180)
-        addon.GUI.OffsetInputLabel(charDD)
-        charDD:SetList(charList, charOrder)
-        charDD:SetValue(self._charKey)
-        charDD:SetCallback("OnValueChanged", function(_w, _e, value)
-            self._charKey = value
-            setChar(value)
-            self._profId  = 0  -- reset profession when switching character
-            setProf(0)
-            self:Refresh()
-        end)
-        AttachWidgetTooltip(charDD, L["MissingCharTooltipTitle"], L["MissingCharTooltipDesc"])
-        toolbar:AddChild(charDD)
+        addon.GUI.ToolbarDropdown(self, "char", toolbar, {
+            label    = L["MissingCharacterLabel"],
+            width    = 180,
+            items    = function() return addon.GUI.MenuItems(charList, charOrder) end,
+            value    = self._charKey,
+            onChange = function(value)
+                self._charKey = value
+                setChar(value)
+                self._profId  = 0  -- reset profession when switching character
+                setProf(0)
+                self:Refresh()
+            end,
+            tipTitle = L["MissingCharTooltipTitle"],
+            tipBody  = L["MissingCharTooltipDesc"],
+        })
 
         local sp1 = AceGUI:Create("Label"); sp1:SetWidth(8); toolbar:AddChild(sp1)
     end
@@ -772,86 +768,64 @@ function MissingRecipesTab:DrawScope(container)
         self._profId = profIds[1]
     end
 
-    local profDD = AceGUI:Create("Dropdown")
-    profDD:SetLabel(L["MissingProfessionLabel"])
-    profDD:SetWidth(180)
-    addon.GUI.OffsetInputLabel(profDD)
-    profDD:SetList(profList, profOrder)
-    profDD:SetValue(self._profId)
-    profDD:SetCallback("OnValueChanged", function(_w, _e, value)
-        self._profId = value
-        setProf(value)
-        self:RefreshList()
-    end)
-    AttachWidgetTooltip(profDD, L["MissingProfTooltipTitle"], L["MissingProfTooltipDesc"])
-    toolbar:AddChild(profDD)
+    addon.GUI.ToolbarDropdown(self, "prof", toolbar, {
+        label    = L["MissingProfessionLabel"],
+        width    = 180,
+        items    = function() return addon.GUI.MenuItems(profList, profOrder) end,
+        value    = self._profId,
+        onChange = function(value)
+            self._profId = value
+            setProf(value)
+            self:RefreshList()
+        end,
+        tipTitle = L["MissingProfTooltipTitle"],
+        tipBody  = L["MissingProfTooltipDesc"],
+    })
 
     local sp2 = AceGUI:Create("Label"); sp2:SetWidth(8); toolbar:AddChild(sp2)
 
-    -- Search box. OnTextChanged fires on every keystroke; debounce so each
-    -- character typed doesn't trigger a full BuildMissingList + 100-row
-    -- AceGUI redraw. Cancelling-and-rescheduling means only the final value
-    -- after the user pauses ~200ms actually rebuilds.
-    local search = AceGUI:Create("EditBox")
-    search:SetWidth(200)
-    search:SetText(self._searchText)
-    search:DisableButton(true)
-    search:SetCallback("OnTextChanged", function(_w, _e, text)
-        self._searchText = text
-        if self._searchTimer then self._searchTimer:Cancel() end
-        self._searchTimer = C_Timer.NewTimer(0.2, function()
-            self._searchTimer = nil
+    -- Search box, debounced 200ms: only the value after the player pauses
+    -- rebuilds the list.
+    addon.GUI.ToolbarSearch(toolbar, {
+        width     = 200,
+        aligned   = true,
+        debounce  = 0.2,
+        text      = self._searchText,
+        onChanged = function(text)
+            self._searchText = text
             self:RefreshList()
-        end)
-    end)
-    AttachWidgetTooltip(search, L["MissingSearchTooltipTitle"], L["MissingSearchTooltipDesc"])
-    -- TSM-style search field: magnifying-glass icon instead of a text label
-    -- (call after the tooltip so the icon's OnRelease cleanup chains).
-    -- keepLabelSpace=true: aligns with the labeled dropdowns in this row.
-    addon.GUI.StyleSearchBox(search, true)
-    toolbar:AddChild(search)
+        end,
+        tipTitle  = L["MissingSearchTooltipTitle"],
+        tipBody   = L["MissingSearchTooltipDesc"],
+    })
 
     local sp3 = AceGUI:Create("Label"); sp3:SetWidth(8); toolbar:AddChild(sp3)
 
-    -- Include trainer-only checkbox
-    local trainCb = AceGUI:Create("CheckBox")
-    trainCb:SetLabel(L["MissingIncludeTrainer"])
-    trainCb:SetValue(self._includeTrainer)
-    trainCb:SetWidth(160)
-    trainCb:SetCallback("OnValueChanged", function(_w, _e, value)
-        self._includeTrainer = value and true or false
-        self:RefreshList()
-    end)
-    AttachWidgetTooltip(trainCb, L["MissingIncludeTrainer"], L["MissingIncludeTrainerDesc"])
-    toolbar:AddChild(trainCb)
-
-    -- "Can learn now" checkbox — strict skillRank >= requiredSkill filter.
-    -- Personal scope only: guild scope has no single character's skill to gate on.
-    if not guildScope then
-        local learnCb = AceGUI:Create("CheckBox")
-        learnCb:SetLabel(L["MissingCanLearnOnly"])
-        learnCb:SetValue(self._canLearnOnly)
-        learnCb:SetWidth(140)
-        learnCb:SetCallback("OnValueChanged", function(_w, _e, value)
-            self._canLearnOnly = value and true or false
-            self:RefreshList()
-        end)
-        AttachWidgetTooltip(learnCb, L["MissingCanLearnOnly"], L["MissingCanLearnOnlyDesc"])
-        toolbar:AddChild(learnCb)
+    -- A check box that sets one filter flag and re-filters the list.
+    local function filterBox(key, flag, width, label, desc)
+        addon.GUI.ToolbarCheckbox(self, key, toolbar, {
+            aligned  = true,
+            width    = width,
+            label    = L[label],
+            get      = function() return self[flag] end,
+            set      = function(value)
+                self[flag] = value and true or false
+                self:RefreshList()
+            end,
+            tipTitle = L[label],
+            tipBody  = L[desc],
+        })
     end
 
-    -- "Show All" checkbox — include recipes the character already knows, so the
-    -- list becomes every recipe for the selected profession (known marked ✓).
-    local allCb = AceGUI:Create("CheckBox")
-    allCb:SetLabel(L["MissingShowAll"])
-    allCb:SetValue(self._showAll)
-    allCb:SetWidth(110)
-    allCb:SetCallback("OnValueChanged", function(_w, _e, value)
-        self._showAll = value and true or false
-        self:RefreshList()
-    end)
-    AttachWidgetTooltip(allCb, L["MissingShowAll"], L["MissingShowAllDesc"])
-    toolbar:AddChild(allCb)
+    filterBox("trainer", "_includeTrainer", 160, "MissingIncludeTrainer", "MissingIncludeTrainerDesc")
+    -- "Can learn now" -- strict skillRank >= requiredSkill. Personal scope
+    -- only: guild scope has no single character's skill to gate on.
+    if not guildScope then
+        filterBox("canLearn", "_canLearnOnly", 140, "MissingCanLearnOnly", "MissingCanLearnOnlyDesc")
+    end
+    -- "Show All" -- include recipes the character already knows, so the list
+    -- becomes every recipe for the selected profession (known marked with a tick).
+    filterBox("showAll", "_showAll", 110, "MissingShowAll", "MissingShowAllDesc")
 
     -- Scan AH button — kicks off a throttled scan over the currently-displayed
     -- missing-recipes list. After completion, rows whose recipe scroll has
@@ -1109,6 +1083,110 @@ function MissingRecipesTab:ClickRow(entry, button)
     addon.ItemLink.Click(link)
 end
 
+-- Whether LibItemDB can say where to get the row's recipe scroll: a scroll
+-- item, a LibItemDB with the "Where to get it" window (MINOR 36), and at least
+-- one known source -- a button that opens "No known source" is a dead end, and
+-- WoW Forever's ItemDB ships no places data. Worked out once per entry (cached
+-- on its display table, which FillList rebuilds) because the list asks on every
+-- paint. The faction is the window's own: by default it hides the other
+-- faction's vendors, so a scroll only they sell would open on an empty list.
+function MissingRecipesTab:HasWhere(entry)
+    if not entry.itemId then return false end
+    local d = self:RowDisplay(entry)
+    if d.hasWhere == nil then
+        local idb = addon.GetItemDB and addon:GetItemDB()
+        local ok = idb and idb.OpenWhereWindow and idb.BuildWhereRows and true or false
+        local faction = ok and idb.GetWhereOwnFactionOnly and idb:GetWhereOwnFactionOnly()
+            and UnitFactionGroup and UnitFactionGroup("player") or nil
+        d.whereRows = ok and idb:BuildWhereRows(entry.itemId, faction) or {}
+        d.hasWhere = #d.whereRows > 0
+    end
+    return d.hasWhere
+end
+
+-- Whether Questbook is installed and can be handed a place. The route itself is
+-- Questbook's (LibItemDB:WhereTrack calls its TrackPlace); this is the same
+-- check LibItemDB makes (Where.lua, `questbook`), so the button never shows for
+-- a click ItemDB would refuse.
+local function questbook()
+    local ace = LibStub and LibStub("AceAddon-3.0", true)
+    return ace and ace:GetAddon("Questbook", true) or nil
+end
+
+function MissingRecipesTab:CanGuide()
+    local qb = questbook()
+    local idb = addon.GetItemDB and addon:GetItemDB()
+    return qb and type(qb.TrackPlace) == "function"
+        and idb and idb.WhereTrack and true or false
+end
+
+-- Whether Questbook is guiding to anything: its own public IsTracking, the
+-- call its window's stop icon dims on. A Questbook without it is taken as
+-- guiding, so the stop icon is never dimmed into looking useless (LibItemDB's
+-- rule, Where.lua `questbookTracking`).
+function MissingRecipesTab:IsGuiding()
+    local qb = questbook()
+    if not qb then return false end
+    if type(qb.IsTracking) ~= "function" then return true end
+    return qb:IsTracking() == true
+end
+
+-- The place [Guide] routes to: only a row with map coordinates can be guided
+-- to. A place on the player's current map wins, then a vendor (a scroll bought
+-- is a sure thing), then the highest drop chance. nil when nothing has a point.
+function MissingRecipesTab:PickGuideRow(rows)
+    local here = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+    local best, bestScore
+    for _, r in ipairs(rows or {}) do
+        if r.uiMapID and r.points and r.points[1] then
+            local score = (r.uiMapID == here and 2000 or 0) + (r.kind == "Vendor" and 1000 or 0)
+                + (r.chance or 0)
+            if not bestScore or score > bestScore then best, bestScore = r, score end
+        end
+    end
+    return best
+end
+
+-- [Guide] is offered when Questbook can route and the scroll has a place with
+-- coordinates.
+function MissingRecipesTab:HasGuide(entry)
+    if not (self:CanGuide() and self:HasWhere(entry)) then return false end
+    return self:PickGuideRow(self:RowDisplay(entry).whereRows) ~= nil
+end
+
+-- Hand the best place to Questbook through LibItemDB, and say where.
+function MissingRecipesTab:Guide(entry)
+    local idb = addon.GetItemDB and addon:GetItemDB()
+    local row = self:HasWhere(entry) and self:PickGuideRow(self:RowDisplay(entry).whereRows)
+    if not (idb and idb.WhereTrack and row) then return false end
+    if idb:WhereTrack(row) then
+        local where = (row.name ~= "" and row.name or row.kind)
+        if row.zone and row.zone ~= "" then where = where .. ", " .. row.zone end
+        addon:Print(L["GuideStartedFormat"]:format(where))
+        return true
+    end
+    addon:Print(L["GuideFailed"])
+    return false
+end
+
+-- Stop whatever Questbook is guiding to (its universal stop, via LibItemDB).
+function MissingRecipesTab:StopGuide()
+    local idb = addon.GetItemDB and addon:GetItemDB()
+    if idb and idb.WhereStopTracking and idb:WhereStopTracking() then
+        addon:Print(L["GuideStopped"])
+        return true
+    end
+    return false
+end
+
+-- Open LibItemDB's "Where to get it" window on the row's recipe scroll. Its rows
+-- hand a place to Questbook when Questbook is installed (LibItemDB:WhereTrack),
+-- so TOGPM never talks to Questbook itself.
+function MissingRecipesTab:OpenWhere(entry)
+    local idb = addon.GetItemDB and addon:GetItemDB()
+    if idb and idb.OpenWhereWindow and entry.itemId then idb:OpenWhereWindow(entry.itemId) end
+end
+
 local function headerTip(desc)
     return desc and (desc .. " " .. (L["CraftSortHint"] or "Click to sort.")) or nil
 end
@@ -1160,6 +1238,20 @@ function MissingRecipesTab:BuildRowList(host)
               text = function() return "|cFF88CCFF[AH]|r" end,
               tip  = function() return L["TooltipAHTitle"], L["TooltipAHDescScroll"] end,
               onClick = function(e) addon.AH.SearchFor(self:RowDisplay(e).itemName) end },
+            -- [Where]: the vendors, drops and zones for the scroll, from
+            -- LibItemDB, with Questbook guiding when it is installed.
+            { key = "whereBtn", width = 52, button = true, sortable = false,
+              show = function(e) return self:HasWhere(e) end,
+              text = function() return "|cFF88FF88" .. L["WhereBtn"] .. "|r" end,
+              tip  = function() return L["TooltipWhereTitle"], L["TooltipWhereDescScroll"] end,
+              onClick = function(e) self:OpenWhere(e) end },
+            -- [Guide]: Questbook routes to the best place in one click; only
+            -- with Questbook installed.
+            { key = "guideBtn", width = 52, button = true, sortable = false,
+              show = function(e) return self:HasGuide(e) end,
+              text = function() return "|cFFFFD100" .. L["GuideBtn"] .. "|r" end,
+              tip  = function() return L["TooltipGuideTitle"], L["TooltipGuideDesc"] end,
+              onClick = function(e) self:Guide(e) end },
         },
         onRowEnter = function(e, _, _, rowFrame) self:ShowRowTooltip(e, rowFrame) end,
         onRowLeave = function()

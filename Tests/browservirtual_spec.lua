@@ -1,211 +1,206 @@
--- BrowserTab's virtual scroll — 35 pooled frames standing in for a list of
--- thousands.
+-- The Professions tab's recipe list, and the tooltip a recipe row gets.
 --
--- The whole trick is that pool row `i` shows recipe `firstIdx + i` and is
--- positioned at its ABSOLUTE place in the content, so scrolling moves the
--- content while the frames are re-pointed underneath. Get the index maths or
--- the placement wrong and the list shows the wrong recipes, or the right ones
--- in the wrong order — both of which look like a data bug rather than a scroll
--- bug, which is why this is worth pinning.
---
--- Runs against the REAL pool (BuildPool) and a real AceGUI ScrollFrame, so the
--- frames under test are the ones that ship.
+-- The list is a LibAceGUIWidgets RowList since v1.1.3. It used to be a
+-- 35-frame pool with its own index and placement arithmetic, pinned by sixteen
+-- specs here; that arithmetic is now the library's, with its own suite. What is
+-- TOGPM's, and pinned below, is what the tab hands the list and how it asks for
+-- things: one list for the session, the selection tint following the recipe in
+-- the detail panel, the player's place kept through a redraw and dropped on a
+-- new search, and the crafter column fitted to the cell's width.
 
 ---@diagnostic disable: duplicate-set-field
 package.path = "./Tests/?.lua;" .. package.path
 local env = require("env_togpm")
 
-local ns, GUI, BT
+local ns, BT
 
-local ROW  = 14    -- ROW_HEIGHT in GUI/BrowserTab.lua
-local POOL = 35    -- POOL_SIZE
+local ALCHEMY = 171
+local N       = 60      -- far more recipes than one screen shows
 
 setup(function()
 	ns = env.initDb()
+	env.loadModule("Data/CooldownIds.lua")
+	env.loadModule("Modules/HashManager.lua")
+	env.loadModule("Scanner.lua")
+	env.loadModule("Modules/Price.lua")
+	env.loadModule("Modules/AHScanner.lua")
 	env.loadModule("GUI/SharedWidgets.lua")
+	env.loadModule("GUI/MainWindow.lua")
 	env.loadModule("GUI/BrowserTab.lua")
 	BT = ns.BrowserTab
 end)
 
+--- N Alchemy recipes, each known by this character, named so the list's
+--- name order is their number order.
+local function populate()
+	local gdb = env.resetDb()
+	env.roster({ { name = "Testchar", isOnline = true } })
+	local meta, known = {}, {}
+	for i = 1, N do
+		local id   = 3000 + i
+		local name = ("Recipe %02d"):format(i)
+		env.spellsExist(id)
+		meta[id]  = { name = name, icon = 1, reagents = {} }
+		known[id] = { name = name, icon = 1, reagents = {},
+		              crafters = { ["Testchar-Testrealm"] = ns:GetCurrentGuildTag() } }
+	end
+	env.setRecipeDB({ [ALCHEMY] = meta })
+	gdb.recipes[ALCHEMY] = known
+	gdb.skills["Testchar-Testrealm"] = { [ALCHEMY] = { skillRank = 300, skillMax = 300 } }
+end
+
 before_each(function()
 	env.installFrames()
-	env.resetDb()
-	GUI = env.aceGUI()
+	populate()
+	ns.Print = function() end
+	BT:InvalidateCache()
+	BT._selectedProfId, BT._selectedProfs, BT._selectedTiers = 0, nil, nil
+	BT._viewMode, BT._showAllRecipes, BT._searchText = "guild", false, ""
+	BT._selectedEntry = nil
+	ns.lib.db.char.shoppingList = {}
+	ns.GUI.ListScroll.Set("browser", 0)
 end)
 
-local function recipes(n)
-	local out = {}
-	for i = 1, n do
-		out[i] = { id = 1000 + i, name = "Recipe " .. i, icon = 1, crafters = {} }
-	end
-	return out
-end
+describe("the recipe list", function()
+	it("hands the filtered recipes to one list that outlives the redraw", function()
+		local container = env.drawTab(BT)
+		local list, host = BT._rowList, BT._rowListHost
+		assert.is_truthy(list)
+		assert.equal(N, #BT._recipes)
+		assert.equal(BT._recipes, list.data)
+		assert.equal("Recipe 01", list.data[1].name)
+		-- The fixture must give the list room, or the scroll specs below pass
+		-- for the wrong reason.
+		local vis = list.visibleRowCount or 0
+		assert.is_true(vis > 5 and vis < N - 10, "visible rows: " .. vis)
 
---- A tab instance with the real pool built into a real scroll frame. Its own
---- table rather than the shared BrowserTab, so pool frames and selection state
---- cannot leak into the specs that exercise the real tab.
-local function tabWith(rows, offset)
-	local tab = setmetatable({}, { __index = BT })
-	local scroll = GUI:Create("ScrollFrame")
-	scroll.content:SetHeight(#rows * ROW)
-	local status = scroll.status or scroll.localstatus
-	status.offset = offset or 0
-
-	tab:BuildPool(scroll.content)
-	tab._scroll  = scroll
-	tab._recipes = rows
-	return tab, scroll
-end
-
-local function shownEntries(tab)
-	local out = {}
-	for i = 1, POOL do
-		local f = tab._pool[i]
-		if f and f:IsShown() then out[#out + 1] = f._entry and f._entry.name end
-	end
-	return out
-end
-
-describe("UpdateVirtualRows — which recipes land in the pool", function()
-	it("starts at the first recipe when unscrolled", function()
-		local tab = tabWith(recipes(100), 0)
-		tab:UpdateVirtualRows()
-		assert.equal("Recipe 1", tab._pool[1]._entry.name)
-		assert.equal("Recipe 2", tab._pool[2]._entry.name)
+		BT:Draw(container)
+		assert.equal(list, BT._rowList)
+		assert.equal(host, BT._rowListHost)
+		assert.equal(BT._recipes, list.data)
 	end)
 
-	it("advances by whole rows as the offset grows", function()
-		-- Two rows of scroll means pool row 1 holds the third recipe.
-		local tab = tabWith(recipes(100), 2 * ROW)
-		tab:UpdateVirtualRows()
-		assert.equal("Recipe 3", tab._pool[1]._entry.name)
-		assert.equal("Recipe 4", tab._pool[2]._entry.name)
+	it("sits left of the detail panel, inside the tab", function()
+		env.drawTab(BT)
+		local host = BT._rowListHost
+		local _, relTo, relPoint = host:GetPoint(2)
+		assert.equal(BT._detailOuter, relTo)
+		assert.equal("BOTTOMLEFT", relPoint)
+		assert.equal(BT._listSection.content, BT._detailOuter:GetParent())
 	end)
 
-	it("ignores a partial row of scroll rather than skipping one", function()
-		-- Half a row down is still showing the same first recipe; flooring is
-		-- what keeps the list from jumping an entry mid-drag.
-		local tab = tabWith(recipes(100), ROW - 1)
-		tab:UpdateVirtualRows()
-		assert.equal("Recipe 1", tab._pool[1]._entry.name)
+	it("shows a clicked recipe in the detail panel and tints its row", function()
+		env.drawTab(BT)
+		local e = BT._recipes[5]
+		BT._rowList.onRowClick(e, 5, BT._rowList, "LeftButton")
+		assert.equal(e, BT._selectedEntry)
+		assert.equal(e, BT._rowList:GetSelected())
 	end)
 
-	it("fills every pooled frame when there are plenty of recipes", function()
-		local tab = tabWith(recipes(100), 0)
-		tab:UpdateVirtualRows()
-		assert.equal(POOL, #shownEntries(tab))
-	end)
-end)
-
-describe("UpdateVirtualRows — running out of recipes", function()
-	it("shows only as many rows as there are recipes", function()
-		local tab = tabWith(recipes(3), 0)
-		tab:UpdateVirtualRows()
-		assert.same({ "Recipe 1", "Recipe 2", "Recipe 3" }, shownEntries(tab))
+	it("keeps the tint on the same recipe when a rewarm rebuilds the list", function()
+		-- A guild-data rewarm builds new tables for the same recipes, so the
+		-- selection has to be matched by id, not by identity.
+		env.drawTab(BT)
+		local e = BT._recipes[7]
+		BT:DrawDetail(e)
+		BT:InvalidateCache()
+		BT:RefreshList()
+		assert.are_not.equal(e, BT._recipes[7])
+		assert.equal(e.id, BT._rowList:GetSelected().id)
 	end)
 
-	it("hides the pooled frames past the end of the list", function()
-		-- Leftovers from a previous, longer list would otherwise keep showing
-		-- recipes that are no longer in the filtered set.
-		local tab = tabWith(recipes(3), 0)
-		tab:UpdateVirtualRows()
-		assert.is_false(tab._pool[4]:IsShown())
-		assert.is_false(tab._pool[POOL]:IsShown())
+	it("clears the tint when the detail panel is cleared", function()
+		env.drawTab(BT)
+		BT:DrawDetail(BT._recipes[3])
+		BT:ClearDetail()
+		assert.is_nil(BT._rowList:GetSelected())
 	end)
 
-	it("shows nothing at all for an empty list", function()
-		local tab = tabWith(recipes(0), 0)
-		tab:UpdateVirtualRows()
-		assert.same({}, shownEntries(tab))
+	it("ignores a right click", function()
+		env.drawTab(BT)
+		BT._rowList.onRowClick(BT._recipes[2], 2, BT._rowList, "RightButton")
+		assert.is_nil(BT._selectedEntry)
 	end)
 
-	it("shows the tail when scrolled to the end of a short list", function()
-		local tab = tabWith(recipes(40), 38 * ROW)
-		tab:UpdateVirtualRows()
-		assert.equal("Recipe 39", tab._pool[1]._entry.name)
-		assert.equal("Recipe 40", tab._pool[2]._entry.name)
-		assert.is_false(tab._pool[3]:IsShown())
-	end)
-end)
-
-describe("UpdateVirtualRows — where the rows are placed", function()
-	it("anchors each row at its absolute place in the content", function()
-		-- The frames do not move with the scroll; the content does. So row i
-		-- must sit at the recipe's own offset, not at the pool slot's.
-		local tab = tabWith(recipes(100), 0)
-		tab:UpdateVirtualRows()
-		local _, _, _, _, y1 = tab._pool[1]:GetPoint(1)
-		local _, _, _, _, y3 = tab._pool[3]:GetPoint(1)
-		assert.equal(0, y1)
-		assert.equal(-(2 * ROW), y3)
+	it("puts the list back where it was on the next draw", function()
+		local container = env.drawTab(BT)
+		BT._rowList:SetScrollOffset(17)
+		assert.equal(17, ns.GUI.ListScroll.Get("browser"))
+		BT:Draw(container)
+		assert.equal(17, BT._rowList:GetScrollOffset())
 	end)
 
-	it("keeps that absolute placement after scrolling", function()
-		local tab = tabWith(recipes(100), 10 * ROW)
-		tab:UpdateVirtualRows()
-		-- Pool row 1 now holds recipe 11, so it belongs at recipe 11's offset.
-		local _, _, _, _, y = tab._pool[1]:GetPoint(1)
-		assert.equal(-(10 * ROW), y)
+	it("starts a new search at the top", function()
+		env.drawTab(BT)
+		BT._rowList:SetScrollOffset(20)
+		BT._searchText = "Recipe"
+		BT:RefreshList()
+		assert.equal(0, BT._rowList:GetScrollOffset())
+	end)
+
+	it("hides the list under the hint when a search matches nothing", function()
+		env.drawTab(BT)
+		BT._searchText = "no recipe is called this"
+		BT:RefreshList()
+		assert.is_nil(BT._recipes)
+		assert.is_false(BT._rowListHost:IsShown())
+	end)
+
+	it("hands the host back to UIParent when the tab is released", function()
+		local container = env.drawTab(BT)
+		assert.is_truthy(BT._listSection)
+		container:ReleaseChildren()
+		assert.equal(UIParent, BT._rowListHost:GetParent())
+		assert.is_false(BT._rowListHost:IsShown())
+		assert.equal(UIParent, BT._detailOuter:GetParent())
+		assert.is_nil(BT._listSection)
 	end)
 end)
 
-describe("UpdateVirtualRows — selection highlight", function()
-	-- Highlight IS the selection model for a pooled list: 35 frames stand in for
-	-- thousands of recipes, so "which row is selected" is only answerable through
-	-- highlight state. Read via the real `IsHighlightLocked` — Classic Era
-	-- documents it at SimpleFrameAPIDocumentation:702, so this is the client's own
-	-- getter rather than a peek at the harness's private field.
-	local function highlightedRows(tab, n)
+--- A tab instance of its own for the tooltip specs below, so nothing they set
+--- leaks into the shared tab. The arguments are ignored: the tooltip is drawn
+--- straight from an entry, with no list behind it.
+local function tabWith(...) return setmetatable({}, { __index = BT }) end   -- luacheck: ignore 212
+local function recipes(...) end                                               -- luacheck: ignore 212
+
+describe("the crafter column", function()
+	local fit = function(...) return BT._fitCrafterText(...) end
+	local function crafters(n)
 		local out = {}
-		for i = 1, n do
-			if tab._pool[i]:IsHighlightLocked() then out[#out + 1] = i end
-		end
+		for i = 1, n do out[i] = { name = "C" .. i, online = true } end
 		return out
 	end
+	-- One unit of width per visible character, colour codes stripped.
+	local function measure(s)
+		return #(s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+	end
+	local ON, OFF, YOU = "|cffffffff", "|cffaaaaaa", "|cffDA8CFF"
+	local function plain(s) return (s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
 
-	it("highlights only the selected recipe", function()
-		local rows = recipes(10)
-		local tab  = tabWith(rows, 0)
-		tab._selectedEntry = rows[4]
-		tab:UpdateVirtualRows()
-		assert.same({ 4 }, highlightedRows(tab, 10))
+	it("is empty with nobody to list", function()
+		assert.equal("", fit({}, 100, measure, ON, OFF, YOU))
+		assert.equal("", fit(nil, 100, measure, ON, OFF, YOU))
 	end)
 
-	it("highlights nothing when no recipe is selected", function()
-		local rows = recipes(10)
-		local tab  = tabWith(rows, 0)
-		tab:UpdateVirtualRows()
-		assert.same({}, highlightedRows(tab, 10))
+	it("shows two names and a count before the list has a width", function()
+		assert.equal("C1, C2 +3", plain(fit(crafters(5), nil, measure, ON, OFF, YOU)))
+		assert.equal("C1, C2 +3", plain(fit(crafters(5), 0, nil, ON, OFF, YOU)))
 	end)
 
-	it("moves the highlight rather than adding a second one", function()
-		-- The pooled-list failure this guards: rows are REUSED, so a frame that
-		-- was highlighted for the old selection keeps its lock unless the
-		-- else-branch actively clears it. Two lit rows is what that looks like.
-		local rows = recipes(10)
-		local tab  = tabWith(rows, 0)
-		tab._selectedEntry = rows[2]
-		tab:UpdateVirtualRows()
-		assert.same({ 2 }, highlightedRows(tab, 10))
-
-		tab._selectedEntry = rows[7]
-		tab:UpdateVirtualRows()
-		assert.same({ 7 }, highlightedRows(tab, 10))
+	it("fits as many names as the cell's width allows", function()
+		-- "C1, C2, C3 +2" is 13 wide; "C1, C2, C3, C4 +1" is 17.
+		assert.equal("C1, C2, C3 +2", plain(fit(crafters(5), 15, measure, ON, OFF, YOU)))
+		assert.equal("C1, C2, C3, C4, C5", plain(fit(crafters(5), 100, measure, ON, OFF, YOU)))
 	end)
 
-	it("follows the recipe, not the frame, when the list scrolls", function()
-		-- Recipe 4 is in pool row 4 unscrolled; after two rows of scroll the same
-		-- recipe lives in pool row 2. The highlight has to move with the recipe.
-		local rows = recipes(100)
-		local tab  = tabWith(rows, 0)
-		tab._selectedEntry = rows[4]
-		tab:UpdateVirtualRows()
-		assert.same({ 4 }, highlightedRows(tab, 35))
+	it("always shows one name, even when it does not fit", function()
+		assert.equal("C1 +4", plain(fit(crafters(5), 2, measure, ON, OFF, YOU)))
+	end)
 
-		local status = tab._scroll.status or tab._scroll.localstatus
-		status.offset = 2 * ROW
-		tab:UpdateVirtualRows()
-		assert.same({ 2 }, highlightedRows(tab, 35))
+	it("colours you, online and offline crafters apart", function()
+		local text = fit({ { name = "You", isYou = true }, { name = "Bob", online = true },
+		                   { name = "Al" } }, 100, measure, ON, OFF, YOU)
+		assert.equal(YOU .. "You|r, " .. ON .. "Bob|r, " .. OFF .. "Al|r", text)
 	end)
 end)
 
@@ -265,12 +260,9 @@ describe("row hover — which tooltip a recipe gets", function()
 		return e
 	end
 
+	-- The list calls this from the row's OnEnter, with the row frame as owner.
 	local function hover(tab, entry)
-		tab._recipes = { entry }
-		tab:UpdateVirtualRows()
-		local f = tab._pool[1]
-		f._entry = entry
-		f:GetScript("OnEnter")(f)
+		tab:ShowRowTooltip(entry, CreateFrame("Frame"))
 	end
 
 	it("shows the real scroll's tooltip when the recipe has one", function()

@@ -25,7 +25,7 @@ local COMMANDS = {
 	"versioncheck", "debug", "craft", "spellcache", "itemgaps",
 	"dumprecipe Healing Potion", "dumphashes", "dumpcooldowns", "transmutedebug",
 	"dumpprice 12359", "forcebroadcast", "backfill", "myalts",
-	"pullroster Bob", "xgdiag", "whyvisible Bob", "commtest", "perf", "help",
+	"pullroster Bob", "xgdiag", "whyvisible Bob", "commtest", "perf", "opendebug", "help",
 }
 
 

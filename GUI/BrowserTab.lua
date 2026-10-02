@@ -13,7 +13,8 @@
 --   └──────────────────────────────┴────────────────────────────┘
 --
 -- Clicking a recipe row populates the right-hand detail panel.
--- The left list uses virtual scrolling (raw frame pool, 35 rows).
+-- The left list is a LibAceGUIWidgets RowList (MINOR 36), which draws only the
+-- visible rows.
 
 local _, addon = ...
 local Ace    = addon.lib
@@ -27,9 +28,8 @@ local L      = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 local BrowserTab = {}
 addon.BrowserTab = BrowserTab
 
--- Virtual scroll constants
+-- Row height of the recipe list and the shopping list.
 local ROW_HEIGHT = 14
-local POOL_SIZE  = 35
 
 -- Resolve the best chat-insertable link for a recipe entry, falling back
 -- through several sources so the link / tooltip work even when the cached
@@ -230,9 +230,9 @@ BrowserTab._showAllRecipes    = false    -- v0.7.0 toolbar checkbox: when true,
                                          -- (rendered greyed out). Pairs with
                                          -- the "Show Missing" entry in the
                                          -- profession dropdown for gap-finding.
-BrowserTab._scroll            = nil      -- active AceGUI ScrollFrame widget
+BrowserTab._listSection       = nil      -- AceGUI group the list + detail panel sit in
 BrowserTab._container         = nil      -- the tab container widget
-BrowserTab._pool              = nil      -- raw-frame row pool (left list)
+BrowserTab._rowList           = nil      -- the recipe RowList (lives for the session)
 BrowserTab._recipes           = nil      -- current filtered recipe list
 BrowserTab._detailOuter       = nil      -- persistent right-panel raw frame
 BrowserTab._selectedEntry     = nil      -- recipe currently shown in detail panel
@@ -701,11 +701,10 @@ function BrowserTab:Draw(container)
     addon:DebugPrint("BrowserTab:Draw — prof=", self._selectedProfId,
         "view=", self._viewMode, "cacheKeys=", self._listCache and "(table)" or "nil")
     self._container = container
-    container:SetLayout("List")
-
-    -- Detach the header bar left from a previous Draw() or tab switch; it is
-    -- reused (EnsureHeaderBar), so it is not nil'd.
-    addon.GUI.DetachPool(self._headerBar)
+    -- Flow, not List: the last row (the recipe list and detail panel) is full
+    -- height, and Flow is the layout that gives a full-height child the rest
+    -- of the tab -- the Cooldowns tab's shape.
+    container:SetLayout("Flow")
 
     self._slSection = nil
     local slData = Ace.db.char.shoppingList
@@ -732,40 +731,33 @@ function BrowserTab:Draw(container)
         self._selectedProfId = (Ace.db.profile.persistProfFilter and getProfFilter()) or 0
     end
 
-    local profOrder = {}
-    local profLabelById = {}
+    local profItems = {}
     for _, p in ipairs(profEntries) do
-        profOrder[#profOrder + 1] = p.profId
-        profLabelById[p.profId] = p.name
+        profItems[#profItems + 1] = { value = p.profId, text = p.name }
     end
 
-    local profDropdown = AceGUI:Create("Dropdown")
-    profDropdown:SetLabel("|c" .. (addon.BrandColor or "ffFF8000") .. L["PanelProfessions"] .. "|r")
-    profDropdown:SetWidth(180)
-    addon.GUI.OffsetInputLabel(profDropdown)
-    profDropdown:SetList(profLabelById, profOrder)
-    -- Default to "All Professions" (0) when no selection exists
-    if not self._selectedProfId then
-        self._selectedProfId = 0
-    end
-    profDropdown:SetValue(self._selectedProfId)
-    profDropdown:SetCallback("OnValueChanged", function(_w, _e, value)
-        self._selectedProfId = value
-        if Ace.db.profile.persistProfFilter then
-            local _, setProfFilter = addon.GUI.PersistentChoice("profile", "savedProfFilter")
-            setProfFilter(value)
-        end
-        self:RefreshList()
-    end)
-    addon.GUI.AttachTooltip(profDropdown, "Profession Filter", "Pick a profession to filter the recipe list.")
-    toolbar:AddChild(profDropdown)
+    addon.GUI.ToolbarDropdown(self, "prof", toolbar, {
+        label    = L["PanelProfessions"],
+        width    = 180,
+        items    = function() return profItems end,
+        value    = self._selectedProfId,
+        onChange = function(value)
+            self._selectedProfId = value
+            if Ace.db.profile.persistProfFilter then
+                local _, setProfFilter = addon.GUI.PersistentChoice("profile", "savedProfFilter")
+                setProfFilter(value)
+            end
+            self:RefreshList()
+        end,
+        tipTitle = "Profession Filter",
+        tipBody  = "Pick a profession to filter the recipe list.",
+    })
 
     local spTier = AceGUI:Create("Label"); spTier:SetWidth(8); toolbar:AddChild(spTier)
 
-    -- Skill-tier multi-select filter. Same native AceGUI multiselect Dropdown as
-    -- the AH Profit tab's Professions picker: the pullout stays open while
-    -- ticking tiers, and Select All / Clear All ride at the top as button-like
-    -- toggle rows. Only tiers reachable on this client version are offered.
+    -- Skill-tier multi-select filter: a tick-box menu that stays open while
+    -- ticking tiers, with Select All / Clear All at the bottom as rows that
+    -- act and close it. Only tiers reachable on this client version are offered.
     -- The filter runs post-cache (in FillList → FilterTiers) so changing it is a
     -- cheap re-filter, never a rebuild.
     -- Skill cap comes from addon.RecipeGate:Client() — the same table the recipe
@@ -794,172 +786,146 @@ function BrowserTab:Draw(container)
         if band.cap <= clientMaxSkill then availBands[#availBands + 1] = band end
     end
 
-    -- Band rows first, then Select All / Clear All as button-like toggle rows at
-    -- the BOTTOM of the pullout.
-    local tierList  = {}
-    local tierOrder = {}
+    -- Band rows first, then Select All / Clear All at the bottom of the menu.
+    local tierItems = {}
     for _, band in ipairs(availBands) do
-        tierList[band.key] = TierBandLabel(band)
-        tierOrder[#tierOrder + 1] = band.key
+        tierItems[#tierItems + 1] = { value = band.key, text = TierBandLabel(band) }
     end
-    tierList[TIER_SELECT_ALL] = L["FilterSelectAll"]
-    tierList[TIER_CLEAR_ALL]  = L["FilterClearAll"]
-    tierOrder[#tierOrder + 1] = TIER_SELECT_ALL
-    tierOrder[#tierOrder + 1] = TIER_CLEAR_ALL
+    tierItems[#tierItems + 1] = { value = TIER_SELECT_ALL, text = L["FilterSelectAll"], action = true }
+    tierItems[#tierItems + 1] = { value = TIER_CLEAR_ALL,  text = L["FilterClearAll"],  action = true }
 
-    local tierDD = AceGUI:Create("Dropdown")
-    tierDD:SetLabel("|c" .. (addon.BrandColor or "ffFF8000") .. L["BrowserSkillTier"] .. "|r")
-    tierDD:SetWidth(180)
-    addon.GUI.OffsetInputLabel(tierDD)
-    tierDD:SetMultiselect(true)
-    tierDD:SetList(tierList, tierOrder)
-
-    -- Reapply every checkbox from the canonical _selectedTiers (nil = all on).
-    -- Called after every change so the visible ticks always match state and the
-    -- Select All / Clear All rows never keep a stray tick. This is the single
-    -- source of truth for the pullout's visuals — no fragile mid-callback order.
-    local function applyTierChecks()
-        for _, band in ipairs(availBands) do
-            local on = (self._selectedTiers == nil) or (self._selectedTiers[band.key] == true)
-            tierDD:SetItemValue(band.key, on)
-        end
-        tierDD:SetItemValue(TIER_SELECT_ALL, false)
-        tierDD:SetItemValue(TIER_CLEAR_ALL, false)
+    -- nil _selectedTiers means every band is on (the canonical "all").
+    local function tierOn(key)
+        return (self._selectedTiers == nil) or (self._selectedTiers[key] == true)
     end
-    applyTierChecks()
+    local function tierChanged()
+        self:PersistTierFilter()
+        self:RefreshList()
+    end
 
-    tierDD:SetCallback("OnValueChanged", function(_w, _e, key, checked)
-        if key == TIER_SELECT_ALL then
-            self._selectedTiers = nil            -- all tiers shown (canonical)
-        elseif key == TIER_CLEAR_ALL then
-            self._selectedTiers = {}             -- nothing ticked → only unclassified show
-        else
-            -- Materialize the current effective set (nil = every available band on),
-            -- flip the clicked band, then collapse "all ticked" back to nil.
+    addon.GUI.ToolbarDropdown(self, "tier", toolbar, {
+        label     = L["BrowserSkillTier"],
+        width     = 180,
+        multi     = true,
+        items     = function() return tierItems end,
+        isChecked = tierOn,
+        -- Materialize the current effective set (nil = every available band on),
+        -- flip the clicked band, then collapse "all ticked" back to nil.
+        onToggle  = function(key, checked)
             local sel = {}
-            if self._selectedTiers == nil then
-                for _, band in ipairs(availBands) do sel[band.key] = true end
-            else
-                for k in pairs(self._selectedTiers) do sel[k] = true end
+            for _, band in ipairs(availBands) do
+                if tierOn(band.key) then sel[band.key] = true end
             end
             if checked then sel[key] = true else sel[key] = nil end
             local all = true
             for _, band in ipairs(availBands) do
                 if not sel[band.key] then all = false; break end
             end
-            self._selectedTiers = all and nil or sel
-        end
-        applyTierChecks()
-        self:PersistTierFilter()
-        self:RefreshList()
-    end)
-    addon.GUI.AttachTooltip(tierDD, L["BrowserSkillTierTip"], L["BrowserSkillTierDesc"])
-    toolbar:AddChild(tierDD)
+            -- NOT `all and nil or sel`: `true and nil` is nil, so that form
+            -- always yields `sel`, and re-ticking every band never collapsed
+            -- back to "all" (found by Tests/toolbar_spec.lua).
+            if all then self._selectedTiers = nil else self._selectedTiers = sel end
+            tierChanged()
+        end,
+        onAction  = function(key)
+            -- Select All: all tiers shown (canonical nil). Clear All: nothing
+            -- ticked, so only recipes with no known tier show.
+            self._selectedTiers = (key == TIER_CLEAR_ALL) and {} or nil
+            tierChanged()
+        end,
+        -- The ticked bands' names, as AceGUI's multiselect box showed them.
+        text      = function()
+            local names = {}
+            for _, band in ipairs(availBands) do
+                if tierOn(band.key) then names[#names + 1] = TierBandLabel(band) end
+            end
+            return table.concat(names, ", ")
+        end,
+        tipTitle  = L["BrowserSkillTierTip"],
+        tipBody   = L["BrowserSkillTierDesc"],
+    })
 
     local sp = AceGUI:Create("Label")
     sp:SetWidth(8)
     toolbar:AddChild(sp)
 
-    local search = AceGUI:Create("EditBox")
-    search:SetWidth(220)
-    search:SetText(self._searchText)
-    search:DisableButton(true)
-    -- OnTextChanged fires on every keystroke; debounce so each character typed
-    -- doesn't trigger a full BuildRecipeList + virtual-scroll redraw (which got
-    -- heavier as cross-guild crafters grew the per-recipe crafter sets). Cancel-
-    -- and-reschedule means only the value after the user pauses ~200ms rebuilds.
-    -- Mirrors MissingRecipesTab. RefreshList rebuilds only the scroll list, not
-    -- this EditBox, so focus/cursor are preserved while typing.
-    search:SetCallback("OnTextChanged", function(_w, _e, text)
-        self._searchText = text
-        if self._searchTimer then self._searchTimer:Cancel() end
-        self._searchTimer = C_Timer.NewTimer(0.2, function()
-            self._searchTimer = nil
+    -- Debounced 200ms, so only the value after the player pauses rebuilds the
+    -- list. RefreshList rebuilds only the list, not this box, so the caret
+    -- stays where it is while typing.
+    addon.GUI.ToolbarSearch(toolbar, {
+        width     = 220,
+        aligned   = true,
+        debounce  = 0.2,
+        text      = self._searchText,
+        onChanged = function(text)
+            self._searchText = text
             self:RefreshList()
-        end)
-    end)
-    addon.GUI.AttachTooltip(search, L["SearchPlaceholder"], L["CraftSearchDesc"])
-    -- TSM-style search field: magnifying-glass icon instead of a text label
-    -- (call after AttachTooltip so the icon's OnRelease cleanup chains).
-    -- keepLabelSpace=true: aligns with the labeled dropdowns in this row.
-    addon.GUI.StyleSearchBox(search, true)
-    toolbar:AddChild(search)
+        end,
+        tipTitle  = L["SearchPlaceholder"],
+        tipBody   = L["CraftSearchDesc"],
+    })
 
     local sp2 = AceGUI:Create("Label")
     sp2:SetWidth(8)
     toolbar:AddChild(sp2)
 
-    local viewDD = AceGUI:Create("Dropdown")
-    viewDD:SetLabel("")
-    viewDD:SetWidth(150)
-    -- v0.7.0 view-mode dropdown gains "Show Missing" (only meaningful when
-    -- _showAllRecipes is on). Items are listed in a deterministic order via
-    -- the sorting array; AceConfig-style sorting isn't supported on raw
-    -- AceGUI Dropdowns so we just SetList with the order we want.
-    --
-    -- The base guild/mine pair and the order array both come from
-    -- `UI.ScopeList` — shared with the Cooldowns tab, which carries the same
-    -- scope filter. This tab's third mode is what `docs/AUDIT.md` finding 2
-    -- predicted would drift, and it is passed in as an extra rather than
-    -- pushed into the shared set because it is genuinely Browser-only.
-    --
-    -- It also cannot re-grow the blank-row bug: a hardcoded
-    -- { "guild", "mine", "missing" } order against items that only gained
-    -- `missing` when the checkbox was ticked put an empty, clickable third
-    -- entry in this dropdown, and clicking it set _viewMode to a mode the list
-    -- was no longer offering. `ScopeList` never lets the two disagree.
-    local viewItems, viewOrder = addon.UI.ScopeList(self._showAllRecipes and {
+    -- The view: guild / mine, plus "Show Missing" while "Show all recipes" is
+    -- on. The base pair comes from `UI.ScopeList`, shared with the Cooldowns
+    -- tab; the Browser-only third mode is passed in as an extra. A mode the
+    -- list no longer offers is never drawn as a blank row (MenuItems drops a
+    -- key with no label), which is the bug an AceGUI order array once had here.
+    local viewLabels, viewOrder = addon.UI.ScopeList(self._showAllRecipes and {
         { key = "missing", label = L["ViewMissing"] or "Show Missing" },
     } or nil)
-    viewDD:SetList(viewItems, viewOrder)
-    -- If the user previously selected "missing" then toggled the checkbox off,
-    -- fall back to "guild" so the dropdown value stays valid.
+    -- "missing" chosen, then "Show all recipes" turned off: back to "guild".
     if self._viewMode == "missing" and not self._showAllRecipes then
         self._viewMode = "guild"
     end
-    viewDD:SetValue(self._viewMode)
-    viewDD:SetCallback("OnValueChanged", function(_w, _e, value)
-        self._viewMode       = value
-        self._selectedProfs  = nil
-        self._selectedProfId = 0
-        self._selectedEntry  = nil
+    local function redraw()
         C_Timer.After(0, function()
             if self._container then
                 self._container:ReleaseChildren()
                 self:Draw(self._container)
             end
         end)
-    end)
-    toolbar:AddChild(viewDD)
+    end
+    addon.GUI.ToolbarDropdown(self, "view", toolbar, {
+        aligned  = true,
+        width    = 150,
+        items    = function() return addon.GUI.MenuItems(viewLabels, viewOrder) end,
+        value    = self._viewMode,
+        onChange = function(value)
+            self._viewMode       = value
+            self._selectedProfs  = nil
+            self._selectedProfId = 0
+            self._selectedEntry  = nil
+            redraw()
+        end,
+    })
 
     local sp3 = AceGUI:Create("Label"); sp3:SetWidth(8); toolbar:AddChild(sp3)
 
-    -- v0.7.0 "Show all recipes" checkbox. When ON, every recipe in the shipped
-    -- addon.recipeDB appears in the list — ones nobody in the guild knows
-    -- render greyed out so users can scan the gaps. Also unlocks the
-    -- "Show Missing" entry in the View dropdown above.
-    local showAllCB = AceGUI:Create("CheckBox")
-    showAllCB:SetLabel(L["BrowserShowAllRecipes"] or "Show all recipes")
-    showAllCB:SetWidth(170)
-    showAllCB:SetValue(self._showAllRecipes)
-    showAllCB:SetCallback("OnValueChanged", function(_w, _e, value)
-        self._showAllRecipes = value
-        if not value and self._viewMode == "missing" then
-            self._viewMode = "guild"
-        end
-        C_Timer.After(0, function()
-            if self._container then
-                self._container:ReleaseChildren()
-                self:Draw(self._container)
+    -- "Show all recipes": every recipe in the shipped addon.recipeDB, ones
+    -- nobody in the guild knows greyed out, so the gaps can be scanned. Also
+    -- unlocks "Show Missing" in the view menu.
+    addon.GUI.ToolbarCheckbox(self, "showAll", toolbar, {
+        aligned  = true,
+        width    = 170,
+        label    = L["BrowserShowAllRecipes"] or "Show all recipes",
+        get      = function() return self._showAllRecipes end,
+        set      = function(value)
+            self._showAllRecipes = value
+            if not value and self._viewMode == "missing" then
+                self._viewMode = "guild"
             end
-        end)
-    end)
-    addon.GUI.AttachTooltip(showAllCB, L["BrowserShowAllRecipes"] or "Show all recipes",
-        L["BrowserShowAllRecipesDesc"]
+            redraw()
+        end,
+        tipTitle = L["BrowserShowAllRecipes"] or "Show all recipes",
+        tipBody  = L["BrowserShowAllRecipesDesc"]
             or ("Include every recipe in the shipped database, even ones nobody in the guild knows. "
                 .. "Missing recipes render greyed out so officers can spot which skills the guild "
-                .. "still needs to cover."))
-    toolbar:AddChild(showAllCB)
+                .. "still needs to cover."),
+    })
 
     local sp3b = AceGUI:Create("Label"); sp3b:SetWidth(8); toolbar:AddChild(sp3b)
 
@@ -1010,90 +976,46 @@ function BrowserTab:Draw(container)
         slSection:SetFullWidth(true)
         slSection.noAutoHeight = true
         slSection:SetHeight(slCount * ROW_HEIGHT + 40)
-        -- OnRelease: detach our pooled raw row frames from the InlineGroup
-        -- before AceGUI recycles it into another addon. Without this our
-        -- pool frames stay parented to the recycled widget and visibly
-        -- bleed into the other addon's UI (the bug the user hit on
-        -- TBC / Anniversary). Mirrors the recipe-scroll's DestroyPool
-        -- OnRelease pattern below at line ~464.
-        slSection:SetCallback("OnRelease", function()
-            self:DetachShoppingListPool()
-        end)
+        -- The list's host is handed back to UIParent when this InlineGroup is
+        -- released (ParkList → AttachRawFrames), so it never rides the pooled
+        -- widget into another addon's window -- the bleed players hit on TBC /
+        -- Anniversary.
         container:AddChild(slSection)
         self._slSection = slSection
         self:FillShoppingListSection(slSection)
     end
 
-    -- ---- Column headers (raw frame) ----------------------------------------
-    -- Created once and reused, like _detailOuter: WoW never frees a frame, and
-    -- Draw re-runs on every GUILD_DATA_UPDATED, so a fresh bar (plus its two
-    -- hit frames) per Draw leaked three frames each time.
-    local anchorFrame = (self._slSection and self._slSection.frame) or toolbar.frame
-    self:EnsureHeaderBar()
-    local headerBar = self._headerBar
-    headerBar:SetParent(container.content)
-    headerBar:ClearAllPoints()
-    headerBar:SetPoint("TOPLEFT",  anchorFrame, "BOTTOMLEFT",  0, 0)
-    headerBar:SetPoint("TOPRIGHT", anchorFrame, "BOTTOMRIGHT", 0, 0)
-    headerBar:Show()
-    -- Header text re-set per Draw so a brand-colour change still reaches it.
-    self._hdrRecipe:SetText(addon.UI.Brand("Recipes"))
-    self._hdrCrafters:SetText(addon.UI.Brand(L["CraftersColHeader"]))
-
-    -- ---- Recipe scroll list (left column) ----------------------------------
-    if self._pool then
-        self:DestroyPool()
+    -- ---- Recipe list (left) and detail panel (right) ------------------------
+    -- One full-height group holds both. The list is a RowList on a host the tab
+    -- owns for the session (addon.GUI.ParkList); the detail panel is the tab's
+    -- own raw frame, created once. Both are handed back to UIParent when the
+    -- group is released (AttachRawFrames), so neither rides the pooled group
+    -- into another addon's window. Neither is anchored to anything outside this
+    -- group, which is what v1.0.6's "the list is drawn over the game world after
+    -- opening Settings" came from: the old scroll was anchored to chrome that
+    -- its own release had already detached.
+    local section = AceGUI:Create("SimpleGroup")
+    section:SetLayout("Fill")
+    section:SetFullWidth(true)
+    section:SetFullHeight(true)
+    container:AddChild(section)
+    self._listSection = section
+    if addon.W then
+        addon.W:OnWidgetRelease(section, "togpm:browserList", function()
+            GameTooltip:Hide()
+            if self._listSection == section then self._listSection = nil end
+        end)
     end
 
-    -- Persist scroll position across redraws so sync-triggered
-    -- GUILD_DATA_UPDATED rebuilds (every few seconds in active guilds)
-    -- don't yank the user back to the top mid-scroll. Acquire captures
-    -- the saved value BEFORE we hand the scroll widget off to FillList
-    -- (which calls FixScroll → scrollbar:SetValue(0) → would clobber a
-    -- live status table). We restore at the end of Draw, after FillList
-    -- + content-height are settled.
-    local scroll, savedScroll = addon.GUI.PersistentScroll.Acquire(self, {
-        key       = "browser",
-        layout    = "List",
-        fullWidth = true,
-        onRelease = function()
-            self:DestroyPool()
-            -- Detach raw frames parented to container.content BEFORE
-            -- AceGUI recycles the container (see GUI/SharedWidgets.lua :
-            -- addon.GUI.DetachPool for the one true cleanup). The
-            -- LayoutFinished override our FillList installs as part of
-            -- the virtual-scroll trick is restored on the NEXT Acquire
-            -- (PersistentScroll.Acquire reassigns the class method on
-            -- every acquire), so we don't have to clean it up here.
-            -- _headerBar is reused across Draws (EnsureHeaderBar), so it is
-            -- detached but NOT nil'd.
-            addon.GUI.DetachPool(self._headerBar)
-            -- _detailOuter is reused across Draws (lazy-created in
-            -- EnsureDetailPanel, re-parented + re-anchored next Draw),
-            -- so we detach but do NOT nil it.
-            addon.GUI.DetachPool(self._detailOuter)
-            -- Belt and braces with the stillAttached() guard in
-            -- AnchorScrollToFill: drop the layout hook outright, so a container
-            -- that outlives this draw cannot re-anchor the scroll to the chrome
-            -- we just detached. The guard alone is enough today; this makes it
-            -- impossible for a future caller to re-introduce by reaching the
-            -- hook another way, and it is what CLAUDE.md asks for anyway —
-            -- a LayoutFinished override must not survive its owner.
-            if self._container then self._container.LayoutFinished = nil end
-        end,
-    })
-    container:AddChild(scroll)
-    self._scroll = scroll
-
-    -- ---- Detail panel (right column, persistent) ---------------------------
-    self:EnsureDetailPanel(container.content)
+    self:EnsureDetailPanel(section.content)
     local rp = self._detailOuter
-    rp:SetParent(container.content)
+    rp:SetParent(section.content)
     rp:SetWidth(DP_W)
     rp:ClearAllPoints()
-    rp:SetPoint("TOPRIGHT",    headerBar, "BOTTOMRIGHT",         0, 0)
-    rp:SetPoint("BOTTOMRIGHT", container.content, "BOTTOMRIGHT", 0, 0)
+    rp:SetPoint("TOPRIGHT",    section.content, "TOPRIGHT",    0, 0)
+    rp:SetPoint("BOTTOMRIGHT", section.content, "BOTTOMRIGHT", 0, 0)
     rp:Show()
+    if addon.W then addon.W:AttachRawFrames(section, rp) end
 
     if self._selectedEntry then
         self:DrawDetail(self._selectedEntry)
@@ -1101,49 +1023,7 @@ function BrowserTab:Draw(container)
         self:ClearDetail()
     end
 
-    -- Anchor scroll frame to fill the left column (right edge = detail panel left - gap).
-    --
-    -- Both anchors are RAW frames that the scroll's own onRelease detaches
-    -- (DetachPool re-parents them to UIParent and strips their points). Nothing
-    -- prevents this hook from running afterwards — opening the Settings dialog
-    -- triggers one layout pass and that is enough — and anchoring the scroll to
-    -- a frame now sitting at UIParent's origin drags it right out of the window
-    -- and across the game world. Reported in game at v1.0.6 from the gear icon
-    -- AND from shift-clicking the minimap button, which is what showed the
-    -- button was never the variable: both merely call OpenSettings.
-    --
-    -- So the anchors are checked for still being attached to this tab's
-    -- container before use. Bailing leaves the scroll where it was, which is
-    -- the correct degraded behaviour — the next Draw re-anchors it properly.
-    local function stillAttached(frame)
-        if not frame then return false end
-        local p, guard = frame, 0
-        while p and guard < 20 do
-            if p == container.frame or p == container.content then return true end
-            p = p.GetParent and p:GetParent() or nil
-            guard = guard + 1
-        end
-        return false
-    end
-    local function AnchorScrollToFill()
-        if not (self._scroll and self._scroll.frame) then return end
-        if not (stillAttached(headerBar) and stillAttached(self._detailOuter)) then return end
-        self._scroll.frame:ClearAllPoints()
-        self._scroll.frame:SetPoint("TOPLEFT",     headerBar, "BOTTOMLEFT",  0, 0)
-        self._scroll.frame:SetPoint("BOTTOMRIGHT", self._detailOuter, "BOTTOMLEFT", -DP_GAP, 0)
-    end
-    container.LayoutFinished = function() AnchorScrollToFill() end
-    AnchorScrollToFill()
-
     self:FillList()
-
-    -- Restore captured scroll position now that content height is set.
-    -- FillList wrote scroll.content height and ran FixScroll above, so
-    -- SetScroll(saved) can derive a correct offset. The afterFn re-
-    -- positions our raw-frame pool to match.
-    addon.GUI.PersistentScroll.Restore(scroll, savedScroll, function()
-        self:UpdateVirtualRows()
-    end)
 end
 
 -- ---------------------------------------------------------------------------
@@ -1157,7 +1037,6 @@ end
 -- was taller than the tab and the recipe list drew below the frame).
 local SL_MAX_SHARE = 0.4
 local SL_MIN_ROWS  = 4
-local SL_SB_WIDTH  = 16   -- right margin reserved for the slider when it shows
 
 -- Tallest the section's row area may be right now. Derived from the tab
 -- container's live height so a taller window shows more rows; falls back to
@@ -1171,454 +1050,230 @@ function BrowserTab:ShoppingListMaxHeight()
     return ROW_HEIGHT * 10
 end
 
--- Lazily build the persistent scroll frame the shopping-list rows live in and
--- attach it to `host` (the InlineGroup's content). Owned by this tab, not by
--- the pooled InlineGroup: it is re-parented on every fill and detached on the
--- InlineGroup's release, exactly like the detail panel's `_detailOuter`.
--- Returns the scroll child, which is what the pooled rows are parented to.
-function BrowserTab:EnsureShoppingListScroll(host)
-    local sf = self._slSF
-    if not sf then
-        sf = CreateFrame("ScrollFrame", nil, host)
-        self._slSF = sf
-
-        local content = CreateFrame("Frame", nil, sf)
-        content:SetHeight(ROW_HEIGHT)
-        sf:SetScrollChild(content)
-        self._slContent = content
-        -- A scroll child never inherits its parent's width; track it so the
-        -- rows' TOPLEFT/TOPRIGHT anchors span the section.
-        sf:SetScript("OnSizeChanged", function(_, w)
-            if w and w > 0 then content:SetWidth(w) end
-        end)
-
-        local sb = CreateFrame("Slider", nil, sf, "UIPanelScrollBarTemplate")
-        sb:SetPoint("TOPLEFT",    sf, "TOPRIGHT", 2, -16)
-        sb:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", 2, 16)
-        sb:SetMinMaxValues(0, 0)
-        sb:SetValueStep(ROW_HEIGHT)
-        if sb.SetObeyStepOnDrag then sb:SetObeyStepOnDrag(true) end
-        sb:SetScript("OnValueChanged", function(_, val) sf:SetVerticalScroll(val) end)
-        sf:SetScript("OnMouseWheel", function(_, delta)
-            sb:SetValue(sb:GetValue() - delta * ROW_HEIGHT * 3)
-        end)
-        sb:Hide()
-        self._slSB = sb
+-- The shopping list's rows, flattened: one per recipe on the list, sorted by
+-- name, and under an EXPANDED recipe one per reagent. A recipe row carries
+-- `_exp` (true expanded, false collapsed) only when it has reagents to show,
+-- which is what makes the list draw its +/- toggle there and nowhere else.
+function BrowserTab:BuildShoppingRows()
+    self._slExpanded = self._slExpanded or {}
+    local recipes = {}
+    for sid, entry in pairs(Ace.db.char.shoppingList) do
+        recipes[#recipes + 1] = { sid = sid, entry = entry }
     end
-    sf:SetParent(host)
-    sf:ClearAllPoints()
-    sf:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
-    sf:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", 0, 0)
-    sf:Show()
-    local w = host.GetWidth and host:GetWidth() or 0
-    if w and w > 0 then self._slContent:SetWidth(w) end
-    return self._slContent
-end
-
-function BrowserTab:FillShoppingListSection(container)
-    local bl = Ace.db.char.shoppingList
-
-    local host   = container.content or container.frame
-    local parent = self:EnsureShoppingListScroll(host)
-
-    if not self._slPool        then self._slPool        = {} end
-    if not self._slReagentPool then self._slReagentPool = {} end
-    if not self._slExpanded    then self._slExpanded    = {} end
-
-    local rows = {}
-    for sid, entry in pairs(bl) do
-        table.insert(rows, { sid = sid, entry = entry })
-    end
-    table.sort(rows, function(a, b)
+    table.sort(recipes, function(a, b)
         local na = (a.entry and a.entry.name) or tostring(a.sid)
         local nb = (b.entry and b.entry.name) or tostring(b.sid)
         return na < nb
     end)
-
-    for _, f in ipairs(self._slPool)        do f:SetParent(parent) end
-    for _, f in ipairs(self._slReagentPool) do f:SetParent(parent) end
-
-    local function GetRecipeFrame(idx)
-        if self._slPool[idx] then return self._slPool[idx] end
-
-        local f = CreateFrame("Button", nil, parent)
-        f:SetHeight(ROW_HEIGHT)
-        f:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight", "ADD")
-
-        local arrow = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        arrow:SetPoint("LEFT", f, "LEFT", 2, 0)
-        arrow:SetWidth(12)
-        arrow:SetJustifyH("CENTER")
-        f.arrow = arrow
-
-        local icon = f:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(14, 14)
-        icon:SetPoint("LEFT", f, "LEFT", 16, 0)
-        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        f.icon = icon
-
-        local nameLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        nameLbl:SetPoint("LEFT", icon, "RIGHT", 4, 0)
-        nameLbl:SetWidth(210)
-        nameLbl:SetJustifyH("LEFT")
-        nameLbl:SetWordWrap(false)
-        f.nameLbl = nameLbl
-
-        local removeBtn = CreateFrame("Button", nil, f)
-        removeBtn:SetSize(12, 18)
-        removeBtn:SetPoint("RIGHT", f, "RIGHT", -4, 0)
-        local removeLbl = removeBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        removeLbl:SetAllPoints()
-        removeLbl:SetJustifyH("CENTER")
-        removeLbl:SetText("|cFFFF4444x|r")
-        f.removeBtn = removeBtn
-
-        local plusBtn = CreateFrame("Button", nil, f)
-        plusBtn:SetSize(12, 18)
-        plusBtn:SetPoint("RIGHT", removeBtn, "LEFT", -6, 0)
-        local plusLbl = plusBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        plusLbl:SetAllPoints()
-        plusLbl:SetJustifyH("CENTER")
-        plusLbl:SetText("|cFFFFD100+|r")
-        f.plusBtn = plusBtn
-
-        local qtyLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        qtyLbl:SetPoint("RIGHT", plusBtn, "LEFT", -4, 0)
-        qtyLbl:SetWidth(22)
-        qtyLbl:SetJustifyH("CENTER")
-        f.qtyLbl = qtyLbl
-
-        local minusBtn = CreateFrame("Button", nil, f)
-        minusBtn:SetSize(12, 18)
-        minusBtn:SetPoint("RIGHT", qtyLbl, "LEFT", -4, 0)
-        local minusLbl = minusBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        minusLbl:SetAllPoints()
-        minusLbl:SetJustifyH("CENTER")
-        minusLbl:SetText("|cFFFFD100-|r")
-        f.minusBtn = minusBtn
-
-        local alertBtn = CreateFrame("Button", nil, f)
-        alertBtn:SetSize(12, 18)
-        alertBtn:SetPoint("RIGHT", minusBtn, "LEFT", -4, 0)
-        local alertLbl = alertBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        alertLbl:SetAllPoints()
-        alertLbl:SetJustifyH("CENTER")
-        alertLbl:SetText("|cff666666!|r")
-        alertBtn:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(alertBtn)
-            local enabled = alertBtn._sid and Ace.db.char.shoppingAlerts[alertBtn._sid]
-            GameTooltip:SetText(enabled and L["ShoppingAlertDisable"] or L["ShoppingAlertEnable"], 1, 1, 1, 1, true)
-            GameTooltip:Show()
-        end)
-        alertBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        f.alertBtn  = alertBtn
-        f.alertLbl  = alertLbl
-
-        self._slPool[idx] = f
-        return f
-    end
-
-    local INDENT = 18
-    local function GetReagentFrame(idx)
-        if self._slReagentPool[idx] then return self._slReagentPool[idx] end
-
-        local f = CreateFrame("Frame", nil, parent)
-        f:SetHeight(ROW_HEIGHT)
-        f:EnableMouse(true)
-
-        local icon = f:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(12, 12)
-        icon:SetPoint("LEFT", f, "LEFT", INDENT + 4, 0)
-        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        f.icon = icon
-
-        local nameLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        nameLbl:SetPoint("LEFT", icon, "RIGHT", 4, 0)
-        nameLbl:SetWidth(200)
-        nameLbl:SetJustifyH("LEFT")
-        nameLbl:SetWordWrap(false)
-        nameLbl:SetTextColor(1, 1, 1)
-        f.nameLbl = nameLbl
-
-        local countLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        countLbl:SetPoint("LEFT", nameLbl, "RIGHT", 4, 0)
-        countLbl:SetWidth(44)
-        countLbl:SetJustifyH("RIGHT")
-        countLbl:SetTextColor(1, 1, 1)
-        f.countLbl = countLbl
-
-        local bankBtn = CreateFrame("Button", nil, f)
-        -- Wide enough for the staleness dot in front of the label.
-        bankBtn:SetSize(62, 14)
-        bankBtn:SetPoint("LEFT", countLbl, "RIGHT", 4, 0)
-        bankBtn:SetNormalFontObject(GameFontNormalSmall)
-        bankBtn:SetText(addon.Bank.ButtonText(nil))
-        bankBtn:Hide()
-        bankBtn:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(bankBtn)
-            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
-            GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
-            addon.Bank.AddStatusLines(bankBtn)
-            GameTooltip:Show()
-        end)
-        bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        f.bankBtn = bankBtn
-
-        -- [AH] button — visible only when the AH scanner has found live
-        -- listings for this reagent (gates on AH.GetListingsFor.count > 0).
-        -- Click jumps the AH browse search to this reagent's name. Anchor
-        -- gets re-set per-row in the update loop below depending on
-        -- whether [Bank] is also showing, so the two buttons sit cleanly
-        -- side-by-side without a gap when only one is visible.
-        local ahBtn = CreateFrame("Button", nil, f)
-        ahBtn:SetSize(36, 14)
-        ahBtn:SetNormalFontObject(GameFontNormalSmall)
-        ahBtn:SetText("|cFF88CCFF[AH]|r")
-        ahBtn:Hide()
-        ahBtn:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(ahBtn)
-            GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1, 1, true)
-            GameTooltip:AddLine(L["TooltipAHDescReagent"], nil, nil, nil, true)
-            GameTooltip:Show()
-        end)
-        ahBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        f.ahBtn = ahBtn
-
-        self._slReagentPool[idx] = f
-        return f
-    end
-
-    for _, f in ipairs(self._slPool)        do f:Hide() end
-    for _, f in ipairs(self._slReagentPool) do f:Hide() end
-
-    local yOffset    = 0
-    local reagentIdx = 0
-
-    for recipeIdx, rowData in ipairs(rows) do
-        local sid      = rowData.sid
-        local ent      = rowData.entry
+    local rows = {}
+    for _, rec in ipairs(recipes) do
+        local ent      = rec.entry
         local qty      = (ent and ent.quantity) or 1
-        local name     = (ent and ent.name) or tostring(sid)
         local reagents = (ent and ent.reagents) or {}
-        local hasReagents = #reagents > 0
-        local expanded = self._slExpanded[sid]
-
-        local f = GetRecipeFrame(recipeIdx)
-        f:ClearAllPoints()
-        f:SetPoint("TOPLEFT",  parent, "TOPLEFT",  0, -yOffset)
-        f:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -yOffset)
-        yOffset = yOffset + ROW_HEIGHT
-
-        if hasReagents then
-            f.arrow:SetText(expanded and "|cFFFFD100-|r" or "|cFFFFD100+|r")
-        else
-            f.arrow:SetText("")
-        end
-
-        if ent and ent.icon then
-            f.icon:SetTexture(ent.icon)
-        else
-            f.icon:SetTexture(nil)
-        end
-
-        -- Quality colour of the CRAFTED item. Falls back to ItemDB's shipped
-        -- quality when the link is not cached, which is most of the time on a
-        -- fresh login -- reading the link alone left the colour depending on
-        -- what the player had recently looked at, so pieces of one set could
-        -- render in different colours.
-        local colorHex = addon.ItemLink and addon.ItemLink.QualityHex
-            and addon.ItemLink.QualityHex(ent and ent.itemLink, ent and ent.craftedItemId)
-        f.nameLbl:SetText(colorHex and ("|c" .. colorHex .. name .. "|r") or name)
-        f.qtyLbl:SetText(tostring(qty))
-
-        -- Alert toggle button state
-        f.alertBtn._sid = sid
-        local alertOn = Ace.db.char.shoppingAlerts[sid]
-        f.alertLbl:SetText(alertOn and "|cffFFD700!|r" or "|cff666666!|r")
-        f.alertBtn:SetScript("OnClick", function()
-            if Ace.db.char.shoppingAlerts[sid] then
-                Ace.db.char.shoppingAlerts[sid] = nil
-            else
-                Ace.db.char.shoppingAlerts[sid] = true
-            end
-            f.alertLbl:SetText(Ace.db.char.shoppingAlerts[sid] and "|cffFFD700!|r" or "|cff666666!|r")
-        end)
-
-        f:SetScript("OnClick", function(_btn)
-            if f.minusBtn:IsMouseOver() or f.plusBtn:IsMouseOver() or f.removeBtn:IsMouseOver()
-            or f.alertBtn:IsMouseOver() then
-                return
-            end
-            if hasReagents then
-                self._slExpanded[sid] = not self._slExpanded[sid]
-                self:RefreshShoppingList()
-            end
-        end)
-
-        f.minusBtn:SetScript("OnClick", function()
-            local cur = (bl[sid] and bl[sid].quantity) or 1
-            if cur <= 1 then
-                bl[sid] = nil
-                self._slExpanded[sid] = nil
-            else
-                bl[sid].quantity = cur - 1
-            end
-            -- Sync detail panel if this recipe is currently selected
-            if self._selectedEntry and self._selectedEntry.id == sid then
-                self:DrawDetail(self._selectedEntry)
-            end
-            self:RefreshShoppingList()
-        end)
-        f.plusBtn:SetScript("OnClick", function()
-            if bl[sid] then
-                bl[sid].quantity = (bl[sid].quantity or 1) + 1
-                if ent then
-                    bl[sid].name     = ent.name     or bl[sid].name
-                    bl[sid].icon     = ent.icon     or bl[sid].icon
-                    bl[sid].itemLink = ent.itemLink or bl[sid].itemLink
-                    bl[sid].reagents = ent.reagents or bl[sid].reagents
+        local row = { kind = "recipe", sid = rec.sid, ent = ent, qty = qty }
+        rows[#rows + 1] = row
+        if #reagents > 0 then
+            row._exp = self._slExpanded[rec.sid] and true or false
+            if row._exp then
+                for _, r in ipairs(reagents) do
+                    rows[#rows + 1] = { kind = "reagent", sid = rec.sid, r = r, qty = qty, _indent = 1 }
                 end
-            else
-                bl[sid] = { name = name, quantity = 1,
-                            icon = ent and ent.icon, itemLink = ent and ent.itemLink,
-                            reagents = ent and ent.reagents }
             end
-            if self._selectedEntry and self._selectedEntry.id == sid then
-                self:DrawDetail(self._selectedEntry)
-            end
-            self:RefreshShoppingList()
-        end)
-        f.removeBtn:SetScript("OnClick", function()
+        end
+    end
+    return rows
+end
+
+-- The shopping list's quantity controls, shared by the list's [-] [+] [x].
+-- Each keeps the detail panel in step when it shows the same recipe.
+function BrowserTab:ShoppingStep(sid, ent, delta)
+    local bl = Ace.db.char.shoppingList
+    if delta == nil then
+        bl[sid] = nil
+        self._slExpanded[sid] = nil
+        Ace.db.char.shoppingAlerts[sid] = nil
+    elseif delta < 0 then
+        local cur = (bl[sid] and bl[sid].quantity) or 1
+        if cur <= 1 then
             bl[sid] = nil
             self._slExpanded[sid] = nil
-            Ace.db.char.shoppingAlerts[sid] = nil
-            if self._selectedEntry and self._selectedEntry.id == sid then
-                self:DrawDetail(self._selectedEntry)
+        else
+            bl[sid].quantity = cur - 1
+        end
+    else
+        local name = (ent and ent.name) or tostring(sid)
+        if bl[sid] then
+            bl[sid].quantity = (bl[sid].quantity or 1) + 1
+            if ent then
+                bl[sid].name     = ent.name     or bl[sid].name
+                bl[sid].icon     = ent.icon     or bl[sid].icon
+                bl[sid].itemLink = ent.itemLink or bl[sid].itemLink
+                bl[sid].reagents = ent.reagents or bl[sid].reagents
             end
-            self:RefreshShoppingList()
-        end)
-
-        f:SetScript("OnEnter", function()
-            local link = ent and (ent.itemLink or ent.recipeLink)
-            if link then
-                addon.Tooltip.Owner(f)
-                GameTooltip:SetHyperlink(link)
-                GameTooltip:Show()
-            elseif type(sid) == "number" then
-                -- No crafted item (enchants): the shopping-list key IS the
-                -- recipe's spell id, so show the spell tooltip rather than
-                -- leaving the row with no hover at all.
-                addon.Tooltip.Owner(f)
-                if SetSpellTooltip(GameTooltip, sid) then GameTooltip:Show() end
-            end
-        end)
-        f:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        f:Show()
-
-        if expanded and hasReagents then
-            for _, r in ipairs(reagents) do
-                reagentIdx = reagentIdx + 1
-                local rf = GetReagentFrame(reagentIdx)
-                rf:ClearAllPoints()
-                rf:SetPoint("TOPLEFT",  parent, "TOPLEFT",  0, -yOffset)
-                rf:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -yOffset)
-                yOffset = yOffset + ROW_HEIGHT
-
-                if r.itemId and r.itemId > 0 then
-                    local _, _, _, _, _, _, _, _, _, itemTexture = addon.Item.GetInfo(r.itemId)
-                    rf.icon:SetTexture(itemTexture or nil)
-                else
-                    rf.icon:SetTexture(nil)
-                end
-
-                -- Same draw-time resolution as the detail pane; this is the
-                -- table the shopping list PERSISTS, so a placeholder here
-                -- would otherwise survive a reload.
-                rf.nameLbl:SetText(addon:ResolveReagentName(r))
-
-                local rItemId   = ResolveReagentItemId(r)
-                local rItemLink = ResolveReagentItemLink(r)
-                rf:SetScript("OnEnter", function()
-                    addon.Tooltip.Owner(rf)
-                    if addon.ItemLink.SetItem(GameTooltip, rItemLink, rItemId) then
-                        GameTooltip:Show()
-                    end
-                end)
-                rf:SetScript("OnLeave", function()
-                    addon.ItemLink.EndHover(GameTooltip)
-                    GameTooltip:Hide()
-                end)
-
-                local needed = (r.count or 1) * qty
-                rf.countLbl:SetText("|cffffffff x" .. needed .. "|r")
-
-                local hasBank = rItemId and addon.Bank and addon.Bank.GetStock(rItemId) > 0
-                local ahData  = rItemId and addon.AH and addon.AH.GetListingsFor(rItemId)
-                local hasAH   = ahData and (ahData.count or 0) > 0 and r.name and r.name ~= ""
-
-                if hasBank then
-                    addon.Bank.Decorate(rf.bankBtn, rItemId)
-                    rf.bankBtn:SetScript("OnClick", function()
-                        addon.Bank.ShowRequestDialog(rItemId, r.name or "", rItemLink)
-                    end)
-                end
-                if hasAH then
-                    local rName = r.name
-                    rf.ahBtn:SetScript("OnClick", function()
-                        addon.AH.SearchFor(rName)
-                    end)
-                end
-
-                -- Dynamic anchoring: order is [Bank] [AH] (left to right).
-                -- count→bank gap is 8 (not 4) to balance the perceived gap
-                -- with bank→ah: countLbl's right-justified text is flush
-                -- against its frame edge, but both [Bank] and [AH] have
-                -- internal text padding inside their button frames, so the
-                -- visible "]" / "[" gap is wider than a 4px frame gap. 8px
-                -- frame gap to count compensates for the missing left-text-
-                -- padding that count doesn't have. When only one button
-                -- shows, it anchors to countLbl directly so there's never an
-                -- empty slot gap from the other.
-                rf.bankBtn:ClearAllPoints()
-                rf.ahBtn:ClearAllPoints()
-                if hasBank then
-                    rf.bankBtn:SetPoint("LEFT", rf.countLbl, "RIGHT", 8, 0)
-                    rf.bankBtn:Show()
-                    if hasAH then
-                        rf.ahBtn:SetPoint("LEFT", rf.bankBtn, "RIGHT", 4, 0)
-                        rf.ahBtn:Show()
-                    else
-                        rf.ahBtn:Hide()
-                    end
-                else
-                    rf.bankBtn:Hide()
-                    if hasAH then
-                        rf.ahBtn:SetPoint("LEFT", rf.countLbl, "RIGHT", 8, 0)
-                        rf.ahBtn:Show()
-                    else
-                        rf.ahBtn:Hide()
-                    end
-                end
-
-                rf:Show()
-            end
+        else
+            bl[sid] = { name = name, quantity = 1,
+                        icon = ent and ent.icon, itemLink = ent and ent.itemLink,
+                        reagents = ent and ent.reagents }
         end
     end
+    if self._selectedEntry and self._selectedEntry.id == sid then
+        self:DrawDetail(self._selectedEntry)
+    end
+    self:RefreshShoppingList()
+end
 
-    -- The rows live in the scroll child at their full height; the section
-    -- itself is capped, and the difference is what the slider scrolls.
-    local totalH   = math.max(yOffset, ROW_HEIGHT)
-    local visibleH = math.min(totalH, self:ShoppingListMaxHeight())
-    parent:SetHeight(totalH)
-    container:SetHeight(visibleH + 40)
+-- A reagent row's bank / AH state, worked out the same way the detail panel's
+-- reagent rows do.
+local function reagentStock(r)
+    local id   = ResolveReagentItemId(r)
+    local ah   = id and addon.AH and addon.AH.GetListingsFor(id)
+    return id,
+           id and addon.Bank and addon.Bank.GetStock(id) > 0,
+           ah and (ah.count or 0) > 0 and r.name and r.name ~= ""
+end
 
-    local overflow = math.max(0, totalH - visibleH)
-    local sf, sb = self._slSF, self._slSB
-    sf:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", overflow > 0 and -SL_SB_WIDTH or 0, 0)
-    sb:SetMinMaxValues(0, overflow)
-    if sb:GetValue() > overflow then sb:SetValue(overflow) end
-    if overflow > 0 then sb:Show() else sb:Hide() end
-    sf:SetVerticalScroll(sb:GetValue())
+local function isRecipe(e)  return e.kind == "recipe"  end
+
+-- The small text buttons on a recipe row. `glyph` is the button's text.
+local function recipeButton(key, glyph, onClick, tip)
+    return { key = key, width = 14, button = true, sortable = false,
+             show = isRecipe, text = function() return glyph end,
+             tip = tip, onClick = onClick }
+end
+
+function BrowserTab:BuildShoppingList(host)
+    return addon.W.RowList:New(host, {
+        rowHeight      = ROW_HEIGHT,
+        hoverHighlight = true,
+        columns = {
+            -- +/- on a recipe with reagents: shows or hides them.
+            { key = "_exp", expander = true, width = 14, sortable = false,
+              onToggle = function(e, open)
+                  self._slExpanded[e.sid] = open or nil
+                  self:RefreshShoppingList()
+              end },
+            { key = "_icon", width = 16, iconSize = 14, iconTexCoord = true, sortable = false,
+              icon = function(e)
+                  if e.kind == "recipe" then return e.ent and e.ent.icon end
+                  local id = e.r.itemId
+                  return id and id > 0 and select(10, addon.Item.GetInfo(id)) or nil
+              end },
+            -- Recipe: coloured by the CRAFTED item's quality, falling back to
+            -- ItemDB's shipped quality when the link is not cached (most of the
+            -- time on a fresh login), so pieces of one set do not render in
+            -- different colours. Reagent: resolved at draw time -- this table is
+            -- the one the shopping list PERSISTS, so a placeholder name here
+            -- would otherwise survive a reload.
+            { key = "name",
+              format = function(_, e)
+                  if e.kind == "reagent" then return addon:ResolveReagentName(e.r) end
+                  local ent  = e.ent
+                  local name = (ent and ent.name) or tostring(e.sid)
+                  local hex  = addon.ItemLink and addon.ItemLink.QualityHex
+                      and addon.ItemLink.QualityHex(ent and ent.itemLink, ent and ent.craftedItemId)
+                  return hex and ("|c" .. hex .. name .. "|r") or name
+              end },
+            { key = "count", width = 44, align = "RIGHT", sortable = false,
+              format = function(_, e)
+                  if e.kind ~= "reagent" then return "" end
+                  return "|cffffffff x" .. ((e.r.count or 1) * e.qty) .. "|r"
+              end },
+            { key = "bankBtn", width = 62, button = true, sortable = false, gapBefore = 4,
+              show = function(e)
+                  return e.kind == "reagent" and select(2, reagentStock(e.r))
+              end,
+              text = function(e) return addon.Bank.ButtonText(ResolveReagentItemId(e.r)) end,
+              tip  = function(e)
+                  local body = L["TooltipBankDescGeneric"]
+                  local status = addon.Bank.StatusText(ResolveReagentItemId(e.r))
+                  if status then body = body .. "\n\n" .. status end
+                  return L["TooltipBankTitle"], body
+              end,
+              onClick = function(e)
+                  addon.Bank.ShowRequestDialog(ResolveReagentItemId(e.r), e.r.name or "",
+                      ResolveReagentItemLink(e.r))
+              end },
+            { key = "ahBtn", width = 36, button = true, sortable = false,
+              show = function(e)
+                  return e.kind == "reagent" and select(3, reagentStock(e.r))
+              end,
+              text = function() return "|cFF88CCFF[AH]|r" end,
+              tip  = function() return L["TooltipAHTitle"], L["TooltipAHDescReagent"] end,
+              onClick = function(e) addon.AH.SearchFor(e.r.name) end },
+            -- The crafter-online alert for this recipe: gold when on.
+            { key = "alert", width = 14, button = true, sortable = false, show = isRecipe,
+              text = function(e)
+                  return Ace.db.char.shoppingAlerts[e.sid] and "|cffFFD700!|r" or "|cff666666!|r"
+              end,
+              tip = function(e)
+                  return Ace.db.char.shoppingAlerts[e.sid] and L["ShoppingAlertDisable"]
+                      or L["ShoppingAlertEnable"]
+              end,
+              onClick = function(e)
+                  local alerts = Ace.db.char.shoppingAlerts
+                  alerts[e.sid] = (not alerts[e.sid]) or nil
+                  if self._slList then self._slList:Refresh() end
+              end },
+            recipeButton("minus", "|cFFFFD100-|r", function(e) self:ShoppingStep(e.sid, e.ent, -1) end),
+            { key = "qty", width = 22, align = "RIGHT", sortable = false,
+              format = function(_, e) return e.kind == "recipe" and tostring(e.qty) or "" end },
+            recipeButton("plus", "|cFFFFD100+|r", function(e) self:ShoppingStep(e.sid, e.ent, 1) end),
+            recipeButton("remove", "|cFFFF4444x|r", function(e) self:ShoppingStep(e.sid, e.ent, nil) end),
+        },
+        onRowEnter = function(e, _, _, rowFrame) self:ShowShoppingTooltip(e, rowFrame) end,
+        onRowLeave = function()
+            addon.ItemLink.EndHover(GameTooltip)
+            GameTooltip:Hide()
+        end,
+        -- A click anywhere on a recipe row with reagents opens or closes it,
+        -- as the toggle does.
+        onRowClick = function(e, _, _, button)
+            if button ~= "LeftButton" or e._exp == nil then return end
+            self._slExpanded[e.sid] = (not e._exp) or nil
+            self:RefreshShoppingList()
+        end,
+    })
+end
+
+-- A recipe row shows its crafted item (or, for an enchant, which has none, the
+-- recipe's spell: the shopping-list key IS the spell id). A reagent row shows
+-- the reagent.
+function BrowserTab:ShowShoppingTooltip(e, owner)
+    if e.kind == "reagent" then
+        addon.Tooltip.Owner(owner)
+        if addon.ItemLink.SetItem(GameTooltip, ResolveReagentItemLink(e.r), ResolveReagentItemId(e.r)) then
+            GameTooltip:Show()
+        end
+        return
+    end
+    local link = e.ent and (e.ent.itemLink or e.ent.recipeLink)
+    if link then
+        addon.Tooltip.Owner(owner)
+        GameTooltip:SetHyperlink(link)
+        GameTooltip:Show()
+    elseif type(e.sid) == "number" then
+        addon.Tooltip.Owner(owner)
+        if SetSpellTooltip(GameTooltip, e.sid) then GameTooltip:Show() end
+    end
+end
+
+-- Fill the shopping-list section. The list is a RowList on a host the tab owns
+-- for the session (addon.GUI.ParkList), parked in the section and handed back
+-- to UIParent when the section is released. The section is as tall as its
+-- rows, up to ShoppingListMaxHeight; past that the list scrolls inside it.
+function BrowserTab:FillShoppingListSection(container)
+    if not addon.W then return end
+    local rows = self:BuildShoppingRows()
+    local rl = addon.GUI.ParkList(self, "_slList", container, function(host)
+        return self:BuildShoppingList(host)
+    end)
+    -- Whole rows only, at the list's own (scaled) row height, and at least
+    -- one, so the cap never cuts a row in half.
+    local rowH    = rl.rowHeight or ROW_HEIGHT
+    local maxRows = math.max(1, math.floor(self:ShoppingListMaxHeight() / rowH))
+    local shown   = math.max(1, math.min(#rows, maxRows))
+    container:SetHeight(shown * rowH + 40)
+    rl:SetData(rows, true)
 end
 
 function BrowserTab:RefreshShoppingList()
@@ -1674,20 +1329,15 @@ function BrowserTab:PersistTierFilter()
     end
 end
 
+-- A filter or search change. The player expects the top of the new result
+-- set, not whatever offset the previous list was scrolled to.
 function BrowserTab:RefreshList()
-    local scroll = self._scroll
-    if not scroll then return end
-    if self._pool then
-        for _, f in ipairs(self._pool) do f:Hide() end
-    end
-    self._recipes = nil
-    -- Filter/search change: user expects to see the top of the new
-    -- result set, not whatever offset the previous list was scrolled to.
-    addon.GUI.PersistentScroll.Reset(self, scroll)
-    if scroll.scrollbar and scroll.scrollbar.SetValue then
-        scroll.scrollbar:SetValue(0)
-    end
-    scroll:ReleaseChildren()
+    local section = self._listSection
+    if not section then return end
+    addon.GUI.ListScroll.Set("browser", 0)
+    -- Drops a hint label a previous fill left; the list host is a raw frame
+    -- and is not a child, so it stays attached.
+    section:ReleaseChildren()
     self:FillList()
 end
 
@@ -1809,16 +1459,18 @@ function BrowserTab:Warm()
 end
 
 function BrowserTab:FillList()
-    local scroll = self._scroll
-    if not scroll then return end
-
-    scroll.LayoutFinished = nil
+    local section = self._listSection
+    if not section then return end
+    -- A fill that ends on a hint label must not leave the previous list
+    -- showing under it; ParkList shows the host again when there are rows.
+    if self._rowListHost then self._rowListHost:Hide() end
+    self._recipes = nil
 
     if not self._selectedProfId then
         local lbl = AceGUI:Create("Label")
         lbl:SetText(L["SelectProfHint"])
         lbl:SetFullWidth(true)
-        scroll:AddChild(lbl)
+        section:AddChild(lbl)
         return
     end
 
@@ -1835,26 +1487,29 @@ function BrowserTab:FillList()
         local lbl = AceGUI:Create("Label")
         lbl:SetText(self._searchText ~= "" and L["NoMatchingRecipes"] or L["NoDataYet"])
         lbl:SetFullWidth(true)
-        scroll:AddChild(lbl)
+        section:AddChild(lbl)
         return
     end
 
     self._recipes = recipes
 
-    scroll.LayoutFinished = function() end
-    scroll.content:SetHeight(#recipes * ROW_HEIGHT)
-    scroll:FixScroll()
-
-    if not self._pool then
-        self:BuildPool(scroll.content)
+    if addon.W then
+        local rl = addon.GUI.ParkList(self, "_rowList", section, function(host)
+            return self:BuildRowList(host)
+        end)
+        -- ParkList fills the group; the list takes the part left of the
+        -- detail panel. Both are anchored inside this group only.
+        local host = self._rowListHost
+        host:ClearAllPoints()
+        host:SetPoint("TOPLEFT",     section.content,   "TOPLEFT",    0,       0)
+        host:SetPoint("BOTTOMRIGHT", self._detailOuter, "BOTTOMLEFT", -DP_GAP, 0)
+        -- Keep the player's place across the rebuilds a guild-data refresh
+        -- causes. Read before SetData, whose scroll-to-top is reported too.
+        local saved = addon.GUI.ListScroll.Get("browser")
+        rl:SetData(recipes)
+        rl:SetScrollOffset(saved)
+        self:SyncListSelection()
     end
-
-    self:UpdateVirtualRows()
-
-    scroll.scrollbar:SetScript("OnValueChanged", function(bar, value)
-        bar.obj:SetScroll(value)
-        self:UpdateVirtualRows()
-    end)
 
     -- If TOGBankClassic is loaded but not yet initialized (Info is nil on first
     -- login before GUILD_RANKS_UPDATE fires), watch for it and refresh bank buttons.
@@ -1868,7 +1523,7 @@ function BrowserTab:FillList()
             f:SetScript("OnEvent", nil)
             C_Timer.After(0.5, function()
                 self._bankRefreshPending = nil
-                if self._pool then self:UpdateVirtualRows() end
+                if self._rowList then self._rowList:Refresh() end
                 -- Bank buttons live in the detail panel; redraw it too.
                 if self._selectedEntry then self:DrawDetail(self._selectedEntry) end
                 -- Refresh shopping list bank buttons as well.
@@ -1878,404 +1533,372 @@ function BrowserTab:FillList()
     end
 end
 
--- Build POOL_SIZE raw WoW frames parented to the scroll content frame.
-function BrowserTab:BuildPool(parent)
-    self._pool = {}
-    for i = 1, POOL_SIZE do
-        local f = CreateFrame("Button", nil, parent)
-        f:SetHeight(ROW_HEIGHT)
-        f:Hide()
-        f:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight", "ADD")
+-- ---------------------------------------------------------------------------
+-- The recipe list: a LibAceGUIWidgets RowList (MINOR 36)
+-- ---------------------------------------------------------------------------
+-- It draws only the visible rows and reuses its row frames for the session,
+-- which is what the 35-frame pool did by hand up to v1.1.3, and it draws the
+-- header, banding, hover highlight, selection tint and scrollbar.
 
-        local icon = f:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(14, 14)
-        icon:SetPoint("LEFT", f, "LEFT", 4, 0)
-        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        f.icon = icon
+-- As many crafter names as `width` allows, then a greyed "+N" for the rest,
+-- instead of a fixed two. `width` and `measure` are the list's own: the cell's
+-- live width, and the rendered width of a string in the cell's font -- so the
+-- count follows the window as it is dragged. Always at least one name (the cell
+-- clips it when even that overflows). Before the first layout there is no
+-- width yet, and it falls back to the two-name summary.
+local function fitCrafterText(crafters, width, measure, colOnline, colOffline, colYou)
+    local total = crafters and #crafters or 0
+    if total == 0 then return "" end
+    local names = {}
+    for ci = 1, total do
+        local c   = crafters[ci]
+        local col = c.isYou and colYou or (c.online and colOnline or colOffline)
+        names[ci] = col .. c.name .. "|r"
+    end
+    local function suffix(n)
+        return (n < total) and (" |cffaaaaaa+" .. (total - n) .. "|r") or ""
+    end
+    if not (measure and width and width > 1) then
+        local n = math.min(2, total)
+        return table.concat(names, ", ", 1, n) .. suffix(n)
+    end
+    -- Adding a name grows the rendered width, so the first overflow is the
+    -- stopping point. The name list is extended one name at a time rather than
+    -- re-joined per step: a recipe hundreds of crafters know, in a cell wide
+    -- enough to measure many of them, made the re-join quadratic per row.
+    local shown = names[1]
+    local best  = shown .. suffix(1)
+    for n = 2, total do
+        shown = shown .. ", " .. names[n]
+        local candidate = shown .. suffix(n)
+        if measure(candidate) > width then break end
+        best = candidate
+    end
+    return best
+end
+BrowserTab._fitCrafterText = fitCrafterText   -- test seam, see above
 
-        -- Name column
-        local nameLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        nameLbl:SetPoint("LEFT", icon, "RIGHT", 4, 0)
-        nameLbl:SetWidth(160)
-        nameLbl:SetJustifyH("LEFT")
-        nameLbl:SetWordWrap(false)
-        f.nameLbl = nameLbl
+function BrowserTab:BuildRowList(host)
+    return addon.W.RowList:New(host, {
+        rowHeight      = ROW_HEIGHT,
+        hoverHighlight = true,
+        -- Rows arrive sorted by name (BuildFullList); the headers explain the
+        -- columns and do not re-sort.
+        onScroll       = function(_, offset) addon.GUI.ListScroll.Set("browser", offset) end,
+        columns = {
+            { key = "_icon", width = 18, iconSize = 14, iconTexCoord = true, sortable = false,
+              icon = function(e) return e.icon end },
+            -- Coloured by the CRAFTED item's quality, resolved through ItemDB
+            -- when the link is not cached. Reading entry.itemLink alone made the
+            -- colour depend on what the client happened to have seen, so one
+            -- armour set could render its pieces in different colours.
+            { key = "name", header = "Recipes", width = 160, sortable = false,
+              headerTip = L["TooltipRecipeDesc"],
+              format = function(_, e)
+                  local hex = addon.ItemLink and addon.ItemLink.QualityHex
+                      and addon.ItemLink.QualityHex(e.itemLink, e.craftedItemId)
+                  return hex and ("|c" .. hex .. e.name .. "|r") or e.name
+              end },
+            { key = "crafters", header = L["CraftersColHeader"], sortable = false,
+              headerTip = L["TooltipCraftersDesc"],
+              format = function(_, e, width, measure)
+                  return fitCrafterText(e.crafters, width, measure,
+                      "|c" .. (addon.ColorOnline  or "ffffffff"),
+                      "|c" .. (addon.ColorOffline or "ffaaaaaa"),
+                      "|c" .. (addon.ColorYou     or addon.BrandColor or "ffDA8CFF"))
+              end },
+            -- [Bank]: the crafted item itself has bank stock. Keyed by
+            -- craftedItemId -- entry.id is the recipe's spell id, and asking the
+            -- bank about it asks about whatever item shares that number.
+            { key = "bankBtn", width = 60, button = true, sortable = false,
+              show = function(e)
+                  return e.craftedItemId and addon.Bank and addon.Bank.GetStock(e.craftedItemId) > 0
+              end,
+              text = function(e) return addon.Bank.ButtonText(e.craftedItemId) end,
+              tip  = function(e)
+                  local body = L["TooltipBankDescGeneric"]
+                  local status = addon.Bank.StatusText(e.craftedItemId)
+                  if status then body = body .. "\n\n" .. status end
+                  return L["TooltipBankTitle"], body
+              end,
+              onClick = function(e)
+                  addon.Bank.ShowRequestDialog(e.craftedItemId, e.name or "", e.itemLink)
+              end },
+        },
+        onRowEnter = function(e, _, _, rowFrame) self:ShowRowTooltip(e, rowFrame) end,
+        onRowLeave = function()
+            addon.ItemLink.EndHover(GameTooltip)
+            GameTooltip:Hide()
+        end,
+        onRowClick = function(e, _, _, button) self:ClickRow(e, button) end,
+    })
+end
 
-        -- Crafter column: truncated summary; narrowed to leave room for bank button
-        local crafterLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        crafterLbl:SetPoint("LEFT",  f, "LEFT",  186, 0)
-        crafterLbl:SetPoint("RIGHT", f, "RIGHT",  -56, 0)
-        crafterLbl:SetJustifyH("LEFT")
-        crafterLbl:SetWordWrap(false)
-        f.crafterLbl = crafterLbl
+-- A left click shows the recipe in the detail panel. A modified click inserts
+-- the recipe link into chat instead: ResolveRecipeLink falls back through
+-- itemLink → recipeLink → GetItemInfo(craftedItemId) → GetSpellLink →
+-- synthetic "spell:<id>", so the click produces a link even for a
+-- trainer-taught recipe whose entry has no link cached.
+function BrowserTab:ClickRow(entry, button)
+    if button ~= "LeftButton" or not entry then return end
+    if addon.ItemLink.Click(ResolveRecipeLink(entry)) then return end
+    self:DrawDetail(entry)
+end
 
-        -- Bank button at far right (wide enough for the staleness dot)
-        local bankBtn = CreateFrame("Button", nil, f)
-        bankBtn:SetSize(60, 12)
-        bankBtn:SetPoint("RIGHT", f, "RIGHT", -2, 0)
-        bankBtn:SetNormalFontObject(GameFontNormalSmall)
-        bankBtn:SetText(addon.Bank.ButtonText(nil))
-        bankBtn:Hide()
-        bankBtn:SetScript("OnEnter", function()
-            addon.Tooltip.Owner(bankBtn)
-            GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
-            GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
-            addon.Bank.AddStatusLines(bankBtn)
+-- The list's selection tint follows the recipe in the detail panel. Matched by
+-- id: the cached list is rebuilt by a guild-data rewarm, so the selected entry
+-- is often an equal-looking table from the previous build.
+function BrowserTab:SyncListSelection()
+    local rl = self._rowList
+    if not rl then return end
+    local sel = self._selectedEntry
+    rl:SetSelected(sel and function(e) return e.id == sel.id end or nil)
+end
+
+-- The row tooltip. Re-run by ItemLink.BeginHover when the compare modifier
+-- changes while the row is hovered -- see the branches that hand it a rebuild
+-- callback.
+function BrowserTab:ShowRowTooltip(entry, owner)
+    if not entry then return end
+    local function renderRowTooltip() self:ShowRowTooltip(entry, owner) end
+    addon.Tooltip.Owner(owner)
+
+    -- The CRAFTED item is what a player wants compared against their
+    -- gear — `recipeLink` is the recipe scroll, which equips nothing.
+    local craftedLink = (type(entry.itemLink) == "string"
+                         and entry.itemLink:find("|Hitem:")) and entry.itemLink or nil
+
+    -- Two ways to end up on the real item tooltip: the player turned
+    -- the setting on, or they are holding the compare modifier right
+    -- now. The second matters because the curated tooltip below is
+    -- assembled from AddLine calls and carries no item, so a comparison
+    -- has nothing to attach to; swapping to the real tooltip for as
+    -- long as the key is held is what makes hold-to-compare work here
+    -- at all, and it returns to the trimmed version on release.
+    if craftedLink and addon.ItemLink.WantsCompare() then
+        addon.ItemLink.SetItem(GameTooltip, craftedLink)
+        AppendBrandTooltipLines(entry)
+        GameTooltip:Show()
+        addon.ItemLink.BeginHover(GameTooltip, renderRowTooltip)
+        return
+    end
+
+    -- THE REAL RECIPE TOOLTIP, where the game has one to give.
+    -- RecipeTooltipSource answers "item" for the ~65% of recipes with a
+    -- genuine teaching scroll ("Plans: Barbaric Shoulders"). That tooltip
+    -- natively embeds the crafted item AND lets other addons'
+    -- OnTooltipSetItem hooks contribute -- which is the whole reason a
+    -- chat link looked richer than our own list.
+    --
+    -- The link comes from LibItemDB SYNCHRONOUSLY. Deliberately not
+    -- GetItemInfo: a cold scroll's async cache-fill fires
+    -- GET_ITEM_INFO_RECEIVED, and that refresh storm is what crept the
+    -- Missing Recipes list. Falls through to the scroll-SHAPED tooltip
+    -- below when no link is cached, rather than showing an empty one.
+    local kind, teachingId = addon.ItemLink.RecipeTooltipSource(entry.profId, entry.id)
+    if kind == "item" then
+        local idb = addon:GetItemDB()
+        local scrollLink = idb and idb.GetLink and idb:GetLink(teachingId)
+        if scrollLink then
+            GameTooltip:SetHyperlink(scrollLink)
+            AppendBrandTooltipLines(entry)
             GameTooltip:Show()
-        end)
-        bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        f.bankBtn = bankBtn
+            addon.ItemLink.BeginHover(GameTooltip, renderRowTooltip)
+            return
+        end
+    end
 
-        f:SetScript("OnMouseDown", function(_, button)
-            if button ~= "LeftButton" then return end
-            local entry = f._entry
-            if not entry then return end
-            -- Shift-click inserts the recipe link into the chat edit box.
-            -- ResolveRecipeLink falls back through itemLink → recipeLink →
-            -- GetItemInfo(id) → GetSpellLink → synthetic "item:<id>" so the
-            -- click always produces a link even for trainer-taught recipes
-            -- whose gdb entry has no link cached. Without this, shift-click
-            -- silently did nothing for entries with nil itemLink/recipeLink.
-            if addon.ItemLink.Click(ResolveRecipeLink(entry)) then return end
-            self:DrawDetail(entry)
-        end)
-
-        -- Rendered as a named function because it is re-run when the compare
-        -- modifier changes while the row is hovered — see the two branches
-        -- below that hand it to ItemLink.BeginHover as the rebuild callback.
-        local function renderRowTooltip()
-            local entry = f._entry
-            if not entry then return end
-            addon.Tooltip.Owner(f)
-
-            -- The CRAFTED item is what a player wants compared against their
-            -- gear — `recipeLink` is the recipe scroll, which equips nothing.
-            local craftedLink = (type(entry.itemLink) == "string"
-                                 and entry.itemLink:find("|Hitem:")) and entry.itemLink or nil
-
-            -- Two ways to end up on the real item tooltip: the player turned
-            -- the setting on, or they are holding the compare modifier right
-            -- now. The second matters because the curated tooltip below is
-            -- assembled from AddLine calls and carries no item, so a comparison
-            -- has nothing to attach to; swapping to the real tooltip for as
-            -- long as the key is held is what makes hold-to-compare work here
-            -- at all, and it returns to the trimmed version on release.
-            if craftedLink and addon.ItemLink.WantsCompare() then
-                addon.ItemLink.SetItem(GameTooltip, craftedLink)
-                AppendBrandTooltipLines(entry)
-                GameTooltip:Show()
-                addon.ItemLink.BeginHover(GameTooltip, renderRowTooltip)
-                return
+    -- Only use recipeLink if it is a real item link; enchanting stores
+    -- enchant:SPELLID here which produces an unhelpful tooltip.
+    if entry.recipeLink and entry.recipeLink:find("|Hitem:") then
+        GameTooltip:SetHyperlink(entry.recipeLink)
+        addon.ItemLink.BeginHover(GameTooltip, renderRowTooltip)
+    elseif entry.reagents and #entry.reagents > 0 then
+        local parts = {}
+        for _, r in ipairs(entry.reagents) do
+            table.insert(parts, addon:ResolveReagentName(r) .. " (" .. r.count .. ")")
+        end
+        local reagentLine = (SPELL_REAGENTS or "Reagents:") .. " " .. table.concat(parts, ", ")
+        -- Titled like the scroll the game does not have, so the list has
+        -- no visible seam where real scrolls run out -- a third of every
+        -- profession. Prefix is LibItemDB's localized, derived one.
+        local header, requires, useText, metReq = addon.ItemLink.ScrollHeader(
+            entry.profId, entry.id, entry.name, entry.profName)
+        GameTooltip:ClearLines()
+        -- ⚠ THE NAME IS DELIBERATELY *NOT* WRAPPED, and it is the only
+        -- line in this addon that isn't. It is the line the game lets
+        -- SET the frame width, exactly as Blizzard's own item tooltip
+        -- does -- an item's name is never wrapped there.
+        --
+        -- Wrapping it was a real, observed regression: with every line
+        -- opted into the preset, NOTHING claimed a natural width, so the
+        -- frame collapsed to the bare preset and came out NARROWER than
+        -- the game's own tooltip for the same item. "Schematic: Advanced
+        -- Target Dummy" broke onto two lines, which the game does not
+        -- do. The preset is a MINIMUM the long lines wrap to, not the
+        -- width every tooltip ends up at.
+        --
+        -- So the rule is: the title sizes the frame, everything else
+        -- wraps to the preset -- ours by passing the flag, third
+        -- parties' by `ItemLink.WithWrappedLines`. Enumerated in
+        -- `Tests/tooltipwrapflag_spec.lua`'s TITLE_EXEMPT so a second
+        -- unwrapped line still fails the sweep.
+        GameTooltip:AddLine("|cffffff00" .. (header or entry.name) .. "|r")
+        if requires then
+            -- Red when this character cannot meet it, exactly as the
+            -- game colours an unmet requirement. Without this the line
+            -- reads as satisfied whether or not it is, which is the
+            -- one thing it exists to tell you.
+            if metReq == false then
+                GameTooltip:AddLine(requires, 1, 0.13, 0.13, true)
+            else
+                GameTooltip:AddLine(requires, 1, 1, 1, true)
             end
-
-            -- THE REAL RECIPE TOOLTIP, where the game has one to give.
-            -- RecipeTooltipSource answers "item" for the ~65% of recipes with a
-            -- genuine teaching scroll ("Plans: Barbaric Shoulders"). That tooltip
-            -- natively embeds the crafted item AND lets other addons'
-            -- OnTooltipSetItem hooks contribute -- which is the whole reason a
-            -- chat link looked richer than our own list.
-            --
-            -- The link comes from LibItemDB SYNCHRONOUSLY. Deliberately not
-            -- GetItemInfo: a cold scroll's async cache-fill fires
-            -- GET_ITEM_INFO_RECEIVED, and that refresh storm is what crept the
-            -- Missing Recipes list. Falls through to the scroll-SHAPED tooltip
-            -- below when no link is cached, rather than showing an empty one.
-            local kind, teachingId = addon.ItemLink.RecipeTooltipSource(entry.profId, entry.id)
-            if kind == "item" then
-                local idb = addon:GetItemDB()
-                local scrollLink = idb and idb.GetLink and idb:GetLink(teachingId)
-                if scrollLink then
-                    GameTooltip:SetHyperlink(scrollLink)
-                    AppendBrandTooltipLines(entry)
-                    GameTooltip:Show()
-                    addon.ItemLink.BeginHover(GameTooltip, renderRowTooltip)
-                    return
-                end
-            end
-
-            -- Only use recipeLink if it is a real item link; enchanting stores
-            -- enchant:SPELLID here which produces an unhelpful tooltip.
-            if entry.recipeLink and entry.recipeLink:find("|Hitem:") then
-                GameTooltip:SetHyperlink(entry.recipeLink)
-                addon.ItemLink.BeginHover(GameTooltip, renderRowTooltip)
-            elseif entry.reagents and #entry.reagents > 0 then
-                local parts = {}
-                for _, r in ipairs(entry.reagents) do
-                    table.insert(parts, addon:ResolveReagentName(r) .. " (" .. r.count .. ")")
-                end
-                local reagentLine = (SPELL_REAGENTS or "Reagents:") .. " " .. table.concat(parts, ", ")
-                -- Titled like the scroll the game does not have, so the list has
-                -- no visible seam where real scrolls run out -- a third of every
-                -- profession. Prefix is LibItemDB's localized, derived one.
-                local header, requires, useText, metReq = addon.ItemLink.ScrollHeader(
-                    entry.profId, entry.id, entry.name, entry.profName)
-                GameTooltip:ClearLines()
-                -- ⚠ THE NAME IS DELIBERATELY *NOT* WRAPPED, and it is the only
-                -- line in this addon that isn't. It is the line the game lets
-                -- SET the frame width, exactly as Blizzard's own item tooltip
-                -- does -- an item's name is never wrapped there.
-                --
-                -- Wrapping it was a real, observed regression: with every line
-                -- opted into the preset, NOTHING claimed a natural width, so the
-                -- frame collapsed to the bare preset and came out NARROWER than
-                -- the game's own tooltip for the same item. "Schematic: Advanced
-                -- Target Dummy" broke onto two lines, which the game does not
-                -- do. The preset is a MINIMUM the long lines wrap to, not the
-                -- width every tooltip ends up at.
-                --
-                -- So the rule is: the title sizes the frame, everything else
-                -- wraps to the preset -- ours by passing the flag, third
-                -- parties' by `ItemLink.WithWrappedLines`. Enumerated in
-                -- `Tests/tooltipwrapflag_spec.lua`'s TITLE_EXEMPT so a second
-                -- unwrapped line still fails the sweep.
-                GameTooltip:AddLine("|cffffff00" .. (header or entry.name) .. "|r")
-                if requires then
-                    -- Red when this character cannot meet it, exactly as the
-                    -- game colours an unmet requirement. Without this the line
-                    -- reads as satisfied whether or not it is, which is the
-                    -- one thing it exists to tell you.
-                    if metReq == false then
-                        GameTooltip:AddLine(requires, 1, 0.13, 0.13, true)
-                    else
-                        GameTooltip:AddLine(requires, 1, 1, 1, true)
+        end
+        -- "Already known", red, between the requirement and the Use
+        -- line — where the game's scroll puts it. Keyed on the `isYou`
+        -- crafter, which only THIS character gets (alts are tagged
+        -- "You (Altname)" without it), matching the game: a scroll is
+        -- "already known" to the character reading it, not to the
+        -- account. ITEM_SPELL_KNOWN is Blizzard's localized string.
+        local knownByMe = false
+        for _, crafter in ipairs(entry.crafters or {}) do
+            if crafter.isYou then knownByMe = true break end
+        end
+        if knownByMe then
+            GameTooltip:AddLine(_G.ITEM_SPELL_KNOWN or "Already known", 1, 0.13, 0.13, true)
+        end
+        -- "Use: Teaches you how to craft X." — ordered directly under
+        -- the requirement, which is where the game's scroll puts it.
+        -- ITEM_SPELL_TRIGGER_ONUSE is Blizzard's own localized "Use:",
+        -- so this reads correctly in every client language; the stored
+        -- sentence carries only the verb phrase.
+        if useText then
+            local usePrefix = _G.ITEM_SPELL_TRIGGER_ONUSE
+            GameTooltip:AddLine(
+                usePrefix and (usePrefix .. " " .. useText) or useText,
+                1, 1, 1, true)
+        end
+        GameTooltip:AddLine(reagentLine, 1, 1, 1, true)
+        -- Only scrape crafted-item tooltip for real item links (not enchant:).
+        if type(entry.itemLink) == "string" and entry.itemLink:find("|Hitem:") then
+            local scraper = GetItemScraper()
+            scraper:ClearLines()
+            scraper:SetHyperlink(entry.itemLink)
+            local n = scraper:NumLines()
+            if n > 1 then
+                GameTooltip:AddLine(" ")
+                for li = 1, n do
+                    local lt = _G["TOGPMItemScraperTextLeft"  .. li]
+                    local rt = _G["TOGPMItemScraperTextRight" .. li]
+                    local lStr = (lt and lt:GetText()) or ""
+                    local rStr = (rt and rt:GetText()) or ""
+                    -- Drop the crafted item's own "Requires <Prof> (N)"
+                    -- when it repeats the line we already put at the
+                    -- top. They are different facts wearing identical
+                    -- text -- ours is the skill to LEARN the recipe,
+                    -- the item's is the skill to USE what it makes --
+                    -- and printing both just looks like a bug.
+                    if requires and lStr == requires then
+                        lStr, rStr = "", ""
                     end
-                end
-                -- "Already known", red, between the requirement and the Use
-                -- line — where the game's scroll puts it. Keyed on the `isYou`
-                -- crafter, which only THIS character gets (alts are tagged
-                -- "You (Altname)" without it), matching the game: a scroll is
-                -- "already known" to the character reading it, not to the
-                -- account. ITEM_SPELL_KNOWN is Blizzard's localized string.
-                local knownByMe = false
-                for _, crafter in ipairs(entry.crafters or {}) do
-                    if crafter.isYou then knownByMe = true break end
-                end
-                if knownByMe then
-                    GameTooltip:AddLine(_G.ITEM_SPELL_KNOWN or "Already known", 1, 0.13, 0.13, true)
-                end
-                -- "Use: Teaches you how to craft X." — ordered directly under
-                -- the requirement, which is where the game's scroll puts it.
-                -- ITEM_SPELL_TRIGGER_ONUSE is Blizzard's own localized "Use:",
-                -- so this reads correctly in every client language; the stored
-                -- sentence carries only the verb phrase.
-                if useText then
-                    local usePrefix = _G.ITEM_SPELL_TRIGGER_ONUSE
-                    GameTooltip:AddLine(
-                        usePrefix and (usePrefix .. " " .. useText) or useText,
-                        1, 1, 1, true)
-                end
-                GameTooltip:AddLine(reagentLine, 1, 1, 1, true)
-                -- Only scrape crafted-item tooltip for real item links (not enchant:).
-                if type(entry.itemLink) == "string" and entry.itemLink:find("|Hitem:") then
-                    local scraper = GetItemScraper()
-                    scraper:ClearLines()
-                    scraper:SetHyperlink(entry.itemLink)
-                    local n = scraper:NumLines()
-                    if n > 1 then
-                        GameTooltip:AddLine(" ")
-                        for li = 1, n do
-                            local lt = _G["TOGPMItemScraperTextLeft"  .. li]
-                            local rt = _G["TOGPMItemScraperTextRight" .. li]
-                            local lStr = (lt and lt:GetText()) or ""
-                            local rStr = (rt and rt:GetText()) or ""
-                            -- Drop the crafted item's own "Requires <Prof> (N)"
-                            -- when it repeats the line we already put at the
-                            -- top. They are different facts wearing identical
-                            -- text -- ours is the skill to LEARN the recipe,
-                            -- the item's is the skill to USE what it makes --
-                            -- and printing both just looks like a bug.
-                            if requires and lStr == requires then
-                                lStr, rStr = "", ""
-                            end
-                            if lStr ~= "" or rStr ~= "" then
-                                local lr, lg, lb = 1, 1, 1
-                                local rr, rg, rb = 1, 1, 1
-                                if lt then lr, lg, lb = lt:GetTextColor() end
-                                if rt then rr, rg, rb = rt:GetTextColor() end
-                                if rStr ~= "" then
-                                    -- ⚠ THIS BRANCH CANNOT WRAP. `AddDoubleLine`
-                                    -- has no wrap parameter -- its eight arguments
-                                    -- are two strings and six colour components --
-                                    -- so a scraped line with both halves is
-                                    -- exempt from the preset by construction, and
-                                    -- a long left half here WILL widen the
-                                    -- tooltip. Enumerated in
-                                    -- `Tests/tooltipwrapflag_spec.lua`'s
-                                    -- DOUBLELINE_EXEMPT so a fourth site fails.
-                                    -- Audit finding 18.
-                                    --
-                                    -- The branch is chosen on whether right-hand
-                                    -- text EXISTS, not on whether the line is
-                                    -- short, so this is not a "short lines only"
-                                    -- path.
-                                    GameTooltip:AddDoubleLine(lStr, rStr, lr, lg, lb, rr, rg, rb)
-                                else
-                                    -- wrapText=true so long item lines (e.g. a flask's verbose
-                                    -- "Use:" text) wrap instead of stretching the tooltip across
-                                    -- the screen.
-                                    --
-                                    -- The claim that used to end this comment --
-                                    -- "with no unwrapped long line left, the
-                                    -- tooltip sizes to the header/stat lines" --
-                                    -- was FALSE and is removed. It described the
-                                    -- whole block while sitting on one branch, and
-                                    -- the other branch is exactly the unwrapped
-                                    -- long line it said was not left.
-                                    GameTooltip:AddLine(lStr, lr, lg, lb, true)
-                                end
-                            end
+                    if lStr ~= "" or rStr ~= "" then
+                        local lr, lg, lb = 1, 1, 1
+                        local rr, rg, rb = 1, 1, 1
+                        if lt then lr, lg, lb = lt:GetTextColor() end
+                        if rt then rr, rg, rb = rt:GetTextColor() end
+                        if rStr ~= "" then
+                            -- ⚠ THIS BRANCH CANNOT WRAP. `AddDoubleLine`
+                            -- has no wrap parameter -- its eight arguments
+                            -- are two strings and six colour components --
+                            -- so a scraped line with both halves is
+                            -- exempt from the preset by construction, and
+                            -- a long left half here WILL widen the
+                            -- tooltip. Enumerated in
+                            -- `Tests/tooltipwrapflag_spec.lua`'s
+                            -- DOUBLELINE_EXEMPT so a fourth site fails.
+                            -- Audit finding 18.
+                            --
+                            -- The branch is chosen on whether right-hand
+                            -- text EXISTS, not on whether the line is
+                            -- short, so this is not a "short lines only"
+                            -- path.
+                            GameTooltip:AddDoubleLine(lStr, rStr, lr, lg, lb, rr, rg, rb)
+                        else
+                            -- wrapText=true so long item lines (e.g. a flask's verbose
+                            -- "Use:" text) wrap instead of stretching the tooltip across
+                            -- the screen.
+                            GameTooltip:AddLine(lStr, lr, lg, lb, true)
                         end
                     end
                 end
-                -- Custom-built tooltip: add the brand-colored crafters + IDs
-                -- lines as the LAST content so they sit at the bottom. The
-                -- conditional inside AppendBrandTooltipLines handles the
-                -- crafted-item branch (no crafters line for enchants, which
-                -- produce no item).
-                AppendBrandTooltipLines(entry)
-                -- Everything the OTHER addons would have added if this tooltip
-                -- carried an item. It does not — it is AddLine calls — so
-                -- OnTooltipSetItem never fires and ATT / TOGBankClassic / TSM
-                -- are all silently absent here while appearing on the real
-                -- scroll tooltip one row up. This is what made the two look
-                -- like different addons.
-                addon.ItemLink.AppendIntegrations(
-                    GameTooltip, entry.spellId or entry.id, entry.craftedItemId)
-                GameTooltip:Show()
-                -- Keep listening even though this tooltip cannot itself
-                -- compare: pressing the modifier re-runs this function, which
-                -- takes the branch above and swaps to the real item tooltip.
-                addon.ItemLink.BeginHover(GameTooltip, renderRowTooltip)
-                return
             end
-
-            -- Tracks whether the tooltip ended up carrying a real ITEM. Only a
-            -- real item makes OnTooltipSetItem fire, and that hook is how ATT /
-            -- TOGBankClassic / TSM attach — so it decides whether we add their
-            -- lines ourselves below or would be duplicating theirs.
-            local hasItem = false
-            if type(entry.itemLink) == "string" and entry.itemLink:find("|Hitem:") then
-                addon.ItemLink.SetItem(GameTooltip, entry.itemLink)
-                hasItem = true
-            elseif not SetSpellTooltip(GameTooltip, entry.spellId or entry.id) then
-                -- No link, no spell id: name-only so the hover still says
-                -- something. Never "item:<entry.id>" — entry.id is a spell id
-                -- and that lookup lands on an unrelated item.
-                -- wrap = TRUE. The sixth argument is `wrap` and it defaults to
-                -- false (FrameAPITooltipDocumentation.lua:72). Passing the flag
-                -- opts the line into the client's own PRESET wrap width -- the
-                -- engine-side figure Blizzard sizes ability tooltips to. It is
-                -- not exposed as a number and does not need to be: the preset
-                -- scales with each player's client, so the flag gives every user
-                -- the right width with nothing calculated.
-                --
-                -- This line passed `false` while AHProfitTab:1039 passed `true`,
-                -- so some of our lines opted into the preset and some did not.
-                -- Every line that does not is free to stretch the frame.
-                GameTooltip:SetText(entry.name or "", 1, 1, 1, 1, true)
-            end
-            -- For SetHyperlink branches the global tooltip hook will fire on
-            -- Show() and add its own brand crafters+IDs (the hook dedups via
-            -- _togpmAppended). For SetSpellByID branches the hook does NOT
-            -- fire (no item context), so this manual call is the only way
-            -- spell-only recipes get an IDs line. The dedup means we don't
-            -- double-up on SetHyperlink branches — the manual call wins,
-            -- the hook's later call early-returns.
-            AppendBrandTooltipLines(entry)
-            -- Same reasoning as the curated branch, but only where the tooltip
-            -- has NO item: a SetHyperlink tooltip already gets ATT /
-            -- TOGBankClassic / TSM from their own OnTooltipSetItem hooks, and
-            -- adding ours on top would print every block twice.
-            if not hasItem then
-                addon.ItemLink.AppendIntegrations(
-                    GameTooltip, entry.spellId or entry.id, entry.craftedItemId)
-            end
-            GameTooltip:Show()
         end
-
-        f:SetScript("OnEnter", renderRowTooltip)
-        f:SetScript("OnLeave", function()
-            addon.ItemLink.EndHover(GameTooltip)
-            GameTooltip:Hide()
-        end)
-
-        self._pool[i] = f
+        -- Custom-built tooltip: add the brand-colored crafters + IDs
+        -- lines as the LAST content so they sit at the bottom. The
+        -- conditional inside AppendBrandTooltipLines handles the
+        -- crafted-item branch (no crafters line for enchants, which
+        -- produce no item).
+        AppendBrandTooltipLines(entry)
+        -- Everything the OTHER addons would have added if this tooltip
+        -- carried an item. It does not — it is AddLine calls — so
+        -- OnTooltipSetItem never fires and ATT / TOGBankClassic / TSM
+        -- are all silently absent here while appearing on the real
+        -- scroll tooltip one row up. This is what made the two look
+        -- like different addons.
+        addon.ItemLink.AppendIntegrations(
+            GameTooltip, entry.spellId or entry.id, entry.craftedItemId)
+        GameTooltip:Show()
+        -- Keep listening even though this tooltip cannot itself
+        -- compare: pressing the modifier re-runs this function, which
+        -- takes the branch above and swaps to the real item tooltip.
+        addon.ItemLink.BeginHover(GameTooltip, renderRowTooltip)
+        return
     end
-end
 
-function BrowserTab:DestroyPool()
-    if self._pool then
-        addon.GUI.DetachPool(self._pool)
-        -- Also nil the OnMouseDown/OnEnter/OnLeave scripts on each row
-        -- (the recipe-row pool uses raw script handlers for click + hover,
-        -- not AceGUI callbacks; explicit nil here matches the intent of
-        -- DetachPool — make these frames inert until next acquire).
-        for _, f in ipairs(self._pool) do
-            f:SetScript("OnMouseDown", nil)
-            f:SetScript("OnEnter",     nil)
-            f:SetScript("OnLeave",     nil)
-        end
-        self._pool    = nil
-        self._recipes = nil
+    -- Tracks whether the tooltip ended up carrying a real ITEM. Only a
+    -- real item makes OnTooltipSetItem fire, and that hook is how ATT /
+    -- TOGBankClassic / TSM attach — so it decides whether we add their
+    -- lines ourselves below or would be duplicating theirs.
+    local hasItem = false
+    if type(entry.itemLink) == "string" and entry.itemLink:find("|Hitem:") then
+        addon.ItemLink.SetItem(GameTooltip, entry.itemLink)
+        hasItem = true
+    elseif not SetSpellTooltip(GameTooltip, entry.spellId or entry.id) then
+        -- No link, no spell id: name-only so the hover still says
+        -- something. Never "item:<entry.id>" — entry.id is a spell id
+        -- and that lookup lands on an unrelated item.
+        -- wrap = TRUE. The sixth argument is `wrap` and it defaults to
+        -- false (FrameAPITooltipDocumentation.lua:72). Passing the flag
+        -- opts the line into the client's own PRESET wrap width -- the
+        -- engine-side figure Blizzard sizes ability tooltips to. It is
+        -- not exposed as a number and does not need to be: the preset
+        -- scales with each player's client, so the flag gives every user
+        -- the right width with nothing calculated.
+        GameTooltip:SetText(entry.name or "", 1, 1, 1, 1, true)
     end
-    self._scroll             = nil
-    self._bankRefreshPending = nil
-end
-
---- Detach the shopping-list pooled rows from their AceGUI InlineGroup
---- parent before the InlineGroup gets recycled. Called from the
---- InlineGroup's OnRelease callback wired up in Draw().
----
---- Without this, the pooled frames in self._slPool / self._slReagentPool
---- remain SetParent()'d to the InlineGroup's content frame; when AceGUI
---- pools the InlineGroup and another addon acquires it, our rows show
---- up in the other addon's UI. Same problem the recipe-scroll's
---- DestroyPool above prevents for the main recipe list, and the same
---- problem MissingRecipesTab:DetachPool prevents for the missing-
---- recipes list.
----
---- Re-parents to UIParent (a globally-rooted frame the pool can sit
---- under harmlessly) and clears all anchors. Frames stay alive in the
---- pool tables for the next FillShoppingListSection — Re-parented again
---- when that runs (line 533/534).
-function BrowserTab:DetachShoppingListPool()
-    addon.GUI.DetachPool(self._slPool)
-    addon.GUI.DetachPool(self._slReagentPool)
-    -- The rows' scroll frame is parented to the InlineGroup's content too.
-    addon.GUI.DetachPool(self._slSF)
+    -- For SetHyperlink branches the global tooltip hook will fire on
+    -- Show() and add its own brand crafters+IDs (the hook dedups via
+    -- _togpmAppended). For SetSpellByID branches the hook does NOT
+    -- fire (no item context), so this manual call is the only way
+    -- spell-only recipes get an IDs line. The dedup means we don't
+    -- double-up on SetHyperlink branches — the manual call wins,
+    -- the hook's later call early-returns.
+    AppendBrandTooltipLines(entry)
+    -- Same reasoning as the curated branch, but only where the tooltip
+    -- has NO item: a SetHyperlink tooltip already gets ATT /
+    -- TOGBankClassic / TSM from their own OnTooltipSetItem hooks, and
+    -- adding ours on top would print every block twice.
+    if not hasItem then
+        addon.ItemLink.AppendIntegrations(
+            GameTooltip, entry.spellId or entry.id, entry.craftedItemId)
+    end
+    GameTooltip:Show()
 end
 
 -- ---------------------------------------------------------------------------
 -- Detail panel (right column)
 -- ---------------------------------------------------------------------------
-
--- The column-header bar above the recipe list, created once; Draw re-parents
--- and re-anchors it. Its two hit frames give the headers their tooltips.
-function BrowserTab:EnsureHeaderBar()
-    if self._headerBar then return end
-    local headerBar = CreateFrame("Frame", nil, UIParent)
-    headerBar:SetHeight(18)
-    self._headerBar = headerBar
-
-    local function header(x, titleKey, descKey)
-        local fs = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        fs:SetPoint("LEFT", headerBar, "LEFT", x, 0)
-        local hit = CreateFrame("Frame", nil, headerBar)
-        hit:SetPoint("LEFT",  fs, "LEFT",  -2, 0)
-        hit:SetPoint("RIGHT", fs, "RIGHT",  2, 0)
-        hit:SetHeight(18)
-        hit:SetScript("OnEnter", function(f)
-            addon.Tooltip.Owner(f)
-            GameTooltip:SetText(L[titleKey], 1, 1, 1, 1, true)
-            GameTooltip:AddLine(L[descKey], nil, nil, nil, true)
-            GameTooltip:Show()
-        end)
-        hit:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        return fs
-    end
-    self._hdrRecipe   = header(24,  "TooltipRecipeTitle",   "TooltipRecipeDesc")
-    self._hdrCrafters = header(186, "TooltipCraftersTitle", "TooltipCraftersDesc")
-end
 
 -- Lazily create all detail-panel sub-frames the first time; subsequent Draw()
 -- calls just re-parent the outer frame to the new container.content.
@@ -2305,39 +1928,14 @@ function BrowserTab:EnsureDetailPanel(parent)
     ph:SetJustifyH("CENTER")
     self._dpPH = ph
 
-    -- Native WoW ScrollFrame for the detail content.
-    local sf = CreateFrame("ScrollFrame", nil, rp)
-    sf:SetPoint("TOPLEFT",     rp, "TOPLEFT",     DP_PAD, -DP_PAD)
-    sf:SetPoint("BOTTOMRIGHT", rp, "BOTTOMRIGHT", -(DP_PAD + 16), DP_PAD)
-    sf:Hide()
-    self._dpSF = sf
-
-    local cw = DP_W - DP_PAD * 2 - 18
-    local content = CreateFrame("Frame", nil, sf)
-    content:SetWidth(cw)
-    content:SetHeight(10)
-    sf:SetScrollChild(content)
-    self._dpContent = content
-
-    -- Scrollbar (sits in the right margin of the outer panel).
-    local sb = CreateFrame("Slider", nil, rp, "UIPanelScrollBarTemplate")
-    sb:SetPoint("TOPLEFT",    sf, "TOPRIGHT",    2, -16)
-    sb:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", 2,  16)
-    sb:SetMinMaxValues(0, 0)
-    sb:SetValueStep(8)
-    if sb.SetObeyStepOnDrag then sb:SetObeyStepOnDrag(true) end
-    sf:SetScript("OnScrollRangeChanged", function(_, _, yr)
-        local m = math.max(0, yr or 0)
-        sb:SetMinMaxValues(0, m)
-        if m > 0 then sb:Show() else sb:Hide() end
-    end)
-    sf:SetScript("OnMouseWheel", function(_, delta)
-        sb:SetValue(sb:GetValue() - delta * 20)
-    end)
-    sb:SetScript("OnValueChanged", function(_, val)
-        sf:SetVerticalScroll(val)
-    end)
-    self._dpSB = sb
+    -- The panel's body: the header and shopping controls at the top, and the
+    -- reagents / Known By list (a library RowList, which scrolls itself) filling
+    -- the rest. Hidden while the placeholder shows.
+    local content = CreateFrame("Frame", nil, rp)
+    content:SetPoint("TOPLEFT",     rp, "TOPLEFT",     DP_PAD, -DP_PAD)
+    content:SetPoint("BOTTOMRIGHT", rp, "BOTTOMRIGHT", -DP_PAD, DP_PAD)
+    content:Hide()
+    self._dpBody = content
 
     -- ── Persistent header widgets ──────────────────────────────────────────
 
@@ -2402,103 +2000,144 @@ function BrowserTab:EnsureDetailPanel(parent)
     dpMinusT:SetAllPoints(); dpMinusT:SetJustifyH("CENTER"); dpMinusT:SetText("|cFFFFD100-|r")
     self._dpMinus = dpMinus
 
-    -- Dynamic-position headings (repositioned each DrawDetail call)
-    local dpReagHdr = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    dpReagHdr:SetText("|c" .. (addon.BrandColor or "ffFF8000") .. "Reagents|r")
-    self._dpReagHdr = dpReagHdr
-
-    local dpCraftHdr = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    dpCraftHdr:SetText("|c" .. (addon.BrandColor or "ffFF8000") .. "Known By|r")
-    self._dpCraftHdr = dpCraftHdr
-
-    -- Pools for reagent and crafter rows (grow as needed, never shrink)
-    self._dpReagPool  = {}
-    self._dpCraftPool = {}
+    -- Reagents and Known By: one library RowList under the shopping row. Its
+    -- host is a child of this panel, which the tab owns for the session, so the
+    -- list's HookScripts never land on a pooled AceGUI frame.
+    local host = CreateFrame("Frame", nil, content)
+    host:SetPoint("TOPLEFT",     shopRow, "BOTTOMLEFT", 0, -4)
+    host:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", 0, 0)
+    self._dpListHost = host
+    self._dpList = self:BuildDetailList(host)
 end
 
--- Get-or-create a reagent row frame inside the detail content.
-function BrowserTab:GetDetailReagRow(idx)
-    if self._dpReagPool[idx] then return self._dpReagPool[idx] end
-
-    local content = self._dpContent
-    local f = CreateFrame("Button", nil, content)
-    f:SetHeight(DP_ROW)
-    f:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight", "ADD")
-
-    local icon = f:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(12, 12)
-    icon:SetPoint("LEFT", f, "LEFT", 0, 0)
-    icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    f.icon = icon
-
-    local nameLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    nameLbl:SetPoint("LEFT", icon, "RIGHT", 4, 0)
-    nameLbl:SetWidth(120)
-    nameLbl:SetJustifyH("LEFT")
-    nameLbl:SetWordWrap(false)
-    f.nameLbl = nameLbl
-
-    local countLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    countLbl:SetPoint("LEFT", nameLbl, "RIGHT", 4, 0)
-    countLbl:SetWidth(36)
-    countLbl:SetJustifyH("RIGHT")
-    f.countLbl = countLbl
-
-    local bankBtn = CreateFrame("Button", nil, f)
-    bankBtn:SetSize(56, 12)   -- room for the staleness dot
-    bankBtn:SetPoint("LEFT", countLbl, "RIGHT", 4, 0)
-    bankBtn:SetNormalFontObject(GameFontNormalSmall)
-    bankBtn:SetText(addon.Bank.ButtonText(nil))
-    bankBtn:Hide()
-    bankBtn:SetScript("OnEnter", function()
-        addon.Tooltip.Owner(bankBtn)
-        GameTooltip:SetText(L["TooltipBankTitle"], 1, 1, 1, 1, true)
-        GameTooltip:AddLine(L["TooltipBankDescGeneric"], nil, nil, nil, true)
-        addon.Bank.AddStatusLines(bankBtn)
-        GameTooltip:Show()
-    end)
-    bankBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    f.bankBtn = bankBtn
-
-    -- [AH] button — sibling of [Bank], shown only when the AH scanner has
-    -- found live listings for this reagent. Click jumps to AH browse search.
-    local ahBtn = CreateFrame("Button", nil, f)
-    ahBtn:SetSize(32, 12)
-    ahBtn:SetNormalFontObject(GameFontNormalSmall)
-    ahBtn:SetText("|cFF88CCFF[AH]|r")
-    ahBtn:Hide()
-    ahBtn:SetScript("OnEnter", function()
-        addon.Tooltip.Owner(ahBtn)
-        GameTooltip:SetText(L["TooltipAHTitle"], 1, 1, 1, 1, true)
-        GameTooltip:AddLine(L["TooltipAHDescReagent"], nil, nil, nil, true)
-        GameTooltip:Show()
-    end)
-    ahBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    f.ahBtn = ahBtn
-
-    self._dpReagPool[idx] = f
-    return f
+-- The shopping-list quantity the reagent counts are multiplied by: the list's
+-- own quantity, and never less than one, so a recipe that is not on the list
+-- shows what one craft takes.
+local function detailMultiplier(entryId)
+    local sl = Ace.db.char.shoppingList[entryId]
+    return math.max(1, (sl and sl.quantity) or 0)
 end
 
--- Get-or-create a crafter row frame inside the detail content.
-function BrowserTab:GetDetailCraftRow(idx)
-    if self._dpCraftPool[idx] then return self._dpCraftPool[idx] end
+-- The detail panel's reagents / Known By list. Rows are
+--   { _header = "Reagents" | "Known By" }
+--   { kind = "reagent", r = <reagent>, entryId = <recipe id> }
+--   { kind = "crafter", c = <crafter> }
+--   { kind = "none" }                      -- nobody is known to craft it
+-- Reagent cells read the shopping-list quantity when drawn, so the +/- buttons
+-- restate the counts with a Refresh.
+function BrowserTab:BuildDetailList(host)
+    local colorOnline  = function() return "|c" .. (addon.ColorOnline  or "ffffffff") end
+    local colorOffline = function() return "|c" .. (addon.ColorOffline or "ffaaaaaa") end
+    local colorYou     = function() return "|c" .. (addon.ColorYou or addon.BrandColor or "ffDA8CFF") end
+    local function isReagent(e) return e.kind == "reagent" end
+    return addon.W.RowList:New(host, {
+        rowHeight      = DP_ROW,
+        hoverHighlight = true,
+        headerFont     = "GameFontNormalSmall",
+        columns = {
+            { key = "_icon", width = 14, iconSize = 12, iconTexCoord = true, sortable = false,
+              icon = function(e)
+                  if not isReagent(e) then return nil end
+                  local id = ResolveReagentItemId(e.r)
+                  return id and id > 0 and select(10, addon.Item.GetInfo(id)) or nil
+              end },
+            -- Reagent names are resolved at draw time: see addon:ResolveReagentName
+            -- for why a name frozen at build time rendered as "Item #15417".
+            { key = "name", sortable = false,
+              format = function(_, e)
+                  if e.kind == "reagent" then return addon:ResolveReagentName(e.r) end
+                  if e.kind == "none" then return "|cffaaaaaa" .. L["NoDataYet"] .. "|r" end
+                  if e.kind ~= "crafter" then return "" end
+                  local c = e.c
+                  local col = c.isYou and colorYou() or (c.online and colorOnline() or colorOffline())
+                  return col .. c.name .. "|r"
+              end },
+            { key = "count", width = 40, align = "RIGHT", sortable = false,
+              format = function(_, e)
+                  if not isReagent(e) then return "" end
+                  return "|cffffffff\195\151" .. (e.r.count or 1) * detailMultiplier(e.entryId) .. "|r"
+              end },
+            { key = "bankBtn", width = 56, button = true, sortable = false, gapBefore = 4,
+              show = function(e) return isReagent(e) and select(2, reagentStock(e.r)) end,
+              text = function(e) return addon.Bank.ButtonText(ResolveReagentItemId(e.r)) end,
+              tip  = function(e)
+                  local body = L["TooltipBankDescGeneric"]
+                  local status = addon.Bank.StatusText(ResolveReagentItemId(e.r))
+                  if status then body = body .. "\n\n" .. status end
+                  return L["TooltipBankTitle"], body
+              end,
+              onClick = function(e)
+                  addon.Bank.ShowRequestDialog(ResolveReagentItemId(e.r), e.r.name or "",
+                      ResolveReagentItemLink(e.r))
+              end },
+            { key = "ahBtn", width = 32, button = true, sortable = false,
+              show = function(e) return isReagent(e) and select(3, reagentStock(e.r)) end,
+              text = function() return "|cFF88CCFF[AH]|r" end,
+              tip  = function() return L["TooltipAHTitle"], L["TooltipAHDescReagent"] end,
+              onClick = function(e) addon.AH.SearchFor(e.r.name) end },
+        },
+        onRowEnter = function(e, _, _, rowFrame)
+            if isReagent(e) then
+                local link, id = ResolveReagentItemLink(e.r), ResolveReagentItemId(e.r)
+                if link or id then
+                    addon.Tooltip.Owner(rowFrame)
+                    if addon.ItemLink.SetItem(GameTooltip, link, id) then GameTooltip:Show() end
+                end
+            elseif e.kind == "crafter" and not e.c.isYou then
+                addon.Tooltip.Owner(rowFrame)
+                GameTooltip:SetText(e.c.name, 1, 1, 1, 1, true)
+                GameTooltip:AddLine(L["TooltipWhisperRightClick"], 0.7, 0.7, 0.7, true)
+                GameTooltip:Show()
+            end
+        end,
+        onRowLeave = function()
+            addon.ItemLink.EndHover(GameTooltip)
+            GameTooltip:Hide()
+        end,
+        -- Left-click a reagent: its link into chat (or the dressing room, per
+        -- the player's bindings). Right-click a guildmate: whisper them.
+        onRowClick = function(e, _, _, button, rowFrame)
+            if isReagent(e) then
+                if button == "LeftButton" then
+                    addon.ItemLink.Click(ResolveReagentItemLink(e.r))
+                end
+            elseif e.kind == "crafter" and not e.c.isYou and button == "RightButton" then
+                local charKey, shortName = e.c.charKey or e.c.name, e.c.name
+                local openWhisper = addon.UI.OpenWhisper
+                if Menu and Menu.CreateContextMenu then
+                    Menu.CreateContextMenu(rowFrame, function(_, root)
+                        root:CreateTitle(shortName)
+                        root:CreateButton(shortName, function() openWhisper(charKey) end)
+                    end)
+                else
+                    openWhisper(charKey)
+                end
+            end
+        end,
+    })
+end
 
-    local content = self._dpContent
-    local f = CreateFrame("Button", nil, content)
-    f:SetHeight(DP_ROW)
-    f:RegisterForClicks("AnyUp")  -- enables right-click for whisper
-    f:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight", "ADD")
-
-    local lbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    lbl:SetPoint("LEFT",  f, "LEFT",  0, 0)
-    lbl:SetPoint("RIGHT", f, "RIGHT", 0, 0)
-    lbl:SetJustifyH("LEFT")
-    lbl:SetWordWrap(false)
-    f.lbl = lbl
-
-    self._dpCraftPool[idx] = f
-    return f
+-- The list rows for one recipe: the Reagents heading and a row per reagent
+-- (both left out when it takes none), then Known By and a row per crafter, or
+-- one "no data yet" row.
+function BrowserTab:DetailRows(entry)
+    local rows = {}
+    local reagents = entry.reagents or {}
+    if #reagents > 0 then
+        rows[#rows + 1] = { _header = L["CraftReagents"] }
+        for _, r in ipairs(reagents) do
+            rows[#rows + 1] = { kind = "reagent", r = r, entryId = entry.id }
+        end
+    end
+    rows[#rows + 1] = { _header = L["DetailKnownBy"] }
+    local crafters = entry.crafters or {}
+    if #crafters == 0 then
+        rows[#rows + 1] = { kind = "none" }
+    end
+    for _, c in ipairs(crafters) do
+        rows[#rows + 1] = { kind = "crafter", c = c }
+    end
+    return rows
 end
 
 -- Populate the detail panel for the given recipe entry.
@@ -2506,13 +2145,10 @@ function BrowserTab:DrawDetail(entry)
     self:EnsureDetailPanel(
         self._container and self._container.content or UIParent)
     self._selectedEntry = entry
-
-    local content = self._dpContent
+    self:SyncListSelection()
 
     self._dpPH:Hide()
-    self._dpSF:Show()
-    self._dpSB:SetValue(0)
-    self._dpSF:SetVerticalScroll(0)
+    self._dpBody:Show()
 
     -- Header: icon + name
     self._dpIcon:SetTexture(entry.icon)
@@ -2555,15 +2191,9 @@ function BrowserTab:DrawDetail(entry)
         local qty = (Ace.db.char.shoppingList[entry.id]
                     and Ace.db.char.shoppingList[entry.id].quantity) or 0
         self._dpQty:SetText(tostring(qty))
-        -- Also refresh reagent counts if panel is showing this entry
-        if self._selectedEntry and self._selectedEntry.id == entry.id then
-            for ri, r in ipairs(entry.reagents or {}) do
-                local rf = self._dpReagPool[ri]
-                if rf and rf:IsShown() then
-                    local mult = math.max(1, qty)
-                    rf.countLbl:SetText("|cffffffff\195\151" .. (r.count or 1) * mult .. "|r")
-                end
-            end
+        -- The reagent counts read the quantity when drawn; redraw them.
+        if self._dpList and self._selectedEntry and self._selectedEntry.id == entry.id then
+            self._dpList:Refresh()
         end
     end
     RefreshQty()
@@ -2599,336 +2229,17 @@ function BrowserTab:DrawDetail(entry)
         self:RefreshShoppingList()
     end)
 
-    -- Running y-offset (negative = downward from content top)
-    local yOff = -(DP_ICON + 4 + DP_ROW + 4)
-
-    -- ── Reagents ──────────────────────────────────────────────────────────
-    local reagents    = entry.reagents or {}
-    local hasReagents = #reagents > 0
-
-    if hasReagents then
-        self._dpReagHdr:ClearAllPoints()
-        self._dpReagHdr:SetPoint("TOPLEFT", content, "TOPLEFT", 0, yOff)
-        self._dpReagHdr:Show()
-        yOff = yOff - DP_ROW
-
-        local slQty = (Ace.db.char.shoppingList[entry.id]
-                      and Ace.db.char.shoppingList[entry.id].quantity) or 0
-        local mult  = math.max(1, slQty)
-
-        for i, r in ipairs(reagents) do
-            local rf = self:GetDetailReagRow(i)
-            rf:ClearAllPoints()
-            rf:SetPoint("TOPLEFT",  content, "TOPLEFT",  0, yOff)
-            rf:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, yOff)
-            yOff = yOff - DP_ROW
-
-            local rItemId = ResolveReagentItemId(r)
-            local rLink   = ResolveReagentItemLink(r)
-            if rItemId and rItemId > 0 then
-                local _, _, _, _, _, _, _, _, _, tex = addon.Item.GetInfo(rItemId)
-                rf.icon:SetTexture(tex or nil)
-            else
-                rf.icon:SetTexture(nil)
-            end
-            -- Resolved at draw time, not read from the table: see
-            -- addon:ResolveReagentName for why a name frozen at build time
-            -- rendered as "Item #15417" beside a real icon.
-            rf.nameLbl:SetText(addon:ResolveReagentName(r))
-            rf.countLbl:SetText("|cffffffff\195\151" .. (r.count or 1) * mult .. "|r")
-
-            if rLink or rItemId then
-                rf:SetScript("OnEnter", function()
-                    addon.Tooltip.Owner(rf)
-                    if addon.ItemLink.SetItem(GameTooltip, rLink, rItemId) then
-                        GameTooltip:Show()
-                    end
-                end)
-                rf:SetScript("OnLeave", function()
-                    addon.ItemLink.EndHover(GameTooltip)
-                    GameTooltip:Hide()
-                end)
-                -- OnMouseDown (not OnClick) for the row's shift-click-link behaviour.
-                -- Parent OnClick competes with the child bankBtn's OnClick on some
-                -- WoW builds — the parent-Button click handler swallows the event
-                -- and the inner [Bank] button's OnClick never fires.  Using
-                -- OnMouseDown for the row avoids the conflict (different event)
-                -- while preserving the shift-click-to-insert-link behaviour.
-                -- This matches the recipe-row mouse handler pattern at
-                -- BrowserTab.lua:936 (which always worked).
-                rf:SetScript("OnMouseDown", function(_, btn)
-                    if btn == "LeftButton" then addon.ItemLink.Click(rLink) end
-                end)
-                rf:SetScript("OnClick", nil)  -- ensure no stale OnClick from a prior render
-            else
-                rf:SetScript("OnEnter", nil)
-                rf:SetScript("OnLeave", nil)
-                rf:SetScript("OnMouseDown", nil)
-                rf:SetScript("OnClick", nil)
-            end
-
-            local hasBank = rItemId and addon.Bank and addon.Bank.GetStock(rItemId) > 0
-            local ahData  = rItemId and addon.AH and addon.AH.GetListingsFor(rItemId)
-            local hasAH   = ahData and (ahData.count or 0) > 0 and r.name and r.name ~= ""
-
-            if hasBank then
-                addon.Bank.Decorate(rf.bankBtn, rItemId)
-                rf.bankBtn:SetScript("OnClick", function()
-                    addon.Bank.ShowRequestDialog(rItemId, r.name or "", rLink)
-                end)
-            end
-            if hasAH then
-                local rName = r.name
-                rf.ahBtn:SetScript("OnClick", function()
-                    addon.AH.SearchFor(rName)
-                end)
-            end
-
-            -- Dynamic anchoring: order is [Bank] [AH] (left to right).
-            -- count→bank gap is 8 (not 4) to balance against bank→ah; see
-            -- the matching comment in FillShoppingListSection above for why.
-            rf.bankBtn:ClearAllPoints()
-            rf.ahBtn:ClearAllPoints()
-            if hasBank then
-                rf.bankBtn:SetPoint("LEFT", rf.countLbl, "RIGHT", 8, 0)
-                rf.bankBtn:Show()
-                if hasAH then
-                    rf.ahBtn:SetPoint("LEFT", rf.bankBtn, "RIGHT", 4, 0)
-                    rf.ahBtn:Show()
-                else
-                    rf.ahBtn:Hide()
-                end
-            else
-                rf.bankBtn:Hide()
-                if hasAH then
-                    rf.ahBtn:SetPoint("LEFT", rf.countLbl, "RIGHT", 8, 0)
-                    rf.ahBtn:Show()
-                else
-                    rf.ahBtn:Hide()
-                end
-            end
-
-            rf:Show()
-        end
-        for i = #reagents + 1, #self._dpReagPool do
-            self._dpReagPool[i]:Hide()
-        end
-    else
-        self._dpReagHdr:Hide()
-        for _, f in ipairs(self._dpReagPool) do f:Hide() end
-    end
-
-    -- ── Known By ──────────────────────────────────────────────────────────
-    yOff = yOff - 4
-    self._dpCraftHdr:ClearAllPoints()
-    self._dpCraftHdr:SetPoint("TOPLEFT", content, "TOPLEFT", 0, yOff)
-    self._dpCraftHdr:Show()
-    yOff = yOff - DP_ROW
-
-    local colorOnline  = "|c" .. (addon.ColorOnline  or "ffffffff")
-    local colorOffline = "|c" .. (addon.ColorOffline or "ffaaaaaa")
-    local colorYou     = "|c" .. (addon.ColorYou     or addon.BrandColor or "ffDA8CFF")
-
-    for _, f in ipairs(self._dpCraftPool) do f:Hide() end
-
-    local crafters = entry.crafters or {}
-
-    -- Shared with CooldownsTab, which carried a byte-identical copy.
-    local openWhisper = addon.UI.OpenWhisper
-
-    if #crafters > 0 then
-        for i, c in ipairs(crafters) do
-            local cf = self:GetDetailCraftRow(i)
-            cf:ClearAllPoints()
-            cf:SetPoint("TOPLEFT",  content, "TOPLEFT",  0, yOff)
-            cf:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, yOff)
-            yOff = yOff - DP_ROW
-
-            local col = c.isYou and colorYou or (c.online and colorOnline or colorOffline)
-            cf.lbl:SetText(col .. c.name .. "|r")
-
-            if not c.isYou then
-                local charKey   = c.charKey or c.name
-                local shortName = c.name
-                cf:SetScript("OnEnter", function()
-                    addon.Tooltip.Owner(cf)
-                    GameTooltip:SetText(shortName, 1, 1, 1, 1, true)
-                    GameTooltip:AddLine(L["TooltipWhisperRightClick"], 0.7, 0.7, 0.7, true)
-                    GameTooltip:Show()
-                end)
-                cf:SetScript("OnLeave", function() GameTooltip:Hide() end)
-                cf:SetScript("OnClick", function(_, btn)
-                    if btn == "RightButton" then
-                        if Menu and Menu.CreateContextMenu then
-                            Menu.CreateContextMenu(cf, function(_, root)
-                                root:CreateTitle(shortName)
-                                root:CreateButton(shortName, function() openWhisper(charKey) end)
-                            end)
-                        else
-                            openWhisper(charKey)
-                        end
-                    end
-                end)
-            else
-                cf:SetScript("OnEnter", nil)
-                cf:SetScript("OnLeave", nil)
-                cf:SetScript("OnClick", nil)
-            end
-            cf:Show()
-        end
-        for i = #crafters + 1, #self._dpCraftPool do
-            self._dpCraftPool[i]:Hide()
-        end
-    else
-        local cf = self:GetDetailCraftRow(1)
-        cf:ClearAllPoints()
-        cf:SetPoint("TOPLEFT",  content, "TOPLEFT",  0, yOff)
-        cf:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, yOff)
-        cf.lbl:SetText("|cffaaaaaa" .. L["NoDataYet"] .. "|r")
-        cf:SetScript("OnEnter", nil)
-        cf:SetScript("OnLeave", nil)
-        cf:SetScript("OnClick", nil)
-        cf:Show()
-        yOff = yOff - DP_ROW
-        for i = 2, #self._dpCraftPool do self._dpCraftPool[i]:Hide() end
-    end
-
-    -- Resize content to fit all rows so the scrollbar range is correct.
-    content:SetHeight(math.abs(yOff) + DP_PAD)
+    -- Reagents and Known By. A new recipe opens at the top of the list.
+    self._dpList:SetData(self:DetailRows(entry))
 end
 
 -- Show the "select a recipe" placeholder.
 function BrowserTab:ClearDetail()
     if not self._detailOuter then return end
-    if self._dpSF  then self._dpSF:Hide() end
+    if self._dpBody then self._dpBody:Hide() end
     if self._dpPH  then self._dpPH:Show() end
     self._selectedEntry = nil
-end
-
--- ---------------------------------------------------------------------------
--- Crafter-column text fitting
--- ---------------------------------------------------------------------------
--- Show as many crafter names as the column's CURRENT width allows, then a greyed
--- "+N" for the rest — instead of a fixed 2 names. The crafter fontstring is
--- anchored LEFT 186 / RIGHT -56, so it widens as the user drags the window;
--- measuring against its live width (and recomputing on WINDOW_RESIZED) makes the
--- summary fill the available space. Always shows at least one name (clipped by
--- the word-wrap-off fontstring if even that overflows a very narrow column).
-local function fitCrafterText(label, crafters, colOnline, colOffline, colYou)
-    local total = #crafters
-    if total == 0 then
-        label:SetText("")
-        return
-    end
-
-    -- Pre-colour each name once.
-    local names = {}
-    for ci = 1, total do
-        local c   = crafters[ci]
-        local col = c.isYou and colYou or (c.online and colOnline or colOffline)
-        names[ci] = col .. c.name .. "|r"
-    end
-
-    -- Available width = the fontstring's laid-out width (tracks the window via its
-    -- LEFT/RIGHT anchors). Before the first layout it can read 0 — fall back to the
-    -- old fixed 2-name summary until a later paint has a real width.
-    local availW = label:GetWidth() or 0
-    if availW <= 1 then
-        local shown  = math.min(2, total)
-        local suffix = (total > shown) and (" |cffaaaaaa+" .. (total - shown) .. "|r") or ""
-        label:SetText(table.concat(names, ", ", 1, shown) .. suffix)
-        return
-    end
-
-    -- Greedily include names while the rendered string still fits, reserving room
-    -- for the "+N" suffix at each step. Adding a name grows the visible width
-    -- monotonically, so the first overflow is the stopping point.
-    local best
-    for n = 1, total do
-        local suffix    = (n < total) and (" |cffaaaaaa+" .. (total - n) .. "|r") or ""
-        local candidate = table.concat(names, ", ", 1, n) .. suffix
-        label:SetText(candidate)
-        if label:GetStringWidth() <= availW then
-            best = candidate
-        else
-            label:SetText(best or candidate)   -- at least one name (clipped if needed)
-            return
-        end
-    end
-    -- Everything fit; label already holds the full string from the final loop pass.
-end
-
--- ---------------------------------------------------------------------------
--- Virtual row update
--- ---------------------------------------------------------------------------
-
-function BrowserTab:UpdateVirtualRows()
-    local scroll   = self._scroll
-    local recipes  = self._recipes
-    if not scroll or not recipes or not self._pool then return end
-
-    local status   = scroll.status or scroll.localstatus
-    local offset   = status.offset or 0
-    local firstIdx = math.floor(offset / ROW_HEIGHT)
-
-    local colorOnline  = "|c" .. (addon.ColorOnline  or "ffffffff")
-    local colorOffline = "|c" .. (addon.ColorOffline or "ffaaaaaa")
-    local colorYou     = "|c" .. (addon.ColorYou     or addon.BrandColor or "ffDA8CFF")
-
-    for i = 1, POOL_SIZE do
-        local f         = self._pool[i]
-        local recipeIdx = firstIdx + i
-        local entry     = recipes[recipeIdx]
-        if entry then
-            addon.GUI.ApplyRowStripe(f, recipeIdx)
-            f._entry = entry
-            f.icon:SetTexture(entry.icon)
-
-            -- Quality colour of the CRAFTED item, resolved through ItemDB when
-            -- the link is not cached. Reading entry.itemLink alone made the
-            -- colour depend on what the client happened to have seen, so the
-            -- same recipe was coloured on one login and not the next, and one
-            -- armour set could render its pieces in different colours.
-            local colorHex = addon.ItemLink and addon.ItemLink.QualityHex
-                and addon.ItemLink.QualityHex(entry.itemLink, entry.craftedItemId)
-            f.nameLbl:SetText(colorHex and ("|c" .. colorHex .. entry.name .. "|r") or entry.name)
-
-            -- Crafter summary: fit as many names as the (drag-resizable) column
-            -- width allows, then a greyed "+N" for the rest.
-            fitCrafterText(f.crafterLbl, entry.crafters, colorOnline, colorOffline, colorYou)
-
-            -- Bank button: show if the crafted item itself has bank stock.
-            -- Keyed by craftedItemId — entry.id is the recipe's spell id, so
-            -- the old `not entry.isSpell and entry.id` asked the bank for
-            -- stock of whatever item shares that number.
-            local craftedId = entry.craftedItemId
-            if addon.Bank and craftedId and addon.Bank.GetStock(craftedId) > 0 then
-                addon.Bank.Decorate(f.bankBtn, craftedId)
-                f.bankBtn:SetScript("OnClick", function()
-                    addon.Bank.ShowRequestDialog(craftedId, entry.name or "", entry.itemLink)
-                end)
-                f.bankBtn:Show()
-            else
-                f.bankBtn:Hide()
-            end
-
-            -- Highlight selected recipe
-            if self._selectedEntry and self._selectedEntry.id == entry.id then
-                f:LockHighlight()
-            else
-                f:UnlockHighlight()
-            end
-
-            local y = -((recipeIdx - 1) * ROW_HEIGHT)
-            f:ClearAllPoints()
-            f:SetPoint("TOPLEFT",  scroll.content, "TOPLEFT",  0, y)
-            f:SetPoint("TOPRIGHT", scroll.content, "TOPRIGHT", 0, y)
-            f:Show()
-        else
-            f._entry = nil
-            f:Hide()
-        end
-    end
+    self:SyncListSelection()
 end
 
 -- ---------------------------------------------------------------------------
@@ -3007,16 +2318,8 @@ do
         scheduleRewarm()
     end)
 
-    -- Re-fit the crafter column when the window is dragged wider/narrower so the
-    -- visible-name count tracks the new width. The crafter fontstrings stretch
-    -- live via their LEFT/RIGHT anchors, but the name COUNT only recomputes when
-    -- the rows repaint — so nudge a repaint on the debounced resize callback.
-    addon:RegisterCallback("WINDOW_RESIZED", function()
-        local mw = addon.MainWindow
-        if mw and mw.frame and mw.activeTab == "browser" and BrowserTab._pool then
-            BrowserTab:UpdateVirtualRows()
-        end
-    end)
+    -- (No WINDOW_RESIZED handler: the recipe list repaints itself when its
+    -- host is resized, and the crafter column re-fits on every repaint.)
 
     -- Roster online/offline transitions flip crafter-online status, which
     -- BuildFullList bakes into the recipe-list cache (including the "an alt is

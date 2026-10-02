@@ -50,13 +50,31 @@ local SOURCES = {
 	-- an AddDoubleLine per banker) live on addon.Bank.AddStatusLines.
 	{ path = "Compat.lua",                  min = 2 },
 	{ path = "GUI/SharedWidgets.lua",       min = 8 },
-	{ path = "GUI/BrowserTab.lua",          min = 22 },
-	-- 12 since the rows moved to RowList: the row [Bank] / [AH] / mail / "!"
-	-- tooltips are button-column `tip`s, drawn by the library. The group
-	-- popup's own tooltips are still here.
-	{ path = "GUI/CooldownsTab.lua",        min = 12 },
+	-- Measured 14 on 2026-09-30, after the recipe-detail panel's reagents and
+	-- Known By moved to a RowList (v1.2.0): its [Bank] / [AH] tooltips are
+	-- button-column `tip`s now. The 14 that remain:
+	--   AppendBrandTooltipLines: the green effect line (1);
+	--   the recipe-row tooltip: title, two "Requires" colours, Already known,
+	--     the "Use:" line, the reagent line, spacer, the scraped item line as
+	--     AddDoubleLine / AddLine (2) -- 9;
+	--   the row's name-only fallback SetText (1);
+	--   Known By rows: crafter name + right-click-to-whisper (2);
+	--   the detail header's name-only fallback SetText (1).
+	{ path = "GUI/BrowserTab.lua",          min = 12 },
+	-- Measured 9 on 2026-09-30, after the group popup's rows moved to a RowList
+	-- (v1.2.0): its [AH] / [Bank] tooltips are button-column `tip`s now. The 9
+	-- that remain: the Ready-only toggle (1); the group row's click hints for
+	-- transmutes / details (2); the specialization bonus title + line (2); the
+	-- crafter name + right-click-to-whisper (2); the popup's mail cell title +
+	-- description (2).
+	{ path = "GUI/CooldownsTab.lua",        min = 8 },
 	{ path = "GUI/MissingRecipesTab.lua",   min = 5 },
-	{ path = "GUI/CraftingTab.lua",         min = 8 },
+	-- Measured 4 on 2026-09-30, after the reagent rows moved to a RowList
+	-- (v1.2.0): their [AH] / [Bank] tooltips are button-column `tip`s and the
+	-- Reagents / Cost headings are the list's header tips. The 4 that remain are
+	-- the two shared helpers every other Crafting tooltip goes through: rawTip
+	-- and headerTip, each a title SetText + an optional description AddLine.
+	{ path = "GUI/CraftingTab.lua",         min = 3 },
 	{ path = "GUI/AHProfitTab.lua",         min = 6 },
 	-- 0 since the tracker's rows moved to RowList: the [Bank] tooltip is the
 	-- button column's `tip`, drawn by the library.

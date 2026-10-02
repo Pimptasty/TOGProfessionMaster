@@ -50,7 +50,6 @@ before_each(function()
 	_G.GetProfessions    = nil          -- Classic: no such API
 	_G.GetProfessionInfo = nil
 	_G.ExpandSkillHeader = function(_index) end
-	_G.IsSpellKnown = function() return false end
 	setSkills({})
 end)
 
@@ -61,7 +60,7 @@ describe("DetectSpecializations", function()
 	end)
 
 	it("records the spec spell the character knows", function()
-		_G.IsSpellKnown = function(id) return id == 10656 end   -- Dragonscale LW
+		env.wow.knownSpells[10656] = true   -- Dragonscale LW (read through C_SpellBook)
 		S:DetectSpecializations()
 		assert.equal(10656, gdb.specializations[ME][165])
 	end)
@@ -69,7 +68,7 @@ describe("DetectSpecializations", function()
 	it("prefers the finer Blacksmithing sub-spec over its parent", function()
 		-- A swordsmith knows BOTH Weaponsmith and Swordsmith; the more specific
 		-- one is what the Guild tab should break down by.
-		_G.IsSpellKnown = function(id) return id == 17039 or id == 9787 end
+		env.wow.knownSpells[17039], env.wow.knownSpells[9787] = true, true
 		S:DetectSpecializations()
 		assert.equal(17039, gdb.specializations[ME][164])
 	end)
@@ -241,6 +240,56 @@ describe("ScanTradeSkillInto", function()
 		-- The profession table is still created (the scan ran); it just has no
 		-- recipes in it.
 		assert.same({}, gdb.recipes[171])
+	end)
+end)
+
+-- WoW Forever's scan, through C_TradeSkillUI. In game 2026-09-29 every
+-- profession switched to scanned "16 recipes" -- the Blacksmithing count -- and
+-- was broadcast: the recipe list did not follow the open profession, and those
+-- recipes were stored as the character's crafts in other professions.
+describe("ScanModernTradeSkillInto (WoW Forever)", function()
+	local SMITH, COOK = 164, 185
+	local saved, open, changing
+
+	before_each(function()
+		saved = _G.C_TradeSkillUI
+		open, changing = { id = COOK, name = "Cooking" }, false
+		-- The list the client hands back still holds a Blacksmithing recipe (2663)
+		-- beside the Cooking one (2538): the state the in-game log showed.
+		local lineOf = { [2538] = COOK, [2663] = SMITH }
+		_G.C_TradeSkillUI = {
+			IsDataSourceChanging = function() return changing end,
+			GetBaseProfessionInfo = function()
+				return { professionID = open.id, professionName = open.name, skillLevel = 34, maxSkillLevel = 75 }
+			end,
+			GetChildProfessionInfo = function() return { professionID = 0, professionName = "" } end,
+			GetAllRecipeIDs = function() return { 2538, 2663 } end,
+			GetRecipeInfo = function(id) return { recipeID = id, learned = true } end,
+			GetTradeSkillLineForRecipe = function(id) return lineOf[id], "", nil end,
+		}
+	end)
+
+	after_each(function() _G.C_TradeSkillUI = saved end)
+
+	it("stores only the recipes the client places in the open profession", function()
+		S:ScanModernTradeSkillInto(ME)
+		assert.is_not_nil(gdb.recipes[COOK][2538].crafters[ME])
+		assert.is_nil(gdb.recipes[COOK][2663])
+	end)
+
+	it("scans nothing while the client is still switching profession", function()
+		changing = true
+		S:ScanModernTradeSkillInto(ME)
+		assert.is_nil(gdb.recipes[COOK])
+		changing = false
+		S:ScanModernTradeSkillInto(ME)
+		assert.is_not_nil(gdb.recipes[COOK])
+	end)
+
+	it("keeps a recipe the client cannot place, as the scan always did", function()
+		_G.C_TradeSkillUI.GetTradeSkillLineForRecipe = function() return nil end
+		S:ScanModernTradeSkillInto(ME)
+		assert.is_not_nil(gdb.recipes[COOK][2663].crafters[ME])
 	end)
 end)
 

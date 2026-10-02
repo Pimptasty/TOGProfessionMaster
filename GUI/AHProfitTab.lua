@@ -580,133 +580,116 @@ function ProfitTab:BuildToolbar(parent, mode, options)
     toolbar:SetFullWidth(true)
     parent:AddChild(toolbar)
 
-    local brand = addon.BrandColor or "ffFF8000"
+    -- Each mode's toolbar keeps its own controls.
+    local key = function(name) return name .. ":" .. tostring(mode) end
 
-    -- Profession multi-select dropdown. Native AceGUI multiselect Dropdown so
-    -- it lines up with the Crafters/Sources dropdowns and the checkbox pullout
-    -- stays open while ticking professions. Select All / Clear All are added as
-    -- toggle rows at the top — toggles never close the pullout, and we reset
-    -- them to unchecked the instant they fire so they behave as buttons.
-    local profList = {
-        [SELECT_ALL_KEY] = "Select All",
-        [CLEAR_ALL_KEY]  = "Clear All",
+    -- Profession multi-select: a tick-box menu that stays open while ticking,
+    -- with Select All / Clear All at the top as rows that act and close it.
+    local profItems = {
+        { value = SELECT_ALL_KEY, text = "Select All", action = true },
+        { value = CLEAR_ALL_KEY,  text = "Clear All",  action = true },
     }
-    local profOrder = { SELECT_ALL_KEY, CLEAR_ALL_KEY }
     for _, p in ipairs(options.professions or {}) do
-        profList[p] = p
-        profOrder[#profOrder + 1] = p
+        profItems[#profItems + 1] = { value = p, text = p }
     end
+    local function profOn(p) return (filter.professions and filter.professions[p]) and true or false end
 
-    local profDropdown = AceGUI:Create("Dropdown")
-    profDropdown:SetLabel("|c" .. brand .. "Professions|r")
-    profDropdown:SetWidth(170)
-    addon.GUI.OffsetInputLabel(profDropdown)
-    profDropdown:SetMultiselect(true)
-    profDropdown:SetList(profList, profOrder)
-
-    -- Apply the saved/defaulted checked state to the profession rows.
-    for _, p in ipairs(options.professions or {}) do
-        profDropdown:SetItemValue(p, (filter.professions and filter.professions[p]) and true or false)
-    end
-
-    profDropdown:SetCallback("OnValueChanged", function(_w, _e, key, checked)
-        if key == SELECT_ALL_KEY or key == CLEAR_ALL_KEY then
-            -- Reset the action row so it never displays as a checked entry.
-            profDropdown:SetItemValue(key, false)
-            local want = (key == SELECT_ALL_KEY)
+    addon.GUI.ToolbarDropdown(self, key("prof"), toolbar, {
+        label     = "Professions",
+        width     = 170,
+        multi     = true,
+        items     = function() return profItems end,
+        isChecked = profOn,
+        onToggle  = function(p, checked)
+            local sel = filter.professions or {}
+            if checked then sel[p] = true else sel[p] = nil end
+            filter.professions = sel
+            self:RefreshRowsInPlace(true)
+        end,
+        onAction  = function(action)
             local sel = {}
-            for _, p in ipairs(options.professions or {}) do
-                profDropdown:SetItemValue(p, want)
-                if want then sel[p] = true end
+            if action == SELECT_ALL_KEY then
+                for _, p in ipairs(options.professions or {}) do sel[p] = true end
             end
             filter.professions = sel
             self:RefreshRowsInPlace(true)
-            return
-        end
-        local sel = filter.professions or {}
-        if checked then sel[key] = true else sel[key] = nil end
-        filter.professions = sel
-        self:RefreshRowsInPlace(true)
-    end)
-    addon.GUI.AttachTooltip(profDropdown, "Professions",
-        "Filter recipes by profession. Tick multiple professions -- the menu stays open."
-        .. " Use Select All / Clear All at the top.")
-    toolbar:AddChild(profDropdown)
+        end,
+        text      = function()
+            local names = {}
+            for _, p in ipairs(options.professions or {}) do
+                if profOn(p) then names[#names + 1] = p end
+            end
+            return table.concat(names, ", ")
+        end,
+        tipTitle  = "Professions",
+        tipBody   = "Filter recipes by profession. Tick multiple professions -- the menu stays open."
+            .. " Use Select All / Clear All at the top.",
+    })
 
-    -- Crafter dropdown
     local crafterList = { ["All"] = "All Crafters" }
     local crafterOrder = { "All" }
     for _, c in ipairs(options.crafters or {}) do
         crafterList[c] = c
         crafterOrder[#crafterOrder + 1] = c
     end
-    local crafterDropdown = AceGUI:Create("Dropdown")
-    crafterDropdown:SetLabel("|c" .. brand .. "Crafters|r")
-    crafterDropdown:SetWidth(170)
-    addon.GUI.OffsetInputLabel(crafterDropdown)
-    crafterDropdown:SetList(crafterList, crafterOrder)
-    crafterDropdown:SetValue(filter.crafterFilter or "All")
-    crafterDropdown:SetCallback("OnValueChanged", function(_w, _e, value)
-        filter.crafterFilter = value
-        self:RefreshRowsInPlace(true)
-    end)
-    addon.GUI.AttachTooltip(crafterDropdown, "Crafters", "Pick a crafter to filter recipes.")
-    toolbar:AddChild(crafterDropdown)
+    addon.GUI.ToolbarDropdown(self, key("crafter"), toolbar, {
+        label    = "Crafters",
+        width    = 170,
+        items    = function() return addon.GUI.MenuItems(crafterList, crafterOrder) end,
+        value    = filter.crafterFilter or "All",
+        onChange = function(value)
+            filter.crafterFilter = value
+            self:RefreshRowsInPlace(true)
+        end,
+        tipTitle = "Crafters",
+        tipBody  = "Pick a crafter to filter recipes.",
+    })
 
-    local search = AceGUI:Create("EditBox")
-    search:SetWidth(210)
-    search:SetText(filter.search or "")
-    search:DisableButton(true)
-    search:SetCallback("OnTextChanged", function(_w, _e, text)
-        filter.search = text or ""
-        -- Avoid full redraw while typing; redraw recreates this widget and
-        -- steals keyboard focus after the first keypress.
-        self:RefreshRowsInPlace(true)
-    end)
-    addon.GUI.AttachTooltip(search, L["SearchPlaceholder"], L["CraftSearchDesc"])
-    -- TSM-style search field: magnifying-glass icon instead of a text label
-    -- (call after AttachTooltip so the icon's OnRelease cleanup chains).
-    -- keepLabelSpace=true: aligns with the labeled dropdowns in this row.
-    addon.GUI.StyleSearchBox(search, true)
-    toolbar:AddChild(search)
+    -- Typing re-filters the rows in place; a full redraw would rebuild this
+    -- box and drop the caret after the first key.
+    addon.GUI.ToolbarSearch(toolbar, {
+        width     = 210,
+        aligned   = true,
+        text      = filter.search or "",
+        onChanged = function(text)
+            filter.search = text or ""
+            self:RefreshRowsInPlace(true)
+        end,
+        tipTitle  = L["SearchPlaceholder"],
+        tipBody   = L["CraftSearchDesc"],
+    })
 
-    local positive = AceGUI:Create("CheckBox")
-    positive:SetLabel("+ Profit only")
-    positive:SetWidth(110)
-    positive:SetValue(filter.positiveOnly and true or false)
-    -- Checkboxes carry no top label, so AceGUI's Flow heuristic (alignoffset =
-    -- height/2 = 12) rides the box + text a few px above the labeled dropdown
-    -- controls. Lowering the alignment point shifts it down onto the same centre
-    -- line (Flow anchors at Y = alignoffset - prevAlignoffset, so a smaller value
-    -- moves it down). Restored on release so the shared AceGUI pool isn't polluted.
-    positive.alignoffset = 10
-    positive:SetCallback("OnRelease", function(w) w.alignoffset = nil end)
-    positive:SetCallback("OnValueChanged", function(_w, _e, val)
-        filter.positiveOnly = val and true or false
-        self:RedrawCurrentTable()
-    end)
-    addon.GUI.AttachTooltip(positive, "+ Profit only", "Show only rows where profit is greater than zero.")
-    toolbar:AddChild(positive)
+    addon.GUI.ToolbarCheckbox(self, key("positive"), toolbar, {
+        aligned  = true,
+        width    = 110,
+        label    = "+ Profit only",
+        get      = function() return filter.positiveOnly and true or false end,
+        set      = function(val)
+            filter.positiveOnly = val and true or false
+            self:RedrawCurrentTable()
+        end,
+        tipTitle = "+ Profit only",
+        tipBody  = "Show only rows where profit is greater than zero.",
+    })
 
-    -- Source dropdown
     local sourceList = { ["All"] = "All Sources" }
     local sourceOrder = { "All" }
     for _, src in ipairs(options.sources or {}) do
         sourceList[src] = (addon.Price and addon.Price.GetSourceLabel and addon.Price.GetSourceLabel(src)) or src
         sourceOrder[#sourceOrder + 1] = src
     end
-    local sourceDropdown = AceGUI:Create("Dropdown")
-    sourceDropdown:SetLabel("|c" .. brand .. "Sources|r")
-    sourceDropdown:SetWidth(190)
-    addon.GUI.OffsetInputLabel(sourceDropdown)
-    sourceDropdown:SetList(sourceList, sourceOrder)
-    sourceDropdown:SetValue(filter.sourceFilter or "All")
-    sourceDropdown:SetCallback("OnValueChanged", function(_w, _e, value)
-        filter.sourceFilter = value
-        self:RefreshRowsInPlace(true)
-    end)
-    addon.GUI.AttachTooltip(sourceDropdown, "Sources", "Pick a pricing source to filter recipes.")
-    toolbar:AddChild(sourceDropdown)
+    addon.GUI.ToolbarDropdown(self, key("source"), toolbar, {
+        label    = "Sources",
+        width    = 190,
+        items    = function() return addon.GUI.MenuItems(sourceList, sourceOrder) end,
+        value    = filter.sourceFilter or "All",
+        onChange = function(value)
+            filter.sourceFilter = value
+            self:RefreshRowsInPlace(true)
+        end,
+        tipTitle = "Sources",
+        tipBody  = "Pick a pricing source to filter recipes.",
+    })
 end
 
 -- A header click, reported by the list (onSortChanged) after it has set its

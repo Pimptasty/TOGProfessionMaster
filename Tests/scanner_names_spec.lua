@@ -202,7 +202,7 @@ describe("BackfillBogusRecipeNames", function()
 		-- cached and rendered on every row.
 		gdb.recipes[ALCHEMY] = { [26926] = { name = "? 26926", crafters = {} } }
 		env.itemAPI("GetItemInfo", function() return "59 TEST Green Shaman Chest", "LINK" end)
-		_G.GetSpellInfo = function() return nil end
+		-- wow.spells is empty after reset, so no spell answers for 26926.
 		S:BackfillBogusRecipeNames()
 		assert.is_true(S._isBogusName(gdb.recipes[ALCHEMY][26926].name))
 	end)
@@ -211,9 +211,8 @@ describe("BackfillBogusRecipeNames", function()
 		-- Enchanting recipe ids ARE the enchant spell id; without this branch they
 		-- stayed "? <id>" forever and the tooltip fell through to "item:<id>".
 		gdb.recipes[333] = { [13937] = { name = "? 13937", crafters = {} } }
-		_G.GetSpellInfo = function(id)
-			if id == 13937 then return "Enchant 2H Weapon - Greater Impact", nil, 77 end
-		end
+		-- The harness serves C_Spell.GetSpellInfo (and the bare form) from wow.spells.
+		env.wow.spells[13937] = { name = "Enchant 2H Weapon - Greater Impact", icon = 77 }
 		S:BackfillBogusRecipeNames()
 		local rd = gdb.recipes[333][13937]
 		assert.equal("Enchant 2H Weapon - Greater Impact", rd.name)

@@ -329,6 +329,7 @@ describe("the spell API helpers", function()
 		for _, n in ipairs(NAMES) do saved[n] = _G[n] end
 	end)
 	after_each(function()
+		wow.setDeprecationFallbacks(true)
 		for _, n in ipairs(NAMES) do _G[n] = saved[n] end
 	end)
 
@@ -357,16 +358,15 @@ describe("the spell API helpers", function()
 		assert.is_nil((ns.Spell.GetCooldown(1)))
 	end)
 
-	-- The Guild tab, in game on Forever: bare GetSpellInfo is nil there.
-	it("unpacks C_Spell.GetSpellInfo's table into the classic list where the bare one is gone", function()
-		_G.GetSpellInfo = nil
-		_G.C_Spell = { GetSpellInfo = function(id)
-			return { name = "Axesmith", iconID = 99, originalIconID = 98, castTime = 0,
-			         minRange = 0, maxRange = 5, spellID = id }
-		end }
+	-- From here on, the HARNESS's C_Spell / C_SpellBook (WoWAPITesting a7675ce,
+	-- inbox a092c095), fed through wow.spells / wow.knownSpells, instead of
+	-- hand-built stand-ins. The helpers resolve the namespaced API FIRST.
+
+	it("unpacks C_Spell.GetSpellInfo's table into the classic list", function()
+		wow.spells[17041] = { name = "Axesmith", icon = 99, maxRange = 5 }
 		local name, rank, icon, castTime, minRange, maxRange, spellID = ns.Spell.GetInfo(17041)
 		assert.equal("Axesmith", name)
-		assert.is_nil(rank)
+		assert.is_nil(rank)   -- the SpellInfo table carries no rank
 		assert.equal(99, icon)
 		assert.equal(0, castTime)
 		assert.equal(0, minRange)
@@ -374,47 +374,68 @@ describe("the spell API helpers", function()
 		assert.equal(17041, spellID)
 	end)
 
-	it("prefers the bare GetSpellInfo where it exists", function()
+	it("prefers C_Spell over the bare GetSpellInfo where both exist", function()
+		wow.spells[1] = { name = "namespaced" }
 		_G.GetSpellInfo = function() return "bare", nil, 1 end
-		_G.C_Spell = { GetSpellInfo = function() return { name = "namespaced" } end }
-		assert.equal("bare", (ns.Spell.GetInfo(1)))
+		assert.equal("namespaced", (ns.Spell.GetInfo(1)))
 	end)
 
-	it("answers nil for an unknown spell or a nil id, on either path", function()
-		_G.GetSpellInfo = nil
-		_G.C_Spell = { GetSpellInfo = function() return nil end }
-		assert.is_nil((ns.Spell.GetInfo(1)))
+	it("falls back to the bare GetSpellInfo on a client with no C_Spell", function()
+		_G.C_Spell = nil
+		_G.GetSpellInfo = function() return "bare", "Rank 1", 1 end
+		local name, rank = ns.Spell.GetInfo(1)
+		assert.equal("bare", name)
+		assert.equal("Rank 1", rank)
+	end)
+
+	it("answers nil for an unknown spell or a nil id", function()
+		assert.is_nil((ns.Spell.GetInfo(424242)))
 		assert.is_nil((ns.Spell.GetInfo(nil)))
+		assert.is_nil((ns.Spell.GetTexture(nil)))
+		assert.is_nil((ns.Spell.GetLink(nil)))
 	end)
 
-	it("reaches C_Spell for the texture and the link when the bare ones are gone", function()
-		_G.GetSpellTexture, _G.GetSpellLink = nil, nil
-		_G.C_Spell = {
-			GetSpellTexture = function() return 1234 end,
-			GetSpellLink    = function(id) return "|Hspell:" .. id .. "|h[x]|h" end,
-		}
-		assert.equal(1234, ns.Spell.GetTexture(5))
+	it("reads the texture and the link through C_Spell", function()
+		wow.spells[5] = { name = "x", icon = 1234, link = "|Hspell:5|h[x]|h" }
+		assert.equal(1234, (ns.Spell.GetTexture(5)))
 		assert.equal("|Hspell:5|h[x]|h", ns.Spell.GetLink(5))
 	end)
 
-	it("uses the bare IsSpellKnown where it exists", function()
+	it("answers IsKnown through C_SpellBook, for the player and the pet bank", function()
+		wow.knownSpells[7] = true
+		wow.knownPetSpells[9] = true
+		assert.is_true(ns.Spell.IsKnown(7, false))
+		assert.is_false(ns.Spell.IsKnown(8, false))
+		assert.is_true(ns.Spell.IsKnown(9, true))
+		assert.is_false(ns.Spell.IsKnown(7, true))
+	end)
+
+	it("falls back to the bare IsSpellKnown on a client with no C_SpellBook", function()
+		_G.C_SpellBook = nil
 		_G.IsSpellKnown = function(id, isPet) return id == 7 and not isPet end
 		assert.is_true(ns.Spell.IsKnown(7, false))
 		assert.is_false(ns.Spell.IsKnown(8, false))
 	end)
 
-	it("does what Forever's fallback does when the bare one is gone", function()
-		_G.IsSpellKnown = nil
-		local asked
-		_G.Enum = { SpellBookSpellBank = { Player = 0, Pet = 1 } }
-		_G.C_SpellBook = { IsSpellInSpellBook = function(id, bank, overrides)
-			asked = { id, bank, overrides }
-			return id == 7
-		end }
-		assert.is_true(ns.Spell.IsKnown(7, false))
-		assert.same({ 7, 0, false }, asked)
-		assert.is_false(ns.Spell.IsKnown(9, true))
-		assert.same({ 9, 1, false }, asked)
+	-- WoW Forever as the harness models it: Mainline with no bare GetSpellInfo /
+	-- GetSpellTexture / GetSpellCooldown, and IsSpellKnown removed with the other
+	-- deprecation fallbacks. The Guild tab raised on exactly this, in game 2026-09-27.
+	it("answers every helper on a WoW Forever client", function()
+		-- Present on the classic client first, so the absence below is real.
+		local GONE = { "GetSpellInfo", "IsSpellKnown" }
+		for _, name in ipairs(GONE) do
+			assert.is_function(_G[name], name .. " should exist before the switch")
+		end
+		wow.setBuild("forever")
+		wow.setDeprecationFallbacks(false)
+		for _, name in ipairs(GONE) do
+			assert.is_nil(_G[name], name .. " should be gone on Forever")
+		end
+		wow.spells[17041] = { name = "Axesmith", icon = 99 }
+		wow.knownSpells[17041] = true
+		assert.equal("Axesmith", (ns.Spell.GetInfo(17041)))
+		assert.equal(99, (ns.Spell.GetTexture(17041)))
+		assert.is_true(ns.Spell.IsKnown(17041, false))
 	end)
 end)
 
@@ -681,17 +702,67 @@ describe("TOGBankClassic integration", function()
 			assert.equal("/ max 3", dialog().maxLbl:GetText())
 		end)
 
+		it("hovers and clicks the item through TOGPM's own item-link code", function()
+			-- LibAceGUIWidgets MINOR 39 (TOGPM contract 1d7a76ba): the item row's
+			-- onEnter / onLeave / onClick replace the library's built-in hover and
+			-- click, so the dialog keeps hold-to-compare (ItemLink.SetItem starts
+			-- the modifier watch, EndHover stops it) and a rebound chat-link key.
+			installLimited(50, nil, true)
+			local calls = {}
+			local tip = {
+				SetOwner = function(_, owner, anchor) calls[#calls + 1] = { "owner", owner, anchor } end,
+				Show = function() calls[#calls + 1] = { "show" } end,
+				Hide = function() calls[#calls + 1] = { "hide" } end,
+			}
+			_G.GameTooltip = tip
+			-- On the BOOTED addon, not this test's scratch namespace: the library
+			-- caches the dialog by name, so its row callbacks close over whichever
+			-- scratch namespace built it first, and every scratch namespace reads
+			-- through to the booted addon.
+			local base = env.boot()
+			local savedItemLink = rawget(base, "ItemLink")
+			base.ItemLink = {
+				SetItem  = function(t, link) calls[#calls + 1] = { "set", t, link } end,
+				EndHover = function(t) calls[#calls + 1] = { "end", t } end,
+				Click    = function(link) calls[#calls + 1] = { "click", link } end,
+			}
+			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			local row = assert(dialog().itemRow, "the dialog has no item row")
+			local link = assert(row.link or row._link or (row.GetItem and row:GetItem()),
+				"the item row holds no link to hover")
+
+			row:GetScript("OnEnter")(row)
+			assert.equal("owner", calls[1][1])
+			assert.equal(row, calls[1][2])
+			assert.same({ "set", tip, link }, calls[2])
+			assert.same({ "show" }, calls[3])
+
+			calls = {}
+			row:GetScript("OnLeave")(row)
+			assert.same({ { "end", tip }, { "hide" } }, calls)
+
+			calls = {}
+			row:GetScript("OnClick")(row, "LeftButton")
+			assert.same({ { "click", link } }, calls)
+			base.ItemLink = savedItemLink
+		end)
+
 		it("recomputes the allowance when the player picks another banker", function()
 			installLimited(50, { Abe = 2 }, true)
-			_G.UIDROPDOWNMENU_ADDED = {}
 			ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+			-- The picker is the library's dropdown box: click it open, then click
+			-- Zed's row in the menu it shows, as a player would.
+			local box = dialog().bankBox
+			box:GetScript("OnClick")(box)
+			local menu = assert(ns.W._menus and ns.W._menus[1], "the banker picker opened no menu")
 			local zed
-			for _, b in ipairs(_G.UIDROPDOWNMENU_ADDED) do
-				if b.info.value == "Zed" then zed = b.info end
+			for _, row in ipairs(menu.rows or {}) do
+				if row:IsShown() and row._lagwItem and row._lagwItem.text == "Zed (30)" then zed = row end
 			end
-			assert(zed, "the banker dropdown lists Zed")
-			zed.func()
+			assert(zed, "the banker picker lists Zed")
+			zed:GetScript("OnClick")(zed)
 			assert.equal("Zed", dialog().selectedBank)
+			assert.equal("Zed (30)", box.label:GetText())
 			assert.equal(15, dialog().maxRequestable)
 			assert.equal("/ max 15", dialog().maxLbl:GetText())
 		end)
@@ -815,19 +886,30 @@ describe("TOGBankClassic integration", function()
 				assert.equal(2, added.quantity)
 			end)
 
-			it("shows TOGBank's shop line in the dialog", function()
+			-- The dialog's height, once with the shop off: what the line must add to.
+			local function heightWithoutShop()
+				installShop(nil)
+				ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+				return dialog():GetHeight()
+			end
+
+			it("shows TOGBank's shop line in the dialog, and grows to fit it", function()
+				local without = heightWithoutShop()
 				installShop({ shopOrder = true, prompt = "Shop order -- no estimate for this item yet." })
 				ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
 				assert.equal("Shop order -- no estimate for this item yet.", dialog().shopLbl:GetText())
 				assert.is_true(dialog().shopLbl:IsShown())
-				assert.equal(205, dialog():GetHeight())
+				assert.is_true(dialog():GetHeight() > without)
 			end)
 
-			it("adds nothing and hides the line when the shop is off", function()
+			it("adds nothing and hides the line when the shop is off, leaving no gap", function()
+				installShop({ shopOrder = true, prompt = "Shop order -- no estimate for this item yet." })
+				ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
+				local with = dialog():GetHeight()
 				installShop(nil)
 				ns.Bank.ShowRequestDialog(2589, "Linen Cloth")
 				assert.is_false(dialog().shopLbl:IsShown())
-				assert.equal(165, dialog():GetHeight())
+				assert.is_true(dialog():GetHeight() < with)
 				send(1)
 				assert.is_nil(added.shopOrder)
 			end)

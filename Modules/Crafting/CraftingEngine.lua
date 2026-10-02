@@ -43,6 +43,39 @@ addon.CraftingEngine = Engine
 local HAS_CRAFT_WINDOW = addon.isVanilla or addon.isTBC
 
 -- ---------------------------------------------------------------------------
+-- WoW Forever (the _Camelot TOC, 11.x+ engine) has NONE of the classic
+-- trade-skill globals (GetTradeSkillLine / GetNumTradeSkills /
+-- GetTradeSkillInfo / DoTradeSkill: absent from its source tree, not even as
+-- deprecation fallbacks). Its own Professions UI reads and crafts through
+-- C_TradeSkillUI instead, and so do we there:
+--   list     GetFilteredRecipeIDs (Blizzard_Professions.lua:847) + GetRecipeInfo
+--   reagents GetRecipeSchematic -> reagentSlotSchematics
+--   craft    CraftRecipe(recipeID, count) (Blizzard_ProfessionsTransaction.lua:352)
+--   open     OpenTradeSkill(skillLineID) (ProfessionsUtil.lua:101), restricted
+--            to a hardware event (warcraft.wiki.gg), from the tab's clicks --
+--            never CastSpellByName, which Forever blocked (see OpenProfession).
+-- Checked at call time (Compat.lua, HasModernTradeSkillAPI). The classic API
+-- wins wherever it exists, so no classic client ever takes this path.
+-- ---------------------------------------------------------------------------
+function Engine:UsesModernAPI()
+    return addon:HasModernTradeSkillAPI()
+end
+
+function Engine:HasTradeSkillAPI()
+    return addon:HasClassicTradeSkillAPI() or self:UsesModernAPI()
+end
+
+-- The profession window this client draws: TradeSkillFrame on the classic
+-- clients, ProfessionsFrame on Forever.
+local function tradeFrameName()
+    return _G.TradeSkillFrame and "TradeSkillFrame" or "ProfessionsFrame"
+end
+
+-- Enum.TradeskillRelativeDifficulty (TradeSkillUITypesDocumentation.lua:84-94)
+-- to the classic difficulty strings the view colours by.
+local MODERN_DIFFICULTY = { [0] = "optimal", [1] = "medium", [2] = "easy", [3] = "trivial" }
+
+-- ---------------------------------------------------------------------------
 -- Session state
 -- ---------------------------------------------------------------------------
 -- _tradeOpen / _craftOpen mirror TSM's flags: the two windows are mutually
@@ -130,7 +163,21 @@ function Engine:GetOpenInfo()
     if not self._sessionOpen then return nil end
 
     local name, rank, max
-    if self._isCraftWindow then
+    if self:UsesModernAPI() then
+        local p = addon:GetModernOpenProfession()
+        if not p then return nil end
+        local Scanner = addon.Scanner
+        local profId = (Scanner and (Scanner:ResolveProfessionId(p.professionName)
+            or (p.parentProfessionName and Scanner:ResolveProfessionId(p.parentProfessionName))))
+            or p.parentProfessionID or p.professionID
+        return {
+            name          = p.parentProfessionName or p.professionName,
+            rank          = p.skillLevel or 0,
+            max           = p.maxSkillLevel or 0,
+            profId        = profId,
+            isCraftWindow = false,
+        }
+    elseif self._isCraftWindow then
         if GetCraftDisplaySkillLine then name, rank, max = GetCraftDisplaySkillLine() end
     else
         if GetTradeSkillLine then name, rank, max = GetTradeSkillLine() end
@@ -219,12 +266,171 @@ end
 -- default-to-Blizzard setting (otherwise clicking "Open Enchanting" inside the
 -- TOGPM tab would pop the Blizzard window instead). One-shot; consumed by the
 -- next OnProfessionShow.
-function Engine:OpenProfession(name)
-    if not name then return end
-    if UnitAffectingCombat and UnitAffectingCombat("player") then
-        addon:Print(addon.L and addon.L["CraftCantOpenInCombat"] or "Can't open a profession in combat.")
-        return false
+--
+-- WoW Forever: never cast. CastSpellByName from a Crafting tab click raised
+-- ADDON_ACTION_BLOCKED there (in game 2026-09-28). It opens through
+-- C_TradeSkillUI.OpenTradeSkill(skillLineID) instead, which warcraft.wiki.gg
+-- marks restricted with the hwevent tag only: addon code may call it during a
+-- keyboard or mouse event. The skill line is the profId GetKnownProfessions
+-- carries (GetProfessionInfo's 7th return, the same one Forever's own
+-- profession book stores as frame.skillLine).
+--
+-- UNEXPLAINED (2026-09-29): a tab click still raised ADDON_ACTION_BLOCKED for
+-- OpenTradeSkill() "intermittently" (operator), while other clicks through the
+-- same path opened the profession. Every Forever attempt is recorded by
+-- _LogOpenAttempt and paired with any block, for `/togpm opendebug`.
+function Engine:CanOpenFromCode()
+    return self:HasTradeSkillAPI() and true or false
+end
+
+-- ---------------------------------------------------------------------------
+-- OpenTradeSkill diagnostics (WoW Forever). A ring of the last attempts, each
+-- with what could decide whether an hwevent call is allowed; an
+-- ADDON_ACTION_BLOCKED / _FORBIDDEN naming this addon is attached to the
+-- attempt it belongs to and announced in chat whether debug is on or not.
+-- ---------------------------------------------------------------------------
+local OPEN_LOG_MAX = 20
+Engine._openLog = Engine._openLog or {}
+
+local function profName(p) return p and (p.parentProfessionName or p.professionName) or "-" end
+
+function Engine:_LogOpenAttempt(how, skillLine)
+    local now = GetTime and GetTime() or 0
+    local log = self._openLog
+    local sameFrame = 0
+    for _, r in ipairs(log) do if r.t == now then sameFrame = sameFrame + 1 end end
+    local T = C_TradeSkillUI
+    local baseInfo  = T and T.GetBaseProfessionInfo and T.GetBaseProfessionInfo() or nil
+    local childInfo = T and T.GetChildProfessionInfo and T.GetChildProfessionInfo() or nil
+    local rec = {
+        t         = now,
+        how       = how or "?",
+        skillLine = skillLine,
+        combat    = (InCombatLockdown and InCombatLockdown()) and true or false,
+        -- Read through _G: each may be absent on some client, and a nil
+        -- answer is itself worth recording.
+        button    = _G.GetMouseButtonClicked and _G.GetMouseButtonClicked() or nil,
+        mouseDown = (_G.IsMouseButtonDown and _G.IsMouseButtonDown()) and true or false,
+        loaded    = (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Blizzard_Professions"))
+                    and true or false,
+        frameUp   = (_G.ProfessionsFrame and _G.ProfessionsFrame:IsShown()) and true or false,
+        openNow   = profName(addon:GetModernOpenProfession()),
+        -- Peer Review's H1 (thread 4d8158c1): Blizzard's own callers skip
+        -- OpenTradeSkill when that profession is already open
+        -- (Blizzard_Professions_Bootstrap.lua:15-18, ProfessionsUtil.lua:86-101).
+        baseId    = baseInfo and baseInfo.professionID or nil,
+        childId   = childInfo and childInfo.professionID or nil,
+        session   = self._sessionOpen and true or false,
+        sameFrame = sameFrame,
+        first     = (self._openCount or 0) == 0,
+        stack     = _G.debugstack and _G.debugstack(3, 8, 0) or nil,
+    }
+    self._openCount = (self._openCount or 0) + 1
+    log[#log + 1] = rec
+    while #log > OPEN_LOG_MAX do table.remove(log, 1) end
+    return rec
+end
+
+function Engine:_FormatOpenAttempt(r)
+    return ("%.3f %s line=%s base=%s child=%s open=%s first=%s same=%d combat=%s btn=%s down=%s"
+        .. " profUI=%s frame=%s session=%s -> %s%s"):format(
+        r.t, r.how, tostring(r.skillLine), tostring(r.baseId), tostring(r.childId), tostring(r.openNow),
+        tostring(r.first), r.sameFrame, tostring(r.combat), tostring(r.button), tostring(r.mouseDown),
+        tostring(r.loaded), tostring(r.frameUp), tostring(r.session),
+        tostring(r.result), r.blocked and (" BLOCKED(" .. r.blocked .. ")") or "")
+end
+
+-- The trade-skill events around those attempts, with what was open and
+-- whether Blizzard's window was up at each: how a switch actually unfolds.
+local EVENT_LOG_MAX = 40
+Engine._eventLog = Engine._eventLog or {}
+
+function Engine:_LogEvent(event)
+    local T = C_TradeSkillUI
+    local log = self._eventLog
+    log[#log + 1] = {
+        t        = GetTime and GetTime() or 0,
+        event    = event,
+        openNow  = profName(addon:GetModernOpenProfession()),
+        changing = (T and T.IsDataSourceChanging and T.IsDataSourceChanging()) and true or false,
+        frameUp  = (_G.ProfessionsFrame and _G.ProfessionsFrame:IsShown()) and true or false,
+        drawn    = self._drawnProf,
+        tabOwned = self._tabDriven and true or false,
+    }
+    while #log > EVENT_LOG_MAX do table.remove(log, 1) end
+    -- Also to the debug stream: /togpm opendebug printed nothing in game
+    -- (2026-09-29, cause not found), and the debug stream is what reached us.
+    local e = log[#log]
+    addon:DebugPrint(("Crafting event: %s open=%s changing=%s frame=%s drawn=%s tabOwned=%s"):format(
+        e.event, tostring(e.openNow), tostring(e.changing), tostring(e.frameUp),
+        tostring(e.drawn), tostring(e.tabOwned)))
+end
+
+-- `/togpm opendebug`: every recorded attempt, oldest first, with its stack,
+-- then the events.
+function Engine:DumpOpenLog()
+    if #self._openLog == 0 then
+        addon:Print("No profession-open attempts recorded this session.")
     end
+    for _, r in ipairs(self._openLog) do
+        addon:Print(self:_FormatOpenAttempt(r))
+        if r.stack then
+            for line in r.stack:gmatch("[^\n]+") do addon:Print("    " .. line) end
+        end
+    end
+    for _, e in ipairs(self._eventLog) do
+        addon:Print(("%.3f %s open=%s changing=%s frame=%s drawn=%s tabOwned=%s"):format(
+            e.t, e.event, tostring(e.openNow), tostring(e.changing), tostring(e.frameUp),
+            tostring(e.drawn), tostring(e.tabOwned)))
+    end
+end
+
+-- Forever: when ProfessionsFrame shows, each of its profession tabs casts its
+-- own profession unless it is the open one (Blizzard_ProfessionsTemplates.lua
+-- :963-971, on "ProfessionsFrame.Show" from ProfessionsMixin:OnShow). The
+-- in-game log of 2026-09-29 showed the open profession cycling through all
+-- five within a second. These post-hooks only OBSERVE (hooksecurefunc runs
+-- after the original and changes nothing), so the log can show whether those
+-- casts are what undoes a switch from the tab.
+function Engine:_WatchProfessionCasts()
+    if self._castWatch or not self:UsesModernAPI() then return end
+    self._castWatch = true
+    if C_SpellBook and C_SpellBook.CastSpellBookItem and hooksecurefunc then
+        hooksecurefunc(C_SpellBook, "CastSpellBookItem", function(slot)
+            local info = C_SpellBook.GetSpellBookItemInfo
+                and C_SpellBook.GetSpellBookItemInfo(slot, Enum.SpellBookSpellBank.Player)
+            Engine:_LogEvent("CastSpellBookItem " .. tostring(info and info.name or slot))
+        end)
+    end
+end
+
+local blockWatch = CreateFrame("Frame")
+pcall(blockWatch.RegisterEvent, blockWatch, "ADDON_ACTION_BLOCKED")
+pcall(blockWatch.RegisterEvent, blockWatch, "ADDON_ACTION_FORBIDDEN")
+blockWatch:SetScript("OnEvent", function(_, event, who, func)
+    if not (tostring(func):find("OpenTradeSkill", 1, true) or tostring(func):find("CastSpell", 1, true)) then return end
+    if who ~= "TOGProfessionMaster" then
+        -- Peer Review: a block naming another addon means the taint came in
+        -- through shared code, not through this call.
+        if Engine._opening then
+            addon:Print(("Profession open: %s for %s was blamed on %s."):format(event, tostring(func), tostring(who)))
+        end
+        return
+    end
+    -- The attempt being made right now, else the latest one within a second.
+    local r = Engine._opening
+    if not r then
+        local last = Engine._openLog[#Engine._openLog]
+        if last and GetTime and (GetTime() - last.t) <= 1 then r = last end
+    end
+    if r then r.blocked = event:gsub("ADDON_ACTION_", "") end
+    addon:Print("Profession open was blocked -- please send the output of /togpm opendebug. "
+        .. (r and Engine:_FormatOpenAttempt(r) or ("no matching attempt for " .. tostring(func))))
+end)
+
+-- The tab is about to open a profession: force its next show into the TOGPM
+-- tab and claim the session.
+function Engine:ClaimNextShow()
     self._forceTakeoverOnce = true
     -- This session belongs to the tab: no other profession window may stay on
     -- screen for it. Arm the TSM callback BEFORE the cast so we catch its very
@@ -232,6 +438,66 @@ function Engine:OpenProfession(name)
     self._tabDriven = true
     self:EnsureTSMHook()
     self:EnsureSuppressHook()
+end
+
+-- `how` names the trigger for the diagnostics: "tab", "dropdown", "jump" or
+-- "button".
+-- Seconds after the tab's own open within which a show of Blizzard's window
+-- is taken to be that open's. A margin I chose, NOT measured: the show should
+-- follow in the same or the next few frames, and the event log records the
+-- real gap for checking it.
+local OWN_OPEN_WINDOW = 2
+
+function Engine:_OwnOpenIsRecent()
+    return self._ownOpenAt ~= nil and GetTime ~= nil and (GetTime() - self._ownOpenAt) <= OWN_OPEN_WINDOW
+end
+
+function Engine:OpenProfession(name, how)
+    if not name then return end
+    if not self:CanOpenFromCode() then return false end
+    local skillLine
+    if self:UsesModernAPI() then
+        if not C_TradeSkillUI.OpenTradeSkill then return false end
+        for _, p in ipairs(self:GetKnownProfessions()) do
+            if p.castName == name or p.name == name then skillLine = p.profId break end
+        end
+        if not skillLine then return false end
+    end
+    if UnitAffectingCombat and UnitAffectingCombat("player") then
+        addon:Print(addon.L and addon.L["CraftCantOpenInCombat"] or "Can't open a profession in combat.")
+        return false
+    end
+    self:ClaimNextShow()
+    self._ownOpenAt = GetTime and GetTime() or nil
+    if skillLine then
+        local rec = self:_LogOpenAttempt(how, skillLine)
+        local wasShown = _G.ProfessionsFrame and _G.ProfessionsFrame:IsShown()
+        self._opening = rec
+        local ok, opened = pcall(C_TradeSkillUI.OpenTradeSkill, skillLine)
+        -- Blizzard's window was hidden, so this open showed it and its tabs'
+        -- cast cascade ran (see _CloakProfessionsFrame), leaving the LAST tab's
+        -- profession open. The window is shown now -- and cloaked by our OnShow
+        -- hook -- so asking once more does not re-fire the cascade. In game the
+        -- cascade's casts all went through inside the same click, so a second
+        -- call inside it is expected to as well; not verified, and the block
+        -- watcher reports it if not.
+        if ok and opened and not wasShown then
+            local T = C_TradeSkillUI
+            local base = T.GetBaseProfessionInfo and T.GetBaseProfessionInfo()
+            if base and base.professionID ~= skillLine then
+                rec.retried = true
+                ok, opened = pcall(T.OpenTradeSkill, skillLine)
+            end
+        end
+        self._opening = nil
+        rec.result = (ok and tostring(opened) or ("error: " .. tostring(opened)))
+            .. (rec.retried and " (asked twice)" or "")
+        addon:DebugPrint("Crafting: " .. self:_FormatOpenAttempt(rec))
+        if ok and opened then return true end
+        -- Nothing opened, so no show event will consume the claim.
+        self._forceTakeoverOnce, self._tabDriven = false, false
+        return false
+    end
     if CastSpellByName then CastSpellByName(name) end
     return true
 end
@@ -337,10 +603,60 @@ local function tradeSkillCraftable(index, numAvailable)
     return matsCraftable(GetTradeSkillNumReagents, GetTradeSkillReagentInfo, index, numAvailable or 0)
 end
 
+-- WoW Forever's recipe list, in the same entry shape as the classic reads
+-- below. `index` IS the recipe id there: the modern API addresses a recipe by
+-- its spell id, never by a row position. Learned recipes only, grouped under
+-- their category's name in the order the client lists them.
+function Engine:_ModernRecipeList(profId)
+    local T = C_TradeSkillUI
+    local groups, order = {}, {}
+    for _, id in ipairs(addon:GetModernLearnedRecipeIDs()) do
+        local r = T.GetRecipeInfo(id)
+        if r then
+            local cat = r.categoryID or 0
+            if not groups[cat] then
+                groups[cat] = {}
+                order[#order + 1] = cat
+            end
+            local out = T.GetRecipeOutputItemData and T.GetRecipeOutputItemData(id)
+            local link = out and out.hyperlink or nil
+            local meta = recipeMeta(profId, id)
+            local num = T.GetCraftableCount and T.GetCraftableCount(id) or nil
+            if num == nil then
+                num = math.huge
+                for _, rg in ipairs(self:GetReagents(id)) do
+                    if rg.need > 0 then num = math.min(num, math.floor(rg.have / rg.need)) end
+                end
+                if num == math.huge then num = 0 end
+            end
+            local g = groups[cat]
+            g[#g + 1] = {
+                kind = "recipe", index = id, name = r.name,
+                difficulty = MODERN_DIFFICULTY[r.relativeDifficulty] or "trivial",
+                num = num, recipeId = id,
+                icon = r.icon, link = link, color = linkColour(link),
+                requiredSkill = meta and meta.requiredSkill or nil,
+                tiers = meta and meta.difficulty or nil,
+                effect = meta and (addon:GetCraftedItemStatText(meta.craftedItemId) or meta.effect) or nil,
+            }
+        end
+    end
+    local list = {}
+    for _, cat in ipairs(order) do
+        local ci = T.GetCategoryInfo and cat ~= 0 and T.GetCategoryInfo(cat)
+        if ci and ci.name and ci.name ~= "" then
+            list[#list + 1] = { kind = "header", name = ci.name }
+        end
+        for _, e in ipairs(groups[cat]) do list[#list + 1] = e end
+    end
+    return list
+end
+
 function Engine:GetRecipeList()
     if not self._sessionOpen then return {} end
     local out = {}
     local profId = (self:GetOpenInfo() or {}).profId
+    if self:UsesModernAPI() then return self:_ModernRecipeList(profId) end
     self._suppressUpdate = true
 
     if self._isCraftWindow then
@@ -412,6 +728,28 @@ end
 function Engine:GetReagents(index)
     if not index then return {} end
     local out = {}
+    if self:UsesModernAPI() then
+        -- index is the recipe id (see _ModernRecipeList). Basic reagents only:
+        -- a slot whose dataSlotType is not Reagent (1) is an optional/modified
+        -- reagent or a currency (TradeSkillUITypesDocumentation.lua:98-107).
+        local ok, s = pcall(C_TradeSkillUI.GetRecipeSchematic, index, false)
+        if not (ok and s and s.reagentSlotSchematics) then return out end
+        for _, slot in ipairs(s.reagentSlotSchematics) do
+            local rg = slot.reagents and slot.reagents[1]
+            local itemId = rg and rg.itemID
+            if itemId and slot.required ~= false
+               and (slot.dataSlotType == nil or slot.dataSlotType == 1) then
+                local name, link = addon.Item.GetInfo(itemId)
+                out[#out + 1] = {
+                    name = name, texture = addon.Item.GetIcon(itemId),
+                    need = slot.quantityRequired or 0,
+                    have = addon.Item.GetCount(itemId) or 0,
+                    link = link, itemId = itemId,
+                }
+            end
+        end
+        return out
+    end
     if self._isCraftWindow then
         local n = GetCraftNumReagents and GetCraftNumReagents(index) or 0
         for j = 1, n do
@@ -501,6 +839,11 @@ function Engine:Craft(recipeId, index, qty)
     if addon.CraftQueue and addon.CraftQueue.TrackCraft then
         addon.CraftQueue:TrackCraft(recipeId, qty)
     end
+    if self:UsesModernAPI() then
+        -- WoW Forever: by recipe id, as Blizzard_ProfessionsTransaction.lua:352 does.
+        if C_TradeSkillUI.CraftRecipe then C_TradeSkillUI.CraftRecipe(liveIndex, qty) end
+        return
+    end
     if DoTradeSkill then DoTradeSkill(liveIndex, qty) end
 end
 
@@ -564,6 +907,7 @@ function Engine:Init()
     eventFrame:RegisterEvent("TRADE_SKILL_SHOW")
     tryRegister("TRADE_SKILL_UPDATE")
     tryRegister("TRADE_SKILL_LIST_UPDATE")
+    tryRegister("TRADE_SKILL_DATA_SOURCE_CHANGED")   -- WoW Forever
     eventFrame:RegisterEvent("TRADE_SKILL_CLOSE")
     if HAS_CRAFT_WINDOW then
         tryRegister("CRAFT_SHOW")
@@ -576,11 +920,15 @@ function Engine:Init()
 end
 
 function Engine:OnEvent(event)
-    -- WoW Forever: the session this engine tracks is read through the classic
-    -- trade-skill API. The Crafting tab on C_TradeSkillUI is NOT BUILT YET, so
-    -- without that API no session opens and the tab shows its open-a-profession
-    -- prompt (Compat.lua, HasClassicTradeSkillAPI).
-    if event:find("^TRADE_SKILL_") and not addon:HasClassicTradeSkillAPI() then return end
+    if self:UsesModernAPI() then
+        self:_WatchProfessionCasts()
+        self:EnsureSuppressHook()   -- so the OnShow log line exists from the first show
+        self:_LogEvent(event)
+    end
+    -- A client with neither the classic trade-skill API nor C_TradeSkillUI has
+    -- nothing to read, so no session opens there. WoW Forever reads through
+    -- C_TradeSkillUI (UsesModernAPI).
+    if event:find("^TRADE_SKILL_") and not self:HasTradeSkillAPI() then return end
     if event == "TRADE_SKILL_SHOW" then
         self._closePending = false   -- (re)opening: cancel any debounced teardown
         self._tradeOpen = true
@@ -609,6 +957,23 @@ function Engine:OnEvent(event)
     elseif event == "CRAFT_CLOSE" then
         self._craftOpen = false
         self:ScheduleClose()
+
+    elseif self:UsesModernAPI() and self._sessionOpen
+           and (event == "TRADE_SKILL_LIST_UPDATE" or event == "TRADE_SKILL_DATA_SOURCE_CHANGED") then
+        -- WoW Forever: a switch to another profession while one is open lands
+        -- here, once the new data source is built -- not on TRADE_SKILL_SHOW.
+        -- Blizzard's own window switches at exactly this point and yields while
+        -- the source is still changing (Blizzard_ProfessionsFrame.lua:138-161).
+        -- A light refresh would keep drawing the old profession's tab, which is
+        -- what the dropdown did in game (2026-09-29).
+        local T = C_TradeSkillUI
+        if T.IsDataSourceChanging and T.IsDataSourceChanging() then return end
+        local now = profName(addon:GetModernOpenProfession())
+        if now ~= self._drawnProf then
+            self:FireUpdate()
+        elseif not self._suppressUpdate then
+            self:FireLiveUpdate()
+        end
 
     elseif event == "TRADE_SKILL_UPDATE" or event == "TRADE_SKILL_LIST_UPDATE"
            or event == "CRAFT_UPDATE" then
@@ -798,6 +1163,8 @@ function Engine:OnProfessionClose()
     self._tabDriven     = false
     self._tsmFrame      = nil
     self:HideToggleButton()
+    -- WoW Forever: the next open, by anyone, must be visible.
+    self:_UncloakProfessionsFrame()
 
     -- If we auto-opened the window for this craft session and the user is
     -- still on the Crafting tab, fold it back down — mirrors the way the
@@ -823,6 +1190,16 @@ function Engine:ShowDefaultUI()
     self._tabDriven = false
     self:_RecordLastUI("blizzard")
 
+    -- WoW Forever: the frame is still shown, only cloaked, so revealing it is
+    -- all there is to do -- re-showing it would set off its tabs' casts. Our
+    -- window stays open: the operator wants both up when the player asks
+    -- (2026-09-29). Reached from the "WoW UI" button and from the K key while
+    -- cloaked.
+    if self:UsesModernAPI() and self:_UncloakProfessionsFrame() then
+        self:ShowToggleButton(_G.ProfessionsFrame)
+        return
+    end
+
     -- Fold our own window away first so the two don't stack.
     if self._autoOpened and addon.MainWindow and addon.MainWindow.frame
        and addon.MainWindow.activeTab == "crafting" then
@@ -841,7 +1218,7 @@ function Engine:ShowDefaultUI()
     -- Inject our "back to TOGPM" toggle onto Blizzard's frame, mirroring TSM's
     -- corner button. TSM anchors its "TSM4" button TOP-RIGHT, so we anchor ours
     -- TOP-LEFT — the two never overlap and can coexist while testing.
-    local frame = self._isCraftWindow and _G.CraftFrame or _G.TradeSkillFrame
+    local frame = self._isCraftWindow and _G.CraftFrame or _G[tradeFrameName()]
     self:ShowToggleButton(frame)
 end
 
@@ -862,7 +1239,11 @@ function Engine:ShowOurUI()
 
     -- Clear the field for our tab: Blizzard's frames and, when the session is
     -- ours, TSM's window too. HideForeignWindows no-ops unless _tabDriven.
-    self:_HideFrameSafely(self._isCraftWindow and _G.CraftFrame or _G.TradeSkillFrame, true)
+    if self:UsesModernAPI() then
+        self:_CloakProfessionsFrame()   -- WoW Forever: cloak, never hide
+    else
+        self:_HideFrameSafely(self._isCraftWindow and _G.CraftFrame or _G[tradeFrameName()], true)
+    end
     self:EnsureSuppressHook()
     self:HideForeignWindows()
     self:HideToggleButton()
@@ -910,6 +1291,109 @@ function Engine:_HideFrameSafely(frame, panel)
     return true
 end
 
+-- ---------------------------------------------------------------------------
+-- WoW Forever: CLOAK Blizzard's ProfessionsFrame instead of hiding it.
+--
+-- Whenever ProfessionsFrame goes from hidden to shown, each of its profession
+-- tabs that is not the open profession casts its own profession spell
+-- (Blizzard_ProfessionsTemplates.lua:963-971, on "ProfessionsFrame.Show" from
+-- ProfessionsMixin:OnShow). Each cast opens that profession, so the next tab
+-- casts too, and the last tab always wins. Confirmed in game 2026-09-29: every
+-- dropdown pick ended on Fishing ("Bait and Tackle"), the last tab, because the
+-- takeover had HIDDEN the frame and our open re-showed it. A frame that stays
+-- shown never re-fires OnShow, so a switch sticks.
+--
+-- So while the tab owns the session the frame stays shown but invisible:
+-- alpha 0, and mouse input off on it and every frame inside it, so it catches
+-- no clicks. NOT its scale: a first build shrank it to 1% and the revealed
+-- window came up far narrower than Blizzard's normal one, its Create bar
+-- running off the edge (in game 2026-09-29; compared against an untouched
+-- window). Its size is never touched now. The operator's conditions (2026-09-29):
+-- "if the user pushes K, it needs to appear" -- the TOGGLEPROFESSIONBOOK keys
+-- are bound to uncloak while cloaked, since ToggleProfessionsBook would
+-- otherwise TOGGLE the shown frame closed (Blizzard_ProfessionsBook_Bootstrap
+-- .lua:11-12) -- and "we need to be able to show both at the same time if the
+-- user wants it": uncloaking never closes our window.
+-- ---------------------------------------------------------------------------
+-- Turn mouse input off on `frame` and everything inside it, recording what
+-- each had so it can be put back. A frame Blizzard creates inside it while
+-- cloaked (a pooled recipe row) is not covered until the next cloak.
+local function muteMouse(frame, saved)
+    if frame.IsMouseEnabled then
+        saved[#saved + 1] = { f = frame, mouse = frame:IsMouseEnabled(),
+            wheel = frame.IsMouseWheelEnabled and frame:IsMouseWheelEnabled() }
+        frame:EnableMouse(false)
+        if frame.EnableMouseWheel then frame:EnableMouseWheel(false) end
+    end
+    if frame.GetChildren then
+        for _, child in ipairs({ frame:GetChildren() }) do muteMouse(child, saved) end
+    end
+end
+
+local function restoreMouse(saved)
+    for _, s in ipairs(saved or {}) do
+        s.f:EnableMouse(s.mouse and true or false)
+        if s.f.EnableMouseWheel then s.f:EnableMouseWheel(s.wheel and true or false) end
+    end
+end
+
+local uncloakButton, bindOwner
+local function ensureUncloakButton()
+    if uncloakButton then return end
+    uncloakButton = CreateFrame("Button", "TOGPMShowProfessionsButton", UIParent)
+    uncloakButton:Hide()
+    uncloakButton:SetScript("OnClick", function() Engine:ShowDefaultUI() end)
+    bindOwner = CreateFrame("Frame")
+end
+
+function Engine:IsCloaked()
+    return self._cloaked and true or false
+end
+
+function Engine:_CloakProfessionsFrame()
+    local f = _G.ProfessionsFrame
+    if not (f and f:IsShown()) or self._cloaked then return false end
+    self._cloakSaved = { alpha = f:GetAlpha(), mouse = {} }
+    f:SetAlpha(0)
+    muteMouse(f, self._cloakSaved.mouse)
+    self._cloaked = true
+    -- Rebinding is protected in combat; there K keeps Blizzard's behaviour.
+    if not (InCombatLockdown and InCombatLockdown()) and SetOverrideBindingClick and GetBindingKey then
+        ensureUncloakButton()
+        for _, key in ipairs({ GetBindingKey("TOGGLEPROFESSIONBOOK") }) do
+            SetOverrideBindingClick(bindOwner, false, key, "TOGPMShowProfessionsButton")
+        end
+    end
+    self:_LogEvent("ProfessionsFrame cloaked")
+    return true
+end
+
+function Engine:_UncloakProfessionsFrame()
+    if not self._cloaked then return false end
+    self._cloaked = false
+    local f, saved = _G.ProfessionsFrame, self._cloakSaved
+    self._cloakSaved = nil
+    if f then
+        f:SetAlpha(saved and saved.alpha or 1)
+        restoreMouse(saved and saved.mouse)
+    end
+    if bindOwner and ClearOverrideBindings and not (InCombatLockdown and InCombatLockdown()) then
+        ClearOverrideBindings(bindOwner)
+    end
+    self:_LogEvent("ProfessionsFrame uncloaked")
+    return true
+end
+
+-- Our window closed while Blizzard's is cloaked: close Blizzard's too, through
+-- its own HideUIPanel, whose OnHide ends the session as closing it by hand
+-- does. Otherwise an invisible profession window would stay open.
+function Engine:OnMainWindowClosed()
+    if not self._cloaked then return end
+    local f = _G.ProfessionsFrame
+    self:_UncloakProfessionsFrame()
+    if f and f:IsShown() and HideUIPanel then HideUIPanel(f) end
+end
+
 -- True while the trade-skill session we're reading is still alive. Used to
 -- verify a foreign-window hide didn't take the session down with it.
 function Engine:_SessionStillLive()
@@ -917,6 +1401,7 @@ function Engine:_SessionStillLive()
     if self._isCraftWindow then
         return (GetCraftDisplaySkillLine and GetCraftDisplaySkillLine()) ~= nil
     end
+    if self:UsesModernAPI() then return addon:GetModernOpenProfession() ~= nil end
     return (GetTradeSkillLine and GetTradeSkillLine()) ~= nil
 end
 
@@ -928,6 +1413,9 @@ function Engine:HideForeignWindows()
     -- Both Blizzard frames, not just the current session's: a profession switch
     -- can leave the other one up.
     self:_HideFrameSafely(_G.TradeSkillFrame, true)
+    -- WoW Forever's window is cloaked, never hidden: re-showing a hidden one
+    -- sets off its tabs' cast cascade (see _CloakProfessionsFrame).
+    self:_CloakProfessionsFrame()
     if HAS_CRAFT_WINDOW then self:_HideFrameSafely(_G.CraftFrame, true) end
 
     -- TSM's window. If clearing OnHide didn't hold and the session died, stop
@@ -946,12 +1434,32 @@ end
 -- once per frame; the handler defers because hiding a frame from inside its own
 -- OnShow is asking for trouble.
 function Engine:EnsureSuppressHook()
-    for _, name in ipairs({ "TradeSkillFrame", "CraftFrame" }) do
+    for _, name in ipairs({ "TradeSkillFrame", "CraftFrame", "ProfessionsFrame" }) do
         local frame = _G[name]
         if frame and not self._suppressHooked[frame] then
             self._suppressHooked[frame] = true
             frame:HookScript("OnShow", function()
+                if name == "ProfessionsFrame" then Engine:_LogEvent("ProfessionsFrame OnShow") end
                 if not Engine._tabDriven then return end
+                -- WoW Forever: Blizzard's window showing when the tab did not
+                -- just open a profession is the player asking for it (the K
+                -- key, their profession book). Hiding it then made K unusable
+                -- for the rest of the session (in game 2026-09-29: "once i've
+                -- opened it with TOGPM, i can't use the K key to open
+                -- crafting"). Let the player have it and drop the tab's claim,
+                -- as the "WoW UI" button does. Classic's frames keep the old
+                -- rule; this is Forever's window only.
+                if name == "ProfessionsFrame" then
+                    if Engine:_OwnOpenIsRecent() then
+                        -- Our open showed it: cloak it now, in this OnShow,
+                        -- so it never appears (the "popping" in game).
+                        Engine:_CloakProfessionsFrame()
+                    else
+                        Engine._tabDriven = false
+                        Engine:_LogEvent("ProfessionsFrame shown by the player: claim released")
+                    end
+                    return
+                end
                 if C_Timer and C_Timer.After then
                     C_Timer.After(0, function() Engine:HideForeignWindows() end)
                 else
@@ -1019,7 +1527,7 @@ end
 -- button reappears on every show, and show it immediately if the frame is
 -- already up (covers the handler-order race on the triggering event).
 function Engine:EnsureToggleHook()
-    for _, name in ipairs({ "TradeSkillFrame", "CraftFrame" }) do
+    for _, name in ipairs({ "TradeSkillFrame", "CraftFrame", "ProfessionsFrame" }) do
         local frame = _G[name]
         if frame and not self._hookedFrames[frame] then
             self._hookedFrames[frame] = true
@@ -1038,6 +1546,11 @@ end
 --                    tab (toolbar/scroll) on every craft tick.
 -- ---------------------------------------------------------------------------
 function Engine:FireUpdate()
+    -- The profession this redraw shows (WoW Forever): a later list update
+    -- naming a different one is a switch that has not been drawn yet.
+    if self:UsesModernAPI() then
+        self._drawnProf = profName(addon:GetModernOpenProfession())
+    end
     if addon.CraftingTab and addon.CraftingTab.OnSessionChanged then
         addon.CraftingTab:OnSessionChanged()
     end

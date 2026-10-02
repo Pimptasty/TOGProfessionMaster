@@ -260,50 +260,59 @@ function addon.Spell.GetCooldown(spellId)
     return nil
 end
 
--- RESOLUTION ORDER, and a stated EXCEPTION to the item rule above. addon.Item
--- prefers the NAMESPACED function. The spell helpers below prefer the BARE one
--- (GetCooldown is the one namespaced-first spell helper, because its bare form
--- is the name Forever dropped). Two reasons, and the second is a TEST-
--- ENVIRONMENT reason, not a client one: (1) the bare spell functions are the
--- real functions on the classic clients, never deprecation fallbacks there;
--- (2) the offline harness has no C_Spell stand-in, so every spec stubs the bare
--- name, and namespaced-first would leave the C_Spell branch -- the one Forever
--- runs -- the only one exercised in game and none offline. A C_Spell stand-in
--- is requested from WoWAPITesting; when it lands, this order is to be revisited
--- rather than kept by habit.
+-- RESOLUTION ORDER: NAMESPACED FIRST, as addon.Item does. Until 2026-09-29 the
+-- helpers below preferred the BARE name, for a test-environment reason only:
+-- the offline harness had no C_Spell, so specs stubbed the bare name and the
+-- C_Spell branch (the one Forever runs) was never exercised offline. The
+-- harness now installs C_Spell / C_SpellBook on every flavour and has a Forever
+-- build (WoWAPITesting a7675ce, inbox a092c095), so that reason is gone.
+-- C_Spell.GetSpellInfo / GetSpellTexture / GetSpellLink / GetSpellCooldown are
+-- documented on Classic Era and on Classic (Cata/MoP) too
+-- (SpellDocumentation.lua:108/190/221/357 in both trees), so every client takes
+-- the same branch. The bare name stays as the fallback for a client without
+-- the namespace.
 --
--- GetSpellInfo / GetSpellTexture / GetSpellLink. Bare FIRST: it is the real
--- function on the classic clients (and what the offline specs stub by name).
--- WoW Forever has no bare GetSpellInfo -- in game 2026-09-27, "attempt to call a
--- nil value" from GuildTab -- and its transition guide moves all three into
--- C_Spell. C_Spell.GetSpellInfo answers a SpellInfo table
--- (SpellDocumentation.lua:1166); this unpacks it into the classic list
--- `name, rank, icon, castTime, minRange, maxRange, spellID` (rank is nil there).
+-- GetInfo unpacks C_Spell's SpellInfo table (SpellDocumentation.lua:1166 in the
+-- forever tree) into the classic list `name, rank, icon, castTime, minRange,
+-- maxRange, spellID`. RANK IS NIL on this path: the table carries no rank. No
+-- caller reads the second return (checked 2026-09-29: every call site takes the
+-- name, the icon, or whether the spell exists at all). Both forms return nil for
+-- an unknown spell ("Returns nil if spell is not found"), which RecipeGate's Era
+-- filter depends on.
 function addon.Spell.GetInfo(spellId)
+    local ns = C_Spell and C_Spell.GetSpellInfo
+    if ns then
+        if not spellId then return nil end
+        local info = ns(spellId)
+        if type(info) ~= "table" then return nil end
+        return info.name, nil, info.iconID, info.castTime, info.minRange, info.maxRange, info.spellID
+    end
     local bare = _G.GetSpellInfo
     ---@diagnostic disable-next-line: redundant-parameter
     if bare then return bare(spellId) end
-    local ns = C_Spell and C_Spell.GetSpellInfo
-    if not (ns and spellId) then return nil end
-    local info = ns(spellId)
-    if type(info) ~= "table" then return nil end
-    return info.name, nil, info.iconID, info.castTime, info.minRange, info.maxRange, info.spellID
+    return nil
 end
 
 function addon.Spell.GetTexture(spellId)
+    local ns = C_Spell and C_Spell.GetSpellTexture
+    if ns then
+        if not spellId then return nil end
+        return ns(spellId)
+    end
     local bare = _G.GetSpellTexture
     if bare then return bare(spellId) end
-    local ns = C_Spell and C_Spell.GetSpellTexture
-    if not (ns and spellId) then return nil end
-    return ns(spellId)
+    return nil
 end
 
 function addon.Spell.GetLink(spellId)
+    local ns = C_Spell and C_Spell.GetSpellLink
+    if ns then
+        if not spellId then return nil end
+        return ns(spellId)
+    end
     local bare = _G.GetSpellLink
     if bare then return bare(spellId) end
-    local ns = C_Spell and C_Spell.GetSpellLink
-    if not (ns and spellId) then return nil end
-    return ns(spellId)
+    return nil
 end
 
 -- Does this client have the CLASSIC trade-skill window API the scanner and the
@@ -319,19 +328,73 @@ function addon:HasClassicTradeSkillAPI()
        and _G.GetTradeSkillInfo ~= nil
 end
 
--- IsSpellKnown(spellId, isPet). The bare function is the real one on the
--- classic clients; on WoW Forever it is only a deprecation fallback
--- (Deprecated_SpellBook.lua:16, behind loadDeprecationFallbacks, off by
--- default), so there this does what that fallback does:
+-- WoW Forever's trade-skill API: C_TradeSkillUI, used ONLY where the classic
+-- globals above are absent, so no classic client ever takes this path. The
+-- classic globals are not in Forever's source tree at all, not even as
+-- deprecation fallbacks; its own Professions UI reads and crafts through
+-- C_TradeSkillUI (Blizzard_Professions.lua:847, Blizzard_ProfessionsTransaction
+-- .lua:352). The Scanner and the Crafting engine both branch on this.
+function addon:HasModernTradeSkillAPI()
+    if self:HasClassicTradeSkillAPI() then return false end
+    return C_TradeSkillUI ~= nil and C_TradeSkillUI.GetRecipeInfo ~= nil
+end
+
+-- The open profession on the modern API, as a ProfessionInfo table
+-- (professionName, skillLevel, maxSkillLevel, professionID, parent* fields;
+-- TradeSkillUITypesDocumentation.lua:361-377), or nil when none is open.
+-- Blizzard's own read (Professions.GetProfessionInfo, Blizzard_Professions.lua
+-- :1665) takes the child profession and falls back to the base one when the
+-- child's id is 0.
+function addon:GetModernOpenProfession()
+    local T = C_TradeSkillUI
+    if not T then return nil end
+    local child = T.GetChildProfessionInfo and T.GetChildProfessionInfo()
+    if child and child.professionID and child.professionID ~= 0
+       and child.professionName and child.professionName ~= "" then
+        return child
+    end
+    local base = T.GetBaseProfessionInfo and T.GetBaseProfessionInfo()
+    if base and base.professionName and base.professionName ~= "" then return base end
+    return nil
+end
+
+-- The learned recipe ids of the open profession on the modern API.
+-- GetAllRecipeIDs (the unfiltered retail call) FIRST: GetFilteredRecipeIDs,
+-- the one Blizzard's list uses (Blizzard_Professions.lua:847), honours the
+-- player's search box and filters in Blizzard's window, and a partial list fed
+-- to the Scanner would drop real recipes from this character's crafter set.
+-- Whether Forever has GetAllRecipeIDs is NOT verified (its source tree never
+-- calls it), so the filtered call is the fallback. Dummy and gathering entries
+-- are not crafts.
+function addon:GetModernLearnedRecipeIDs()
+    local T = C_TradeSkillUI
+    local listFn = T and (T.GetAllRecipeIDs or T.GetFilteredRecipeIDs)
+    local out = {}
+    if not listFn then return out end
+    for _, id in ipairs(listFn() or {}) do
+        local r = T.GetRecipeInfo(id)
+        if r and r.learned and not r.isDummyRecipe and not r.isGatheringRecipe then
+            out[#out + 1] = id
+        end
+    end
+    return out
+end
+
+-- IsSpellKnown(spellId, isPet). The bare function is a DEPRECATION FALLBACK on
+-- Classic Era as well as on WoW Forever -- Blizzard_DeprecatedSpellBook/
+-- Deprecated_SpellBook.lua:16 in the classic_era tree -- so it is nil wherever
+-- loadDeprecationFallbacks is off. (This comment said "the real one on the
+-- classic clients" until 2026-09-29; the classic_era tree says otherwise.) So
+-- this does what that fallback's body does, namespaced FIRST:
 -- C_SpellBook.IsSpellInSpellBook(id, bank, includeOverrides = false).
 function addon.Spell.IsKnown(spellId, isPet)
-    local bare = _G.IsSpellKnown
-    if bare then return bare(spellId, isPet) end
     local sb = C_SpellBook and C_SpellBook.IsSpellInSpellBook
     local banks = Enum and Enum.SpellBookSpellBank
     if sb and banks then
         return sb(spellId, isPet and banks.Pet or banks.Player, false) and true or false
     end
+    local bare = _G.IsSpellKnown
+    if bare then return bare(spellId, isPet) and true or false end
     return false
 end
 
@@ -619,8 +682,84 @@ function addon.Bank.RequestAllowance(itemId, bankName, bankCount, totalStock)
     return math.max(1, math.floor(totalStock * pct / 100)), pct, nil, totalStock
 end
 
--- Persistent bank-request dialog shared across all UI callers (lazy-created).
+-- The bank-request dialog: one LibAceGUIWidgets form dialog (MINOR 36, TOGPM
+-- contract 6cf3b4e4) for every [Bank] button, built on first use. Its rows are
+-- the item, the banker and the quantity; the hint carries the stock line, a
+-- note under the quantity the "/ max N", and the body TOGBank's shop-order
+-- line while its shop is on. The fields the rest of this file reads keep the
+-- names the hand-built dialog gave them (qtyBox, sendBtn, stockLbl, maxLbl,
+-- shopLbl).
+local ROW_ITEM, ROW_BANK, ROW_QTY = 1, 2, 3
 local _bankDialog
+
+local function bankLabel(b)
+    return (b.name:match("^([^%-]+)") or b.name) .. " (" .. b.count .. ")"
+end
+
+local function buildBankDialog()
+    local d
+    d = addon.W:CreateFormDialog({
+        name  = "TOGPMBankRequestDialog",
+        title = L["BankDialogTitle"],
+        -- Built with a hint and a body so the lines they back always exist;
+        -- each open sets or hides them.
+        hint  = " ",
+        body  = " ",
+        rows  = {
+            -- The item row's hover and click are TOGPM's own (LibAceGUIWidgets
+            -- MINOR 39, TOGPM contract 1d7a76ba), so the [Bank] dialog keeps
+            -- hold-to-compare and a rebound chat-link modifier like every other
+            -- item in the addon. addon.ItemLink loads after this file, so it is
+            -- looked up when the event fires; before MINOR 39 the library
+            -- ignores these fields and keeps its built-in hover and click.
+            { kind = "item", label = "",
+              onEnter = function(button, link)
+                  local IL = addon.ItemLink
+                  if not IL then return end
+                  addon.Tooltip.Owner(button)
+                  IL.SetItem(GameTooltip, link)
+                  GameTooltip:Show()
+              end,
+              onLeave = function()
+                  local IL = addon.ItemLink
+                  if IL then IL.EndHover(GameTooltip) end
+                  GameTooltip:Hide()
+              end,
+              onClick = function(_, link)
+                  local IL = addon.ItemLink
+                  if IL then IL.Click(link) end
+              end },
+            { kind = "dropdown", label = L["BankDialogBanker"],
+              items = function()
+                  local out = {}
+                  for _, b in ipairs(d.currentBanks or {}) do
+                      out[#out + 1] = { text = bankLabel(b), value = b.name }
+                  end
+                  return out
+              end,
+              onChanged = function(value)
+                  d.selectedBank = value
+                  if d.applyLimit then d.applyLimit() end
+              end },
+            { label = L["BankDialogQty"], numeric = true, digitsOnly = true },
+        },
+        okText     = L["BankDialogSend"],
+        cancelText = L["BankDialogCancel"],
+        -- OK does not close the dialog by itself: Send decides, and a refusal
+        -- leaves what the player typed in place.
+        onAccept   = function() if d.send then d.send() end end,
+    })
+    d.itemRow  = d.fields[ROW_ITEM]
+    d.bankBox  = d.fields[ROW_BANK]
+    d.qtyBox   = d.fields[ROW_QTY]
+    d.qtyBox:SetMaxLetters(5)
+    d.sendBtn  = d.ok
+    d.stockLbl = d.hint
+    d.shopLbl  = d.body
+    d:SetNote(ROW_QTY, " ")
+    d.maxLbl   = d.notes[ROW_QTY]
+    return d
+end
 
 --- Open the "Request from Guild Bank" dialog.
 -- itemId   numeric item ID
@@ -628,7 +767,7 @@ local _bankDialog
 -- itemLink full hyperlink (shown in the dialog; may be nil)
 function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
     local TOG = _G["TOGBankClassic_Guild"]
-    if not TOG then return end
+    if not (TOG and addon.W) then return end
 
     local banksWithItem = addon.Bank.GetBanksWithItem(itemId)
     if #banksWithItem == 0 then
@@ -654,127 +793,13 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
     local totalStock = 0
     for _, b in ipairs(banksWithItem) do totalStock = totalStock + b.count end
 
-    if not _bankDialog then
-        local d = CreateFrame("Frame", "TOGPMBankRequestDialog", UIParent,
-            BackdropTemplateMixin and "BackdropTemplate" or nil)
-        d:SetSize(280, 165)
-        d:SetFrameStrata("DIALOG")
-        d:SetMovable(true)
-        d:EnableMouse(true)
-        d:RegisterForDrag("LeftButton")
-        d:SetScript("OnDragStart", function(f) f:StartMoving() end)
-        d:SetScript("OnDragStop",  function(f) f:StopMovingOrSizing() end)
-        if d.SetBackdrop then
-            d:SetBackdrop({
-                bgFile   = [[Interface\DialogFrame\UI-DialogBox-Background]],
-                edgeFile = [[Interface\DialogFrame\UI-DialogBox-Border]],
-                tile = true, tileSize = 32, edgeSize = 32,
-                insets = { left = 11, right = 12, top = 12, bottom = 11 },
-            })
-        end
-        table.insert(UISpecialFrames, "TOGPMBankRequestDialog")
-
-        local titleText = d:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        titleText:SetPoint("TOP", 0, -16)
-        titleText:SetText(L["BankDialogTitle"])
-
-        local closeBtn = CreateFrame("Button", nil, d, "UIPanelCloseButton")
-        closeBtn:SetPoint("TOPRIGHT", -5, -5)
-        closeBtn:SetScript("OnClick", function() d:Hide() end)
-
-        local itemBtn = CreateFrame("Button", nil, d)
-        itemBtn:SetPoint("TOPLEFT",  18, -36)
-        itemBtn:SetPoint("TOPRIGHT", -18, -36)
-        itemBtn:SetHeight(16)
-        local itemLbl = itemBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        itemLbl:SetAllPoints()
-        itemLbl:SetJustifyH("LEFT")
-        itemBtn:SetScript("OnEnter", function()
-            if d.currentItemLink then
-                addon.Tooltip.Owner(itemBtn)
-                addon.ItemLink.SetItem(GameTooltip, d.currentItemLink)
-                GameTooltip:Show()
-            end
-        end)
-        itemBtn:SetScript("OnLeave", function()
-            addon.ItemLink.EndHover(GameTooltip)
-            GameTooltip:Hide()
-        end)
-        -- Was a bare ChatEdit_InsertLink, which is deaf to a rebound CHATLINK
-        -- modifier and offers no ctrl-click dressing room.
-        itemBtn:SetScript("OnClick", function()
-            addon.ItemLink.Click(d.currentItemLink)
-        end)
-        d.itemLbl = itemLbl
-
-        local stockLbl = d:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        stockLbl:SetPoint("TOPLEFT", 18, -52)
-        stockLbl:SetTextColor(0.6, 0.6, 0.6)
-        d.stockLbl = stockLbl
-
-        local bankLbl = d:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        bankLbl:SetPoint("TOPLEFT", 18, -70)
-        bankLbl:SetText(L["BankDialogBanker"])
-        bankLbl:SetTextColor(0.8, 0.8, 0.8)
-        d.bankLbl = bankLbl
-
-        local bankDisplay = d:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        bankDisplay:SetPoint("LEFT", bankLbl, "RIGHT", 6, 0)
-        bankDisplay:SetJustifyH("LEFT")
-        d.bankDisplay = bankDisplay
-
-        local bankDropdown = CreateFrame("Frame", "TOGPMBankRequestDropdown", d, "UIDropDownMenuTemplate")
-        bankDropdown:SetPoint("LEFT", bankLbl, "RIGHT", -10, -2)
-        UIDropDownMenu_SetWidth(bankDropdown, 150)
-        d.bankDropdown = bankDropdown
-
-        local qtyLbl = d:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        qtyLbl:SetPoint("TOPLEFT", 18, -102)
-        qtyLbl:SetText(L["BankDialogQty"])
-        qtyLbl:SetTextColor(0.8, 0.8, 0.8)
-
-        local qtyBox = CreateFrame("EditBox", "TOGPMBankQtyBox", d, "InputBoxTemplate")
-        qtyBox:SetSize(50, 20)
-        qtyBox:SetPoint("LEFT", qtyLbl, "RIGHT", 6, 0)
-        qtyBox:SetAutoFocus(false)
-        qtyBox:SetNumeric(true)
-        qtyBox:SetMaxLetters(5)
-        d.qtyBox = qtyBox
-
-        local maxLbl = d:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        maxLbl:SetPoint("LEFT", qtyBox, "RIGHT", 8, 0)
-        maxLbl:SetTextColor(0.6, 0.6, 0.6)
-        d.maxLbl = maxLbl
-
-        -- TOGBank's shop-order line (estimate and who sets the final price),
-        -- shown only while its shop is on; the dialog grows to fit it.
-        local shopLbl = d:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        shopLbl:SetPoint("TOPLEFT", 18, -128)
-        shopLbl:SetWidth(244)
-        shopLbl:SetJustifyH("LEFT")
-        shopLbl:SetTextColor(0.9, 0.85, 0.55)
-        d.shopLbl = shopLbl
-
-        local sendBtn = CreateFrame("Button", nil, d, "UIPanelButtonTemplate")
-        sendBtn:SetSize(120, 22)
-        sendBtn:SetPoint("BOTTOMLEFT", 18, 14)
-        sendBtn:SetText(L["BankDialogSend"])
-        d.sendBtn = sendBtn
-
-        local cancelBtn = CreateFrame("Button", nil, d, "UIPanelButtonTemplate")
-        cancelBtn:SetSize(80, 22)
-        cancelBtn:SetPoint("BOTTOMRIGHT", -18, 14)
-        cancelBtn:SetText(L["BankDialogCancel"])
-        cancelBtn:SetScript("OnClick", function() d:Hide() end)
-
-        _bankDialog = d
-    end
-
+    _bankDialog = _bankDialog or buildBankDialog()
     local d = _bankDialog
     d.currentItemId   = itemId
     d.currentItemName = itemName
     d.currentBanks    = banksWithItem
     d.selectedBank    = banksWithItem[1].name
+    d.bankBox:SetValue(banksWithItem[1].name, bankLabel(banksWithItem[1]))
 
     -- The allowance is per bank, so it is recomputed whenever the banker changes
     -- -- and again at Send (keepQty), since an order filled or placed elsewhere
@@ -790,16 +815,19 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
         d.limitWhy       = why
         if not keepQty then d.qtyBox:SetText(tostring(math.min(1, max))) end
         if pct < 100 then
-            d.stockLbl:SetText(string.format("Bank stock: %d  |  Max requestable: %d (%d%%)",
-                base, max, pct))
+            d:SetHint(string.format("Bank stock: %d  |  Max requestable: %d (%d%%)", base, max, pct))
         else
-            d.stockLbl:SetText(string.format("Bank stock: %d", base))
+            d:SetHint(string.format("Bank stock: %d", base))
         end
-        d.maxLbl:SetText("/ max " .. max)
+        d:SetNote(ROW_QTY, "/ max " .. max)
     end
+    d.applyLimit = applyLimit
 
+    -- The item row shows a link. Without one (an item the client has not
+    -- cached), a plain item link built from the id still hovers and links.
     d.currentItemLink = itemLink
-    d.itemLbl:SetText(itemLink or itemName or ("Item #" .. tostring(itemId)))
+    d.itemRow:SetItem(itemLink or ("|Hitem:%d|h[%s]|h"):format(itemId, itemName or ("Item #" .. itemId)),
+        addon.Item.GetIcon(itemId))
     applyLimit()
 
     -- SHOP-NOFREE-001: while TOGBank's shop is on, AddRequest refuses any order
@@ -807,46 +835,12 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
     -- built for this button on thread 17a1f2c9) is TOGBank's one builder: merge
     -- every field but `prompt` into the request, show `prompt`. Taken at open so
     -- the estimate written is the one the player was shown, as TOGBank's dialog
-    -- does; nil while the shop is off or on a TOGBank without the API.
+    -- does; nil while the shop is off or on a TOGBank without the API. The
+    -- dialog's height follows the line.
     d.shopFields = TOG.ShopOrderFields and TOG:ShopOrderFields(itemId) or nil
-    if d.shopFields and d.shopFields.prompt then
-        d.shopLbl:SetText(d.shopFields.prompt)
-        d.shopLbl:Show()
-        d:SetHeight(205)
-    else
-        d.shopLbl:SetText("")
-        d.shopLbl:Hide()
-        d:SetHeight(165)
-    end
+    d:SetBody(d.shopFields and d.shopFields.prompt or nil)
 
-    if #banksWithItem == 1 then
-        local n = banksWithItem[1].name:match("^([^%-]+)") or banksWithItem[1].name
-        d.bankDisplay:SetText(n .. " (" .. banksWithItem[1].count .. ")")
-        d.bankDisplay:Show()
-        d.bankDropdown:Hide()
-    else
-        d.bankDisplay:Hide()
-        local banks = banksWithItem
-        UIDropDownMenu_Initialize(d.bankDropdown, function(_, level)
-            for _, b in ipairs(banks) do
-                local info  = UIDropDownMenu_CreateInfo()
-                local n     = b.name:match("^([^%-]+)") or b.name
-                info.text   = n .. " (" .. b.count .. ")"
-                info.value  = b.name
-                info.func   = function()
-                    d.selectedBank = b.name
-                    UIDropDownMenu_SetText(d.bankDropdown, info.text)
-                    applyLimit()
-                end
-                UIDropDownMenu_AddButton(info, level)
-            end
-        end)
-        local fn = banksWithItem[1].name:match("^([^%-]+)") or banksWithItem[1].name
-        UIDropDownMenu_SetText(d.bankDropdown, fn .. " (" .. banksWithItem[1].count .. ")")
-        d.bankDropdown:Show()
-    end
-
-    d.sendBtn:SetScript("OnClick", function()
+    d.send = function()
         local reqTOG = _G["TOGBankClassic_Guild"]
         if not reqTOG then return end
         local qty = tonumber(d.qtyBox:GetText()) or 0
@@ -892,18 +886,23 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
             DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444[TOGPM] Request failed. "
                 .. (why or "Check that TOGBankClassic is synced.") .. "|r")
         end
-    end)
+    end
 
-    -- Snap to top-right of the main addon window each time we open.
+    -- Below the caller's anchor when it gave one, else beside the main window
+    -- (the form dialog's default: its TOPLEFT at the owner's TOPRIGHT, 4 px
+    -- over), else centred.
     local mainWowFrame = addon.MainWindow
                       and addon.MainWindow.frame
                       and addon.MainWindow.frame.frame
-    d:ClearAllPoints()
-    if anchorBelow and anchorBelow:IsShown() then
-        d:SetPoint("TOPLEFT", anchorBelow, "BOTTOMLEFT", 0, -4)
+    -- Only a frame anchors: a caller once passed a stray number here
+    -- (select() spreading into this slot), and the dialog must still open.
+    if type(anchorBelow) == "table" and anchorBelow.IsShown and anchorBelow:IsShown() then
+        d:SetAnchor(anchorBelow, "TOPLEFT", "BOTTOMLEFT", 0, -4)
     elseif mainWowFrame and mainWowFrame:IsShown() then
-        d:SetPoint("TOPLEFT", mainWowFrame, "TOPRIGHT", 4, 0)
+        d:SetAnchor(mainWowFrame)
     else
+        d:SetAnchor(nil)
+        d:ClearAllPoints()
         d:SetPoint("CENTER")
     end
 

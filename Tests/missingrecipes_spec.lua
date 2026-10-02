@@ -337,3 +337,202 @@ describe("BuildMissingList -- skill-rank books", function()
 		assert.same({ A, B, C }, listAt(600))
 	end)
 end)
+
+-- [Where]: the row button that opens LibItemDB's "Where to get it" window on the
+-- recipe scroll (Discord request 2026-09-29, "lead you to where patterns are
+-- sold/dropped"). LibItemDB is stubbed: the window and its Questbook hand-off
+-- are ItemDB's, specced there; this pins when TOGPM offers the button and what
+-- it hands over.
+describe("the [Where] button", function()
+	local SCROLL = 6663
+	local savedIdb, opened, built
+
+	-- A LibItemDB that knows `nRows` places for SCROLL and records what it opens.
+	local function itemDB(nRows, opts)
+		opts = opts or {}
+		built = 0
+		local idb = {
+			GetName = function() return "Recipe: Elixir of Lion's Strength" end,
+			GetLink = function() return nil end,
+			GetQuality = function() return nil end,
+		}
+		if not opts.old then
+			idb.BuildWhereRows = function(_, id)
+				built = built + 1
+				local rows = {}
+				for i = 1, (id == SCROLL and nRows or 0) do rows[i] = { kind = "Vendor" } end
+				return rows
+			end
+			idb.OpenWhereWindow = function(_, id) opened[#opened + 1] = id end
+		end
+		ns._itemDB = idb
+	end
+
+	local function whereColumn()
+		assert.is_truthy(ns.W and ns.W.RowList, "LibAceGUIWidgets RowList is not loaded in this env")
+		local list = M:BuildRowList(CreateFrame("Frame", nil, UIParent))
+		for _, col in ipairs(list.columns) do
+			if col.key == "whereBtn" then return col end
+		end
+		error("the Missing Recipes list has no [Where] column")
+	end
+
+	before_each(function()
+		savedIdb, opened = ns._itemDB, {}
+	end)
+
+	after_each(function()
+		ns._itemDB = savedIdb
+	end)
+
+	it("is offered for a recipe scroll LibItemDB knows a source for", function()
+		itemDB(2)
+		assert.is_true(whereColumn().show({ spellId = B, itemId = SCROLL }))
+	end)
+
+	it("is not offered for a trainer-taught recipe, which has no scroll", function()
+		itemDB(2)
+		assert.is_false(whereColumn().show({ spellId = A }))
+	end)
+
+	it("is not offered when LibItemDB knows no source for the scroll", function()
+		-- WoW Forever's ItemDB ships no places data; a button that opens
+		-- "No known source" is a dead end.
+		itemDB(0)
+		assert.is_false(whereColumn().show({ spellId = B, itemId = SCROLL }))
+	end)
+
+	it("is not offered by a LibItemDB without the window, or with no LibItemDB", function()
+		itemDB(2, { old = true })
+		assert.is_false(whereColumn().show({ spellId = B, itemId = SCROLL }))
+		ns._itemDB = false
+		assert.is_false(whereColumn().show({ spellId = B, itemId = SCROLL }))
+	end)
+
+	it("counts sources with the window's own faction filter", function()
+		-- The window hides the other faction's vendors by default; a scroll only
+		-- they sell must not get a button that opens an empty list.
+		itemDB(2)
+		local idb, asked = ns._itemDB, "unset"
+		idb.GetWhereOwnFactionOnly = function() return true end
+		idb.BuildWhereRows = function(_, _, faction) asked = faction; return {} end
+		-- The env's faction seam (reset to its default at every install).
+		env.faction = "Alliance"
+		assert.is_false(whereColumn().show({ spellId = B, itemId = SCROLL }))
+		assert.equal("Alliance", asked)
+	end)
+
+	it("asks LibItemDB once per row, not on every paint", function()
+		itemDB(2)
+		local col, entry = whereColumn(), { spellId = B, itemId = SCROLL }
+		col.show(entry)
+		col.show(entry)
+		col.show(entry)
+		assert.equal(1, built)
+	end)
+
+	it("opens LibItemDB's window on the scroll item, not the recipe spell", function()
+		itemDB(2)
+		whereColumn().onClick({ spellId = B, itemId = SCROLL })
+		assert.same({ SCROLL }, opened)
+	end)
+
+	it("carries its own tooltip", function()
+		local title, body = whereColumn().tip({ spellId = B, itemId = SCROLL })
+		assert.equal(L["TooltipWhereTitle"], title)
+		assert.equal(L["TooltipWhereDescScroll"], body)
+	end)
+end)
+
+-- [Guide]: one click hands the best place for the scroll to Questbook through
+-- LibItemDB:WhereTrack (Discord request 2026-09-29; operator 2026-10-01: "give
+-- us the guide route/cancel route inside TOGPM too"). Questbook is optional:
+-- without it there is no route, so no button.
+describe("the [Guide] button", function()
+	local SCROLL = 6663
+	local AceAddon = LibStub("AceAddon-3.0")
+	local savedIdb, savedPrint, savedMap, tracked, printed
+
+	local function place(kind, mapID, chance, name)
+		return { kind = kind, name = name or kind, zone = "Zone " .. mapID, chance = chance,
+		         uiMapID = mapID, points = { { x = 50, y = 50 } } }
+	end
+
+	local function itemDB(rows, trackResult)
+		ns._itemDB = {
+			GetName = function() return "Recipe" end,
+			GetLink = function() return nil end,
+			GetQuality = function() return nil end,
+			BuildWhereRows = function(_, id) return id == SCROLL and rows or {} end,
+			OpenWhereWindow = function() end,
+			WhereTrack = function(_, row) tracked[#tracked + 1] = row; return trackResult ~= false end,
+			WhereStopTracking = function() return true end,
+		}
+	end
+
+	local function guideColumn()
+		local list = M:BuildRowList(CreateFrame("Frame", nil, UIParent))
+		for _, col in ipairs(list.columns) do
+			if col.key == "guideBtn" then return col end
+		end
+		error("the Missing Recipes list has no [Guide] column")
+	end
+
+	before_each(function()
+		savedIdb, savedPrint, savedMap = ns._itemDB, ns.Print, _G.C_Map
+		tracked, printed = {}, {}
+		ns.Print = function(_, msg) printed[#printed + 1] = msg end
+		AceAddon.addons["Questbook"] = { TrackPlace = function() end }
+		_G.C_Map = { GetBestMapForUnit = function() return 1429 end }
+	end)
+
+	after_each(function()
+		ns._itemDB, ns.Print, _G.C_Map = savedIdb, savedPrint, savedMap
+		AceAddon.addons["Questbook"] = nil
+	end)
+
+	it("is offered with Questbook and a place that has coordinates", function()
+		itemDB({ place("Vendor", 1411) })
+		assert.is_true(guideColumn().show({ spellId = B, itemId = SCROLL }))
+	end)
+
+	it("is not offered without Questbook", function()
+		AceAddon.addons["Questbook"] = nil
+		itemDB({ place("Vendor", 1411) })
+		assert.is_false(guideColumn().show({ spellId = B, itemId = SCROLL }))
+	end)
+
+	it("is not offered when no place has coordinates", function()
+		-- A quest or crafted source has a zone name but no point to route to.
+		itemDB({ { kind = "Quest", name = "", zone = "Elwynn Forest" } })
+		assert.is_false(guideColumn().show({ spellId = B, itemId = SCROLL }))
+	end)
+
+	it("prefers a place in the player's zone, then a vendor, then the best drop", function()
+		local far, vendor, here = place("Drop", 1411, 5), place("Vendor", 1412), place("Drop", 1429, 1)
+		assert.equal(here, M:PickGuideRow({ far, vendor, here }))
+		assert.equal(vendor, M:PickGuideRow({ far, vendor }))
+		local better = place("Drop", 1413, 9)
+		assert.equal(better, M:PickGuideRow({ far, better }))
+	end)
+
+	it("hands the chosen place to LibItemDB and says where", function()
+		local vendor = place("Vendor", 1412, nil, "Kendor Kabonka")
+		itemDB({ place("Drop", 1411, 5), vendor })
+		guideColumn().onClick({ spellId = B, itemId = SCROLL })
+		assert.same({ vendor }, tracked)
+		assert.equal(L["GuideStartedFormat"]:format("Kendor Kabonka, Zone 1412"), printed[1])
+	end)
+
+	it("says so when Questbook refuses the place", function()
+		itemDB({ place("Vendor", 1412) }, false)
+		assert.is_false(M:Guide({ spellId = B, itemId = SCROLL }))
+		assert.equal(L["GuideFailed"], printed[1])
+	end)
+
+	it("stops the route through LibItemDB", function()
+		itemDB({})
+		assert.is_true(M:StopGuide())
+		assert.equal(L["GuideStopped"], printed[1])
+	end)
+end)

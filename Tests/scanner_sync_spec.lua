@@ -49,6 +49,13 @@ setup(function()
 	S  = env.loadModule("Scanner.lua").Scanner
 end)
 
+-- LOCAL, and declared before the before_each that calls it. It was a global
+-- function until 2026-10-04, which kept this file's Scanner copy (and through
+-- it a LibGuildRoster instance) reachable from _G for the rest of the run.
+local function subsyncReset()
+	S._subsyncPeers = nil
+end
+
 before_each(function()
 	env.install()
 	env.serverTime = NOW
@@ -58,12 +65,8 @@ before_each(function()
 	DS = recorder()
 	S.DS = DS
 	S.GuildRoster = ns.Scanner and ns.Scanner.GuildRoster
-	Scanner_subsyncReset()
+	subsyncReset()
 end)
-
-function Scanner_subsyncReset()
-	S._subsyncPeers = nil
-end
 
 describe("BuildLeafPayload — cooldowns", function()
 	it("ships absolute expiry, flagged as the absolute format", function()

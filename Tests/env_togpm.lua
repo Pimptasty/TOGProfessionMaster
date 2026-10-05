@@ -183,6 +183,19 @@ function M.install()
 	-- nil, as in the client, instead of the hollow model's truthy no-op that
 	-- makes every `if frame.SetResizeBounds then` feature test true.
 	frames.reset()
+	-- AceTimer-3.0 is loaded once for the suite and records every scheduled timer
+	-- in AceTimer.activeTimers until it fires or is cancelled. The reset above has
+	-- just thrown away every pending C_Timer entry (wow.reset wipes wow.timers),
+	-- so a timer still listed there can never fire again -- and its closure, often
+	-- over a module copy a spec file loaded (Scanner's broadcast debounce, a
+	-- DeltaSync host), stayed alive for the rest of the run: 46 such timers by the
+	-- last file on 2026-10-04. Wiped IN PLACE: AceTimer keeps the table as a
+	-- file-scope upvalue.
+	local AceTimer = LibStub and LibStub("AceTimer-3.0", true)
+	local active = AceTimer and AceTimer.activeTimers
+	if type(active) == "table" then
+		for id in pairs(active) do active[id] = nil end
+	end
 	-- Then the guild model: it owns the roster iteration APIs, the chat format
 	-- strings, and a clean member list per test. resetState() also reinstalls
 	-- every global it owns, which is what keeps one spec from corrupting a later
@@ -759,7 +772,17 @@ local profDB
 --- or difficulty without loading all fourteen professions on every suite run.
 --- Returns nil if the sibling ProfessionDB install is missing.
 function M.professionDB()
-	if profDB ~= nil then return profDB or nil end
+	if profDB ~= nil then
+		-- Production code finds the library through LibStub, and other specs
+		-- swap stubs into (or clear) that slot. Put the real one back, so the
+		-- caller and the code under test see the same library -- price_spec
+		-- priced against a stub in a shuffled run (seed 1791165681).
+		if profDB then
+			LibStub.libs["LibProfessionDB-1.0"] = profDB
+			LibStub.minors["LibProfessionDB-1.0"] = profDB.MINOR or LibStub.minors["LibProfessionDB-1.0"]
+		end
+		return profDB or nil
+	end
 	M.boot()
 	if not libs.available("LibProfessionDB-1.0") then profDB = false; return nil end
 	libs.load("LibProfessionDB-1.0")

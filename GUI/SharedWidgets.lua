@@ -326,7 +326,14 @@ function ItemLink.ScrollHeader(profId, recipeId, recipeName, profName)
     local skill = meta and meta.requiredSkill
     local requires
     if skill and skill > 1 and profName and profName ~= "" then
-        requires = ("Requires %s (%d)"):format(profName, skill)
+        -- A requiredSkill ProfessionDB BORROWED from another flavour (WoW
+        -- Forever carries Vanilla's trainer values, MINOR 13) is shown but
+        -- marked unconfirmed -- the operator's direction. Inert elsewhere.
+        if addon.IsBorrowedValue and addon.IsBorrowedValue(recipeId, "requiredSkill") then
+            requires = ("Requires %s (%d, %s)"):format(profName, skill, addon.UnconfirmedText())
+        else
+            requires = ("Requires %s (%d)"):format(profName, skill)
+        end
     end
 
     -- Fourth return: whether THIS character meets that skill requirement.
@@ -338,11 +345,12 @@ function ItemLink.ScrollHeader(profId, recipeId, recipeName, profName)
     -- than crying wolf in red on a profession we simply have not scanned.
     local metRequirement = true
     if skill and skill > 1 then
-        local gdb     = addon.GetGuildDb and addon:GetGuildDb()
         local charKey = addon.GetCharacterKey and addon:GetCharacterKey()
-        local mine    = gdb and gdb.skills and charKey and gdb.skills[charKey]
-                        and gdb.skills[charKey][profId]
-        if mine and mine.skillRank then metRequirement = mine.skillRank >= skill end
+        -- Per recipe, so a Retail recipe is checked against its own expansion
+        -- line (Compat.lua GetRecipeSkillRank); nil = cannot say = met.
+        local rank    = charKey and addon.GetRecipeSkillRank
+                        and addon:GetRecipeSkillRank(charKey, profId, meta)
+        if rank then metRequirement = rank >= skill end
     end
 
     -- Third return: the scroll's own "Use: Teaches you how to craft X." line.
@@ -368,17 +376,37 @@ end
 --- offline for everything else, and GetItemInfo is last because it returns nil
 --- for a cold item and would otherwise mask ItemDB's shipped answer.
 --- @return string|nil hex like "ffa335ee"
+-- The colour code GetItemQualityColor's 4th return gives for `quality`, as
+-- "ffRRGGBB". Accepted with or without a leading "|c": the shape is not
+-- verified on Retail, where names rendered white (operator, 2026-10-04).
+local function hexForQuality(quality)
+    local Item = addon.Item
+    if not (Item and quality) then return nil end
+    local _, _, _, hex = Item.GetQualityColor(quality)
+    if type(hex) ~= "string" then return nil end
+    hex = hex:gsub("^|c", ""):lower()
+    if hex:match("^%x%x%x%x%x%x%x%x$") then return hex end
+    return nil
+end
+
+-- A link's colour: the classic "|cffRRGGBB" form, or Retail's quality form
+-- "|cnIQ4:" (the item quality as a number), which carries no hex at all.
+local function linkHex(link)
+    if type(link) ~= "string" then return nil end
+    local hex = link:match("|c(ff%x%x%x%x%x%x)|H")
+    if hex then return hex end
+    local q = tonumber(link:match("|cnIQ(%d+):"))
+    return q and hexForQuality(q) or nil
+end
+
 function ItemLink.QualityHex(itemLink, itemId)
-    if type(itemLink) == "string" then
-        local hex = itemLink:match("|c(ff%x%x%x%x%x%x)|H")
-        if hex then return hex end
-    end
+    local hex = linkHex(itemLink)
+    if hex then return hex end
     if type(itemId) ~= "number" then return nil end
 
     local idb = addon.GetItemDB and addon:GetItemDB()
     if idb and idb.GetLink then
-        local link = idb:GetLink(itemId)
-        local hex = type(link) == "string" and link:match("|c(ff%x%x%x%x%x%x)|H")
+        hex = linkHex(idb:GetLink(itemId))
         if hex then return hex end
     end
 
@@ -401,12 +429,7 @@ function ItemLink.QualityHex(itemLink, itemId)
     local Item = addon.Item
     if Item then
         local _, _, quality = Item.GetInfo(itemId)
-        if quality then
-            local _, _, _, hex = Item.GetQualityColor(quality)
-            -- The fourth return is already "ffRRGGBB" on Classic; guard anyway
-            -- rather than trusting the shape.
-            if type(hex) == "string" and hex:match("^ff%x%x%x%x%x%x$") then return hex end
-        end
+        if quality then return hexForQuality(quality) end
     end
     return nil
 end
@@ -435,6 +458,8 @@ ItemLink.SOURCE_ORDER = { "vendor", "drop", "quest", "crafted", "container", "fi
 --- @return string|nil difficulty  the four colour-coded breakpoints, e.g. the
 ---         `FormatSkillTiers` string "300 320 330 340" in orange/yellow/green/grey
 --- @return table|nil  sources     localized labels, in `SOURCE_ORDER`, or nil
+--- @return boolean     sourcesBorrowed  the sources are another flavour's, borrowed
+---         by ProfessionDB (WoW Forever) -- shown, marked unconfirmed
 ---
 --- **`sources` is keyed by RECIPE SPELL, not by item, and that is the whole
 --- reason this reads `addon.sourceDB` rather than `LibItemDB:GetSources`.** An
@@ -452,12 +477,13 @@ ItemLink.SOURCE_ORDER = { "vendor", "drop", "quest", "crafted", "container", "fi
 --- data. Same reasoning as the `Requires` line, which omits rather than printing
 --- a number it cannot stand behind.
 function ItemLink.RecipeDetails(profId, recipeId)
-    if not profId or not recipeId then return nil, nil end
+    if not profId or not recipeId then return nil, nil, false end
 
     local difficulty
     local meta = addon.GetRecipeMeta and addon:GetRecipeMeta(profId, recipeId)
     if meta and (meta.difficulty or meta.requiredSkill) and addon.FormatSkillTiers then
-        local tiers = addon.FormatSkillTiers(meta.difficulty, meta.requiredSkill)
+        -- recipeId so a borrowed requiredSkill (Forever) cannot anchor the tiers.
+        local tiers = addon.FormatSkillTiers(meta.difficulty, meta.requiredSkill, recipeId)
         -- FormatSkillTiers answers "-" when it has nothing worth printing; that
         -- is a placeholder for a table cell, not something to head a block with.
         if tiers and tiers ~= "-" then difficulty = tiers end
@@ -480,7 +506,38 @@ function ItemLink.RecipeDetails(profId, recipeId)
         end
     end
 
-    return difficulty, sources
+    -- Third return: the sources were BORROWED from another flavour (WoW Forever
+    -- carries Vanilla's, ProfessionDB MINOR 13) and the block marks them
+    -- unconfirmed. Only meaningful when there are sources to mark.
+    local sourcesBorrowed = sources ~= nil and addon.IsBorrowedValue ~= nil
+                            and addon.IsBorrowedValue(recipeId, "sources") ~= nil
+
+    return difficulty, sources, sourcesBorrowed
+end
+
+--- A recipe the lists show only because its "never implemented" flag was
+--- BORROWED from another flavour (RecipeGate:IsUnconfirmed, WoW Forever) may not
+--- exist in this game. These two render that, the same way every other borrowed
+--- value is rendered: shown, with addon.UnconfirmedText() after it.
+---
+--- `RowSuffix` is for a row's name cell; the caller works out `unconfirmed` once
+--- per entry at list-build time, so a repaint costs a nil test and nothing more.
+--- Plain text, no colour escape, like the other marks.
+function ItemLink.UnconfirmedRowSuffix(unconfirmed)
+    if not unconfirmed then return "" end
+    return " (" .. addon.UnconfirmedText() .. ")"
+end
+
+--- The row tooltip's line for the same recipe. Adds nothing for a confirmed
+--- recipe, so a caller can invoke it unconditionally. Not part of the recipe-
+--- detail block on purpose: that block is switched off by the "never" setting
+--- and omits itself when it has nothing to say, and this warning must not
+--- vanish with it.
+--- @return boolean whether the line was added
+function ItemLink.AppendUnconfirmed(tooltip, unconfirmed)
+    if not unconfirmed or not tooltip or not tooltip.AddLine then return false end
+    tooltip:AddLine(L["UnconfirmedRecipe"], 1, 0.5, 0.25, true)
+    return true
 end
 
 --- Which of YOUR characters know the profession but not this recipe.
@@ -625,7 +682,7 @@ function ItemLink.AppendRecipeDetails(tooltip, profId, recipeId)
     -- start of every hover, so a genuinely new hover still renders.
     if tooltip._togpmRecipeBlock then return false end
 
-    local difficulty, sources = ItemLink.RecipeDetails(profId, recipeId)
+    local difficulty, sources, sourcesBorrowed = ItemLink.RecipeDetails(profId, recipeId)
     local unlearned = ItemLink.UnlearnedBy(profId, recipeId)
     -- `vendorPrice` was a fourth term here. It has to come OUT of this test as
     -- well as out of the render below: leaving it in would let a recipe whose
@@ -648,7 +705,13 @@ function ItemLink.AppendRecipeDetails(tooltip, profId, recipeId)
     end
 
     if sources then
-        BlockLine(tooltip, L["TooltipSources"])
+        -- Borrowed sources are shown, marked on the heading rather than on each
+        -- kind, so the mark is said once.
+        if sourcesBorrowed then
+            BlockLine(tooltip, L["TooltipSources"] .. " (" .. addon.UnconfirmedText() .. ")")
+        else
+            BlockLine(tooltip, L["TooltipSources"])
+        end
         for _, label in ipairs(sources) do
             -- A single localized kind word — see RecipeDetails. Short, and
             -- wrapped only so every line in the block goes through one helper.

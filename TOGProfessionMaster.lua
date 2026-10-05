@@ -962,10 +962,12 @@ addon:RebuildLocalizedTables()  -- initial population from current L state
 -- where the flags are guaranteed populated.
 addon.PROF_AVAILABILITY = {
     -- Jewelcrafting (TBC+)
-    [755] = function() return addon.isTBC   or addon.isWrath or addon.isCata or addon.isMoP end,
+    [755] = function() return addon.isTBC   or addon.isWrath or addon.isCata or addon.isMoP or addon.isRetail end,
     -- Inscription (Wrath+)
-    [773] = function() return addon.isWrath or addon.isCata  or addon.isMoP end,
-    [794] = function() return addon.isCata  or addon.isMoP end,                                   -- Archaeology (Cata+)
+    [773] = function() return addon.isWrath or addon.isCata  or addon.isMoP or addon.isRetail end,
+    [794] = function() return addon.isCata  or addon.isMoP or addon.isRetail end,                 -- Archaeology (Cata+)
+    -- First Aid: gone from Retail (8.0); LibProfessionDB ships no Retail line for it.
+    [129] = function() return not addon.isRetail end,
 }
 
 --- True if this profession exists on the current WoW client version.
@@ -2024,31 +2026,73 @@ function addon:DebugPrint(...)
     Ace:Print("|cffaaaaff[DEBUG " .. t .. "]|r", ...)
 end
 
--- ProfessionDB's UNANCHORED rule (its README): a recipe's difficulty tiers are
--- placeholders, and difficulty[1] must NOT be shown or used as a skill
--- threshold, exactly when requiredSkill is ABSENT and difficulty[1] == 1.
+-- Was this recipe's `field` ("requiredSkill" | "sources" | "hidden") BORROWED
+-- from another flavour by ProfessionDB? Returns the flavour it came from
+-- ("Vanilla") or nil. WoW Forever is the case: ProfessionDB ships Vanilla's
+-- trainer requirement and sources for the spells the two share, flagged, until a
+-- Forever source exists. The operator's direction is that a borrowed value is
+-- SHOWN but MARKED unconfirmed (addon.UnconfirmedText).
+--
+-- Feature-detected on the METHOD (LibProfessionDB MINOR 13), so against an older
+-- ProfessionDB -- and on every client whose data borrows nothing -- this is nil
+-- and every caller behaves exactly as before. `recipeId` is the craft SPELL id.
+function addon.IsBorrowedValue(recipeId, field)
+    if not recipeId then return nil end
+    local pdb = addon.GetProfessionDB and addon:GetProfessionDB()
+    if not (pdb and pdb.IsBorrowed) then return nil end
+    return pdb:IsBorrowed(recipeId, field)
+end
+
+-- The short player-facing marker a borrowed value carries ("unconfirmed").
+-- Plain text, no colour escape, so it takes the colour of whatever line it is
+-- appended to (the Requires line is red when unmet).
+function addon.UnconfirmedText()
+    return L["Unconfirmed"] or "unconfirmed"
+end
+
+-- ProfessionDB's UNANCHORED rule (its README, MINOR 13 form): a recipe's
+-- difficulty tiers are placeholders, and difficulty[1] must NOT be shown or used
+-- as a skill threshold, exactly when difficulty[1] == 1 AND requiredSkill is
+-- either ABSENT or BORROWED (IsBorrowed(id, "requiredSkill")). A borrowed
+-- requiredSkill is another flavour's trainer value and cannot anchor this
+-- client's orange tier: Forever recipe 3761 ships requiredSkill 85 (Vanilla's)
+-- with difficulty[1] 1, and reading it as anchored printed orange-from-1.
 -- Neither half alone means that: requiredSkill absent with difficulty[1] > 1 is
--- real data, and requiredSkill == 1 with difficulty[1] == 1 is a real apprentice
--- craft. The one residual (a genuine orange-at-1 with no requiredSkill) reads as
--- unanchored, which errs toward hiding a threshold -- the safe direction.
+-- real data, and an OWN requiredSkill == 1 with difficulty[1] == 1 is a real
+-- apprentice craft. The one residual (a genuine orange-at-1 with no
+-- requiredSkill) reads as unanchored, which errs toward hiding a threshold --
+-- the safe direction.
+--
+-- `recipeId` (the craft spell id) is needed only for the borrowed half; without
+-- it -- or against a ProfessionDB older than MINOR 13 -- the rule is the old
+-- "absent" one, so a Classic client is unaffected either way.
 -- Lives here rather than beside FormatSkillTiers (CraftingEngine) because the
 -- Browser and Missing Recipes tabs need it too and must not depend on the
 -- crafting module being loaded.
-function addon.IsUnanchoredDifficulty(tiers, requiredSkill)
-    return requiredSkill == nil and type(tiers) == "table" and tiers[1] == 1
+function addon.IsUnanchoredDifficulty(tiers, requiredSkill, recipeId)
+    if type(tiers) ~= "table" or tiers[1] ~= 1 then return false end
+    if requiredSkill == nil then return true end
+    return addon.IsBorrowedValue(recipeId, "requiredSkill") ~= nil
 end
 
--- The skill a recipe is learned at, for the Browser tier filter and the
--- Missing Recipes "Can learn now" gate: requiredSkill when shipped, else the
--- orange breakpoint difficulty[1] -- unless the tiers are unanchored, where that
--- breakpoint is a placeholder and the answer is nil (unknown). Both callers
--- already treat nil as "can't classify, keep the row".
+-- The skill a recipe is learned at, from its two raw values: requiredSkill when
+-- shipped, else the orange breakpoint tiers[1] -- unless the tiers are
+-- unanchored, where that breakpoint is a placeholder and the answer is nil
+-- (unknown). A BORROWED requiredSkill is still returned: it is the trainer
+-- requirement the player is shown (marked unconfirmed), not an orange tier, so
+-- the unanchored rule has nothing to say about it. Callers treat nil as
+-- "can't classify, keep the row" (filters) or "sort last" (Missing Recipes).
+function addon.LearnSkillFrom(requiredSkill, tiers)
+    if requiredSkill then return requiredSkill end
+    if type(tiers) ~= "table" or addon.IsUnanchoredDifficulty(tiers, nil) then return nil end
+    return tiers[1]
+end
+
+-- The same answer from a ProfessionDB meta table, for the Browser tier filter
+-- and the Missing Recipes "Can learn now" gate.
 function addon.RecipeLearnSkill(meta)
     if not meta then return nil end
-    if meta.requiredSkill then return meta.requiredSkill end
-    local d = meta.difficulty
-    if type(d) ~= "table" or addon.IsUnanchoredDifficulty(d, nil) then return nil end
-    return d[1]
+    return addon.LearnSkillFrom(meta.requiredSkill, meta.difficulty)
 end
 
 -- Build a stable character key used as the primary identifier throughout.
@@ -2128,9 +2172,19 @@ end
 -- Compute the tag for a given guildKey, or PersonalTag when nil/empty.
 -- Registers the guild in guildRegistry on first call so the UI can later
 -- resolve the tag back to a human-readable name.
+-- The hash is pure, so it is computed once per guildKey: the Browser's list
+-- build asks for the same few keys hundreds of times (openperf_spec measured
+-- the hash as ~70% of BuildFullList offline). Registration below still runs on
+-- every call, so a purged guildRegistry is refilled exactly as before.
+local tagCache = {}
+
 function addon:GetGuildTagFor(guildKey, faction, guildName)
     if not guildKey or guildKey == "" then return addon.PersonalTag end
-    local tag = fnv1aHash6(guildKey)
+    local tag = tagCache[guildKey]
+    if not tag then
+        tag = fnv1aHash6(guildKey)
+        tagCache[guildKey] = tag
+    end
     local gdb = self:GetGuildDb()
     if not gdb.guildRegistry then gdb.guildRegistry = {} end
     if not gdb.guildRegistry[tag] then
@@ -2875,9 +2929,30 @@ end
 -- The crafted item ID (what the recipe produces). Used for icon resolution,
 -- tooltip SetItemByID, shopping list output naming. nil for spells with no
 -- physical product (currently none in the shipped DB).
+-- Retail recipes ProfessionDB ships without a craftedItemId (Blood Knight's
+-- Mercy, 1229652, carries only its plans' itemId), answered from the client's
+-- own recipe schematic and cached: false = asked, no answer.
+local schematicOutput = {}
+
 function addon:GetRecipeCraftedItemId(profId, recipeId)
     local m = self:GetRecipeMeta(profId, recipeId)
-    return m and m.craftedItemId
+    if not m then return nil end
+    if m.craftedItemId then return m.craftedItemId end
+    -- Retail only (a recipe there carries skillLine). Without a crafted item
+    -- the row has no quality colour: names rendered white (operator, Retail,
+    -- 2026-10-04). TradeSkillUITypesDocumentation.lua:292, live tree.
+    if not m.skillLine then return nil end
+    local cached = schematicOutput[recipeId]
+    if cached ~= nil then return cached or nil end
+    local T = C_TradeSkillUI
+    local id
+    if T and T.GetRecipeSchematic then
+        local ok, s = pcall(T.GetRecipeSchematic, recipeId, false)
+        id = ok and type(s) == "table" and s.outputItemID or nil
+        if id == 0 then id = nil end
+    end
+    schematicOutput[recipeId] = id or false
+    return id
 end
 
 -- LibItemDB (optional standalone addon, read via LibStub — NOT embedded): the

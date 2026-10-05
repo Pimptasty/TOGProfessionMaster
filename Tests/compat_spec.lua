@@ -49,8 +49,10 @@ describe("version flags", function()
 		{ iface = 30403, flag = "isWrath",   cap = 450 },
 		{ iface = 40402, flag = "isCata",    cap = 525 },
 		{ iface = 50500, flag = "isMoP",     cap = 600 },
+		-- Retail: caps are per expansion line, so there is no one cap.
+		{ iface = 120100, flag = "isRetail", cap = nil },
 	}
-	local ALL = { "isVanilla", "isTBC", "isWrath", "isCata", "isMoP" }
+	local ALL = { "isVanilla", "isTBC", "isWrath", "isCata", "isMoP", "isRetail" }
 
 	it("sets exactly one flavour flag per build", function()
 		for _, case in ipairs(CASES) do
@@ -67,7 +69,9 @@ describe("version flags", function()
 
 	it("sets the profession skill cap for the expansion", function()
 		for _, case in ipairs(CASES) do
-			assert.equal(case.cap, compatAt(case.iface).SKILL_CAP)
+			-- rawget: the scratch namespace inherits the booted addon, so a nil
+			-- written here would otherwise read through to Era's 300.
+			assert.equal(case.cap, rawget(compatAt(case.iface), "SKILL_CAP"))
 		end
 	end)
 
@@ -78,6 +82,82 @@ describe("version flags", function()
 
 	it("falls back to the Vanilla cap on an unrecognised build", function()
 		assert.equal(300, compatAt(99999).SKILL_CAP)
+	end)
+end)
+
+describe("GetRecipeSkillRank", function()
+	local ME
+	before_each(function()
+		ME = env.boot():GetCharacterKey()
+		local gdb = env.boot():GetGuildDb()
+		gdb.skills = { [ME] = { [164] = { skillRank = 80, skillMax = 100 } },
+		               ["Other-Realm"] = { [164] = { skillRank = 90, skillMax = 100 } } }
+	end)
+	after_each(function() _G.C_TradeSkillUI = nil end)
+
+	it("answers the stored profession rank for a classic recipe", function()
+		local ns = compatAt(11508)
+		assert.equal(80, ns:GetRecipeSkillRank(ME, 164, { requiredSkill = 50 }))
+		assert.equal(90, ns:GetRecipeSkillRank("Other-Realm", 164, {}))
+		assert.is_nil(ns:GetRecipeSkillRank("Nobody-Realm", 164, {}))
+	end)
+
+	it("reads the recipe's own expansion line live for the local character", function()
+		local ns = compatAt(120100)
+		local asked
+		_G.C_TradeSkillUI = { GetProfessionInfoBySkillLineID = function(line)
+			asked = line
+			return { skillLevel = 42, maxSkillLevel = 100 }
+		end }
+		assert.equal(42, ns:GetRecipeSkillRank(ME, 164, { skillLine = 2872 }))
+		assert.equal(2872, asked)
+	end)
+
+	it("cannot say for another character's Retail recipe, or without the API", function()
+		local ns = compatAt(120100)
+		_G.C_TradeSkillUI = { GetProfessionInfoBySkillLineID = function()
+			return { skillLevel = 42 }
+		end }
+		assert.is_nil(ns:GetRecipeSkillRank("Other-Realm", 164, { skillLine = 2872 }))
+		_G.C_TradeSkillUI = nil
+		assert.is_nil(ns:GetRecipeSkillRank(ME, 164, { skillLine = 2872 }))
+	end)
+
+	it("answers another character's SYNCED rank for the recipe's line", function()
+		-- The per-line ranks arrive on the owner's professions leaf and are stored
+		-- under the profession's record; the gate reads that line, not the
+		-- profession-wide rank (90), which is on another line's scale.
+		local ns = compatAt(120100)
+		local gdb = env.boot():GetGuildDb()
+		gdb.skills["Other-Realm"][164].lines = { [2872] = { skillRank = 35, skillMax = 100 } }
+		assert.equal(35, ns:GetRecipeSkillRank("Other-Realm", 164, { skillLine = 2872 }))
+		-- A line nobody recorded stays unknown: nil = do not gate.
+		assert.is_nil(ns:GetRecipeSkillRank("Other-Realm", 164, { skillLine = 2822 }))
+	end)
+
+	it("falls back to the local character's stored line when the live read has nothing", function()
+		local ns = compatAt(120100)
+		local gdb = env.boot():GetGuildDb()
+		gdb.skills[ME][164].lines = { [2872] = { skillRank = 12, skillMax = 100 } }
+		_G.C_TradeSkillUI = nil
+		assert.equal(12, ns:GetRecipeSkillRank(ME, 164, { skillLine = 2872 }))
+		-- The live read still wins when it answers.
+		_G.C_TradeSkillUI = { GetProfessionInfoBySkillLineID = function() return { skillLevel = 44 } end }
+		assert.equal(44, ns:GetRecipeSkillRank(ME, 164, { skillLine = 2872 }))
+	end)
+
+	-- In game on Retail with no profession window open the live call answers
+	-- skillLevel 0 (operator, 2026-10-04). Taken as a rank it hid every recipe.
+	it("treats a live 0 as no answer, and a recorded 0 as unknown", function()
+		local ns = compatAt(120100)
+		local gdb = env.boot():GetGuildDb()
+		_G.C_TradeSkillUI = { GetProfessionInfoBySkillLineID = function() return { skillLevel = 0 } end }
+		gdb.skills[ME][164].lines = { [2872] = { skillRank = 12, skillMax = 100 } }
+		assert.equal(12, ns:GetRecipeSkillRank(ME, 164, { skillLine = 2872 }))
+		gdb.skills[ME][164].lines = nil
+		assert.is_nil(ns:GetRecipeSkillRank(ME, 164, { skillLine = 2872 }))
+		gdb.skills[ME][164].lines = { [2872] = { skillRank = 0, skillMax = 100 } }
+		assert.is_nil(ns:GetRecipeSkillRank(ME, 164, { skillLine = 2872 }))
 	end)
 end)
 

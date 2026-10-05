@@ -55,8 +55,10 @@ if (-not $DryRun) {
     }
 }
 
-# _classic_beta_ is the WoW Forever client (installed 2026-09-27).
-$WowVersions = @("_classic_era_", "_classic_", "_anniversary_", "_classic_beta_")
+# _classic_beta_ is the WoW Forever client (installed 2026-09-27). _retail_ is
+# Retail (the _Mainline TOC, added 2026-10-04); skipped like any other flavour
+# when that install is not on disk.
+$WowVersions = @("_classic_era_", "_classic_", "_anniversary_", "_classic_beta_", "_retail_")
 
 # Build list of addon install directories that actually exist on disk
 # Exclude the version that contains the source folder to avoid copying to itself

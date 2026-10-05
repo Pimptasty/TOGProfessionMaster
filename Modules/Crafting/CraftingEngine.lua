@@ -522,10 +522,20 @@ local TIER_HEX = { "ffff8040", "ffffff00", "ff40c040", "ff808080" }  -- orange/y
 -- difficulty array, and "-" when there's nothing -- or when the tiers are
 -- UNANCHORED (addon.IsUnanchoredDifficulty, TOGProfessionMaster.lua), which
 -- ProfessionDB says to show as unknown rather than as thresholds.
-function addon.FormatSkillTiers(tiers, requiredSkill)
-    if addon.IsUnanchoredDifficulty(tiers, requiredSkill) then return "-" end
+--
+-- `recipeId` (the craft spell id) is optional and only matters on a flavour
+-- whose ProfessionDB data BORROWS requiredSkill (WoW Forever, MINOR 13): a
+-- borrowed requiredSkill does not anchor the tiers, and the lone-requiredSkill
+-- fallback is marked unconfirmed. Without it the output is exactly as before.
+function addon.FormatSkillTiers(tiers, requiredSkill, recipeId)
+    if addon.IsUnanchoredDifficulty(tiers, requiredSkill, recipeId) then return "-" end
     if not tiers then
-        return requiredSkill and ("|c" .. TIER_HEX[1] .. requiredSkill .. "|r") or "-"
+        if not requiredSkill then return "-" end
+        local s = "|c" .. TIER_HEX[1] .. requiredSkill .. "|r"
+        if addon.IsBorrowedValue and addon.IsBorrowedValue(recipeId, "requiredSkill") then
+            s = s .. " (" .. addon.UnconfirmedText() .. ")"
+        end
+        return s
     end
     local parts = {}
     for i = 1, 4 do

@@ -84,9 +84,38 @@ end
 --- client's spell tables but never obtainable by any means, in any expansion.
 --- Feature-detected: LibProfessionDB gained IsHiddenRecipe in MINOR 9, and an
 --- older ProfessionDB simply leaves this check inert rather than erroring.
+--- A `hidden` flag ProfessionDB BORROWED from another flavour (MINOR 13,
+--- IsBorrowed(id, "hidden"), WoW Forever) does not hide: the operator's
+--- direction is that borrowed values are shown and marked unconfirmed, and
+--- hiding is the one rendering of a value that cannot be marked.
+---
+--- One reading of the flag, shared by the gate and by IsUnconfirmed below, so
+--- "the gate let it through on a borrowed flag" and "the row is marked" can
+--- never disagree. Answers nil (not hidden), "borrowed" or "hidden".
+local function hiddenState(recipeId)
+	-- Through the addon's one ProfessionDB accessor, the one addon.IsBorrowedValue
+	-- and every other reader use, so there is a single way to find the library.
+	local pdb = addon.GetProfessionDB and addon:GetProfessionDB()
+	if not (pdb and pdb.IsHiddenRecipe and pdb:IsHiddenRecipe(recipeId)) then return nil end
+	if pdb.IsBorrowed and pdb:IsBorrowed(recipeId, "hidden") then return "borrowed" end
+	return "hidden"
+end
+
 local function isNeverImplemented(recipeId)
-	local pdb = LibStub and LibStub("LibProfessionDB-1.0", true)
-	return pdb and pdb.IsHiddenRecipe and pdb:IsHiddenRecipe(recipeId) or false
+	return hiddenState(recipeId) == "hidden"
+end
+
+--- Is `recipeId` shown only because its "never implemented" flag was BORROWED
+--- from another flavour (WoW Forever, LibProfessionDB MINOR 13)? Then the list
+--- shows it -- IsValidOnClient lets it through -- but it may not exist in this
+--- game, and the row and its tooltip say so (addon.UnconfirmedText).
+---
+--- false against a ProfessionDB without IsBorrowed (older than MINOR 13) and on
+--- every client whose data borrows nothing, so nothing is marked there.
+--- Cheap enough to call once per row at list-build time: a LibStub lookup and
+--- two table reads, the same work IsValidOnClient already does per recipe.
+function RecipeGate:IsUnconfirmed(recipeId)
+	return hiddenState(recipeId) == "borrowed"
 end
 
 --- Is `recipeId` valid on the running client?

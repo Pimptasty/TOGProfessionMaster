@@ -421,7 +421,8 @@ function CraftingTab:BuildList(parent)
             -- green → grey), coloured by FormatSkillTiers. Pattern-recipe orange
             -- is corrected in the data pipeline (build_authoritative_data.py).
             { key = "skill", header = L["CraftColSkill"], width = SKILL_W, headerTip = L["CraftSortHint"],
-              format = function(_, e) return addon.FormatSkillTiers(e.tiers, e.requiredSkill) end },
+              -- recipeId so a borrowed requiredSkill (Forever) cannot anchor the tiers.
+              format = function(_, e) return addon.FormatSkillTiers(e.tiers, e.requiredSkill, e.recipeId) end },
             { key = "craft", header = L["CraftColCount"], width = COUNT_W, align = "RIGHT",
               headerTip = L["CraftSortHint"],
               format = function(_, e)

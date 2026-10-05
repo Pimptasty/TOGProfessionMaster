@@ -27,7 +27,7 @@ local ALCHEMY, LEATHER = 171, 165
 local TRANSMUTE, POTION = 17187, 12360
 local SCROLL = 12656
 
-local ns, IL, Ace, saved, realGetItemDB
+local ns, IL, Ace, realGetItemDB, realIsAddOnLoaded, realIsMyCharacter
 
 --- Records what was appended, in order, so layout is assertable as text.
 local function fakeTooltip()
@@ -70,6 +70,8 @@ setup(function()
 	IL  = ns.ItemLink
 	Ace = ns.lib
 	realGetItemDB = ns.GetItemDB
+	realIsAddOnLoaded = ns.IsAddOnLoaded
+	realIsMyCharacter = ns.IsMyCharacter
 end)
 
 before_each(function()
@@ -92,8 +94,13 @@ end)
 -- instead of their own fixtures.
 after_each(function()
 	ns.sourceDB = {}
-	ns.IsAddOnLoaded = saved
-	saved = nil
+	-- The REAL method, captured in setup. This used to restore a `saved` that
+	-- only withRecipeMaster ever filled, so every example that did not call it
+	-- put nil there and DELETED ns:IsAddOnLoaded for the rest of the run: the
+	-- Cooldowns specs then raised "attempt to call method 'IsAddOnLoaded'" in
+	-- 30 places whenever they ran after this file (--order reverse, 2026-10-04).
+	-- The same one variable also served IsMyCharacter below.
+	ns.IsAddOnLoaded = realIsAddOnLoaded
 	Ace.db.profile.tooltipRecipeDetails = nil
 	ns._recipeItemIndex = nil
 	-- Several cases stub the ItemDB accessor to force a no-library path. Put the
@@ -106,7 +113,6 @@ after_each(function()
 end)
 
 local function withRecipeMaster(loaded)
-	saved = saved or ns.IsAddOnLoaded
 	ns.IsAddOnLoaded = function(_, name) return loaded and name == "RecipeMaster" end
 end
 
@@ -317,11 +323,10 @@ describe("Unlearned — which of YOUR characters could still learn it", function
 	end
 
 	before_each(function()
-		saved = saved or ns.IsMyCharacter
 		ns.IsMyCharacter = function(_, ck) return ck == ME or ck == ALT end
 	end)
 
-	after_each(function() ns.IsMyCharacter = saved; saved = nil end)
+	after_each(function() ns.IsMyCharacter = realIsMyCharacter end)
 
 	it("lists a character with the profession who has not learned it", function()
 		knows(ALT, 71)
@@ -539,7 +544,15 @@ describe("the item → recipe index", function()
 	before_each(function()
 		forItem = ns.Tooltip._RecipesForItem
 		ns._recipeItemIndex = nil
+		-- No ProfessionDB, so TeachingItem answers from this file's own
+		-- meta.itemId. Left to the accessor, it resolves whatever LibStub holds,
+		-- and once an earlier spec file has loaded the REAL LibProfessionDB that
+		-- answers the real scroll for this spell id instead of the fixture's
+		-- (red under --order reverse, 2026-10-04).
+		ns._profDB = false
 	end)
+
+	after_each(function() ns._profDB = nil end)
 
 	it("resolves the item a recipe PRODUCES", function()
 		local hits = forItem(POTION)

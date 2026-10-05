@@ -117,6 +117,16 @@ describe("the header", function()
 		assert.is_truthy(tab._dpName:GetText():find("|cff1eff00", 1, true))
 	end)
 
+	-- WoW Forever: a recipe shown only on a borrowed never-implemented flag
+	-- keeps its "(unconfirmed)" when selected, as its row has it.
+	it("marks an unconfirmed recipe, and only that one", function()
+		local tab = panel()
+		tab:DrawDetail(entryWith({ unconfirmed = true }))
+		assert.is_truthy(tab._dpName:GetText():find("(" .. ns.UnconfirmedText() .. ")", 1, true))
+		tab:DrawDetail(entryWith())
+		assert.is_nil(tab._dpName:GetText():find(ns.UnconfirmedText(), 1, true))
+	end)
+
 	it("falls back to the brand gold when the entry has no link at all", function()
 		-- Trainer-taught recipes reach here with no link. Rendering them in
 		-- whatever colour was left over from the last selection is the bug.

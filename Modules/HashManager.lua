@@ -129,13 +129,33 @@ end
 --- delete. This membership is the single source of truth the crafter-reconcile
 --- prunes against (Scanner:ReconcileCraftersAgainstSkills). Separate leaf key so
 --- the legacy skills: leaf and its hash are untouched — old clients never see this.
+---
+--- RETAIL PER-LINE RANKS ride here as an OPTIONAL `l` field on a profession's
+--- entry: `l = { ["<skillLine>"] = { r, m } }`, from rec.lines (Scanner:
+--- RecordSkillLines, the owner's own scan). It is emitted ONLY when rec.lines
+--- holds at least one line, and nothing but a Retail scan ever writes rec.lines,
+--- so on every other client the entry stays exactly `{ r, m }` and the minted
+--- hash and the shipped payload are byte-identical to before. A reader that
+--- predates `l` decodes only `r` / `m` (Scanner's professions: receive) and
+--- ignores the extra key.
 local function allProfessionSkills(gdb, charKey)
     local out = {}
     local s = gdb.skills and gdb.skills[charKey]
     if s then
         for profId, rec in pairs(s) do
             if type(rec) == "table" then
-                out[tostring(profId)] = { r = rec.skillRank or 0, m = rec.skillMax or 0 }
+                local e = { r = rec.skillRank or 0, m = rec.skillMax or 0 }
+                if type(rec.lines) == "table" then
+                    local l
+                    for line, lr in pairs(rec.lines) do
+                        if type(lr) == "table" then
+                            l = l or {}
+                            l[tostring(line)] = { r = lr.skillRank or 0, m = lr.skillMax or 0 }
+                        end
+                    end
+                    if l then e.l = l end
+                end
+                out[tostring(profId)] = e
             end
         end
     end

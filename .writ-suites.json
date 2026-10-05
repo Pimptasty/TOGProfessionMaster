@@ -1,0 +1,17 @@
+[
+  {
+    "marker": ".busted",
+    "suppress": true,
+    "why": "NEVER run busted here. .busted is an inert shim for Tests/wowapi/run.lua; invoking busted directly collects the harness's own spec/ tree and is a false green the WoWAPITesting fleet forbids. Run {\"tool\":\"test\"} (Tests/wowapi/run.lua) instead."
+  },
+  {
+    "label": "cfhtml: docs/Curseforge_Description.html is well-formed and under the character ceiling",
+    "marker": "docs/Curseforge_Description.html",
+    "argv": ["C:/Users/ianpl/lua51/bin/lua.exe", "Tests/wowapi/cfhtml.lua", "docs/Curseforge_Description.html"]
+  },
+  {
+    "label": "openperf: NOT IN THE DEFAULT GATE -- the speed budgets (list build, each tab's cold draw, the alt gate, the login stages, the wire cost) against the operator's real SavedVariables. Kept out of the main run on purpose: os.clock is wall time on Windows, so a busy box turns them red with no change to the code (Professions draw 402 ms at 100% CPU, 72 ms with the same code on a quieter run, 2026-10-04). Select it on a quiet machine. WoWAPITesting inbox d53bb661",
+    "marker": "Tests/perf/openperf.lua",
+    "argv": ["C:/Users/ianpl/lua51/bin/lua.exe", "Tests/wowapi/run.lua", "Tests/perf/openperf.lua"]
+  }
+]

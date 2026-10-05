@@ -312,10 +312,14 @@ describe("RecipeGate — never-implemented recipes", function()
 	before_each(function()
 		env.spellsExist(2336)
 		savedLib = LibStub.libs["LibProfessionDB-1.0"]
+		-- RecipeGate reads the library through addon:GetProfessionDB, which
+		-- caches it on first use: clear the cache so each test's swap is seen.
+		ns._profDB = nil
 	end)
 
 	after_each(function()
 		LibStub.libs["LibProfessionDB-1.0"] = savedLib
+		ns._profDB = nil
 	end)
 
 	it("rejects a recipe ProfessionDB reports as never implemented", function()
@@ -340,6 +344,27 @@ describe("RecipeGate — never-implemented recipes", function()
 	it("stays inert against a ProfessionDB that predates IsHiddenRecipe", function()
 		LibStub.libs["LibProfessionDB-1.0"] = { LoadNames = function() end }
 		assert.is_true(gate(ALCHEMY, 2336, { name = "Elixir of Tongues", requiredSkill = 100 }))
+	end)
+
+	-- LibProfessionDB MINOR 13: a hidden flag BORROWED from another flavour
+	-- (WoW Forever borrows Vanilla's) is shown, not hidden -- borrowed values
+	-- are shown and marked unconfirmed.
+	it("does not hide a recipe whose hidden flag is borrowed", function()
+		LibStub.libs["LibProfessionDB-1.0"] = {
+			IsHiddenRecipe = function(_, id) return id == 2336 end,
+			IsBorrowed     = function(_, id, field) return id == 2336 and field == "hidden" and "Vanilla" or nil end,
+		}
+		assert.is_true(gate(ALCHEMY, 2336, { name = "Elixir of Tongues", requiredSkill = 100 }))
+	end)
+
+	it("still hides when only another field is borrowed", function()
+		LibStub.libs["LibProfessionDB-1.0"] = {
+			IsHiddenRecipe = function(_, id) return id == 2336 end,
+			IsBorrowed     = function(_, _, field) return field == "requiredSkill" and "Vanilla" or nil end,
+		}
+		local ok, why = gate(ALCHEMY, 2336, { name = "Elixir of Tongues", requiredSkill = 100 })
+		assert.is_false(ok)
+		assert.equal("nyi", why)
 	end)
 
 	it("stays inert when ProfessionDB is not installed at all", function()

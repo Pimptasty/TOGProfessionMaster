@@ -93,6 +93,40 @@ function M.freshLib(path, major)
 		end
 		for obj in pairs(stale) do AceComm.UnregisterAllComm(obj) end
 	end
+	-- AceComm:Embed(comm) also records the comm object in AceComm.embeds, a
+	-- strong-keyed table that nothing ever clears: 849 dead comm objects by the end
+	-- of a full run (2026-10-04). Same owner tag, same eviction.
+	local embeds = AceComm and AceComm.embeds
+	if type(embeds) == "table" then
+		local stale = {}
+		for obj in pairs(embeds) do
+			if type(obj) == "table" and rawget(obj, "owner") == major then stale[#stale + 1] = obj end
+		end
+		for i = 1, #stale do embeds[stale[i]] = nil end
+	end
+	-- VersionCheck-1.0 is ALSO loaded once for the suite, and every instance that
+	-- reached its login build ran lib:RegisterWithVersionCheck(), which does
+	-- `VC.RegisterCallback(self, "OnPeerVersion", fn)`. CallbackHandler keys that
+	-- registration by the instance, so VC's registry held EVERY LibGuildRoster
+	-- ever loaded -- one per env.roster() call, ~25,000 live closures and the
+	-- bulk of the heap after two browser spec files (2026-10-04, measured with a
+	-- reachability walk: env.guild.lib.vcRegistered.RegisterCallback -> the
+	-- registry -> each old instance). Dropped here, by the same "an instance the
+	-- library loaded" test as the AceComm sweep above: a table key carrying the
+	-- library's own RegisterWithVersionCheck method.
+	local VC = LibStub("VersionCheck-1.0", true)
+	local vcEvents = VC and VC.callbacks and VC.callbacks.events
+	if vcEvents then
+		for _, handlers in pairs(vcEvents) do
+			local stale = {}
+			for obj in pairs(handlers) do
+				if type(obj) == "table" and type(rawget(obj, "RegisterWithVersionCheck")) == "function" then
+					stale[#stale + 1] = obj
+				end
+			end
+			for i = 1, #stale do handlers[stale[i]] = nil end
+		end
+	end
 	LibStub.libs[major], LibStub.minors[major] = nil, nil
 	local ns = wow.loadAddonFile(path, "GuildRoster")
 	local lib = LibStub(major)

@@ -299,6 +299,14 @@ L["MissingSrcUnknown"]          = "Unknown"
 -- translator writes "Trainer" once.
 L["TooltipDifficulty"]          = "Difficulty"
 L["TooltipSources"]             = "Sources"
+-- Marks a value ProfessionDB borrowed from another game version (WoW Forever
+-- shows Vanilla's trainer skill and sources until its own are known):
+-- "Requires Tailoring (85, unconfirmed)", "Sources (unconfirmed)".
+L["Unconfirmed"]                = "unconfirmed"
+-- Tooltip line on a recipe row marked "(unconfirmed)" because the only list that
+-- says it was never in the game is another version's (WoW Forever borrows
+-- Vanilla's), so it is shown, but it may not be obtainable here.
+L["UnconfirmedRecipe"]          = "Unconfirmed: this recipe may not exist in this version of the game."
 -- Trailing colon is deliberate: RecipeMaster puts one on this heading and not on
 -- the other two, and the block is meant to read the same whichever addon drew it.
 L["TooltipUnlearned"]           = "Unlearned:"

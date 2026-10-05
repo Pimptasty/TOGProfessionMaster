@@ -46,6 +46,27 @@ local GUILD, FACTION = "The Old Gods", "Horde"
 local BUILD_BUDGET_MS      = 250
 local ALT_GATE_BUDGET_US   = 50     -- per IsAltOfInRosterCharacter call, microseconds
 
+-- THE TIMER. On Windows os.clock is WALL time (Microsoft's CRT clock() "doesn't
+-- strictly conform to ISO C"), so one sample measures machine load as well: the
+-- same build read 233 ms in one run and 671 ms in the next while other suites
+-- ran (inbox 0822420a). Load only ever ADDS wall time, so a budget gates on the
+-- FASTEST of a few runs (wow.bestTime, WoWAPITesting 953768d). Only repeatable
+-- work is timed this way; the login stages mutate the database and run once.
+-- Five, the harness's own default: three still lost all its samples to one
+-- busy stretch with four other suites running (BuildFullList 327 ms against
+-- 64 ms one run earlier, 2026-10-04).
+local BEST_OF = 5
+local function bestMs(fn)
+	return (env.wow.bestTime(fn, BEST_OF)) * 1000
+end
+
+local function deepCopy(v)
+	if type(v) ~= "table" then return v end
+	local out = {}
+	for k, x in pairs(v) do out[k] = deepCopy(x) end
+	return out
+end
+
 local ns, B, gdb, sv
 local stats = {}
 
@@ -178,9 +199,8 @@ end)
 describe("the synchronous open path", function()
 	it("BuildFullList(0, 'guild') -- what a cache miss on open costs the player", function()
 		if not sv then return pending("SavedVariables not found at " .. SV_PATH) end
-		local t0 = os.clock()
-		local list = B._BuildFullList(0, "guild", { showAll = false })
-		local elapsed = ms(os.clock() - t0)
+		local list
+		local elapsed = bestMs(function() list = B._BuildFullList(0, "guild", { showAll = false }) end)
 		stats.buildMs, stats.rows = elapsed, #list
 		io.write(("  [openperf] BuildFullList(All) synchronous: %.0f ms for %d rows (budget %d ms)\n")
 			:format(elapsed, #list, BUILD_BUDGET_MS))
@@ -211,10 +231,12 @@ end)
 -- Lua the tab spends building its rows -- the same Lua that runs in game.
 describe("each tab drawn cold on the real database", function()
 	local TAB_BUDGET_MS = 250
-	local function timeDraw(tab)
-		local t0 = os.clock()
-		env.drawTab(tab)
-		return ms(os.clock() - t0)
+	-- Cold every time: `prep` empties the tab's cache before each timed draw.
+	local function timeDraw(tab, prep)
+		return bestMs(function()
+			if prep then prep() end
+			env.drawTab(tab)
+		end)
 	end
 
 	local tabs = {
@@ -228,8 +250,7 @@ describe("each tab drawn cold on the real database", function()
 		local label, field, prep = spec[1], spec[2], spec[3]
 		it(label .. " draws inside the budget", function()
 			if not sv then return pending("SavedVariables not found at " .. SV_PATH) end
-			if prep then prep() end
-			local elapsed = timeDraw(ns[field])
+			local elapsed = timeDraw(ns[field], prep)
 			io.write(("  [openperf] %s Draw (cold): %.0f ms (budget %d ms)\n"):format(label, elapsed, TAB_BUDGET_MS))
 			assert.is_true(elapsed <= TAB_BUDGET_MS,
 				("%s cold draw took %.0f ms; budget %d ms"):format(label, elapsed, TAB_BUDGET_MS))
@@ -252,12 +273,13 @@ describe("the alt-group visibility gate", function()
 			end
 		end
 		local n = count(probes)
-		local t0 = os.clock()
-		local hits = 0
-		for ck in pairs(probes) do
-			if ns:IsAltOfInRosterCharacter(ck) then hits = hits + 1 end
-		end
-		local elapsed = ms(os.clock() - t0)
+		local hits
+		local elapsed = bestMs(function()
+			hits = 0
+			for ck in pairs(probes) do
+				if ns:IsAltOfInRosterCharacter(ck) then hits = hits + 1 end
+			end
+		end)
 		local perCallUs = n > 0 and (elapsed * 1000 / n) or 0
 		io.write(("  [openperf] alt gate: %d not-in-roster crafters, %d kept as alts, %.0f ms total, "
 			.. "%.1f us/call (budget %d us)\n"):format(n, hits, elapsed, perCallUs, ALT_GATE_BUDGET_US))
@@ -302,7 +324,12 @@ describe("the login path on the real database", function()
 			-- OnEnable -> Scanner:Init
 			{ "Scanner:Init: RebuildAltGroups",        function() S:RebuildAltGroups(gdb) end },
 			-- PLAYER_ENTERING_WORLD -> InitDeltaSync's first-load hash rebuild + scrub
-			{ "PEW: HashManager:RebuildOnFirstLoad",   function() ns.HashManager:RebuildOnFirstLoad(DS, gdb) end },
+			-- `fresh`: it only does its work once (later calls find every leaf and
+			-- no-op), so each timed run gets a fresh copy of the two tables it
+			-- writes and the budget gates on the fastest; the last run's tables
+			-- are kept, as one real call would leave them.
+			{ "PEW: HashManager:RebuildOnFirstLoad",   function() ns.HashManager:RebuildOnFirstLoad(DS, gdb) end,
+			  fresh = { "hashes", "lastScan" } },
 			{ "PEW: ScrubObsoleteRecipeNames",         function() S:ScrubObsoleteRecipeNames() end },
 			-- +2 s timer
 			{ "+2s: ScanCooldowns",                    function() S:ScanCooldowns() end },
@@ -324,9 +351,22 @@ describe("the login path on the real database", function()
 		local total, worst, worstMs = 0, nil, 0
 		for _, stage in ipairs(stages) do
 			local label, fn = stage[1], stage[2]
-			local t0 = os.clock()
-			fn()
-			local elapsed = ms(os.clock() - t0)
+			local elapsed
+			if stage.fresh then
+				local saved = {}
+				for _, f in ipairs(stage.fresh) do saved[f] = gdb[f] end
+				elapsed = math.huge
+				for _ = 1, BEST_OF do
+					for _, f in ipairs(stage.fresh) do gdb[f] = deepCopy(saved[f]) end
+					local t0 = os.clock()
+					fn()
+					elapsed = math.min(elapsed, ms(os.clock() - t0))
+				end
+			else
+				local t0 = os.clock()
+				fn()
+				elapsed = ms(os.clock() - t0)
+			end
 			total = total + elapsed
 			if elapsed > worstMs then worst, worstMs = label, elapsed end
 			io.write(("  [openperf] login %-40s %6.0f ms\n"):format(label, elapsed))
@@ -350,7 +390,7 @@ describe("the login path on the real database", function()
 		local real = env.deltaSync()
 		S.DS = real
 		local WIRE_BUDGET_MS = 100
-		local worst, worstMs, worstBytes = nil, 0, 0
+		local worst, worstMs, worstBytes, worstWire = nil, 0, 0, nil
 		for profId in pairs(gdb.recipes or {}) do
 			local key = "crafters:" .. profId
 			local t0 = os.clock()
@@ -360,6 +400,9 @@ describe("the login path on the real database", function()
 				t0 = os.clock()
 				local wire = real:SerializeWithChecksum(payload)
 				local serMs = ms(os.clock() - t0)
+				-- Once per leaf here; the budget re-times only the worst one below,
+				-- best of BEST_OF -- five passes over every leaf ran this file past
+				-- the runner's 60 s limit under load (2026-10-04).
 				t0 = os.clock()
 				local ok = real:DeserializeWithChecksum(wire)
 				local deserMs = ms(os.clock() - t0)
@@ -368,12 +411,14 @@ describe("the login path on the real database", function()
 				for _, set in pairs(payload.leaves[key].data or {}) do pairsN = pairsN + count(set) end
 				io.write(("  [openperf] wire %-16s %6d pairs %8d bytes  build %4.0f ms  serialize+checksum %4.0f ms  "
 					.. "checksum+deserialize %4.0f ms\n"):format(key, pairsN, #wire, buildMs, serMs, deserMs))
-				if deserMs > worstMs then worst, worstMs, worstBytes = key, deserMs, #wire end
+				if deserMs > worstMs then worst, worstMs, worstBytes, worstWire = key, deserMs, #wire, wire end
 			end
 		end
+		assert.is_truthy(worst, "no crafters leaf was built; the fixture is wrong")
+		-- The gate: the worst leaf again, fastest of BEST_OF.
+		worstMs = bestMs(function() real:DeserializeWithChecksum(worstWire) end)
 		io.write(("  [openperf] wire worst receive: %s at %.0f ms for %d bytes (budget %d ms)\n")
 			:format(tostring(worst), worstMs, worstBytes, WIRE_BUDGET_MS))
-		assert.is_truthy(worst, "no crafters leaf was built; the fixture is wrong")
 		assert.is_true(worstMs <= WIRE_BUDGET_MS,
 			("receiving %s costs %.0f ms of Lua; budget %d ms"):format(tostring(worst), worstMs, WIRE_BUDGET_MS))
 	end)

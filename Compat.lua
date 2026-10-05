@@ -18,19 +18,71 @@ addon.isTBC     = (build >= 20000 and build < 30000)
 addon.isWrath   = (build >= 30000 and build < 40000)
 addon.isCata    = (build >= 40000 and build < 50000)
 addon.isMoP     = (build >= 50000 and build < 60000)
+-- Retail (the _Mainline TOC, Interface 120005+): every live client from
+-- Dragonflight (10.x) on, the same bound LibProfessionDB's detectGameVersion
+-- uses for its Data/Retail tree. Retail splits each profession into one skill
+-- line per expansion (2872 Khaz Algar Blacksmithing under 164), so its skill
+-- numbers are per line and there is no single expansion cap.
+addon.isRetail  = (build >= 100000)
 
 -- Max profession skill for this expansion (Vanilla 300 / TBC 375 / Wrath 450 /
 -- Cata 525 / MoP 600). Used as the authoritative "out of N" cap on skill readouts
 -- so a stale or missing skillMax never renders a wrong cap like "375/300". A
 -- per-expansion constant, not a PDB lookup: PDB ships recipes (not caps) and has
 -- nothing for gathering professions, whereas the cap is uniform across every
--- profession in an expansion.
-addon.SKILL_CAP =
-    addon.isMoP     and 600 or
-    addon.isCata    and 525 or
-    addon.isWrath   and 450 or
-    addon.isTBC     and 375 or
-    300  -- Vanilla / Classic Era
+-- profession in an expansion. nil on Retail, whose caps are per expansion line:
+-- readers fall back to the scanned skillMax there.
+if addon.isRetail then
+    addon.SKILL_CAP = nil
+else
+    addon.SKILL_CAP =
+        addon.isMoP     and 600 or
+        addon.isCata    and 525 or
+        addon.isWrath   and 450 or
+        addon.isTBC     and 375 or
+        300  -- Vanilla / Classic Era
+end
+
+-- The skill rank `charKey` has for the line `meta`'s recipe is measured on,
+-- or nil when that cannot be said. ONE answer for every "does this character
+-- meet the recipe's skill" check (Missing Recipes' Can learn now, the scroll
+-- tooltip's Requires line).
+--
+-- Classic: the profession's one stored rank. Retail: a recipe carries
+-- `skillLine` (LibProfessionDB MINOR 13) and its requiredSkill / difficulty are
+-- on THAT expansion line's scale, while the stored rank is whichever line the
+-- window last showed -- comparing the two is meaningless. So on a Retail
+-- recipe the local character's rank is read live for that line
+-- (C_TradeSkillUI.GetProfessionInfoBySkillLineID, TradeSkillUIDocumentation
+-- .lua:472 in the live tree). Any character's per-line rank is ALSO kept in
+-- gdb.skills[charKey][profId].lines[skillLine] -- recorded by the owner's own
+-- scan (Scanner:RecordSkillLines) and synced on its owner-minted
+-- professions:<charKey> leaf -- so another character's rank is that stored
+-- value, and the local character falls back to it when the live read has
+-- nothing. A line nobody recorded is unknown (nil), and nil means "do not
+-- gate" to every caller.
+function addon:GetRecipeSkillRank(charKey, profId, meta)
+    local gdb = self:GetGuildDb()
+    local rec = gdb and gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
+    if meta and meta.skillLine then
+        if charKey == self:GetCharacterKey() then
+            local T = C_TradeSkillUI
+            local info = T and T.GetProfessionInfoBySkillLineID
+                         and T.GetProfessionInfoBySkillLineID(meta.skillLine)
+            -- 0 is NOT an answer: with no profession window open the live call
+            -- returns skillLevel 0 for a line the character has (operator, Retail,
+            -- 2026-10-04: /run ...GetProfessionInfoBySkillLineID(2872) printed 0).
+            -- Taken as a rank, "Can learn now" hid every Retail recipe.
+            if type(info) == "table" and (info.skillLevel or 0) > 0 then return info.skillLevel end
+        end
+        local line = rec and type(rec.lines) == "table" and rec.lines[meta.skillLine]
+        local r = type(line) == "table" and line.skillRank or nil
+        -- Same reasoning for a recorded 0: unknown, so the row is not gated.
+        if r and r > 0 then return r end
+        return nil
+    end
+    return rec and rec.skillRank or nil
+end
 
 -- Classic Era / Vanilla has no timeline-based expansion at all.
 -- `addon.isClassic` is true for vanilla-protocol builds (Classic Era, Anniversary).
@@ -919,5 +971,6 @@ addon:DebugPrint(
     "TBC:",     tostring(addon.isTBC),
     "Wrath:",   tostring(addon.isWrath),
     "Cata:",    tostring(addon.isCata),
-    "MoP:",     tostring(addon.isMoP)
+    "MoP:",     tostring(addon.isMoP),
+    "Retail:",  tostring(addon.isRetail)
 )

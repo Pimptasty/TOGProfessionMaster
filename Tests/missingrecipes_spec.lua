@@ -431,6 +431,41 @@ describe("the [Where] button", function()
 		assert.equal(1, built)
 	end)
 
+	-- Operator, 2026-10-04 (Retail, which ships no ProfessionDB sources): "itemdb
+	-- has a lot of the drop info, and you're showing it as unkown".
+	describe("the Sources cell falls back to LibItemDB's places", function()
+		local function srcColumn()
+			local list = M:BuildRowList(CreateFrame("Frame", nil, UIParent))
+			for _, col in ipairs(list.columns) do
+				if col.key == "source" then return col end
+			end
+			error("the Missing Recipes list has no Sources column")
+		end
+
+		it("names the kinds of place, in the usual order, when ProfessionDB has no sources", function()
+			itemDB(0)
+			ns._itemDB.BuildWhereRows = function()
+				return { { kind = "Quest" }, { kind = "Vendor" }, { kind = "Boss" } }
+			end
+			local text = srcColumn().format(nil, { spellId = B, itemId = SCROLL, sourcesText = L["MissingSrcUnknown"] })
+			assert.is_truthy(text:find(L["MissingSrcVendor"] .. ", " .. L["MissingSrcDrop"] .. ", "
+				.. L["MissingSrcQuest"], 1, true))
+		end)
+
+		it("keeps ProfessionDB's sources when it has them", function()
+			itemDB(2)
+			local text = srcColumn().format(nil, { spellId = B, itemId = SCROLL,
+				sources = { quest = { 1 } }, sourcesText = L["MissingSrcQuest"] })
+			assert.is_nil(text:find(L["MissingSrcVendor"], 1, true))
+		end)
+
+		it("stays Unknown when LibItemDB knows no place either", function()
+			itemDB(0)
+			local text = srcColumn().format(nil, { spellId = B, itemId = SCROLL, sourcesText = L["MissingSrcUnknown"] })
+			assert.is_truthy(text:find(L["MissingSrcUnknown"], 1, true))
+		end)
+	end)
+
 	it("opens LibItemDB's window on the scroll item, not the recipe spell", function()
 		itemDB(2)
 		whereColumn().onClick({ spellId = B, itemId = SCROLL })

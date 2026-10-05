@@ -1530,6 +1530,14 @@ function Scanner:ScanModernTradeSkillInto(charKey)
     local base = T.GetBaseProfessionInfo and T.GetBaseProfessionInfo()
     local baseLine = base and base.professionID
     local recipeIds, count, dropped = {}, 0, 0
+    -- Retail: the expansion lines this list actually covered. Whether
+    -- GetAllRecipeIDs hands back every line's recipes or only the open line's is
+    -- NOT verified (the live source tree never calls it), and the fallback,
+    -- GetFilteredRecipeIDs, is the open line only -- so the merge may only
+    -- re-derive the lines it was shown, or one line's scan strips every other
+    -- line's recipes from this character. Forever recipes carry no skillLine,
+    -- and Forever keeps the whole-profession merge it always had.
+    local coveredLines = addon.isRetail and {} or nil
     for _, id in ipairs(addon:GetModernLearnedRecipeIDs()) do
         local line, parent
         if baseLine and T.GetTradeSkillLineForRecipe then
@@ -1541,6 +1549,10 @@ function Scanner:ScanModernTradeSkillInto(charKey)
         else
             recipeIds[id] = true
             count = count + 1
+            if coveredLines then
+                local covered = self:RecipeSkillLine(profId, id)
+                if covered then coveredLines[covered] = true end
+            end
         end
     end
     if dropped > 0 then
@@ -1551,14 +1563,133 @@ function Scanner:ScanModernTradeSkillInto(charKey)
 
     local gdb = addon:GetGuildDb()
     if not gdb then return end
-    local changed = self:MergeRecipesIntoGdb(gdb, charKey, profId, p.skillLevel, p.maxSkillLevel, recipeIds)
+    -- Retail: ONE writer for the profession-level rank. The window holds the
+    -- OPEN expansion line's rank, while ScanGatheringProfessions records
+    -- GetProfessionInfo's -- and which line that one reports is not verified.
+    -- Two writers storing different numbers would flip the record and re-mint
+    -- the professions leaf on every alternation, so on Retail the registry's
+    -- value is kept and the window's per-line ranks go to `lines` instead
+    -- (RecordSkillLines below). The open line's rank is used only when the
+    -- registry has recorded nothing yet.
+    local rank, max = p.skillLevel, p.maxSkillLevel
+    if addon.isRetail then
+        local prev = gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
+        if prev and prev.skillRank then rank, max = prev.skillRank, prev.skillMax end
+    end
+    local changed = self:MergeRecipesIntoGdb(gdb, charKey, profId, rank, max,
+        recipeIds, coveredLines)
     if not gdb.lastScan[charKey] then gdb.lastScan[charKey] = {} end
     gdb.lastScan[charKey][profId] = GetServerTime()
     if self.DS then
         addon.HashManager:InvalidateProfession(self.DS, gdb, profId)
     end
+    if addon.isRetail then self:RecordSkillLines(gdb, charKey, profId, p, baseLine) end
     addon:DebugPrint("Scanner: scanned", skillName, "for", charKey, "—", count, "recipes (C_TradeSkillUI)")
     if changed then self:RefreshAfterLocalScan(charKey) end
+end
+
+--- The Retail expansion skill line a recipe belongs to (2872 Khaz Algar
+--- Blacksmithing under 164), or nil when nothing can say. The shipped recipe
+--- DB's `skillLine` (LibProfessionDB MINOR 13) first -- the same field
+--- GetRecipeSkillRank reads, so the merge and the gate agree on a recipe's line
+--- -- then the client's own C_TradeSkillUI.GetTradeSkillLineForRecipe, whose
+--- first return is the recipe's line and third its parent profession
+--- (ProfessionsUtil.lua:78-82 in the live tree). A line equal to the profession
+--- itself is no expansion line (Forever's shape) and is reported as nil.
+function Scanner:RecipeSkillLine(profId, recipeId)
+    local profMeta = addon.recipeDB and addon.recipeDB[profId]
+    local meta = profMeta and profMeta[recipeId]
+    if type(meta) == "table" and meta.skillLine then return meta.skillLine end
+    local T = C_TradeSkillUI
+    if T and T.GetTradeSkillLineForRecipe then
+        local line = T.GetTradeSkillLineForRecipe(recipeId)
+        if line and line ~= profId then return line end
+    end
+    return nil
+end
+
+--- RECEIVE side of the per-line rank sync: a professions:<charKey> entry's
+--- optional `l` = { ["<skillLine>"] = { r, m } } back to the stored shape
+--- { [skillLine] = { skillRank, skillMax } }. Anything malformed is skipped, and
+--- nothing usable is nil, so a record from any other client stays exactly
+--- { skillRank, skillMax }.
+function Scanner:DecodeSkillLines(l)
+    if type(l) ~= "table" then return nil end
+    local out
+    for lineStr, lr in pairs(l) do
+        local line = tonumber(lineStr)
+        if line and type(lr) == "table" then
+            out = out or {}
+            out[line] = { skillRank = tonumber(lr.r) or 0, skillMax = tonumber(lr.m) or 0 }
+        end
+    end
+    return out
+end
+
+--- OWNER side of the per-line rank sync (Retail only). Records the rank of every
+--- expansion line of the open profession into gdb.skills[charKey][profId].lines
+--- = { [skillLine] = { skillRank, skillMax } }, from
+--- C_TradeSkillUI.GetChildProfessionInfos -- every child line of the open
+--- profession, the list Blizzard's own expansion dropdown reads
+--- (Blizzard_ProfessionsRankBar.lua:48; ProfessionInfo fields per
+--- TradeSkillUITypesDocumentation.lua:361-377) -- or, failing that, the open
+--- child line alone. A complete child list REPLACES the lines; the open line
+--- alone is upserted.
+---
+--- When the lines change it re-MINTS the owner-authoritative professions:<charKey>
+--- leaf (HashManager:InvalidateCharProfessions), which is what carries them to
+--- every peer. The leaf's timestamp moves strictly forward, because a peer
+--- adopts a different token only when it is STRICTLY newer. The mint happens
+--- only once an authoritative snapshot exists (lastScan.professions, set by a
+--- reliable ScanGatheringProfessions read); before that, the first such read
+--- mints the leaf with these lines already in it. Returns whether lines changed.
+function Scanner:RecordSkillLines(gdb, charKey, profId, open, baseLine)
+    local rec = gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
+    if not rec then return false end
+    local T = C_TradeSkillUI
+    local fresh, complete = {}, false
+    local infos = T and T.GetChildProfessionInfos and T.GetChildProfessionInfos()
+    if type(infos) == "table" then
+        for _, info in ipairs(infos) do
+            if type(info) == "table" and info.professionID and info.professionID ~= 0
+               and info.professionID ~= profId
+               and (info.parentProfessionID == nil or info.parentProfessionID == profId
+                    or info.parentProfessionID == baseLine) then
+                fresh[info.professionID] = { skillRank = info.skillLevel or 0,
+                                             skillMax  = info.maxSkillLevel or 0 }
+                complete = true
+            end
+        end
+    end
+    if not complete then
+        if not (open and open.professionID and open.professionID ~= 0
+                and open.professionID ~= profId and open.parentProfessionID) then
+            return false
+        end
+        for line, lr in pairs(rec.lines or {}) do fresh[line] = lr end
+        fresh[open.professionID] = { skillRank = open.skillLevel or 0,
+                                     skillMax  = open.maxSkillLevel or 0 }
+    end
+
+    local old = rec.lines or {}
+    local changed = false
+    for line, lr in pairs(fresh) do
+        local o = old[line]
+        if not o or o.skillRank ~= lr.skillRank or o.skillMax ~= lr.skillMax then changed = true end
+    end
+    for line in pairs(old) do if not fresh[line] then changed = true end end
+    if not changed then return false end
+    rec.lines = fresh
+
+    local ls = gdb.lastScan and gdb.lastScan[charKey]
+    if ls and ls.professions and self.DS then
+        ls.professions = math.max(GetServerTime(), ls.professions + 1)
+        addon.HashManager:InvalidateCharProfessions(self.DS, gdb, charKey)
+    end
+    if addon.callbacks then
+        addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey, { skills = true })
+    end
+    return true
 end
 
 --- Merge a freshly-scanned recipe-id set into the flat recipe DB.
@@ -1566,8 +1697,14 @@ end
 --- the local player's current guild. The shipped addon.recipeDB carries name,
 --- icon, reagents, etc., looked up at display time by recipeId.
 ---
---- @param recipeIds  table  set { [recipeId] = true } of recipes this char knows
-function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, recipeIds)
+--- @param recipeIds     table  set { [recipeId] = true } of recipes this char knows
+--- @param coveredLines  table|nil  Retail only: set { [skillLine] = true } of the
+---   expansion lines this scan actually listed. When given, the character is
+---   removed ONLY from recipes whose line (Scanner:RecipeSkillLine) is in it, so
+---   a list that held one line's recipes cannot strip the others; a recipe whose
+---   line cannot be determined is left alone. nil = the profession was scanned
+---   whole, and every recipe of it is re-derived (Classic and Forever).
+function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, recipeIds, coveredLines)
     if not gdb.recipes then gdb.recipes = {} end
     if not gdb.skills  then gdb.skills  = {} end
 
@@ -1575,9 +1712,14 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
     -- constant 300) when the API didn't hand us a maxRank — a skill's cap can't be
     -- below its current rank, and hard-coding 300 produced the impossible "375/300"
     -- on TBC/Wrath and then synced that bad value guild-wide.
+    -- The Retail per-line ranks (`lines`) are carried over: they are written by
+    -- RecordSkillLines, not by this merge, and rewriting the record without them
+    -- wiped them on every window scan.
     skillRank = skillRank or 0
     if not gdb.skills[charKey] then gdb.skills[charKey] = {} end
-    gdb.skills[charKey][profId] = { skillRank = skillRank, skillMax = skillMax or skillRank }
+    local prevRec = gdb.skills[charKey][profId]
+    gdb.skills[charKey][profId] = { skillRank = skillRank, skillMax = skillMax or skillRank,
+                                    lines = prevRec and prevRec.lines or nil }
 
     -- Compute the current guild tag once. Tag is "personal" when guildless,
     -- so own scans on a no-guild alt still get stored (and visible to that
@@ -1590,13 +1732,23 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
     -- anything actually changed — callers refresh the UI only on a real change,
     -- which avoids redraw churn from identical re-scans (the repeated
     -- TRADE_SKILL_UPDATE events WoW fires while crafting all re-run this merge).
-    local oldSet = {}
+    -- With coveredLines (Retail) only the recipes on a covered line are cleared;
+    -- the others are `kept` as they were, so a re-scan that lists one of them
+    -- again (its line unresolvable) is not reported as a change.
+    local oldSet, kept = {}, {}
     if not gdb.recipes[profId] then
         gdb.recipes[profId] = {}
     else
         for rid, rd in pairs(gdb.recipes[profId]) do
-            if rd.crafters and rd.crafters[charKey] then oldSet[rid] = true end
-            if rd.crafters then rd.crafters[charKey] = nil end
+            if rd.crafters and rd.crafters[charKey] then
+                local line = coveredLines and self:RecipeSkillLine(profId, rid)
+                if not coveredLines or (line and coveredLines[line]) then
+                    oldSet[rid] = true
+                    rd.crafters[charKey] = nil
+                else
+                    kept[rid] = true
+                end
+            end
         end
     end
 
@@ -1627,7 +1779,7 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
 
     -- Report whether this char's crafted-recipe set actually changed (symmetric
     -- diff of old vs new). Lets callers skip a UI refresh on a no-op re-scan.
-    for rid in pairs(newSet) do if not oldSet[rid] then return true end end
+    for rid in pairs(newSet) do if not oldSet[rid] and not kept[rid] then return true end end
     for rid in pairs(oldSet) do if not newSet[rid] then return true end end
     return false
 end
@@ -1898,7 +2050,10 @@ local function enumerateHeldProfessions()
 end
 
 function Scanner:ScanGatheringProfessions()
-    if not GetNumSkillLines or not GetSkillLineInfo then return end
+    -- Either source will do (enumerateHeldProfessions reads GetProfessions first).
+    -- Retail has GetProfessions and no GetNumSkillLines, so requiring the classic
+    -- pair left its profession registry empty until a window was opened.
+    if not GetProfessions and not (GetNumSkillLines and GetSkillLineInfo) then return end
     -- Re-entrancy guard: ExpandSkillHeader below can fire SKILL_LINES_CHANGED, which
     -- would re-enter this scan. The flag resets at the single exit point at the end,
     -- so genuine skill-ups still re-scan normally.
@@ -1926,7 +2081,11 @@ function Scanner:ScanGatheringProfessions()
         for profId, info in pairs(held) do
             local prev = stored[profId]
             if not prev or prev.skillRank ~= info.rank or prev.skillMax ~= info.max then
-                stored[profId] = { skillRank = info.rank, skillMax = info.max }
+                -- Keep the Retail per-line ranks (RecordSkillLines): this read
+                -- knows only the profession's one rank, and rewriting the
+                -- record without them wiped every line on each skill-up.
+                stored[profId] = { skillRank = info.rank, skillMax = info.max,
+                                   lines = prev and prev.lines or nil }
                 changed = true
                 addon:DebugPrint("Scanner: recorded profession", profId,
                     "(", info.rank .. "/" .. info.max, ")")
@@ -3685,6 +3844,10 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                                 newset[profId] = {
                                     skillRank = tonumber(rec.r) or 0,
                                     skillMax  = tonumber(rec.m) or 0,
+                                    -- Retail per-line ranks, the owner's own
+                                    -- (HashManager allProfessionSkills `l`).
+                                    -- Absent on every other client's payload.
+                                    lines     = Scanner:DecodeSkillLines(rec.l),
                                 }
                             end
                         end
@@ -3731,6 +3894,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                                 gdb.skills[owner][profId] = {
                                     skillRank = incomingRank,
                                     skillMax  = incomingMax,
+                                    lines     = existing and existing.lines or nil,
                                 }
                                 changedSkills = true
                             end
@@ -3775,9 +3939,13 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                                 local incomingRank = sk.skillRank or 0
                                 if existing then
                                     if incomingRank > (existing.skillRank or 0) then
+                                        -- The ride-along carries no per-line
+                                        -- ranks; keep the ones the owner's
+                                        -- professions leaf delivered.
                                         gdb.skills[ck][profId] = {
                                             skillRank = incomingRank,
                                             skillMax  = sk.skillMax or incomingRank,
+                                            lines     = existing.lines,
                                         }
                                         changedCrafters = true
                                     end

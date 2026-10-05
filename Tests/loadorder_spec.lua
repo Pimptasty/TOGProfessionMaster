@@ -39,6 +39,7 @@ local TOCS = {
 	"TOGProfessionMaster_Wrath.toc",
 	"TOGProfessionMaster_Cata.toc",
 	"TOGProfessionMaster_Mists.toc",
+	"TOGProfessionMaster_Mainline.toc",   -- Retail
 }
 
 local function read(path)
@@ -195,7 +196,7 @@ describe("every TOC declares the same dependencies", function()
 	end
 
 	for _, key in ipairs({ "Dependencies", "OptionalDeps" }) do
-		it("agrees on ## " .. key .. " in all five", function()
+		it("agrees on ## " .. key .. " in every non-Forever TOC", function()
 			local base = header(TOCS[1], key)
 			assert.is_truthy(base, key .. " missing from " .. TOCS[1])
 			for i = 2, #TOCS do

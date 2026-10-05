@@ -1,0 +1,58 @@
+## Interface: 120005, 120007, 120100
+## Title: |cffFF8000TOG Profession Master|r |cff999999Retail|r
+## Version: @project-version@
+## Author: Pimptasty
+## Category: Professions
+## IconTexture: Interface\AddOns\TOGProfessionMaster\icons\TOGPM_MMB_Icon
+## SavedVariables: TOGPM_Settings TOGPM_GuildDB
+## SavedVariablesPerCharacter:
+## X-Curse-Project-ID: 1513588
+## Dependencies: Ace3, AceCommQueue-1.0, VersionCheck-1.0, DeltaSync, GuildRoster, ProfessionDB, ItemDB, LibDBIcon-1.0, LibAceGUIWidgets
+## OptionalDeps: TOGBankClassic, GreenWall, Auctionator, Auc-Advanced, TradeSkillMaster, TradeSkillMaster_AppHelper, Questbook
+
+Locale\_init.lua
+Locale\enUS.lua
+Locale\enGB.lua
+Locale\deDE.lua
+Locale\esES.lua
+Locale\esMX.lua
+Locale\frFR.lua
+Locale\itIT.lua
+Locale\nlNL.lua
+Locale\ptBR.lua
+Locale\ruRU.lua
+Locale\koKR.lua
+Locale\zhCN.lua
+Locale\zhTW.lua
+Locale\thTH.lua
+Locale\filPH.lua
+
+TOGProfessionMaster.lua
+Compat.lua
+Data\ProfessionIcons.lua
+Data\CooldownIds.lua
+Data\RecipeDB.lua
+Data\SourceDB.lua
+Scanner.lua
+Modules\RecipeGate.lua
+Modules\HashManager.lua
+Modules\ReagentWatch.lua
+Modules\SyncLog.lua
+Modules\CommTest.lua
+Modules\AHScanner.lua
+Modules\Price.lua
+Modules\CooldownAlerts.lua
+Modules\Crafting\CraftingEngine.lua
+Modules\Crafting\CraftQueue.lua
+GUI\MinimapButton.lua
+GUI\MainWindow.lua
+GUI\SharedWidgets.lua
+GUI\BrowserTab.lua
+GUI\CooldownsTab.lua
+GUI\MissingRecipesTab.lua
+GUI\CraftingTab.lua
+GUI\AHProfitTab.lua
+GUI\GuildTab.lua
+GUI\ReagentTracker.lua
+GUI\Settings.lua
+Tooltip.lua

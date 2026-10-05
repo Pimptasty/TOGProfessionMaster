@@ -146,7 +146,8 @@ end
 local function buildReport()
     local p = function(...) Ace:Print(...) end
     local _, _, _, build = GetBuildInfo()
-    local ver = addon.isCata and "Cata" or addon.isMoP and "MoP"
+    local ver = addon.isRetail and "Retail"
+        or addon.isCata and "Cata" or addon.isMoP and "MoP"
         or addon.isWrath and "Wrath" or addon.isTBC and "TBC"
         or addon.isVanilla and "Vanilla" or "?"
     local guild = addon.GetGuildKey and addon:GetGuildKey() or nil

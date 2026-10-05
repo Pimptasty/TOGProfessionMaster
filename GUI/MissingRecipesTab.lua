@@ -99,7 +99,10 @@ local function HasNonTrainerSource(srcEntry)
     return false
 end
 
-local function FormatSources(srcEntry, includeTrainer)
+-- `borrowed` is truthy when ProfessionDB borrowed these sources from another
+-- flavour (WoW Forever, IsBorrowed(id, "sources")): they are shown, marked
+-- unconfirmed. "Unknown" carries no mark -- there is no value to doubt.
+local function FormatSources(srcEntry, includeTrainer, borrowed)
     -- No source data at all → the recipe is in the universe (wago.tools knows
     -- about it) but no emulator we ship from catalogs where it comes from.
     -- Surface it with an explicit "Unknown" tag so the user still sees the
@@ -124,7 +127,9 @@ local function FormatSources(srcEntry, includeTrainer)
     -- with the toggle off): fall through to "Unknown" so the row still
     -- displays something rather than an empty cell.
     if #parts == 0 then return L["MissingSrcUnknown"] end
-    return table.concat(parts, ", ")
+    local text = table.concat(parts, ", ")
+    if borrowed then text = text .. " (" .. addon.UnconfirmedText() .. ")" end
+    return text
 end
 
 -- Shared, not a private copy: this one raised on a nil charKey where
@@ -511,7 +516,11 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
         -- intentional permissive behavior).
         if not skip and canLearnOnly then
             local gate = addon.RecipeLearnSkill(data)
-            if gate and gate > skillRank then
+            -- A Retail recipe is measured on its own expansion line, so the
+            -- rank comes from that line (nil = unknown, the row passes).
+            local rank = skillRank
+            if data.skillLine then rank = addon:GetRecipeSkillRank(charKey, profId, data) end
+            if gate and rank and gate > rank then
                 skip = true
             end
         end
@@ -564,7 +573,12 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
                                     or (data.craftedItemId and knownByChar(data.craftedItemId))
                                     or false,
                     sources       = srcEntry,
-                    sourcesText   = FormatSources(srcEntry, includeTrainer),
+                    -- Shown only because its "never implemented" flag is
+                    -- another flavour's (WoW Forever): the row and its tooltip
+                    -- mark it unconfirmed (RecipeGate:IsUnconfirmed).
+                    unconfirmed   = addon.RecipeGate:IsUnconfirmed(spellId) or nil,
+                    sourcesText   = FormatSources(srcEntry, includeTrainer,
+                                        addon.IsBorrowedValue(spellId, "sources")),
                 })
             end
         end
@@ -986,6 +1000,11 @@ function MissingRecipesTab:RowDisplay(entry)
         color = itemLink:match("|c(%x%x%x%x%x%x%x%x)|H")
     end
     local nmText = color and ("|c" .. color .. displayName .. "|r") or displayName
+    -- "(unconfirmed)": the recipe may not exist in this game (WoW Forever
+    -- borrows Vanilla's never-implemented list). Same mark as the Sources cell.
+    if entry.unconfirmed then
+        nmText = nmText .. addon.ItemLink.UnconfirmedRowSuffix(true)
+    end
     if self._showAll and entry.known then
         -- Show All mode marks recipes the character already knows with a check.
         nmText = "|TInterface\\Buttons\\UI-CheckBox-Check:0|t " .. nmText
@@ -1060,6 +1079,8 @@ function MissingRecipesTab:ShowRowTooltip(entry, owner)
     -- profession is the one it belongs to.
     local profId = entry.profId or (type(self._profId) == "number" and self._profId or nil)
     addon.ItemLink.AppendRecipeBlocks(tip, profId, spellId, entry.craftedItemId)
+    -- What the row's "(unconfirmed)" means.
+    addon.ItemLink.AppendUnconfirmed(tip, entry.unconfirmed)
 
     tip:AddLine(" ")
     tip:AddLine(L["MissingRowTooltipShift"], 0.7, 0.7, 0.7, true)
@@ -1179,6 +1200,44 @@ function MissingRecipesTab:StopGuide()
     return false
 end
 
+-- LibItemDB's place kinds (Where.lua BuildWhereRows) -> our source labels.
+-- The kinds ItemDB\Where.lua emits (Peer Review, thread cd8c79f4): Boss :106;
+-- Drop, Vendor, Quest, then Mining / Herbalism / Fishing or Chest :113-114 with
+-- :39; Crafted, Reputation, PvP :148-149. Anything else (a Gathered source's
+-- own string) reads "Other".
+local WHERE_KIND_SRC = {
+    Drop = "drop", Boss = "drop", Vendor = "vendor", Quest = "quest",
+    Crafted = "crafted", Chest = "container", Mining = "container",
+    Herbalism = "container", Fishing = "fishing",
+}
+
+-- The Sources cell. ProfessionDB's sources when it has any for the recipe;
+-- otherwise the kinds of place LibItemDB knows for the recipe SCROLL -- the
+-- same rows the [Where] button opens -- so a row never says "Unknown" while
+-- its [Where] lists a quest and a vendor (Retail ships no ProfessionDB
+-- sources at all; operator, 2026-10-04: "itemdb has a lot of the drop info,
+-- and you're showing it as unkown"). Cached on the row's display table.
+function MissingRecipesTab:SourcesText(entry)
+    if entry.sources or not entry.itemId then return entry.sourcesText or "" end
+    local d = self:RowDisplay(entry)
+    if d.sourcesText == nil then
+        d.sourcesText = entry.sourcesText or ""
+        if self:HasWhere(entry) then
+            local set = {}
+            for _, r in ipairs(d.whereRows) do
+                set[WHERE_KIND_SRC[r.kind] or "other"] = true
+            end
+            local parts = {}
+            for _, key in ipairs(SRC_ORDER) do
+                if set[key] then parts[#parts + 1] = L[SRC_LABELS[key]] or key end
+            end
+            if set.other then parts[#parts + 1] = L["MissingSrcOther"] end
+            if #parts > 0 then d.sourcesText = table.concat(parts, ", ") end
+        end
+    end
+    return d.sourcesText
+end
+
 -- Open LibItemDB's "Where to get it" window on the row's recipe scroll. Its rows
 -- hand a place to Questbook when Questbook is installed (LibItemDB:WhereTrack),
 -- so TOGPM never talks to Questbook itself.
@@ -1208,10 +1267,11 @@ function MissingRecipesTab:BuildRowList(host)
               format = function(_, e) return self:RowDisplay(e).name end },
             { key = "skill", header = L["MissingColSkill"], width = 104,
               headerTip = headerTip(L["MissingHdrSkillDesc"]),
-              format = function(_, e) return addon.FormatSkillTiers(e.tiers, e.requiredSkill) end },
+              -- spellId so a borrowed requiredSkill (Forever) cannot anchor the tiers.
+              format = function(_, e) return addon.FormatSkillTiers(e.tiers, e.requiredSkill, e.spellId) end },
             { key = "source", header = L["MissingColSource"], width = 180, gapBefore = 12,
               headerTip = headerTip(L["MissingHdrSourceDesc"]),
-              format = function(_, e) return "|cffbfbfbf" .. (e.sourcesText or "") .. "|r" end },
+              format = function(_, e) return "|cffbfbfbf" .. self:SourcesText(e) .. "|r" end },
             -- [Bank]: only when TOGBankClassic reports stock for this recipe
             -- scroll (trainer-only recipes have no scroll to bank).
             { key = "bankBtn", width = 60, button = true, sortable = false,
@@ -1296,7 +1356,7 @@ function MissingRecipesTab:SortList(list)
                           or e.name or ""
                 key[e] = tostring(n):lower()
             else
-                key[e] = (e.sourcesText or ""):lower()
+                key[e] = self:SourcesText(e):lower()
             end
         end
     end
@@ -1305,12 +1365,13 @@ function MissingRecipesTab:SortList(list)
         if asc then return x < y else return x > y end
     end
     -- Effective learn skill = requiredSkill, falling back to the orange
-    -- difficulty tier (tiers[1]) — same gate resolution BuildMissingList uses.
-    -- This keeps recipes like Basic Campfire (no requiredSkill but orange=1)
-    -- sorting by their real skill instead of being treated as unknown. Only
-    -- recipes with NEITHER value are genuinely unknown and sort last.
+    -- difficulty tier (tiers[1]) — the SAME resolution BuildMissingList's "Can
+    -- learn now" gate uses (addon.LearnSkillFrom), so it also honours
+    -- ProfessionDB's unanchored rule: tiers with no requiredSkill and an orange
+    -- of 1 are placeholders, not a skill of 1, and sort with the unknowns. This
+    -- used to read `e.tiers[1]` raw, which claimed to match the gate and did not.
     local function skillOf(e)
-        return e.requiredSkill or (e.tiers and e.tiers[1])
+        return addon.LearnSkillFrom(e.requiredSkill, e.tiers)
     end
     local groupByProf = (self._profId == "all")
     table.sort(list, function(a, b)

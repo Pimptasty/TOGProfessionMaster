@@ -140,6 +140,9 @@ local function AppendBrandTooltipLines(entry)
     -- the scroll-shaped one, and the name-only fallback all route through here,
     -- and the block must not depend on which one a given recipe happened to get.
     addon.ItemLink.AppendRecipeDetails(GameTooltip, entry.profId, entry.id)
+    -- The row says "(unconfirmed)"; the tooltip says what that means. Here for
+    -- the same reason as the block above: every branch passes through.
+    addon.ItemLink.AppendUnconfirmed(GameTooltip, entry.unconfirmed)
 end
 BrowserTab._AppendBrandTooltipLines = AppendBrandTooltipLines   -- test seam, see above
 
@@ -384,6 +387,16 @@ local function listCacheKey(profId, viewMode, showAll)
     return pk .. "|" .. tostring(viewMode or "guild") .. "|" .. (showAll and "1" or "0")
 end
 
+-- BuildFullList helpers, hoisted to file scope so a build does not create a
+-- fresh closure per recipe for each sort. Same orderings as before: online
+-- crafters first, then by name; own alts by name.
+local _NIL_TAG = {}   -- memo key standing in for a nil crafter tag
+local function crafterOrder(a, b)
+    if a.online ~= b.online then return a.online end
+    return a.name < b.name
+end
+local function nameOrder(a, b) return a.name < b.name end
+
 -- Build the FULL, search-INDEPENDENT recipe list for a profession/view. This is
 -- the expensive half — DB lookups, the per-crafter visibility gate, and the
 -- per-item tooltip search text — so it runs ONCE and is cached (and pre-warmed
@@ -426,10 +439,43 @@ local function BuildFullList(profId, viewMode, opts)
         -- Key on ck+tag, not ck alone: a crafter's visibility depends on its guild tag,
         -- which can legitimately differ across recipes during a mid-sync guild switch —
         -- keying on ck alone would apply the first-seen tag's verdict to all its recipes.
-        local mk = ck .. "\0" .. tostring(tag)
-        local v = _visMemo[mk]
-        if v == nil then v = addon:IsVisibleCrafter(ck, tag) and true or false; _visMemo[mk] = v end
+        -- Two-level (tag, then ck) rather than a concatenated "ck\0tag" key: the
+        -- concatenation built and hashed a fresh string for every recipe-crafter
+        -- pair (~37k on a large guild) just to look the memo up.
+        local byTag = _visMemo[tag == nil and _NIL_TAG or tag]
+        if not byTag then byTag = {}; _visMemo[tag == nil and _NIL_TAG or tag] = byTag end
+        local v = byTag[ck]
+        if v == nil then v = addon:IsVisibleCrafter(ck, tag) and true or false; byTag[ck] = v end
         return v
+    end
+
+    -- Per-build memo of what a visible guild crafter DISPLAYS as: their short
+    -- name, or "Alt (Main)" when the crafter is offline and an alt of theirs is
+    -- online, plus the online flag. Like the memos above it is stable for one
+    -- build pass (online state is read once per build either way) and keyed by
+    -- crafter, so the roster lookups -- IsOnline per crafter, and per alt of
+    -- every offline crafter -- run once per unique crafter instead of once per
+    -- recipe-crafter pair. Each row still gets its own { name, online } table.
+    local _shownName, _shownOnline = {}, {}
+    local GuildRoster = addon.Scanner and addon.Scanner.GuildRoster
+    local function crafterDisplay(ck)
+        local displayName = _shownName[ck]
+        if displayName ~= nil then return displayName, _shownOnline[ck] end
+        local shortName = ck:match("^(.-)%-") or ck
+        local online    = GuildRoster and GuildRoster:IsOnline(ck) or false
+        displayName = shortName
+        if not online and gdb.altGroups and gdb.altGroups[ck] then
+            for _, altCk in ipairs(gdb.altGroups[ck]) do
+                if altCk ~= ck and GuildRoster and GuildRoster:IsOnline(altCk) then
+                    local altShort = altCk:match("^(.-)%-") or altCk
+                    displayName = altShort .. " (" .. shortName .. ")"
+                    online = true
+                    break
+                end
+            end
+        end
+        _shownName[ck], _shownOnline[ck] = displayName, online
+        return displayName, online
     end
 
     -- v0.7.5: per-client expansion cap. The shipped recipeDB is a universal
@@ -469,7 +515,6 @@ local function BuildFullList(profId, viewMode, opts)
 
     local function buildCrafterList(profRecipeData, thisViewMode)
         if not profRecipeData or not profRecipeData.crafters then return nil end
-        local GuildRoster  = addon.Scanner and addon.Scanner.GuildRoster
         local crafterObjs = {}
         local youSelf, youAlts = nil, {}
         for ck, tag in pairs(profRecipeData.crafters) do
@@ -490,27 +535,12 @@ local function BuildFullList(profId, viewMode, opts)
                     })
                 end
             elseif thisViewMode ~= "mine" and craftIsVisible(ck, tag) then
-                local shortName   = ck:match("^(.-)%-") or ck
-                local online      = GuildRoster and GuildRoster:IsOnline(ck) or false
-                local displayName = shortName
-                if not online and gdb.altGroups and gdb.altGroups[ck] then
-                    for _, altCk in ipairs(gdb.altGroups[ck]) do
-                        if altCk ~= ck and GuildRoster and GuildRoster:IsOnline(altCk) then
-                            local altShort = altCk:match("^(.-)%-") or altCk
-                            displayName = altShort .. " (" .. shortName .. ")"
-                            online = true
-                            break
-                        end
-                    end
-                end
-                table.insert(crafterObjs, { name = displayName, online = online })
+                local displayName, online = crafterDisplay(ck)
+                crafterObjs[#crafterObjs + 1] = { name = displayName, online = online }
             end
         end
-        table.sort(crafterObjs, function(a, b)
-            if a.online ~= b.online then return a.online end
-            return a.name < b.name
-        end)
-        table.sort(youAlts, function(a, b) return a.name < b.name end)
+        table.sort(crafterObjs, crafterOrder)
+        table.sort(youAlts, nameOrder)
         for i = #youAlts, 1, -1 do
             table.insert(crafterObjs, 1, youAlts[i])
         end
@@ -586,18 +616,23 @@ local function BuildFullList(profId, viewMode, opts)
                     -- crafted item's full tooltip (use/proc/durations/flavor),
                     -- lowercased — so FilterList is a cheap string match per
                     -- keystroke instead of re-scanning tooltips every time.
-                    local hay = (name or ""):lower()
-                    if effect and effect ~= "" then hay = hay .. " " .. effect:lower() end
+                    -- Assembled as parts + one table.concat: appending each piece
+                    -- with `..` copied the whole growing string every time, which
+                    -- for a recipe with a hundred crafters is a hundred copies and
+                    -- was ~65 MB of garbage per All-professions build.
+                    local parts = { (name or ""):lower() }
+                    if effect and effect ~= "" then parts[#parts + 1] = effect:lower() end
                     local tt = craftedItemId and addon:GetItemTooltipSearchText(craftedItemId)
-                    if tt then hay = hay .. " " .. tt end
+                    if tt then parts[#parts + 1] = tt end
                     -- Fold the crafter names into the haystack so typing a player's
                     -- name in the search box filters the list to the recipes that
                     -- player crafts. Reuses `crafters` (already built above), so it
                     -- honours the same viewMode/visibility rules as the shown crafter
                     -- list — a name only matches recipes where that crafter is visible.
                     for _, c in ipairs(crafters) do
-                        if c.name then hay = hay .. " " .. c.name:lower() end
+                        if c.name then parts[#parts + 1] = c.name:lower() end
                     end
+                    local hay = table.concat(parts, " ")
                     local itemLink = craftedItemId and select(2, addon.Item.GetInfo(craftedItemId))
                     -- Learn skill for the tier filter: authoritative requiredSkill
                     -- when shipped, else the orange (difficulty[1]) breakpoint
@@ -636,6 +671,11 @@ local function BuildFullList(profId, viewMode, opts)
                         reagents      = addon:GetRecipeReagents(thisProfId, recipeId),
                         crafters      = crafters,
                         greyed        = (not hasAny),  -- v0.7.0: rendered de-emphasized
+                        -- Shown only because its "never implemented" flag is
+                        -- another flavour's (WoW Forever): the row and its
+                        -- tooltip mark it unconfirmed. Worked out here, once
+                        -- per build, so a repaint pays nothing for it.
+                        unconfirmed   = addon.RecipeGate:IsUnconfirmed(recipeId) or nil,
                         searchText    = hay,
                     })
                 end
@@ -1597,7 +1637,10 @@ function BrowserTab:BuildRowList(host)
               format = function(_, e)
                   local hex = addon.ItemLink and addon.ItemLink.QualityHex
                       and addon.ItemLink.QualityHex(e.itemLink, e.craftedItemId)
-                  return hex and ("|c" .. hex .. e.name .. "|r") or e.name
+                  local name = hex and ("|c" .. hex .. e.name .. "|r") or e.name
+                  -- "(unconfirmed)" when the recipe may not exist in this game.
+                  if e.unconfirmed then name = name .. addon.ItemLink.UnconfirmedRowSuffix(true) end
+                  return name
               end },
             { key = "crafters", header = L["CraftersColHeader"], sortable = false,
               headerTip = L["TooltipCraftersDesc"],
@@ -2153,7 +2196,10 @@ function BrowserTab:DrawDetail(entry)
     -- Header: icon + name
     self._dpIcon:SetTexture(entry.icon)
     local titleColor = type(entry.itemLink) == "string" and entry.itemLink:match("|c(ff%x%x%x%x%x%x)|H") or "ffffd100"
-    self._dpName:SetText("|c" .. titleColor .. entry.name .. "|r")
+    -- The same "(unconfirmed)" the row shows, so selecting a recipe shown on a
+    -- borrowed never-implemented flag does not drop the warning.
+    local suffix = entry.unconfirmed and addon.ItemLink.UnconfirmedRowSuffix(true) or ""
+    self._dpName:SetText("|c" .. titleColor .. entry.name .. "|r" .. suffix)
 
     -- Tooltip + shift-click to insert link on the header button.
     -- ResolveRecipeLink falls back through itemLink → recipeLink →

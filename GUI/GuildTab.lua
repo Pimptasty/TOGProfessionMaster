@@ -64,7 +64,7 @@ do
     end
     for p in pairs(addon.CRAFTING_PROFS or {}) do add(p) end
     add(182); add(393); add(356)                       -- Herbalism / Skinning / Fishing
-    if addon.isCata or addon.isMoP then add(794) end   -- Archaeology (Cata+)
+    if addon.isCata or addon.isMoP or addon.isRetail then add(794) end   -- Archaeology (Cata+)
 end
 
 -- Canonical specialization list per profession, so the Guild tab can list EVERY
@@ -139,10 +139,25 @@ function GuildTab:BuildCounts()
     -- across every guild), so scope each character to the current guild before
     -- counting — otherwise your own cross-guild alts (and any not-yet-purged
     -- foreign crafters) inflate this guild's profession headcounts.
+    --
+    -- Memoized per call, by charKey: a crafter appears under every recipe they
+    -- know, so the unmemoized check ran once per recipe-crafter pair (~37k on a
+    -- large guild, each a roster lookup plus a guild-key / character-key build)
+    -- to answer ~700 distinct questions. The answer cannot change within one
+    -- BuildCounts pass, which reads the roster and nothing writes it meanwhile.
+    local scopeMemo = {}
+    local function inScope(charKey)
+        local v = scopeMemo[charKey]
+        if v == nil then
+            v = addon:IsInCurrentGuildScope(charKey) and true or false
+            scopeMemo[charKey] = v
+        end
+        return v
+    end
     if gdb then
         if gdb.skills then
             for charKey, profs in pairs(gdb.skills) do
-                if addon:IsInCurrentGuildScope(charKey) then
+                if inScope(charKey) then
                     for profId in pairs(profs) do addMember(profId, charKey) end
                 end
             end
@@ -155,7 +170,7 @@ function GuildTab:BuildCounts()
                         local meta = profMeta and profMeta[recipeId]
                         local req  = meta and meta.requiredSpec
                         for charKey in pairs(rd.crafters) do
-                            if addon:IsInCurrentGuildScope(charKey) then
+                            if inScope(charKey) then
                                 addMember(profId, charKey)
                                 if req then noteInferred(profId, charKey, req) end
                             end

@@ -43,6 +43,11 @@
     "ScrollUtil",
     "CreateScrollBoxListLinearView",
     "FauxScrollFrame_GetOffset",
-    "FauxScrollFrame_OnVerticalScroll"
+    "FauxScrollFrame_OnVerticalScroll",
+    "SetItemRef",
+    "HandleModifiedItemClick",
+    "ChatEdit_InsertLink",
+    "FriendsFrame_ShowDropdown",
+    "DEFAULT_CHAT_FRAME"
   ]
 }

@@ -490,11 +490,11 @@ end
 --   { width=W, height=H, locked=true }       — resize disabled, snap to W×H
 --   { minWidth=W, minHeight=H }              — resizable, with a floor
 --
--- Locked tabs (Cooldowns, Missing) use IDENTICAL dimensions so switching
+-- Locked tabs (Cooldowns, Guild) use IDENTICAL dimensions so switching
 -- between them produces no visible jump. Each spec becomes a LibAceGUIWidgets
 -- size profile (SetWindowProfile, MINOR 36, TOGPM contract 72e8dd4b): a locked
--- tab is its own profile, and the resizable tabs (Professions, Crafting)
--- share RESIZABLE_PROFILE, whose size the library saves when it is left and
+-- tab is its own profile, and the resizable tabs (Professions, Missing
+-- Recipes, Crafting, Profit Planner) share RESIZABLE_PROFILE, whose size the library saves when it is left and
 -- restores when it comes back. A locked tab's snapped size can never be
 -- written into that save, which is what the old _suppressBrowserSize flag was
 -- for. Every switch ends clamped to the screen.

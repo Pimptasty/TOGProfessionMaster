@@ -270,6 +270,19 @@ describe("the WoW Forever TOC", function()
 		assert.is_true(depSet(header(CAMELOT, "OptionalDeps"))["LibDBIcon-1.0"] == true)
 	end)
 
+	-- PKG-EMBED-001: a `@curseforge-project-slug: <slug>@` line in any packaged
+	-- .lua makes the BigWigs packager report that slug as an EMBEDDED library for
+	-- the whole upload, overriding .pkgmeta's required-dependencies (release.sh
+	-- 1880-1890). The vendored LibDBIcon carried one through v1.3.0, so the
+	-- CurseForge app stopped installing LibDBIcon for every non-Forever client,
+	-- whose TOCs cannot load without it.
+	it("carry no packager embed marker", function()
+		for _, lib in ipairs(FOREVER_EMBEDS) do
+			assert.is_nil(read(lib:gsub("^libs/", "Libs/")):find("@curseforge-project-slug", 1, true),
+				lib .. " carries the packager's embed marker; remove it")
+		end
+	end)
+
 	it("is the only TOC that embeds them", function()
 		for _, toc in ipairs(TOCS) do
 			for _, lib in ipairs(FOREVER_EMBEDS) do

@@ -6,6 +6,49 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # TOG Profession Master Changelog
 
+## [v1.3.1] (2026-10-07) - The CurseForge app installs LibDBIcon again; Missing Recipes shows recipe names
+
+### Bug Fixes
+
+- **The CurseForge app stopped installing LibDBIcon on every client except WoW
+  Forever.** The copy of LibDBIcon bundled for the Forever TOC still had the
+  packager's `@curseforge-project-slug: libdbicon-1-0@` marker on line 1. The
+  BigWigs packager scans every packaged `.lua` for that marker and lists the
+  slug as an embedded library for the whole upload, which overrides
+  `.pkgmeta`'s `required-dependencies` (release.sh 1880-1890). So the upload told
+  CurseForge LibDBIcon was embedded, and the app did not install the standalone
+  addon that the Era, TBC, Wrath, Cata, Mists and Retail TOCs need before they
+  can load. The marker is removed, and `Tests/loadorder_spec.lua` (PKG-EMBED-001)
+  now fails if either Forever-embedded file carries one. Found by
+  TOGBankClassic's and Peer Review's audits (inbox 5503f91c, 5d7eaf86). Whether
+  the v1.3.0 file on CurseForge shows LibDBIcon as embedded was not checked on
+  the site. Location: `Libs/LibDBIcon-1.0/LibDBIcon-1.0.lua`.
+- **Missing Recipes cut recipe names to about ten characters and the window
+  could not be widened** (Discord, 2026-10-07: "I cannot read what the recipe is
+  without scrolling over it and there is no way to move columns to the right to
+  read it"). The tab was locked at 720x500 to match Cooldowns, and Sources took
+  a fixed 180 px for a word like "Drop". Recipe is the list's auto-width column,
+  so it got only what was left over. The tab is now resizable and shares the
+  saved size of Professions, Crafting and Profit Planner, and Sources sizes to
+  its widest text (`autoFit`, minimum 60), so the space goes to Recipe. Three
+  specs in `Tests/missingrecipes_spec.lua`. Verified in game (operator,
+  2026-10-07: "the rows are indeed much wider"). Location:
+  `GUI/MissingRecipesTab.lua`, `GUI/MainWindow.lua` (comments).
+- **The shopping list on the Professions tab could draw as an empty box with a
+  scrollbar** (operator, 2026-10-07: "i can't see the stuff on my shopping list
+  anymore", one recipe on the list). Since the move to the LibAceGUIWidgets
+  RowList in v1.2.0, the section was sized to exactly its rows plus the
+  InlineGroup's 40 px of chrome. The client snaps anchors to whole pixels, so the
+  row area could come out a fraction short. The RowList floors height / row
+  height, so one row became zero, and a longer list lost its last row. The
+  section now gets 2 px of slack (`SL_SLACK`). A new spec in
+  `Tests/browserdetail_spec.lua` takes half a pixel off the content and
+  requires the one row to still draw; it fails without the slack. The diagnosis
+  is read from the code and fits the screenshot, but not yet confirmed in game.
+  Location: `GUI/BrowserTab.lua`.
+
+---
+
 ## [v1.3.0] (2026-10-04) - Retail support; WoW Forever's borrowed ProfessionDB values are shown as unconfirmed
 
 ### New Features

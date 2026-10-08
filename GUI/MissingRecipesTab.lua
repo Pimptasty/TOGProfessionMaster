@@ -20,11 +20,12 @@ local L      = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 local MissingRecipesTab = {}
 addon.MissingRecipesTab = MissingRecipesTab
 
--- Window size policy — locked to the SAME dimensions as CooldownsTab so
--- switching between Missing and Cooldowns produces no visible jump.
--- MainWindow reads this on tab switch and on Open. Keep these in sync
--- with CooldownsTab.WINDOW_SIZE — that's the whole point.
-MissingRecipesTab.WINDOW_SIZE = { width = 720, height = 500, locked = true }
+-- Window size policy — resizable, sharing the Professions / Crafting saved
+-- size. It was locked at 720x500 to match Cooldowns, which left the Recipe
+-- column (the list's auto-width column) about ten characters wide with no way
+-- for a player to widen it (Discord report, 2026-10-07). MainWindow reads this
+-- on tab switch and on Open.
+MissingRecipesTab.WINDOW_SIZE = { minWidth = 720, minHeight = 500 }
 
 -- Profession display names come from the shared addon.PROF_NAMES table
 -- in TOGProfessionMaster.lua (covers everything Vanilla through MoP).
@@ -1269,7 +1270,10 @@ function MissingRecipesTab:BuildRowList(host)
               headerTip = headerTip(L["MissingHdrSkillDesc"]),
               -- spellId so a borrowed requiredSkill (Forever) cannot anchor the tiers.
               format = function(_, e) return addon.FormatSkillTiers(e.tiers, e.requiredSkill, e.spellId) end },
-            { key = "source", header = L["MissingColSource"], width = 180, gapBefore = 12,
+            -- Sized to the widest Sources text in the list, not a fixed 180:
+            -- most rows read "Drop" or "Vendor", and every pixel this column
+            -- does not need goes to the Recipe column.
+            { key = "source", header = L["MissingColSource"], autoFit = true, minWidth = 60, gapBefore = 12,
               headerTip = headerTip(L["MissingHdrSourceDesc"]),
               format = function(_, e) return "|cffbfbfbf" .. self:SourcesText(e) .. "|r" end },
             -- [Bank]: only when TOGBankClassic reports stock for this recipe

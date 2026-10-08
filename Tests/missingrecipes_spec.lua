@@ -571,3 +571,33 @@ describe("the [Guide] button", function()
 		assert.equal(L["GuideStopped"], printed[1])
 	end)
 end)
+
+-- Discord report, 2026-10-07: "I cannot read what the recipe is without
+-- scrolling over it and there is no way to move columns to the right to read
+-- it." The window was locked at 720 and Sources took a fixed 180 px for a
+-- word like "Drop", leaving the Recipe column about ten characters wide.
+describe("the Recipe column gets the room", function()
+	local function columns()
+		local list = M:BuildRowList(CreateFrame("Frame", nil, UIParent))
+		local byKey = {}
+		for _, col in ipairs(list.columns) do byKey[col.key] = col end
+		return byKey
+	end
+
+	it("lets the player widen the window", function()
+		-- The whole spec, so a `locked` (or a fixed width) coming back fails here.
+		assert.same({ minWidth = 720, minHeight = 500 }, M.WINDOW_SIZE)
+	end)
+
+	it("keeps Recipe as the auto-width column, which takes every pixel the others leave", function()
+		local recipe = columns().recipe
+		assert.is_nil(recipe.width)
+		assert.is_falsy(recipe.autoFit)
+	end)
+
+	it("sizes Sources to its own text rather than a fixed width", function()
+		local source = columns().source
+		assert.is_nil(source.width)
+		assert.is_true(source.autoFit)
+	end)
+end)

@@ -304,7 +304,7 @@ describe("a long shopping list inside the real window", function()
 		-- inside it...
 		local shown = math.floor(BT:ShoppingListMaxHeight() / 14)
 		local sectionH = BT._slSection.frame:GetHeight()
-		assert.equal(shown * 14 + 40, sectionH)
+		assert.equal(shown * 14 + 40 + BT.SL_SLACK, sectionH)
 		assert.is_true(sectionH < tabH * 0.6)
 		-- ...and the scrollbar is what reaches the rest.
 		assert.is_true(rl.scrollbar:IsShown())
@@ -322,7 +322,7 @@ describe("a long shopping list inside the real window", function()
 		local BT = ns.BrowserTab
 		local sectionH, tabH = BT._slSection.frame:GetHeight(), BT._container.frame:GetHeight()
 		ns.BrowserTab.ShoppingListMaxHeight = real
-		assert.equal(30 * 14 + 40, sectionH)
+		assert.equal(30 * 14 + 40 + BT.SL_SLACK, sectionH)
 		assert.is_true(sectionH > tabH)
 	end)
 end)

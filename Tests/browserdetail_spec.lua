@@ -540,7 +540,9 @@ describe("the shopping-list section against a window it would overflow", functio
 	--- A tab whose container has a real height, and a section widget that
 	--- records the height the fill gives it and passes it on to its content,
 	--- less the 40 px of InlineGroup chrome -- the InlineGroup's role.
-	local function tabAndSection()
+	--- `snap` takes that many pixels off the content, standing in for the
+	--- client snapping the InlineGroup's anchors to whole screen pixels.
+	local function tabAndSection(snap)
 		local tab = panel()
 		local cont = CreateFrame("Frame", nil, UIParent)
 		cont:SetHeight(TAB_H)
@@ -551,10 +553,12 @@ describe("the shopping-list section against a window it would overflow", functio
 		local section = { content = content, height = nil }
 		function section:SetHeight(h)
 			self.height = h
-			self.content:SetHeight(h - 40)
+			self.content:SetHeight(h - 40 - (snap or 0))
 		end
 		return tab, section
 	end
+	-- Read at run time: `BT` is only set once the module loads.
+	local function slack() return BT.SL_SLACK end
 
 	-- The list's rows, the rows it has room to draw, and how far it scrolls.
 	local function listState(tab)
@@ -584,7 +588,7 @@ describe("the shopping-list section against a window it would overflow", functio
 		local rows = 6 + 24
 		local data, visible, maxScroll = listState(tab)
 		assert.equal(rows, data)                               -- every row still exists...
-		assert.equal(CAP_ROWS * ROW + 40, section.height)      -- ...but the section is capped
+		assert.equal(CAP_ROWS * ROW + 40 + slack(), section.height)  -- ...but the section is capped
 		assert.equal(CAP_ROWS, visible)
 		assert.is_true(tab._slList.scrollbar:IsShown())
 		assert.equal(rows - CAP_ROWS, maxScroll)
@@ -594,7 +598,7 @@ describe("the shopping-list section against a window it would overflow", functio
 		local tab, section = tabAndSection()
 		tab._slExpanded = listOf(2, 1)                 -- 4 rows
 		tab:FillShoppingListSection(section)
-		assert.equal(4 * ROW + 40, section.height)
+		assert.equal(4 * ROW + 40 + slack(), section.height)
 		local _, visible, maxScroll = listState(tab)
 		assert.equal(4, visible)
 		assert.is_false(tab._slList.scrollbar:IsShown())
@@ -635,7 +639,22 @@ describe("the shopping-list section against a window it would overflow", functio
 		tab:FillShoppingListSection(section)
 		local _, visible = listState(tab)
 		assert.equal(CAP_ROWS, visible)
-		assert.equal(0, (section.height - 40) % ROW)
+		assert.equal(0, (section.height - 40 - slack()) % ROW)
+	end)
+
+	-- Operator, 2026-10-07: "i can't see the stuff on my shopping list
+	-- anymore" -- one recipe, an empty box with a scrollbar. The section was
+	-- exactly one row tall; snapped to pixels it came out a fraction short,
+	-- and the list floors height / row height, so it drew zero rows.
+	it("still draws every row when the pixel snap takes a fraction off", function()
+		local tab, section = tabAndSection(0.5)
+		tab._slExpanded = listOf(1, 0)                 -- one recipe, nothing to expand
+		tab:FillShoppingListSection(section)
+		local data, visible, maxScroll = listState(tab)
+		assert.equal(1, data)
+		assert.equal(1, visible)
+		assert.equal(0, maxScroll)
+		assert.is_false(tab._slList.scrollbar:IsShown())
 	end)
 
 	it("falls back to a fixed row count before the tab has a height", function()

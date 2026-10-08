@@ -1077,6 +1077,8 @@ end
 -- was taller than the tab and the recipe list drew below the frame).
 local SL_MAX_SHARE = 0.4
 local SL_MIN_ROWS  = 4
+local SL_SLACK     = 2   -- pixels; see FillShoppingListSection
+BrowserTab.SL_SLACK = SL_SLACK
 
 -- Tallest the section's row area may be right now. Derived from the tab
 -- container's live height so a taller window shows more rows; falls back to
@@ -1312,7 +1314,13 @@ function BrowserTab:FillShoppingListSection(container)
     local rowH    = rl.rowHeight or ROW_HEIGHT
     local maxRows = math.max(1, math.floor(self:ShoppingListMaxHeight() / rowH))
     local shown   = math.max(1, math.min(#rows, maxRows))
-    container:SetHeight(shown * rowH + 40)
+    -- 40 is the InlineGroup's own chrome (17 title + 3 border + 2 x 10 inset).
+    -- The extra SL_SLACK keeps the row area from landing a fraction UNDER
+    -- `shown` rows once the client snaps the anchors to whole pixels: the
+    -- RowList floors height / rowHeight, so one recipe drew as zero rows and
+    -- a scrollbar (operator, 2026-10-07: "i can't see the stuff on my
+    -- shopping list anymore").
+    container:SetHeight(shown * rowH + 40 + SL_SLACK)
     rl:SetData(rows, true)
 end
 

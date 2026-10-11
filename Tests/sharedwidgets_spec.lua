@@ -90,6 +90,18 @@ describe("ItemLink.QualityHex", function()
 		assert.equal("ff0070dd", IL.QualityHex(nil, 929))
 	end)
 
+	it("reads Retail's |cnIQ<quality>: link colour, which carries no hex", function()
+		ns.GetItemDB = function() return nil end
+		ns.Item = {
+			GetInfo = function() error("must not need the item cache") end,
+			GetQualityColor = function(q)
+				assert.equal(4, q)
+				return 0.64, 0.21, 0.93, "|cffA335EE"
+			end,
+		}
+		assert.equal("ffa335ee", IL.QualityHex("|cnIQ4:|Hitem:19019::|h[x]|h|r", 19019))
+	end)
+
 	it("answers nil rather than a malformed colour", function()
 		ns.GetItemDB = function() return nil end
 		ns.Item = {

@@ -48,6 +48,17 @@ before_each(function()
 	Ace.db.profile.tooltipShowIds      = true
 end)
 
+-- Cases swap ns.ItemLink and _G.TooltipUtil for stubs. Restored here rather
+-- than inline, so a case that raises halfway cannot leak a stub into every
+-- later spec file in the same Lua state.
+local savedItemLink, savedTooltipUtil
+before_each(function()
+	savedItemLink, savedTooltipUtil = ns.ItemLink, _G.TooltipUtil
+end)
+after_each(function()
+	ns.ItemLink, _G.TooltipUtil = savedItemLink, savedTooltipUtil
+end)
+
 local function crafter(charKey, tag)
 	gdb.recipes[171] = gdb.recipes[171] or {}
 	gdb.recipes[171][2330] = gdb.recipes[171][2330] or { crafters = {} }
@@ -78,13 +89,17 @@ describe("crafters line", function()
 		assert.equal(0, #t.lines)
 	end)
 
-	it("defaults to silent when the settings were never written", function()
+	it("reads never-written settings as the shipped defaults: crafters on, IDs off", function()
+		-- Crafters has shipped ON since v1.0.7 and its checkbox reads a missing
+		-- key as on. This case used to assert silence, which pinned the reader
+		-- that disagreed with the checkbox.
 		crafter(MATE)
 		Ace.db.profile.tooltipShowCrafters = nil
 		Ace.db.profile.tooltipShowIds      = nil
 		local t = fakeTooltip(POTION)
 		Tooltip.Tooltip.AppendCrafters(t, POTION)
-		assert.equal(0, #t.lines)
+		assert.is_true(allText(t):find("Bob", 1, true) ~= nil)
+		assert.is_nil(allText(t):find("itemId=", 1, true))
 	end)
 
 	it("abandons the append if the player has hovered off the item", function()
@@ -131,6 +146,104 @@ describe("crafters line", function()
 		Tooltip.Tooltip.AppendCrafters(t, POTION)
 		local _, count = allText(t):gsub("Bob", "")
 		assert.equal(1, count)
+	end)
+
+	it("lists a crafter once when two PROFESSIONS make the same item", function()
+		-- Gold Bar: Mining's Smelt Gold and Alchemy's Transmute Iron to Gold.
+		-- The old dedup was per (character, profession), so a miner-alchemist
+		-- printed as "Bob, Bob".
+		local GOLD = 3577
+		env.setRecipeDB({
+			[186] = { [3308]  = { craftedItemId = GOLD } },
+			[171] = { [11479] = { craftedItemId = GOLD } },
+		})
+		gdb.recipes[186] = { [3308]  = { crafters = { [MATE] = ns:GetCurrentGuildTag() } } }
+		gdb.recipes[171] = { [11479] = { crafters = { [MATE] = ns:GetCurrentGuildTag() } } }
+		local t = fakeTooltip(GOLD)
+		Tooltip.Tooltip.AppendCrafters(t, GOLD)
+		local _, count = allText(t):gsub("Bob", "")
+		assert.equal(1, count)
+	end)
+
+	it("does not treat a recipe's teaching scroll as something its crafters make", function()
+		-- The cached index holds scrolls too; the crafters lookup must take only
+		-- the crafted half, or hovering "Recipe: Minor Healing Potion" would list
+		-- every alchemist as able to make the scroll.
+		local SCROLLID = 2553
+		env.setRecipeDB({
+			[171] = { [2330] = { craftedItemId = POTION } },
+		})
+		ns.ItemLink = { TeachingItem = function() return SCROLLID end }   -- after_each restores
+		crafter(MATE)
+		-- Precondition: the scroll IS in the index, so the absence below is the
+		-- filter working and not the scroll simply never being indexed.
+		local hits = ns.Tooltip._RecipesForItem(SCROLLID)
+		local t = fakeTooltip(SCROLLID)
+		Tooltip.Tooltip.AppendCrafters(t, SCROLLID)
+		assert.equal(1, hits and #hits or 0)
+		assert.is_false(hits[1].crafted)
+		assert.is_true(allText(t):find("Bob", 1, true) == nil)
+		assert.is_true(allText(t):find("recipe-not-found", 1, true) ~= nil)
+	end)
+
+	it("orders an item's recipes so the first hit does not depend on table layout", function()
+		env.setRecipeDB({
+			[186] = { [3308]  = { craftedItemId = 3577 } },
+			[171] = { [11479] = { craftedItemId = 3577 } },
+		})
+		local hits = ns.Tooltip._RecipesForItem(3577)
+		assert.equal(2, #hits)
+		assert.equal(171, hits[1].profId)
+		assert.equal(186, hits[2].profId)
+	end)
+
+	it("sorts a non-numeric recipe key as text instead of raising", function()
+		-- `<` between a number and a string raises, and this runs inside a hook
+		-- that every item tooltip in the game reaches.
+		env.setRecipeDB({
+			[171] = { [11479] = { craftedItemId = 3577 }, ["x11480"] = { craftedItemId = 3577 } },
+		})
+		local hits
+		assert.has_no.errors(function() hits = ns.Tooltip._RecipesForItem(3577) end)
+		assert.equal(2, #hits)
+		assert.equal(11479, hits[1].recipeId)     -- "11479" < "x11480" as text
+		assert.equal("x11480", hits[2].recipeId)
+	end)
+
+	it("puts online crafters first, then sorts by name", function()
+		env.roster({ { name = "Testchar", isOnline = true }, { name = "Bob", isOnline = true },
+		             { name = "Al", isOnline = false }, { name = "Zed", isOnline = true } })
+		crafter("Al-Testrealm")
+		crafter("Zed-Testrealm")
+		crafter(MATE)
+		local t = fakeTooltip(POTION)
+		Tooltip.Tooltip.AppendCrafters(t, POTION)
+		local text = allText(t)
+		local bob, zed, al = text:find("Bob", 1, true), text:find("Zed", 1, true), text:find("Al|", 1, true)
+		assert.is_truthy(bob and zed and al, "a crafter is missing from the line")
+		assert.is_true(bob < zed, "online crafters not sorted by name")
+		assert.is_true(zed < al, "offline crafter listed before an online one")
+	end)
+
+	it("reads the item through TooltipUtil on a frame with no GetItem (WoW Forever)", function()
+		-- The quest-reward tooltip raised "attempt to call a nil value" in game
+		-- 2026-09-27; the modern engine keeps the item in GameTooltipDataMixin.
+		crafter(MATE)
+		local t = fakeTooltip(POTION)
+		t.GetItem = nil
+		-- after_each restores the real TooltipUtil.
+		_G.TooltipUtil = { GetDisplayedItem = function()
+			return "Name", "|cffffffff|Hitem:" .. POTION .. "|h[x]|h|r"
+		end }
+		Tooltip.Tooltip.AppendCrafters(t, POTION)
+		_G.TooltipUtil = nil
+		local t2 = fakeTooltip(POTION)
+		t2.GetItem = nil
+		Tooltip.Tooltip.AppendCrafters(t2, POTION)
+		assert.is_true(allText(t):find("Bob", 1, true) ~= nil)
+		-- Neither spelling available: nothing to verify the item against, so
+		-- nothing is written.
+		assert.equal(0, #t2.lines)
 	end)
 
 	it("counts an offline crafter as online when a known alt is on", function()

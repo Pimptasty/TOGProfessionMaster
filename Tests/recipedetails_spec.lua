@@ -102,6 +102,9 @@ after_each(function()
 	-- The same one variable also served IsMyCharacter below.
 	ns.IsAddOnLoaded = realIsAddOnLoaded
 	Ace.db.profile.tooltipRecipeDetails = nil
+	Ace.db.profile.tooltipRecipeDifficulty = nil
+	Ace.db.profile.tooltipRecipeSources    = nil
+	Ace.db.profile.tooltipRecipeUnlearned  = nil
 	ns._recipeItemIndex = nil
 	-- Several cases stub the ItemDB accessor to force a no-library path. Put the
 	-- real one back: leaving it stubbed used to poison every describe declared
@@ -327,6 +330,59 @@ describe("Unlearned — which of YOUR characters could still learn it", function
 	end)
 
 	after_each(function() ns.IsMyCharacter = realIsMyCharacter end)
+
+	-- One toggle per part of the block. The fixture carries all three parts here
+	-- (difficulty, a trainer source, an unlearned alt), so each case shows the
+	-- switched-off part gone AND the others still drawn.
+	describe("each part has its own toggle", function()
+		before_each(function() knows(ALT, 71) end)
+
+		it("draws all three parts by default", function()
+			local tip = fakeTooltip()
+			assert.is_true(IL.AppendRecipeDetails(tip, ALCHEMY, TRANSMUTE))
+			assert.is_true(tip.has("Difficulty"))
+			assert.is_true(tip.has("Sources"))
+			assert.is_true(tip.has("Unlearned:"))
+		end)
+
+		it("hides only difficulty", function()
+			Ace.db.profile.tooltipRecipeDifficulty = false
+			local tip = fakeTooltip()
+			assert.is_true(IL.AppendRecipeDetails(tip, ALCHEMY, TRANSMUTE))
+			assert.is_false(tip.has("Difficulty"))
+			assert.is_true(tip.has("Sources"))
+			assert.is_true(tip.has("Unlearned:"))
+		end)
+
+		it("hides only sources", function()
+			Ace.db.profile.tooltipRecipeSources = false
+			local tip = fakeTooltip()
+			assert.is_true(IL.AppendRecipeDetails(tip, ALCHEMY, TRANSMUTE))
+			assert.is_true(tip.has("Difficulty"))
+			assert.is_false(tip.has("Sources"))
+			assert.is_true(tip.has("Unlearned:"))
+		end)
+
+		it("hides only the unlearned characters", function()
+			Ace.db.profile.tooltipRecipeUnlearned = false
+			local tip = fakeTooltip()
+			assert.is_true(IL.AppendRecipeDetails(tip, ALCHEMY, TRANSMUTE))
+			assert.is_true(tip.has("Difficulty"))
+			assert.is_true(tip.has("Sources"))
+			assert.is_false(tip.has("Unlearned:"))
+			assert.is_false(tip.has("Bob"))
+		end)
+
+		it("writes nothing at all, not even the heading, with every part off", function()
+			Ace.db.profile.tooltipRecipeDifficulty = false
+			Ace.db.profile.tooltipRecipeSources    = false
+			Ace.db.profile.tooltipRecipeUnlearned  = false
+			local tip = fakeTooltip()
+			assert.is_false(IL.AppendRecipeDetails(tip, ALCHEMY, TRANSMUTE))
+			assert.equal(0, #tip.lines)
+			assert.is_nil(tip._togpmRecipeBlock)
+		end)
+	end)
 
 	it("lists a character with the profession who has not learned it", function()
 		knows(ALT, 71)

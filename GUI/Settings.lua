@@ -66,6 +66,25 @@ local ALERT_VISUAL_SORTING = { "flashGold", "flashRed", "flashBlue", "raidWarnin
 
 local function countPairs(t) return addon.UI.Count(t) end
 
+-- A full-width on/off toggle for one line of the item tooltip. `key` is the
+-- profile key and `label` the locale key (its "Desc" twin is the tooltip).
+-- Shipped on, so nil reads as on. `recipePart` greys the toggle out while the
+-- recipe-details mode is "never", which hides that whole block regardless.
+local function ToolTipToggle(key, label, order, recipePart)
+    return {
+        name     = L[label],
+        desc     = L[label .. "Desc"],
+        type     = "toggle",
+        order    = order,
+        width    = "full",
+        disabled = recipePart and function()
+            return Ace.db.profile.tooltipRecipeDetails == "never"
+        end or nil,
+        get      = function() return Ace.db.profile[key] ~= false end,
+        set      = function(_, val) Ace.db.profile[key] = val and true or false end,
+    }
+end
+
 local function BuildCrossGuildDiagnostics()
     local lines = {}
     local GR  = addon.Scanner and addon.Scanner.GuildRoster
@@ -642,20 +661,24 @@ local OPTIONS = {
 
         -- ---- Global item tooltip lines ------------------------------------
         -- The addon hooks the global item tooltip (bags, AH, chat links,
-        -- vendor, etc.) and appends up to two TOGPM lines: a crafters list
-        -- (who in your guild can make this) and an IDs line (itemId /
-        -- spellId — useful for troubleshooting icon or link issues).
-        -- Crafters and IDs both default OFF (opt-in — see the AceDB defaults in
-        -- TOGProfessionMaster.lua, which keep the addon's footprint on OTHER
-        -- addons' tooltips minimal). The recipe-detail block below is the
-        -- opposite and defaults ON. Each is independently togglable, so a user
-        -- can pick crafters-only, IDs-only, both, or none.
-        -- (This comment used to read "Both default ON", which the defaults
-        -- table has never done.)
+        -- vendor, etc.) and appends: a crafters list (who in your guild can
+        -- make this), an IDs line (itemId / spellId — for troubleshooting icon
+        -- or link issues), the recipe block's difficulty, sources and unlearned
+        -- characters, and vendor buy and sell prices. Every one of those has its
+        -- own toggle below.
+        -- Defaults (the AceDB defaults in TOGProfessionMaster.lua): crafters ON
+        -- (since v1.0.7), IDs OFF (a diagnostic footer), every recipe part and
+        -- both vendor rows ON. Each checkbox reads a missing key as that default,
+        -- the same way the tooltip code does. (This comment used to say crafters
+        -- defaulted off, a stale belief that hid a reader disagreeing with its
+        -- own checkbox.)
         tooltipHeader = {
             name  = L["SettingsTooltipHeader"],
             type  = "header",
-            order = 19.50,
+            -- Not 19.50: cooldownAlertReminderMinutes is 19.5, the same number,
+            -- and a tie left the cooldown section's last field to AceConfig's
+            -- tie-break, which could place it under this header.
+            order = 19.505,
         },
         tooltipShowCrafters = {
             name  = L["SettingsTooltipShowCrafters"],
@@ -672,7 +695,9 @@ local OPTIONS = {
             type  = "toggle",
             order = 19.52,
             width = "full",
-            get   = function() return Ace.db.profile.tooltipShowIds ~= false end,
+            -- `== true`, not `~= false`: IDs ship OFF, so a missing key is off.
+            -- The old spelling showed the box ticked over a hidden line.
+            get   = function() return Ace.db.profile.tooltipShowIds == true end,
             set   = function(_, val) Ace.db.profile.tooltipShowIds = val and true or false end,
         },
         -- No width slider here, and there will not be one. Tooltip width is an
@@ -696,6 +721,14 @@ local OPTIONS = {
             get   = function() return Ace.db.profile.tooltipRecipeDetails or "auto" end,
             set   = function(_, val) Ace.db.profile.tooltipRecipeDetails = val end,
         },
+        -- One toggle per line the tooltip can carry (the operator, 2026-10-10:
+        -- "each thing that shows up on the link be it's own on/off setting").
+        -- The three recipe parts grey out under "Never", which hides them all.
+        tooltipRecipeDifficulty = ToolTipToggle("tooltipRecipeDifficulty", "SettingsTooltipDifficulty", 19.531, true),
+        tooltipRecipeSources    = ToolTipToggle("tooltipRecipeSources",    "SettingsTooltipSources",    19.532, true),
+        tooltipRecipeUnlearned  = ToolTipToggle("tooltipRecipeUnlearned",  "SettingsTooltipUnlearned",  19.533, true),
+        tooltipVendorBuy        = ToolTipToggle("tooltipVendorBuy",        "SettingsTooltipVendorBuy",  19.54),
+        tooltipVendorSell       = ToolTipToggle("tooltipVendorSell",       "SettingsTooltipVendorSell", 19.55),
 
         -- ---- Phase filtering (TBC Anniversary only) ------------------------
         -- Only meaningful on TBC clients; hidden on Vanilla / Wrath / Cata /

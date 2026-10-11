@@ -135,6 +135,20 @@ describe("which tooltip frames get hooked", function()
 		end
 	end)
 
+	it("hooks OnTooltipAddMoney where the frame has it, so the sell row can stand down", function()
+		-- Classic's client prints "Sell Price:" through this script while a
+		-- vendor is open; the hook flags the tooltip so ours does not repeat it.
+		local tips = installTooltipFrames()
+		tips.GameTooltip.hasScript.OnTooltipAddMoney = true
+		login()
+		local hooks = tips.GameTooltip.scripts.OnTooltipAddMoney
+		assert.is_truthy(hooks, "GameTooltip never got an OnTooltipAddMoney hook")
+		hooks[1](tips.GameTooltip)
+		assert.is_true(tips.GameTooltip._togpmGameSell)
+		-- A frame without the script is skipped, not raised on.
+		assert.is_nil(tips.ItemRefTooltip.scripts.OnTooltipAddMoney)
+	end)
+
 	it("survives a client missing some of those frames", function()
 		installTooltipFrames()
 		_G.ShoppingTooltip2, _G.ShoppingTooltip3 = nil, nil
@@ -309,6 +323,31 @@ describe("the Show-hook fallback", function()
 		tt:Show()
 		assert.is_truthy(table.concat(tt.lines, "\n"):find("Bob", 1, true),
 			"a stale flag from another item swallowed this one")
+	end)
+
+	it("forgets the previous item's per-hover flags when no Cleared ran between", function()
+		-- Peer Review T2, thread 245309dd: the recipe-block, vendor-block and
+		-- brand flags were truthiness tests, so where OnTooltipCleared does not
+		-- fire between hovers they would suppress every later item's blocks.
+		-- A different item arriving with the old item's flag still set must reset
+		-- them all; a game-sell flag for some OTHER item goes too.
+		installTooltipFrames()
+		login()
+		wow.advanceTime(3)
+
+		local tt = _G.GameTooltip
+		tt._togpmAppended    = 99999
+		tt._togpmRecipeBlock = "stale"
+		tt._togpmVendorBlock = "stale"
+		tt._togpmBranded     = "stale"
+		tt._togpmGameSell    = 99999
+		tt:SetItem(POTION)
+		tt:Show()
+		assert.are_not.equal("stale", tt._togpmRecipeBlock)
+		assert.are_not.equal("stale", tt._togpmVendorBlock)
+		assert.are_not.equal("stale", tt._togpmBranded)
+		assert.are_not.equal(99999, tt._togpmGameSell)
+		assert.equal(POTION, tt._togpmAppended)
 	end)
 
 	it("stays quiet for a tooltip showing no item", function()

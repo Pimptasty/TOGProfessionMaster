@@ -481,7 +481,21 @@ local SETTINGS_DEFAULTS = {
         -- the one thing this addon puts on a tooltip that no other addon does at
         -- all. TSM shows sell and not buy, ATT shows neither, and the game shows
         -- neither on a bag tooltip. Two rows, unit prices, nil rows omitted.
-        tooltipVendorPrices = true,
+        -- One key PER ROW: the single `tooltipVendorPrices` key that used to be
+        -- here had no setting at all, so a player could not turn either row off.
+        -- It is migrated in OnInitialize and again on every profile change or
+        -- copy (MigrateVendorPriceToggles), and has no default any more, so its
+        -- raw stored value is what the migration reads.
+        tooltipVendorBuy  = true,
+        tooltipVendorSell = true,
+
+        -- The recipe block's three parts, each its own toggle (the operator,
+        -- 2026-10-10: "each thing that shows up on the link be it's own on/off
+        -- setting"). `tooltipRecipeDetails` below still gates the block as a
+        -- whole -- that is the RecipeMaster-coexistence choice, not a part.
+        tooltipRecipeDifficulty = true,
+        tooltipRecipeSources    = true,
+        tooltipRecipeUnlearned  = true,
 
         -- Recipe-detail block (difficulty tiers + where the recipe comes from)
         -- on tooltips the GAME built. "auto" | "always" | "never".
@@ -752,6 +766,14 @@ function Ace:OnInitialize()
     -- v1.1.0: the price-source toggles moved to ItemDB; carry a player's
     -- choices over once and drop the orphaned scan store.
     addon:MigratePriceSettingsToItemDB()
+
+    -- v1.4.0: the one vendor-price key split into buy and sell toggles. Also on
+    -- every profile switch: this runs against the ACTIVE profile only, so a
+    -- second profile with the old key off would otherwise show both rows.
+    addon:MigrateVendorPriceToggles()
+    local function migrateProfile() addon:MigrateVendorPriceToggles() end
+    self.db.RegisterCallback(addon, "OnProfileChanged", migrateProfile)
+    self.db.RegisterCallback(addon, "OnProfileCopied",  migrateProfile)
 
     -- Apply UI Language Override (if any) before any GUI module reads L.
     -- This mutates the AceLocale table in place; all subsequent reads pick
@@ -1673,6 +1695,22 @@ function addon:DumpPrice(args)
     else
         Ace:Print("  Sources and toggles: /itemdb   Per-source answers: /itemdb price " .. itemId)
     end
+end
+
+--- v1.4.0: `tooltipVendorPrices` (one key, no setting) became
+--- `tooltipVendorBuy` + `tooltipVendorSell`, one per row. A player who had it
+--- off keeps both rows off; the legacy key is then dropped so it cannot
+--- re-apply after they switch one row back on. Idempotent -- only a stored
+--- `false` is carried, and the key has no default, so a stored value is the
+--- only way to see one.
+function addon:MigrateVendorPriceToggles()
+    local profile = Ace and Ace.db and Ace.db.profile
+    if not profile then return end
+    if profile.tooltipVendorPrices == false then
+        profile.tooltipVendorBuy  = false
+        profile.tooltipVendorSell = false
+    end
+    profile.tooltipVendorPrices = nil
 end
 
 --- One-shot, on first login after v1.1.0: carry the price-source toggles a

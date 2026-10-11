@@ -82,6 +82,7 @@ local function renderBlock()
 	local tip = _G.GameTooltip
 	tip:ClearLines()
 	tip._togpmRecipeBlock = nil
+	tip._togpmBranded     = nil
 	assert.is_true(IL.AppendRecipeDetails(tip, ALCHEMY, TRANSMUTE),
 		"the block did not render, so this file would assert nothing")
 	return tip

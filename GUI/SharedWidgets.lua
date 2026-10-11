@@ -682,8 +682,14 @@ function ItemLink.AppendRecipeDetails(tooltip, profId, recipeId)
     -- start of every hover, so a genuinely new hover still renders.
     if tooltip._togpmRecipeBlock then return false end
 
+    -- Each part has its own toggle, applied BEFORE the emptiness test below so a
+    -- block whose every enabled part is empty still writes no heading.
+    local profile = Ace and Ace.db and Ace.db.profile
+    local function enabled(key) return not (profile and profile[key] == false) end
     local difficulty, sources, sourcesBorrowed = ItemLink.RecipeDetails(profId, recipeId)
-    local unlearned = ItemLink.UnlearnedBy(profId, recipeId)
+    if not enabled("tooltipRecipeDifficulty") then difficulty = nil end
+    if not enabled("tooltipRecipeSources")    then sources    = nil end
+    local unlearned = enabled("tooltipRecipeUnlearned") and ItemLink.UnlearnedBy(profId, recipeId) or nil
     -- `vendorPrice` was a fourth term here. It has to come OUT of this test as
     -- well as out of the render below: leaving it in would let a recipe whose
     -- only fact is a vendor price get past the guard, write the "TOGPM" header,
@@ -694,8 +700,14 @@ function ItemLink.AppendRecipeDetails(tooltip, profId, recipeId)
     end
     tooltip._togpmRecipeBlock = recipeId
 
+    -- ONE brand label per tooltip. When the crafters or IDs line already wrote
+    -- "[TOGPM]" (Tooltip.lua sets `_togpmBranded`), this block continues under
+    -- it instead of opening a second "TOGPM" heading, which read as two addons.
     local brand = addon.BrandColor or "ffFF8000"
-    BlockLine(tooltip, "|n|c" .. brand .. "TOGPM|r")
+    if not tooltip._togpmBranded then
+        BlockLine(tooltip, "|n|c" .. brand .. "TOGPM|r")
+        tooltip._togpmBranded = true
+    end
 
     if difficulty then
         BlockLine(tooltip, L["TooltipDifficulty"])
@@ -772,7 +784,9 @@ end
 --- WHY THIS IS WORTH SHIPPING: no other addon shows both halves.
 ---   * TradeSkillMaster shows `Vendor Sell Price` and no buy price.
 ---   * AllTheThings shows neither.
----   * The game itself shows neither on a bag tooltip.
+---   * The game never shows buy. It shows sell on Classic while a vendor window
+---     is open, and on Retail whenever its tooltip data carries a SellPrice line
+---     -- in either case our sell row stands down.
 --- Buy and sell together is the pair a player actually reasons with — "can I
 --- buy this cheaper than making it" needs buy, "is this worth bag space" needs
 --- sell — and we already hold both.
@@ -800,30 +814,48 @@ end
 function ItemLink.AppendVendorPrices(tooltip, itemId)
     if not tooltip or not tooltip.AddLine or type(itemId) ~= "number" then return false end
 
-    local show = Ace and Ace.db and Ace.db.profile and Ace.db.profile.tooltipVendorPrices
-    if show == false then return false end
+    -- One toggle per row. Nil (no profile yet) reads as on, the shipped default.
+    local profile  = Ace and Ace.db and Ace.db.profile
+    local showBuy  = not (profile and profile.tooltipVendorBuy  == false)
+    local showSell = not (profile and profile.tooltipVendorSell == false)
+    if not showBuy and not showSell then return false end
 
     -- One block per tooltip. Several paths reach a single hover (the modern
     -- post-call, the legacy OnTooltipSetItem, the Show fallback), and the same
     -- dedup reasoning as the recipe block applies: two price blocks is a bug.
-    if tooltip._togpmVendorBlock then return false end
+    -- Keyed on the ITEM, unlike the recipe block (which deliberately is not):
+    -- every path reaching here for one hover passes the same item, and a flag
+    -- that survived into the next hover must not suppress a different item.
+    if tooltip._togpmVendorBlock == itemId then return false end
 
     local money = addon.Price and addon.Price.Money
     if not money then return false end
 
-    local buy  = addon.Price.GetVendorBuy and addon.Price.GetVendorBuy(itemId)
+    -- A row switched off is not looked up at all: the buy ladder can ask
+    -- Auctionator, and this runs on every item hover in the game.
+    local buy  = showBuy and addon.Price.GetVendorBuy and addon.Price.GetVendorBuy(itemId) or nil
     -- Both halves now go through `Price`, which is the point: the sell number
     -- used to be read straight off `GetItemInfo` HERE, so a cache-cold item
     -- rendered no sell row at all. `Price.GetVendorSell` tries the same client
     -- value first and falls through to LibItemDB's static table, which is
     -- always populated. Feature-detected, so this is nil-safe against an older
     -- Price module the same way `GetVendorBuy` already was.
-    local sell = addon.Price.GetVendorSell and addon.Price.GetVendorSell(itemId)
+    local sell = showSell and addon.Price.GetVendorSell and addon.Price.GetVendorSell(itemId) or nil
     -- 0 is a real answer for an item a vendor will not buy and must not render
     -- as a price, hence a type check rather than a truthiness test. Both
     -- accessors already screen it; this is the belt to their braces, and cheap.
     if type(sell) ~= "number" or sell <= 0 then sell = nil end
     if type(buy)  ~= "number" or buy  <= 0 then buy  = nil end
+    -- The game already printed its own "Sell Price" on this tooltip (Classic at
+    -- a vendor, Retail always); Tooltip.lua sets the flag when it sees it. A
+    -- second copy of the same number is noise, so only BUY -- which the game
+    -- never shows -- is left to say.
+    -- Keyed on the item (Peer Review, thread 245309dd): a flag left from the
+    -- previous hover must not hide this item's sell row. `true` means the game
+    -- priced the tooltip but could not say which item; Tooltip.lua drops it as
+    -- soon as a different item arrives.
+    local gameSell = tooltip._togpmGameSell
+    if gameSell == itemId or gameSell == true then sell = nil end
     if not buy and not sell then return false end
 
     tooltip._togpmVendorBlock = itemId
@@ -834,10 +866,13 @@ function ItemLink.AppendVendorPrices(tooltip, itemId)
     -- one would read as two separate addons. On ordinary loot -- Roasted Quail, a
     -- sword, grey trash -- the recipe block renders NOTHING, so this section is
     -- the whole of our contribution and would otherwise appear as an unattributed
-    -- "Vendor" heading from nowhere. `_togpmRecipeBlock` is set by that function
-    -- and is exactly the "did we already brand this tooltip" signal.
-    if not tooltip._togpmRecipeBlock then
+    -- "Vendor" heading from nowhere. `_togpmBranded` is the one "did we already
+    -- brand this tooltip" signal, set by whichever of the crafters line, the IDs
+    -- line or the recipe block wrote a label first. It used to test the recipe
+    -- block's flag only, so a crafters line plus a vendor price carried two.
+    if not tooltip._togpmBranded then
         BlockLine(tooltip, "|n|c" .. brand .. "TOGPM|r")
+        tooltip._togpmBranded = true
     end
 
     -- TWO INDEPENDENT HEADINGS, each with its value indented beneath — the same
@@ -871,7 +906,8 @@ end
 --- Safe to call on `GameTooltip` even though the hook also fires there:
 --- `AppendRecipeDetails` renders at most one block per tooltip. It does NOT
 --- reset that guard -- a caller drawing into a private frame must clear
---- `tooltip._togpmRecipeBlock` itself, because nothing else will (the reset
+--- `tooltip._togpmRecipeBlock` and `tooltip._togpmBranded` itself, because
+--- nothing else will (the reset
 --- lives on the `OnTooltipCleared` hook, which private frames deliberately
 --- do not have).
 ---

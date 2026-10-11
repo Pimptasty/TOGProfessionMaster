@@ -352,6 +352,19 @@ L["SettingsTooltipRecipeDetailsDesc"]   = "Add a block showing the recipe's skil
 L["SettingsTooltipRecipeDetailsAuto"]   = "Automatic — skip it when RecipeMaster is loaded"
 L["SettingsTooltipRecipeDetailsAlways"] = "Always — even alongside RecipeMaster"
 L["SettingsTooltipRecipeDetailsNever"]  = "Never"
+-- One toggle per line the tooltip can carry, so a player can keep the parts they
+-- read and drop the rest. The recipe-details select above still decides WHETHER
+-- the recipe block may appear (RecipeMaster coexistence); these pick its parts.
+L["SettingsTooltipDifficulty"]          = "Show recipe difficulty in tooltips"
+L["SettingsTooltipDifficultyDesc"]      = "The skill levels at which the recipe is orange, yellow, green and grey. Applies to item tooltips and to this addon's own windows."
+L["SettingsTooltipSources"]             = "Show recipe sources in tooltips"
+L["SettingsTooltipSourcesDesc"]         = "Where the recipe comes from: trainer, vendor, drop, quest or container. Applies to item tooltips and to this addon's own windows."
+L["SettingsTooltipUnlearned"]           = "Show your characters who haven't learned the recipe"
+L["SettingsTooltipUnlearnedDesc"]       = "Lists your characters with the profession who don't know the recipe yet, with their skill level. Applies to item tooltips and to this addon's own windows."
+L["SettingsTooltipVendorBuy"]           = "Show vendor buy price on item tooltips"
+L["SettingsTooltipVendorBuyDesc"]       = "What a vendor charges for the item. Shown on any item a vendor sells, not only recipes."
+L["SettingsTooltipVendorSell"]          = "Show vendor sell price on item tooltips"
+L["SettingsTooltipVendorSellDesc"]      = "What a vendor pays you for the item. Hidden automatically when the game already shows its own sell price on the tooltip."
 
 -- Settings: TBC Anniversary phase filter
 L["SettingsTBCPhaseHeader"]     = "TBC Anniversary phase"

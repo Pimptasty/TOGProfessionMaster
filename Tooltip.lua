@@ -1,18 +1,11 @@
 -- TOG Profession Master — Tooltip hook
 -- Appends crafters to any item tooltip (SetItem / SetHyperlink).
--- Uses AceHook-3.0 (mixed into Ace in TOGProfessionMaster.lua).
--- Only runs when the player is in a guild with data.
+-- Hooks with the frames' own HookScript and the global hooksecurefunc -- NOT
+-- AceHook. A guard here used to disable the whole file when AceHook was missing
+-- from the addon object, gating on a library this file never calls.
 
 local _, addon = ...
 local Ace = addon.lib
-
--- Attempt to locate AceHook-3.0 on the addon object.
--- AceAddon-3.0 mixes it in if listed in the :NewAddon() call; we rely on
--- that rather than require the lib directly.
-if not Ace.HookScript then
-    addon:DebugPrint("Tooltip: AceHook-3.0 not mixed in — tooltip hooks disabled")
-    return
-end
 
 -- ---------------------------------------------------------------------------
 -- Helpers
@@ -79,18 +72,72 @@ end
 --
 -- Returns the matching `rd`, or nil. Caller (FindCrafters) handles the
 -- crafters list extraction.
--- v0.7.0: find every recipe (profId, recipeId) whose craftedItemId matches
--- itemID. Searches the shipped addon.recipeDB (authoritative metadata) —
--- crafter membership for any hits is then looked up in gdb.recipes.
-local function ResolveRecipesForItem(itemID)
-    local hits = {}
-    if not addon.recipeDB then return hits end
-    for profId, profRecipes in pairs(addon.recipeDB) do
-        for recipeId, meta in pairs(profRecipes) do
-            if meta.craftedItemId == itemID then
-                hits[#hits + 1] = { profId = profId, recipeId = recipeId }
+
+-- itemId -> { { profId, recipeId, crafted }, ... }, covering BOTH ways an item
+-- relates to a recipe: the item a recipe PRODUCES (`crafted = true`), and the
+-- scroll that TEACHES it. A player hovering either one is asking about the same
+-- recipe.
+--
+-- Built once and cached, deliberately: every item tooltip in the game reaches
+-- this, and walking every shipped recipe (~1,565 on Vanilla) per hover is not
+-- acceptable. The data is static shipped content loaded at startup, so one build
+-- is enough and there is nothing to invalidate. Held on the addon table, not as a
+-- file-local, so it invalidates the same way `_craftedItemMap` does when recipeDB
+-- is replaced -- in the test suite a spec swaps recipeDB per case.
+--
+-- Each list is SORTED by (profId, recipeId). pairs() order is unspecified, and
+-- the recipe block and the IDs line both take the first hit, so an unsorted list
+-- made which recipe they described depend on table layout.
+local function RecipesForItem(itemID)
+    if not addon._recipeItemIndex then
+        local index = {}
+        addon._recipeItemIndex = index
+        local function add(itemId, profId, recipeId, crafted)
+            if type(itemId) ~= "number" or itemId <= 0 then return end
+            local list = index[itemId]
+            if not list then list = {}; index[itemId] = list end
+            list[#list + 1] = { profId = profId, recipeId = recipeId, crafted = crafted }
+        end
+        for profId, profRecipes in pairs(addon.recipeDB or {}) do
+            for recipeId, meta in pairs(profRecipes) do
+                add(meta.craftedItemId, profId, recipeId, true)
+                -- The teaching scroll. Resolved through ItemLink.TeachingItem so
+                -- this index cannot disagree with what the browser's own tooltip
+                -- resolves -- it is the same lookup, ProfessionDB first and the
+                -- recipe's own meta.itemId second (the latter being the ONLY
+                -- source on Wrath / Cata / Mists).
+                local scrollId = addon.ItemLink and addon.ItemLink.TeachingItem
+                                 and addon.ItemLink.TeachingItem(profId, recipeId)
+                if scrollId ~= meta.craftedItemId then add(scrollId, profId, recipeId, false) end
             end
         end
+        -- Compared as numbers when both are, as strings otherwise: a string key
+        -- in recipeDB would make `<` raise, and this runs inside a tooltip hook
+        -- where a raise breaks every item tooltip in the game.
+        local function less(x, y)
+            if type(x) == "number" and type(y) == "number" then return x < y end
+            return tostring(x) < tostring(y)
+        end
+        for _, list in pairs(index) do
+            table.sort(list, function(a, b)
+                if a.profId ~= b.profId then return less(a.profId, b.profId) end
+                return less(a.recipeId, b.recipeId)
+            end)
+        end
+    end
+    return addon._recipeItemIndex[itemID]
+end
+addon.Tooltip._RecipesForItem = RecipesForItem   -- exposed for specs
+
+-- Every recipe whose craftedItemId is itemID -- the crafted half of the index
+-- above, NOT the teaching scrolls (a scroll's "crafters" would be the people who
+-- know the recipe, which is not who can make the scroll). Read from the cached
+-- index: this used to walk the whole of addon.recipeDB on every hover, twice
+-- with the IDs line on.
+local function ResolveRecipesForItem(itemID)
+    local hits = {}
+    for _, hit in ipairs(RecipesForItem(itemID) or {}) do
+        if hit.crafted then hits[#hits + 1] = hit end
     end
     return hits
 end
@@ -101,7 +148,11 @@ local function FindCrafters(itemID)
 
     local GuildRoster = addon.Scanner and addon.Scanner.GuildRoster
     local roster     = {}
-    local seen       = {}  -- dedup same (charKey, profId) appearing via multiple recipe matches
+    -- Dedup on the CHARACTER, not (character, profession). The line prints names
+    -- only, and seven Vanilla items come from two professions (Gold Bar is
+    -- Mining's Smelt Gold and Alchemy's Transmute Iron to Gold), so a miner-
+    -- alchemist keyed per profession was listed twice: "Bob, Bob".
+    local seen       = {}
 
     for _, hit in ipairs(ResolveRecipesForItem(itemID)) do
         local profId   = hit.profId
@@ -110,9 +161,8 @@ local function FindCrafters(itemID)
         local rd       = profRow and profRow[recipeId]
         if rd and rd.crafters then
             for charKey, tag in pairs(rd.crafters) do
-                local seenKey = charKey .. "@" .. profId
-                if not seen[seenKey] and addon:IsVisibleCrafter(charKey, tag) then
-                    seen[seenKey] = true
+                if not seen[charKey] and addon:IsVisibleCrafter(charKey, tag) then
+                    seen[charKey] = true
                     local name      = charKey:match("^(.-)%-") or charKey
                     local skillData = gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
                     local online    = GuildRoster and GuildRoster:IsOnline(charKey) or false
@@ -150,10 +200,20 @@ end
 -- Append lines to a GameTooltip frame
 -- ---------------------------------------------------------------------------
 
-local HEADER_COLOR  = "|c" .. (addon.BrandColor  or "ffDA8CFF")
+local HEADER_COLOR  = "|c" .. (addon.BrandColor  or "ffFF8000")
 local ONLINE_COLOR  = "|c" .. (addon.ColorOnline  or "ffffffff")
 local OFFLINE_COLOR = "|c" .. (addon.ColorOffline or "ff888888")
 local RESET_COLOR   = "|r"
+
+-- The "[TOGPM] k=v  k=v" diagnostic line. ONE builder for both callers (the
+-- global hook's IDs line and BrowserTab's AppendBrandIds), which used to format
+-- it independently. Marks the tooltip branded -- see `_togpmBranded` below.
+local function AddIdsLine(tooltip, idParts, prefix)
+    tooltip:AddLine(prefix .. HEADER_COLOR .. "[TOGPM]" .. RESET_COLOR
+        .. " " .. HEADER_COLOR .. table.concat(idParts, "  ") .. RESET_COLOR,
+        1, 1, 1, true)
+    tooltip._togpmBranded = true
+end
 
 -- The actual line-appending half of the tooltip hook. Split out from the
 -- outer AppendCrafters so the outer can dedup + defer, while this one runs
@@ -170,13 +230,13 @@ local function AppendCraftersAndIds(tooltip, itemID)
 
     -- Read settings each call — cheap (one table lookup per toggle) and
     -- keeps the toggles reactive without needing to rebuild the hook when
-    -- the user flips them. Defaults to false via SETTINGS_DEFAULTS — the
-    -- addon stays silent on tooltips until the user opts in via
-    -- ESC → Game Menu → Interface → AddOns → TOG Profession Master.
-    local showCrafters = Ace.db and Ace.db.profile and Ace.db.profile.tooltipShowCrafters
-    local showIds      = Ace.db and Ace.db.profile and Ace.db.profile.tooltipShowIds
-    if showCrafters == nil then showCrafters = false end
-    if showIds      == nil then showIds      = false end
+    -- the user flips them. A nil reads as the SHIPPED default, the same way
+    -- the Settings checkbox reads it: crafters ON (since v1.0.7), IDs OFF.
+    -- Crafters used to read nil as off, so its checkbox showed ticked over a
+    -- hidden line whenever the key was missing.
+    local profile      = Ace.db and Ace.db.profile
+    local showCrafters = not (profile and profile.tooltipShowCrafters == false)
+    local showIds      = (profile and profile.tooltipShowIds == true) or false
     if not showCrafters and not showIds then return end
 
     -- ---- Crafters line (existing) -----------------------------------
@@ -200,6 +260,9 @@ local function AppendCraftersAndIds(tooltip, itemID)
         -- reordered by the tooltip's internal build order.
         tooltip:AddLine("|n" .. HEADER_COLOR .. "[TOGPM]" .. RESET_COLOR .. " " .. table.concat(parts, ", "),
             1, 1, 1, true)
+        -- The recipe and vendor blocks read this and skip their own "TOGPM"
+        -- heading, so one tooltip carries one brand label, not two.
+        tooltip._togpmBranded = true
     end
 
     -- ---- IDs line (new) ---------------------------------------------
@@ -229,24 +292,20 @@ local function AppendCraftersAndIds(tooltip, itemID)
         --                       sole crafter unlearned the recipe)
         --   bop-skipped       : crafters line was suppressed because item is
         --                       Bind-on-Pickup (can't be traded/mailed anyway)
-        -- v0.7.0: walk ResolveRecipesForItem (which mines the shipped
-        -- addon.recipeDB by craftedItemId) and cross-reference each hit
-        -- against gdb.recipes for the crafter count.
-        local gdb = addon:GetGuildDb()
+        -- The spellId is the FIRST recipe's (the index is sorted, so that is
+        -- stable). The crafter COUNT is the same set the crafters line draws --
+        -- every recipe that makes the item, through the visibility gate, one
+        -- per character -- so the number can never disagree with the names.
+        -- It used to count the first recipe's raw crafters, so a crafter the
+        -- gate hides read "crafters=1" over an empty crafters line.
         local diag = "recipe-not-found"
         local crafterCount = 0
-        -- FIRST hit only, and written as an index rather than a `for ... break`
-        -- so that is legible: this is a diagnostic line, and reporting one
-        -- recipe's crafter count is the whole intent. luacheck called the old
-        -- shape out ("loop is executed at most once") and it was right --
-        -- a loop that always breaks reads as if it might not.
         local hit = ResolveRecipesForItem(itemID)[1]
         if hit then
             local meta = addon.recipeDB[hit.profId][hit.recipeId]
             if meta.teaches then table.insert(idParts, "spellId=" .. meta.teaches) end
-            local profRow = gdb and gdb.recipes and gdb.recipes[hit.profId]
-            local rd      = profRow and profRow[hit.recipeId]
-            for _ in pairs((rd and rd.crafters) or {}) do crafterCount = crafterCount + 1 end
+            local found = crafters or FindCrafters(itemID)
+            crafterCount = found and #found or 0
             diag = (crafterCount > 0) and ("crafters=" .. crafterCount) or "recipe-no-crafters"
         end
         if not showCrafters then
@@ -256,10 +315,7 @@ local function AppendCraftersAndIds(tooltip, itemID)
             diag = "bop-skipped (crafters=" .. crafterCount .. ")"
         end
         table.insert(idParts, diag)
-        local idPrefix = crafters and "" or "|n"
-        tooltip:AddLine(idPrefix .. HEADER_COLOR .. "[TOGPM]" .. RESET_COLOR
-            .. " " .. HEADER_COLOR .. table.concat(idParts, "  ") .. RESET_COLOR,
-            1, 1, 1, true)
+        AddIdsLine(tooltip, idParts, crafters and "" or "|n")
     end
 end
 
@@ -267,46 +323,8 @@ end
 -- Recipe-detail block (difficulty + sources) on GAME-BUILT item tooltips
 -- ---------------------------------------------------------------------------
 
--- itemId -> { { profId, recipeId }, ... }, covering BOTH ways an item relates to
--- a recipe: the item a recipe PRODUCES, and the scroll that TEACHES it. A player
--- hovering either one is asking about the same recipe.
---
--- Built once and cached, deliberately. ResolveRecipesForItem above walks every
--- shipped recipe (~1,565 on Vanilla) on each call, which was tolerable while the
--- only caller was the opt-in IDs line -- this block runs on every item tooltip in
--- the game, so an O(n) scan per hover is not. The data is static shipped content
--- loaded at startup, so one build is enough and there is nothing to invalidate.
--- Held on the addon table, not as a file-local, so it invalidates the same way
--- `_craftedItemMap` does when recipeDB is replaced. In game that happens once at
--- load; in the test suite a spec swaps recipeDB per case, and a file-local would
--- cache the first spec's data for the whole run.
-local function RecipesForItem(itemID)
-    if not addon._recipeItemIndex then
-        local index = {}
-        addon._recipeItemIndex = index
-        local function add(itemId, profId, recipeId)
-            if type(itemId) ~= "number" or itemId <= 0 then return end
-            local list = index[itemId]
-            if not list then list = {}; index[itemId] = list end
-            list[#list + 1] = { profId = profId, recipeId = recipeId }
-        end
-        for profId, profRecipes in pairs(addon.recipeDB or {}) do
-            for recipeId, meta in pairs(profRecipes) do
-                add(meta.craftedItemId, profId, recipeId)
-                -- The teaching scroll. Resolved through ItemLink.TeachingItem so
-                -- this index cannot disagree with what the browser's own tooltip
-                -- resolves -- it is the same lookup, ProfessionDB first and the
-                -- recipe's own meta.itemId second (the latter being the ONLY
-                -- source on Wrath / Cata / Mists).
-                local scrollId = addon.ItemLink and addon.ItemLink.TeachingItem
-                                 and addon.ItemLink.TeachingItem(profId, recipeId)
-                if scrollId ~= meta.craftedItemId then add(scrollId, profId, recipeId) end
-            end
-        end
-    end
-    return addon._recipeItemIndex[itemID]
-end
-addon.Tooltip._RecipesForItem = RecipesForItem   -- exposed for specs
+-- The item -> recipe index (RecipesForItem) is defined above, beside the
+-- crafters lookup that also reads it.
 
 --- Should the block render on a tooltip the GAME built?
 ---
@@ -400,6 +418,22 @@ end
 -- on PLAYER_ENTERING_WORLD with a delay so we're last in the chain.)
 local function AppendCrafters(tooltip, itemID)
     if tooltip._togpmAppended == itemID then return end
+    -- A DIFFERENT item while the last one's flag is still set means
+    -- OnTooltipCleared did not run between the two hovers (the Show fallback
+    -- below documents a client where it may not). Every per-hover flag is then
+    -- the previous item's, so forget them here exactly as Cleared would have --
+    -- otherwise the recipe block and the brand heading stay suppressed for the
+    -- rest of the session. Only in that case: after a real Cleared,
+    -- `_togpmAppended` is nil and nothing is touched, so a block one of our own
+    -- windows drew before the hook fired keeps its guard.
+    if tooltip._togpmAppended ~= nil then
+        tooltip._togpmRecipeBlock = nil
+        tooltip._togpmVendorBlock = nil
+        tooltip._togpmBranded     = nil
+        -- The game-sell flag is keyed on the item, so one set for THIS item
+        -- (its OnTooltipAddMoney can run before our hook) survives.
+        if tooltip._togpmGameSell ~= itemID then tooltip._togpmGameSell = nil end
+    end
     tooltip._togpmAppended = itemID
     AppendCraftersNow(tooltip, itemID)
 end
@@ -420,16 +454,12 @@ addon.Tooltip.AppendCrafters = AppendCraftersAndIds
 -- tooltips. Respects the same tooltipShowIds toggle as the global hook so
 -- disabling it via Settings hides IDs everywhere consistently.
 local function AppendBrandIdsLine(tooltip, itemID, spellID)
-    local showIds = Ace.db and Ace.db.profile and Ace.db.profile.tooltipShowIds
-    if showIds == nil then showIds = false end
-    if not showIds then return end
+    if not (Ace.db and Ace.db.profile and Ace.db.profile.tooltipShowIds == true) then return end
     local idParts = {}
     if itemID  then table.insert(idParts, "itemId="  .. tostring(itemID))  end
     if spellID then table.insert(idParts, "spellId=" .. tostring(spellID)) end
     if #idParts == 0 then return end
-    tooltip:AddLine("|n" .. HEADER_COLOR .. "[TOGPM]" .. RESET_COLOR
-        .. " " .. HEADER_COLOR .. table.concat(idParts, "  ") .. RESET_COLOR,
-        1, 1, 1, true)
+    AddIdsLine(tooltip, idParts, "|n")
 end
 addon.Tooltip.AppendBrandIds = AppendBrandIdsLine
 
@@ -437,8 +467,11 @@ addon.Tooltip.AppendBrandIds = AppendBrandIdsLine
 -- Hooks
 -- ---------------------------------------------------------------------------
 
+-- No `_togpmAppended` guard here: AppendCrafters already dedups against THIS
+-- item. A bare truthiness test (which this had) dropped the next item entirely
+-- whenever the previous one's flag survived -- the same defect the Show
+-- fallback below documents and fixed for itself.
 local function OnTooltipSetItem(tooltip)
-    if tooltip._togpmAppended then return end
     local itemID = ItemIdFromTooltip(tooltip)
     if itemID then AppendCrafters(tooltip, itemID) end
 end
@@ -453,8 +486,54 @@ local function OnTooltipCleared(tooltip)
     -- on nearly every item in the game rather than only on recipes, so a flag
     -- left set would suppress it on every subsequent hover of the session.
     tooltip._togpmVendorBlock = nil
+    tooltip._togpmGameSell    = nil
+    tooltip._togpmBranded     = nil
 end
 addon.Tooltip._OnTooltipCleared = OnTooltipCleared   -- exposed for specs
+
+-- The GAME drew its own sell price on this tooltip, so ours would be a second
+-- copy of the same number. Classic's client adds "Sell Price:" through the
+-- tooltip's OnTooltipAddMoney script (classic_era Blizzard_GameTooltip/Classic/
+-- GameTooltip.lua:297) -- while a vendor window is open; Retail carries it as a
+-- data line of type Enum.TooltipDataLineType.SellPrice (= 11,
+-- TooltipInfoSharedDocumentation.lua:45). Keyed on the line being PRESENT, so
+-- this is right whenever Retail emits it -- which was not checked. Either way the
+-- vendor block keeps its BUY row, which the game never shows.
+--
+-- Holds the ITEM the game priced, not a bare true, so a flag that outlives its
+-- hover cannot hide the sell row on the next item (Peer Review, thread
+-- 245309dd). `true` only when the tooltip will not say which item it is
+-- showing yet; AppendCrafters drops that on the next different item.
+local function OnTooltipAddMoney(tooltip)
+    tooltip._togpmGameSell = ItemIdFromTooltip(tooltip) or true
+end
+addon.Tooltip._OnTooltipAddMoney = OnTooltipAddMoney   -- exposed for specs
+
+local function DataHasSellPrice(data)
+    local lineType = Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.SellPrice
+    if not lineType or type(data) ~= "table" or type(data.lines) ~= "table" then return false end
+    for _, line in ipairs(data.lines) do
+        if type(line) == "table" and line.type == lineType then return true end
+    end
+    return false
+end
+addon.Tooltip._DataHasSellPrice = DataHasSellPrice   -- exposed for specs
+
+-- The modern engine's item post-call. ASSIGNS the game-sell flag for this item
+-- rather than only ever setting it: this data is the authority on whether the
+-- game printed a sell line for THIS item. One exception -- a flag OnTooltipAddMoney
+-- already set for this same item is left alone.
+local function OnItemPostCall(tooltip, data)
+    addon:DebugPrint("Tooltip: modern PostCall fired, data.id =", tostring(data and data.id))
+    local id = data and data.id
+    if DataHasSellPrice(data) then
+        tooltip._togpmGameSell = id or true
+    elseif tooltip._togpmGameSell ~= id then
+        tooltip._togpmGameSell = nil
+    end
+    if id then AppendCrafters(tooltip, id) end
+end
+addon.Tooltip._OnItemPostCall = OnItemPostCall   -- exposed for specs
 
 -- Register after PLAYER_LOGIN so SavedVariables are loaded
 Ace:RegisterEvent("PLAYER_LOGIN", function()
@@ -471,10 +550,7 @@ Ace:RegisterEvent("PLAYER_LOGIN", function()
     if hasModern then
         -- MoP Classic+ / Retail / modern-engine Classic flavors: single
         -- post-call fires for every item tooltip.
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
-            addon:DebugPrint("Tooltip: modern PostCall fired, data.id =", tostring(data and data.id))
-            if data and data.id then AppendCrafters(tooltip, data.id) end
-        end)
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, OnItemPostCall)
         addon:DebugPrint("Tooltip: registered modern TooltipDataProcessor handler")
     end
 
@@ -503,6 +579,9 @@ Ace:RegisterEvent("PLAYER_LOGIN", function()
             end
             if tt:HasScript("OnTooltipCleared") then
                 tt:HookScript("OnTooltipCleared", OnTooltipCleared)
+            end
+            if tt:HasScript("OnTooltipAddMoney") then
+                tt:HookScript("OnTooltipAddMoney", OnTooltipAddMoney)
             end
         end
     end

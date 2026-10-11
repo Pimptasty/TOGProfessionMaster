@@ -2,8 +2,9 @@
 --
 -- The feature exists because nobody else does both halves. Auctionator and
 -- Leatrix Plus each have a setting for vendor SELL price on all items; TSM shows
--- sell inside its own block; ATT shows neither; the game shows neither on a bag
--- tooltip. None of them shows what a vendor CHARGES. Buy and sell together is
+-- sell inside its own block; ATT shows neither; the game never shows buy, and
+-- shows sell only on Retail or at an open vendor on Classic (our sell row then
+-- stands down). None of them shows what a vendor CHARGES. Buy and sell together is
 -- the pair a player reasons with, and we already hold both.
 --
 -- THE RULE THIS FILE PINS: the vendor block is independent of the recipe block.
@@ -25,11 +26,10 @@
 package.path = "./Tests/?.lua;" .. package.path
 local env = require("env_togpm")
 
-local TRANSMUTE = 17187
 local SCROLL = 12656
 local QUAIL  = 8952          -- an ordinary consumable: no recipe, no scroll
 
-local ns, IL, Ace, realGetItemDB, realGetVendorBuy
+local ns, IL, Ace, realGetItemDB, realGetVendorBuy, savedEnum
 
 setup(function()
 	ns = env.initDb()
@@ -63,6 +63,9 @@ before_each(function()
 	-- below assert an ABSENT row; against the real library they would fail, or
 	-- worse, pass for the wrong reason depending on spec order.
 	ns._itemDB = false
+	-- Cases below install a SellPrice line type; after_each puts the real one
+	-- back even when a case raises halfway.
+	savedEnum = _G.Enum
 end)
 
 after_each(function()
@@ -71,9 +74,15 @@ after_each(function()
 	ns.GetItemDB = realGetItemDB
 	ns._itemDB   = nil
 	ns.Price.GetVendorBuy = realGetVendorBuy
-	Ace.db.profile.tooltipVendorPrices = nil
+	Ace.db.profile.tooltipVendorBuy  = nil
+	Ace.db.profile.tooltipVendorSell = nil
 	Ace.db.profile.tooltipRecipeDetails = nil
+	_G.Enum = savedEnum
 end)
+
+local function withSellPriceEnum()
+	_G.Enum = { TooltipDataLineType = { SellPrice = 11 } }
+end
 
 --- A fresh GameTooltip with the dedup flags clear, as a real hover would have.
 local function tip()
@@ -81,6 +90,9 @@ local function tip()
 	t:ClearLines()
 	t._togpmVendorBlock = nil
 	t._togpmRecipeBlock = nil
+	t._togpmGameSell    = nil
+	t._togpmBranded     = nil
+	t._togpmAppended    = nil
 	return t
 end
 
@@ -120,15 +132,30 @@ describe("vendor prices render on an ordinary item with no crafting at all", fun
 		assert.is_truthy(textOf(t):find("TOGPM", 1, true))
 	end)
 
-	it("does NOT brand itself twice when the recipe block already did", function()
-		-- Two TOGPM headers on one tooltip reads as two addons.
+	it("does NOT brand itself when anything else already did", function()
+		-- Two TOGPM labels on one tooltip reads as two addons. The crafters line,
+		-- the IDs line and the recipe block all set this one flag.
 		cacheItem(QUAIL, 2000)
 		ns.Price.GetVendorBuy = function() return 8000, "vendor-static" end
 		local t = tip()
-		t._togpmRecipeBlock = TRANSMUTE          -- as AppendRecipeDetails leaves it
+		t._togpmBranded = true
 		IL.AppendVendorPrices(t, QUAIL)
 		local _, count = textOf(t):gsub("TOGPM", "")
 		assert.equal(0, count)
+	end)
+
+	it("one label when the crafters line and the vendor block both render", function()
+		-- Peer Review's reproduction: a crafted reagent with a guild crafter and
+		-- a vendor price used to carry "[TOGPM] Bob" AND a "TOGPM" heading.
+		cacheItem(QUAIL, 2000)
+		ns.Price.GetVendorBuy = function() return 8000, "vendor-static" end
+		local t = tip()
+		t:AddLine("[TOGPM] Bob")
+		t._togpmBranded = true                  -- as the crafters line leaves it
+		IL.AppendVendorPrices(t, QUAIL)
+		local _, count = textOf(t):gsub("TOGPM", "")
+		assert.equal(1, count)
+		assert.is_true(t._togpmBranded)
 	end)
 end)
 
@@ -199,10 +226,53 @@ describe("each row appears only when its number is real", function()
 end)
 
 describe("the block is opt-out and rendered once", function()
-	it("respects the setting", function()
+	it("adds nothing with both rows switched off", function()
 		cacheItem(QUAIL, 2000)
 		ns.Price.GetVendorBuy = function() return 8000, "vendor-static" end
-		Ace.db.profile.tooltipVendorPrices = false
+		Ace.db.profile.tooltipVendorBuy  = false
+		Ace.db.profile.tooltipVendorSell = false
+		local t = tip()
+		assert.is_false(IL.AppendVendorPrices(t, QUAIL))
+		assert.equal("", textOf(t))
+	end)
+
+	it("the buy toggle hides only the buy row", function()
+		cacheItem(QUAIL, 2000)
+		ns.Price.GetVendorBuy = function() return 8000, "vendor-static" end
+		Ace.db.profile.tooltipVendorBuy = false
+		local t = tip()
+		assert.is_true(IL.AppendVendorPrices(t, QUAIL))
+		local text = textOf(t)
+		assert.is_nil(text:find("Buy", 1, true))
+		assert.is_truthy(text:find("Sell", 1, true))
+	end)
+
+	it("the sell toggle hides only the sell row", function()
+		cacheItem(QUAIL, 2000)
+		ns.Price.GetVendorBuy = function() return 8000, "vendor-static" end
+		Ace.db.profile.tooltipVendorSell = false
+		local t = tip()
+		assert.is_true(IL.AppendVendorPrices(t, QUAIL))
+		local text = textOf(t)
+		assert.is_truthy(text:find("Buy", 1, true))
+		assert.is_nil(text:find("Sell", 1, true))
+	end)
+
+	it("does not look up a row that is switched off", function()
+		-- The buy ladder can ask Auctionator, and this runs on every hover.
+		cacheItem(QUAIL, 2000)
+		local asked = false
+		ns.Price.GetVendorBuy = function() asked = true; return 8000 end
+		Ace.db.profile.tooltipVendorBuy = false
+		IL.AppendVendorPrices(tip(), QUAIL)
+		assert.is_false(asked)
+	end)
+
+	it("writes no heading when the only available row is switched off", function()
+		-- A sell-only item with the sell row off must not leave a bare "TOGPM".
+		cacheItem(QUAIL, 2000)
+		ns.Price.GetVendorBuy = function() return nil end
+		Ace.db.profile.tooltipVendorSell = false
 		local t = tip()
 		assert.is_false(IL.AppendVendorPrices(t, QUAIL))
 		assert.equal("", textOf(t))
@@ -220,6 +290,17 @@ describe("the block is opt-out and rendered once", function()
 		assert.equal(1, count)
 	end)
 
+	it("renders for a DIFFERENT item even if the last item's flag survived", function()
+		-- The dedup is per item. A flag left over from the previous hover (no
+		-- OnTooltipCleared in between) must not blank the vendor block for the
+		-- next item -- it renders on nearly everything, so that would be loud.
+		cacheItem(QUAIL, 2000)
+		ns.Price.GetVendorBuy = function() return 8000, "vendor-static" end
+		local t = tip()
+		t._togpmVendorBlock = SCROLL
+		assert.is_true(IL.AppendVendorPrices(t, QUAIL))
+	end)
+
 	it("clears its flag on OnTooltipCleared so the next hover renders", function()
 		-- GameTooltip is reused for every hover in the game. A flag that outlived
 		-- the item would show this block once per session — and because it fires
@@ -233,6 +314,92 @@ describe("the block is opt-out and rendered once", function()
 		assert.is_nil(t._togpmVendorBlock)
 		t:ClearLines()
 		assert.is_true(IL.AppendVendorPrices(t, QUAIL))
+	end)
+end)
+
+describe("the sell row stands down when the game printed its own", function()
+	-- Classic's client adds "Sell Price:" via OnTooltipAddMoney while a vendor
+	-- is open, Retail on every item via a SellPrice data line. Ours on top was
+	-- the same number twice.
+
+	it("drops SELL but keeps BUY after the game's OnTooltipAddMoney", function()
+		cacheItem(QUAIL, 2000)
+		ns.Price.GetVendorBuy = function() return 8000, "vendor-static" end
+		local t = tip()
+		ns.Tooltip._OnTooltipAddMoney(t)
+		assert.is_true(IL.AppendVendorPrices(t, QUAIL))
+		local text = textOf(t)
+		assert.is_truthy(text:find("Buy", 1, true), "buy row lost")
+		assert.is_nil(text:find("Sell", 1, true), "sell row duplicated the game's")
+	end)
+
+	it("adds nothing when sell was the only number and the game has it", function()
+		cacheItem(QUAIL, 2000)
+		ns.Price.GetVendorBuy = function() return nil end
+		local t = tip()
+		ns.Tooltip._OnTooltipAddMoney(t)
+		assert.is_false(IL.AppendVendorPrices(t, QUAIL))
+		assert.equal("", textOf(t))
+	end)
+
+	it("a game-sell flag left from item A does not hide item B's sell row", function()
+		-- Peer Review T1: the flag holds the ITEM the game priced. Where Cleared
+		-- does not run between hovers, a bare true used to suppress every later
+		-- item's sell row.
+		cacheItem(QUAIL, 2000)
+		ns.Price.GetVendorBuy = function() return nil end
+		local t = tip()
+		t._togpmGameSell = SCROLL                -- the previous item's
+		assert.is_true(IL.AppendVendorPrices(t, QUAIL))
+		assert.is_truthy(textOf(t):find("Sell", 1, true))
+	end)
+
+	it("the modern post-call assigns the flag per item, clearing a stale one", function()
+		withSellPriceEnum()
+		local t = tip()
+		ns.Tooltip._OnItemPostCall(t, { id = SCROLL, lines = { { type = 11 } } })
+		assert.equal(SCROLL, t._togpmGameSell)
+		ns.Tooltip._OnItemPostCall(t, { id = QUAIL, lines = { { type = 0 } } })
+		assert.is_nil(t._togpmGameSell)
+	end)
+
+	it("the post-call keeps a flag OnTooltipAddMoney set for the same item", function()
+		local saved = _G.Enum
+		_G.Enum = { TooltipDataLineType = { SellPrice = 11 } }
+		local t = tip()
+		t._togpmGameSell = QUAIL
+		ns.Tooltip._OnItemPostCall(t, { id = QUAIL, lines = {} })
+		_G.Enum = saved
+		assert.equal(QUAIL, t._togpmGameSell)
+	end)
+
+	it("a post-call with no item id still records the game's sell line", function()
+		local saved = _G.Enum
+		_G.Enum = { TooltipDataLineType = { SellPrice = 11 } }
+		local t = tip()
+		ns.Tooltip._OnItemPostCall(t, { lines = { { type = 11 } } })
+		_G.Enum = saved
+		assert.is_true(t._togpmGameSell)
+	end)
+
+	it("forgets the game's sell line on OnTooltipCleared", function()
+		local t = tip()
+		ns.Tooltip._OnTooltipAddMoney(t)
+		ns.Tooltip._OnTooltipCleared(t)
+		assert.is_nil(t._togpmGameSell)
+	end)
+
+	it("recognises Retail's SellPrice data line, and only that", function()
+		local saved = _G.Enum
+		_G.Enum = { TooltipDataLineType = { SellPrice = 11 } }
+		local has = ns.Tooltip._DataHasSellPrice
+		local ok1 = has({ lines = { { type = 0 }, { type = 11 } } })
+		local ok2 = has({ lines = { { type = 0 } } })
+		local ok3 = has(nil)
+		_G.Enum = saved
+		assert.is_true(ok1)
+		assert.is_false(ok2)
+		assert.is_false(ok3)
 	end)
 end)
 

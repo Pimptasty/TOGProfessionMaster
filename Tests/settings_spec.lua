@@ -133,6 +133,111 @@ describe("defaults that change behaviour on upgrade", function()
 	end)
 end)
 
+describe("item tooltip: one toggle per line", function()
+	-- The operator, 2026-10-10: "each thing that shows up on the link be it's own
+	-- on/off setting". The vendor rows had no setting at all before this.
+	local PARTS = { "tooltipShowCrafters", "tooltipShowIds",
+	                "tooltipRecipeDifficulty", "tooltipRecipeSources", "tooltipRecipeUnlearned",
+	                "tooltipVendorBuy", "tooltipVendorSell" }
+	local RECIPE_PARTS = { tooltipRecipeDifficulty = true, tooltipRecipeSources = true,
+	                       tooltipRecipeUnlearned = true }
+
+	after_each(function()
+		for _, key in ipairs(PARTS) do ns.lib.db.profile[key] = nil end
+		ns.lib.db.profile.tooltipRecipeDetails = nil
+	end)
+
+	it("has a toggle for every line", function()
+		for _, key in ipairs(PARTS) do
+			local o = opt(key)
+			assert.is_truthy(o, key .. " has no setting")
+			assert.equal("toggle", o.type)
+		end
+	end)
+
+	it("round-trips each new toggle and reads an untouched one as on", function()
+		for key in pairs(RECIPE_PARTS) do
+			ns.lib.db.profile[key] = nil
+			assert.is_true(opt(key).get(), key)
+			opt(key).set(nil, false)
+			assert.is_false(ns.lib.db.profile[key], key)
+			assert.is_false(opt(key).get(), key)
+		end
+		for _, key in ipairs({ "tooltipVendorBuy", "tooltipVendorSell" }) do
+			opt(key).set(nil, false)
+			assert.is_false(opt(key).get(), key)
+			opt(key).set(nil, true)
+			assert.is_true(ns.lib.db.profile[key], key)
+		end
+	end)
+
+	it("reads a missing key as the shipped default: crafters on, IDs off", function()
+		-- Each checkbox must agree with what the tooltip does when the key is
+		-- missing. The IDs box used `~= false` and showed ticked over a hidden line.
+		ns.lib.db.profile.tooltipShowCrafters = nil
+		ns.lib.db.profile.tooltipShowIds      = nil
+		assert.is_true(opt("tooltipShowCrafters").get())
+		assert.is_false(opt("tooltipShowIds").get())
+	end)
+
+	it("greys out the recipe parts only while recipe details are Never", function()
+		ns.lib.db.profile.tooltipRecipeDetails = "never"
+		for key in pairs(RECIPE_PARTS) do assert.is_true(opt(key).disabled(), key) end
+		ns.lib.db.profile.tooltipRecipeDetails = "always"
+		for key in pairs(RECIPE_PARTS) do assert.is_false(opt(key).disabled(), key) end
+		-- The vendor rows are not part of the recipe block.
+		assert.is_nil(opt("tooltipVendorBuy").disabled)
+		assert.is_nil(opt("tooltipVendorSell").disabled)
+	end)
+end)
+
+describe("the old single vendor-price key migrates to the two rows", function()
+	after_each(function()
+		local p = ns.lib.db.profile
+		p.tooltipVendorPrices, p.tooltipVendorBuy, p.tooltipVendorSell = nil, nil, nil
+	end)
+
+	it("carries an opt-out onto both rows and drops the old key", function()
+		ns.lib.db.profile.tooltipVendorPrices = false
+		ns:MigrateVendorPriceToggles()
+		assert.is_false(ns.lib.db.profile.tooltipVendorBuy)
+		assert.is_false(ns.lib.db.profile.tooltipVendorSell)
+		assert.is_nil(ns.lib.db.profile.tooltipVendorPrices)
+	end)
+
+	it("leaves both rows on for a player who never turned it off", function()
+		ns.lib.db.profile.tooltipVendorPrices = true
+		ns:MigrateVendorPriceToggles()
+		assert.is_true(ns.lib.db.profile.tooltipVendorBuy)
+		assert.is_true(ns.lib.db.profile.tooltipVendorSell)
+		assert.is_nil(ns.lib.db.profile.tooltipVendorPrices)
+	end)
+
+	it("migrates a profile the player switches to after login", function()
+		-- OnInitialize only migrates the profile active at login; a second
+		-- profile with the old key off must not come back with both rows on.
+		local db = ns.lib.db
+		local original = db:GetCurrentProfile()
+		db.sv.profiles = db.sv.profiles or {}
+		db.sv.profiles["TOGPM-spec-other"] = { tooltipVendorPrices = false }
+		db:SetProfile("TOGPM-spec-other")
+		local buy, sell, legacy = db.profile.tooltipVendorBuy, db.profile.tooltipVendorSell,
+		                          db.profile.tooltipVendorPrices
+		db:SetProfile(original)
+		db:DeleteProfile("TOGPM-spec-other", true)
+		assert.is_false(buy)
+		assert.is_false(sell)
+		assert.is_nil(legacy)
+	end)
+
+	it("does nothing before the profile exists", function()
+		local saved = ns.lib.db
+		ns.lib.db = nil
+		assert.has_no.errors(function() ns:MigrateVendorPriceToggles() end)
+		ns.lib.db = saved
+	end)
+end)
+
 describe("window scale", function()
 	it("reports 1 when nothing has been chosen", function()
 		ns.lib.db.profile.windowScale = nil

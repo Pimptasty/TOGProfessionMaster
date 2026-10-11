@@ -6,6 +6,103 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # TOG Profession Master Changelog
 
+## [v1.4.0] (2026-10-11) - Item tooltips: an on/off setting for every line, no duplicate sell price, no doubled crafter names
+
+### New Features
+
+- **Every line TOGPM adds to an item tooltip has its own on/off setting.**
+  Settings > Item tooltip gains five toggles: recipe difficulty, recipe
+  sources, your characters who haven't learned the recipe, vendor buy price
+  and vendor sell price. Crafters and IDs already had one each. The vendor
+  rows had no setting at all; they were driven by one hidden key,
+  `tooltipVendorPrices`, which `addon:MigrateVendorPriceToggles` carries onto
+  both new keys once (off stays off) and then deletes -- at login and again on
+  every profile switch or copy, since a login only reaches the active profile.
+  A row switched off is not priced at all. The recipe-details
+  mode still decides whether the recipe block may appear at all, so its three
+  part toggles are greyed out under "Never". A part switched off is dropped
+  before the block's "is there anything to show" test, so a block left with
+  nothing still writes no heading. Location: `GUI/Settings.lua`,
+  `GUI/SharedWidgets.lua`, `TOGProfessionMaster.lua`, `Locale/enUS.lua`.
+
+### Bug Fixes
+
+- **The crafters line and the IDs checkbox read a missing setting the opposite
+  way from each other.** Tooltip.lua treated a missing `tooltipShowCrafters`
+  as off although crafters has shipped on since v1.0.7 and its checkbox read
+  it as on; the IDs checkbox read a missing `tooltipShowIds` as on although
+  IDs ship off. Every reader now takes the shipped default. A spec that
+  asserted the old silent default was rewritten to the shipped one. Location:
+  `Tooltip.lua`, `GUI/Settings.lua`.
+- **The Item tooltip header shared order 19.5 with the cooldown reminder
+  field**, a tie between the two. The header is now
+  19.505. Location: `GUI/Settings.lua`.
+
+- **The vendor block repeated the game's own sell price.** Classic's client
+  prints "Sell Price:" on item tooltips while a vendor window is open (its
+  `OnTooltipAddMoney` script, classic_era `GameTooltip.lua:297`), and Retail's
+  tooltip data has a `SellPrice` line type for the same thing
+  (`TooltipInfoSharedDocumentation.lua:45`; when Retail emits it was not
+  checked). Our "Vendor Sell" row then showed the same number a second time. The hooks now notice the game's line and our
+  sell row stands down; the buy row, which the game never shows, stays. Whether
+  the Classic `OnTooltipAddMoney` script fires before or after our item hook
+  on every client has not been checked in game: where it fires after, the
+  duplicate remains as before. Location: `Tooltip.lua`, `GUI/SharedWidgets.lua`.
+- **A crafter who makes an item through two professions was listed twice**
+  ("Bob, Bob"). The crafters line deduplicated per character AND profession,
+  and seven Vanilla items come from two (Gold Bar is Mining's Smelt Gold and
+  Alchemy's Transmute Iron to Gold). Deduplicated per character now. Location:
+  `Tooltip.lua`.
+- **The crafters line and the IDs line scanned every shipped recipe on every
+  item hover** (~1,565 on Vanilla, twice with the IDs line on). They read the
+  cached item-to-recipe index the recipe block already used, filtered to
+  crafted items so a teaching scroll is never credited to the recipe's crafters.
+  Each item's recipes are sorted, so "the first recipe" the recipe block and
+  the IDs line describe no longer depends on table layout; the sort falls back
+  to comparing as text, so a non-numeric key cannot make it raise. Location:
+  `Tooltip.lua`.
+- **The legacy `OnTooltipSetItem` hook skipped any item while the previous
+  item's flag was still set.** It tested the flag for truthiness instead of
+  comparing it to the hovered item, the same defect the Show fallback had
+  already fixed for itself. The vendor block's per-hover guard had the same
+  shape and now compares to the item too. Location: `Tooltip.lua`,
+  `GUI/SharedWidgets.lua`.
+- **A tooltip could carry two TOGPM labels.** The crafters and IDs lines open
+  with "[TOGPM]" and the recipe and vendor blocks with their own "TOGPM"
+  heading; the vendor block checked only whether the recipe block had written
+  one. A crafted reagent with a guild crafter and a vendor price showed both.
+  One flag now records that a label was written, and every later block
+  continues under it. Location: `Tooltip.lua`, `GUI/SharedWidgets.lua`.
+- **Per-hover flags could outlive their item** where `OnTooltipCleared` does
+  not run between two hovers, which the Show fallback's own comment says can
+  happen. The recipe block and the brand heading then stayed suppressed for the
+  rest of the session, and the new game-sell flag could hide the sell row on
+  every later item. When a different item arrives while the last one's flag is
+  still set, those flags are now reset as Cleared would have; the game-sell
+  flag holds the item it was set for, and the modern post-call assigns it per
+  item rather than only ever setting it. Raised by Peer Review on the self-audit
+  thread (245309dd). Location: `Tooltip.lua`, `GUI/SharedWidgets.lua`.
+- **The IDs line's crafter count could disagree with the crafters line.** It
+  counted the first recipe's raw crafters, including ones the visibility gate
+  hides, so it could read "crafters=1" over an empty crafters line. It now
+  counts the same list the crafters line draws. The two IDs-line builders are
+  one function. Location: `Tooltip.lua`.
+- **`Tooltip.lua` disabled every tooltip hook if AceHook-3.0 was missing**,
+  a library the file never calls (its hooks are the frames' own `HookScript`
+  and `hooksecurefunc`). The guard is gone. The crafters header's fallback
+  colour was also a stale purple rather than the brand orange.
+  Location: `Tooltip.lua`.
+
+### Improvements
+
+- **Tests:** specs for each fix above, plus the crafters sort (online first,
+  then name) and the WoW Forever `TooltipUtil` path, neither of which any spec
+  reached before. `Tooltip.lua` and `GUI/SharedWidgets.lua` are at 100% line
+  coverage. Location: `Tests/tooltip_spec.lua`, `Tests/tooltiphooks_spec.lua`,
+  `Tests/vendorprices_spec.lua`, `Tests/sharedwidgets_spec.lua`.
+
+---
+
 ## [v1.3.1] (2026-10-07) - The CurseForge app installs LibDBIcon again; Missing Recipes shows recipe names
 
 ### Bug Fixes

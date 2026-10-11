@@ -6,6 +6,7 @@ services/
 views/
 TOGProfessionMaster_Vanilla.toc
 docs/BUGS.md
+docs/bugs.md
 docs/Curseforge_Description.html
 docs/FEATURE_IMPROVEMENTS.md
 libs/CallbackHandler-1.0.lua
@@ -17,6 +18,10 @@ libs/LibStub.lua
 # comments. Already listed in .markdownlintignore for the same reason.
 conversation.md
 docs/conversation.md
+
+# Claude Code's per-session lock (session id, pid, timestamp): runtime state,
+# rewritten by every session that schedules a task.
+.claude/scheduled_tasks.lock
 
 # Python tooling caches and bulky emulator SQL dumps (dev-only inputs to
 # the v0.5.0 data builders in tools/, regenerable on demand from

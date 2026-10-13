@@ -314,6 +314,8 @@ function MainWindow:Open(tabKey)
                 " ",
                 L["GuildHelpExpand"],
                 " ",
+                L["GuildHelpFilter"],
+                " ",
                 L["GuildHelpSpecs"],
                 " ",
                 L["GuildHelpCoverage"],

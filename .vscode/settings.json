@@ -80,6 +80,12 @@
     "HONOR",
     "WAR_MODE_BONUS_PERCENTAGE",
     "RETRIEVING_DATA",
-    "QuestUtils_IsQuestWorldQuest"
+    "QuestUtils_IsQuestWorldQuest",
+    "GameTooltip_SetDefaultAnchor",
+    "UIDropDownMenu_CreateInfo",
+    "SOUNDKIT",
+    "CLOSE",
+    "CANCEL",
+    "OKAY"
   ]
 }

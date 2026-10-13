@@ -6,6 +6,90 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # TOG Profession Master Changelog
 
+## [v1.5.0] (2026-10-13) - Guild tab: search and filter by crafting skill; the Reagent Tracker stays open and minimises
+
+### New Features
+
+- **Guild tab filter strip, built from LibAceGUIWidgets.** The library's
+  search box and two of its number steppers (Min skill / Max skill) sit
+  above the list in toolbar slots.
+  - The search matches every label on the page: a profession whose name
+    matches keeps everyone in it, a specialization whose name matches keeps
+    all its members, and otherwise only characters whose name matches are
+    kept (case-insensitive, realm ignored; "You" finds your own characters;
+    an account-mate's name finds its main, whose row reads "Alt (Main)").
+    It is applied in `GuildTab:BuildTree`, which recounts from what it
+    keeps. Branches open when a search starts and close when it is cleared,
+    never on a refresh in between.
+  - The skill steppers filter on CRAFTING skill in the profession being
+    counted, and run from 1 to `addon.SKILL_CAP` (300 Classic Era, 375 TBC,
+    450 Wrath, 525 Cata, 600 MoP; on Retail the highest recorded skillMax,
+    else 100). The full range is no limit, and a bound filters only once
+    moved off its end. A character with no recorded skill in a profession
+    is hidden from it while the range is narrowed. The range is applied per
+    profession in `BuildCounts`, so headcounts read "how many matching".
+    Empty rows are left out while filtering.
+  - The list re-lays its rows when its scroll box changes size. Before, the
+    library re-laid only on its outer frame's resize; in game every row was
+    40px wide and the profession names drew as ".." while the scrollbar sat
+    at full width, so the last layout read the scroll box before it had its
+    width (inferred from the screenshot, not instrumented). LibAceGUIWidgets
+    MINOR 42 fixes it in the library (contract 0f350cea), so the hook is
+    installed only on an older copy (`GuildTab:NeedsRelayoutHook`).
+  - The character counts form one 80px column, centred under the
+    "Characters" header, which is itself centred over that column; the space
+    right of it is left free for later columns. The list's `valueColumn`
+    option is LibAceGUIWidgets MINOR 42 (contract a79b0269); an older copy
+    ignores it and keeps the counts at the row's right edge. The library
+    scales that column by its shared scale (another addon can set it), so
+    the headers are sized through `GuildTab:ColumnWidths` with
+    `W:ScaledSize`, and a scale change redraws the window while the Guild
+    tab shows.
+  - The steppers are parked across draws by the new
+    `addon.GUI.ToolbarStepper` (`GUI/SharedWidgets.lua`), like the other
+    toolbar controls, so a guild sync redrawing the tab mid-typing keeps
+    the box and its number.
+  - A debounced search that fires after a tab switch is dropped (per-draw
+    token cleared on release), so it cannot write the Guild count into
+    another tab's status bar. The tab's help tooltip describes the strip.
+  Location: `GUI/GuildTab.lua`, `GUI/SharedWidgets.lua`, specs in
+  `Tests/guildtab_spec.lua`.
+- **The Reagent Tracker stays up like Questie's tracker, and minimises.**
+  It is no longer in `UISpecialFrames`, so Escape does not close it. Whether
+  it is open and whether it is minimised are saved per character beside its
+  position (`RT:State()`, `db.char.frames.reagentTracker`), and
+  `PLAYER_ENTERING_WORLD` reopens it (`RT:Restore`) after a logout or
+  /reload. A new -/+ button left of the close button folds it to its title
+  bar. Dragging now writes the position fields into that record instead of
+  replacing it, so the flags survive a move. The window is always anchored
+  by its top-left corner (`RT:PinTop`, on build and after every drag):
+  anchored by its centre, as the default spot and the game's own drag anchor
+  could be, minimising pulled the title bar down toward that centre. A
+  position saved as a centre anchor by an older build moves its top once,
+  by half the difference between the old height and 200, on the first
+  open. `SetDontSavePosition(true)` keeps the client's own layout cache
+  from competing with that saved anchor, and the window is clamped to the
+  screen. Location:
+  `GUI/ReagentTracker.lua`, specs in `Tests/reagenttracker_spec.lua`.
+
+### Bug Fixes
+
+- **Every icon in the Reagent Tracker was greyed out.** The icon column
+  returned `select(10, GetItemInfo(id))`, which is the icon AND every value
+  after it; the RowList reads a second return as "desaturate", and the sell
+  price came second. `RT:IconFor` now returns one value. The other icon
+  columns were checked: each cuts to one value with `and ... or` or a plain
+  field. Location: `GUI/ReagentTracker.lua`.
+
+- **The Guild tab's column headers were drawn over the first rows of the
+  list.** The list's group was added to the tab's Flow layout while the
+  header group above it was still empty, so it was placed at the very top
+  with the full height; filling the headers afterwards never moved it.
+  `Draw` now lays the tab out again once the top group has its real height.
+  Location: `GUI/GuildTab.lua`.
+
+---
+
 ## [v1.4.0] (2026-10-11) - Item tooltips: an on/off setting for every line, no duplicate sell price, no doubled crafter names
 
 ### New Features

@@ -101,6 +101,14 @@ function RT:CountText(entry)
     return col .. have .. "|r/" .. need .. bankText
 end
 
+--- The row's item icon, as ONE value. The list's icon column reads a second
+--- return as "desaturate", and select(10, GetItemInfo(...)) returns the icon
+--- AND every value after it -- the sell price came second and greyed every
+--- icon in the tracker. The parentheses cut it to one.
+function RT:IconFor(entry)
+    return (select(10, addon.Item.GetInfo(entry.id)))
+end
+
 -- ---------------------------------------------------------------------------
 -- The list: LibAceGUIWidgets RowList (MINOR 36)
 -- ---------------------------------------------------------------------------
@@ -127,7 +135,7 @@ function RT:BuildList()
         columns = {
             { key = "icon", width = ICON_SZ + 4, iconSize = ICON_SZ, iconTexCoord = true,
               sortable = false,
-              icon = function(e) return select(10, addon.Item.GetInfo(e.id)) end },
+              icon = function(e) return RT:IconFor(e) end },
             { key = "name", sortable = false,
               format = function(value, e)
                   local hex = e.itemLink and e.itemLink:match("|c(ff%x%x%x%x%x%x)|H") or "ffffffff"
@@ -169,6 +177,14 @@ end
 function RT:Refresh()
     if not self.frame or not self.frame:IsShown() then return end
 
+    -- Minimised: the title bar alone, like Questie's tracker.
+    if self:State().collapsed then
+        self._emptyLbl:Hide()
+        self._host:Hide()
+        self.frame:SetHeight(HDR_H)
+        return
+    end
+
     local list = self:BuildReagentList()
     for _, item in ipairs(list) do
         item.have = self:GetPlayerBagCount(item.id)
@@ -192,6 +208,37 @@ function RT:Refresh()
 end
 
 -- ---------------------------------------------------------------------------
+-- Saved state
+-- ---------------------------------------------------------------------------
+
+--- The tracker's per-character record: its position, whether it is open and
+--- whether it is minimised. Open and minimised are remembered so the window
+--- comes back after a logout, a /reload or a zone change, as Questie's
+--- tracker does.
+function RT:State()
+    local char = Ace.db.char
+    char.frames = char.frames or {}
+    local st = char.frames.reagentTracker
+    if not st then st = {}; char.frames.reagentTracker = st end
+    return st
+end
+
+--- Anchor the window by its top-left corner, where it is now, and save that.
+--- The window grows and shrinks from the top: with a centre anchor (the
+--- default RIGHT, or what StopMovingOrSizing picks) minimising pulled the
+--- title bar down toward the old centre.
+function RT:PinTop()
+    local f = self.frame
+    local left, top = f and f:GetLeft(), f and f:GetTop()
+    if not (left and top) then return end
+    f:ClearAllPoints()
+    f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+    -- Fields, not a new table: the open and minimised flags live here too.
+    local st = self:State()
+    st.point, st.relPoint, st.x, st.y = "TOPLEFT", "BOTTOMLEFT", left, top
+end
+
+-- ---------------------------------------------------------------------------
 -- Build (once)
 -- ---------------------------------------------------------------------------
 
@@ -200,26 +247,35 @@ function RT:Build()
     f:SetWidth(WIN_W)
     f:SetHeight(200)
     f:SetMovable(true)
+    -- StartMoving marks a named frame user-placed, and the client then keeps
+    -- its own copy of the position in layout-local.wtf (wowpedia,
+    -- Layout-local.txt). Our saved TOPLEFT is the only source.
+    if f.SetDontSavePosition then f:SetDontSavePosition(true) end
+    f:SetClampedToScreen(true)
     f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
     f:SetFrameStrata("HIGH")
     f:SetScript("OnDragStart", function(fr) fr:StartMoving() end)
     f:SetScript("OnDragStop", function(fr)
         fr:StopMovingOrSizing()
-        local pt, _, rpt, x, y = fr:GetPoint()
-        Ace.db.char.frames.reagentTracker = { point = pt, relPoint = rpt, x = x, y = y }
+        self:PinTop()
     end)
 
-    tinsert(UISpecialFrames, "TOGPMReagentTracker")
+    -- Not in UISpecialFrames: Esc must not close it. It stays up until its
+    -- own close button, like Questie's tracker.
 
-    local saved = Ace.db.char.frames and Ace.db.char.frames.reagentTracker
-    if saved then
+    local saved = self:State()
+    if saved.point then
         f:SetPoint(saved.point, UIParent, saved.relPoint, saved.x, saved.y)
     else
         f:SetPoint("RIGHT", UIParent, "RIGHT", -20, 0)
     end
 
     self.frame = f
+    -- The default spot, and a position saved by an older build, can be a
+    -- centre anchor; move it to the top-left so minimising keeps the title
+    -- bar where it is.
+    if saved.point ~= "TOPLEFT" then self:PinTop() end
 
     -- Title (also the drag handle)
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -235,6 +291,17 @@ function RT:Build()
     closeLbl:SetJustifyH("CENTER")
     closeLbl:SetText("|cFFFF4444x|r")
     closeBtn:SetScript("OnClick", function() self:Close() end)
+
+    -- Minimise / restore, left of the close button.
+    local minBtn = CreateFrame("Button", nil, f)
+    minBtn:SetSize(16, 16)
+    minBtn:SetPoint("RIGHT", closeBtn, "LEFT", -2, 0)
+    local minLbl = minBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    minLbl:SetAllPoints()
+    minLbl:SetJustifyH("CENTER")
+    minBtn:SetScript("OnClick", function() self:ToggleCollapsed() end)
+    self._minLbl = minLbl
+    self:PaintMinButton()
 
     -- Empty state
     local emptyLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -254,12 +321,38 @@ end
 
 function RT:Open()
     if not self.frame then self:Build() end
+    self:State().shown = true
     self.frame:Show()
     self:Refresh()
 end
 
 function RT:Close()
+    self:State().shown = nil
     if self.frame then self.frame:Hide() end
+end
+
+-- "-" while open, "+" while minimised.
+function RT:PaintMinButton()
+    if self._minLbl then
+        self._minLbl:SetText("|cffffffff" .. (self:State().collapsed and "+" or "-") .. "|r")
+    end
+end
+
+function RT:ToggleCollapsed()
+    -- Again here in case Build's pin found no rect yet (a frame built at
+    -- login before the client had placed it): the height is about to change.
+    if self.frame and self.frame:GetPoint() ~= "TOPLEFT" then self:PinTop() end
+    local st = self:State()
+    st.collapsed = (not st.collapsed) or nil
+    self:PaintMinButton()
+    self:Refresh()
+end
+
+--- Reopen at login or /reload when it was open at logout.
+function RT:Restore()
+    if self:State().shown and not (self.frame and self.frame:IsShown()) then
+        self:Open()
+    end
 end
 
 function RT:Toggle()
@@ -290,7 +383,12 @@ local _bagWatcher = CreateFrame("Frame")
 _bagWatcher:RegisterEvent("BAG_UPDATE")
 _bagWatcher:RegisterEvent("BANKFRAME_CLOSED")  -- ReagentWatch refreshes the bank cache here
 _bagWatcher:RegisterEvent("MAIL_CLOSED")       -- ReagentWatch refreshes the mail cache here
-_bagWatcher:SetScript("OnEvent", function()
+_bagWatcher:RegisterEvent("PLAYER_ENTERING_WORLD")  -- reopen if it was open at logout
+_bagWatcher:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_ENTERING_WORLD" then
+        if Ace.db then RT:Restore() end
+        return
+    end
     RT:QueueRefresh()
 end)
 

@@ -241,4 +241,107 @@ describe("the tracker window", function()
 		assert.is_true(RT._emptyLbl:IsShown())
 		assert.is_false(RT._host:IsShown())
 	end)
+
+	it("hands the icon column exactly one value, so no icon is greyed", function()
+		-- GetItemInfo returns the sell price right after the icon; a second
+		-- return reads as "desaturate" to the list.
+		local savedGet = ns.Item.GetInfo
+		ns.Item.GetInfo = function()
+			return "Thorium Bar", nil, 1, 1, 1, "Trade Goods", "Trade Goods", 20, "", 134400, 600
+		end
+		local n = select("#", RT:IconFor({ id = THORIUM }))
+		local tex = RT:IconFor({ id = THORIUM })
+		ns.Item.GetInfo = savedGet
+		assert.equal(1, n)
+		assert.equal(134400, tex)
+	end)
+
+	it("is not closed by Escape", function()
+		RT:Open()
+		for _, name in ipairs(UISpecialFrames or {}) do
+			assert.are_not.equal("TOGPMReagentTracker", name)
+		end
+	end)
+
+	it("remembers being open, and reopens at login", function()
+		RT:Open()
+		assert.is_true(RT:State().shown)
+		RT.frame:Hide()   -- a fresh login: built, not shown
+		RT:Restore()
+		assert.is_true(RT.frame:IsShown())
+		RT:Close()
+		assert.is_nil(RT:State().shown)
+		RT:Restore()
+		assert.is_false(RT.frame:IsShown())
+	end)
+
+	it("minimises to its title bar and back, and remembers it", function()
+		queue(1, 1, { { itemId = THORIUM, name = "Thorium Bar", count = 1 } })
+		RT:Open()
+		RT:ToggleCollapsed()
+		assert.is_true(RT:State().collapsed)
+		assert.is_false(RT._host:IsShown())
+		assert.equal(20, RT.frame:GetHeight())
+		assert.equal("|cffffffff+|r", RT._minLbl:GetText())
+		RT:ToggleCollapsed()
+		assert.is_nil(RT:State().collapsed)
+		assert.is_true(RT._host:IsShown())
+		assert.equal(20 + 16 + 6, RT.frame:GetHeight())
+	end)
+
+	it("keeps its title bar where it is when minimised", function()
+		-- Anchored by a centre point, shrinking the window pulled its top
+		-- down toward that centre.
+		queue(1, 1, { { itemId = THORIUM, name = "Thorium Bar", count = 1 } })
+		RT:Open()
+		local top = RT.frame:GetTop()
+		assert.is_number(top)
+		assert.equal("TOPLEFT", (RT.frame:GetPoint()))
+		RT:ToggleCollapsed()
+		assert.is_true(RT:State().collapsed)
+		assert.equal(top, RT.frame:GetTop())
+		RT.frame:GetScript("OnDragStop")(RT.frame)
+		assert.equal("TOPLEFT", RT:State().point)
+		assert.equal(top, RT:State().y)
+		RT:ToggleCollapsed()
+		assert.equal(top, RT.frame:GetTop())
+	end)
+
+	it("pins the top on the first minimise when the window had no rect at build", function()
+		-- In game a frame built at login may not be placed yet, so Build's pin
+		-- finds no rect and the window keeps its centre anchor.
+		queue(1, 1, { { itemId = THORIUM, name = "Thorium Bar", count = 1 } })
+		RT.frame = nil
+		local st = RT:State()
+		st.point, st.relPoint, st.x, st.y = nil, nil, nil, nil
+		local realCreate, built = _G.CreateFrame, nil
+		_G.CreateFrame = function(...)
+			local f = realCreate(...)
+			if not built then
+				built = f
+				f.GetLeft = function() return nil end
+			end
+			return f
+		end
+		local ok, err = pcall(RT.Open, RT)
+		_G.CreateFrame = realCreate
+		assert(ok, err)
+		assert.equal(built, RT.frame)
+		built.GetLeft = nil
+		-- Build's pin found no rect: still on the default centre anchor.
+		assert.equal("RIGHT", (RT.frame:GetPoint()))
+		RT:ToggleCollapsed()
+		assert.equal("TOPLEFT", (RT.frame:GetPoint()))
+		assert.equal("TOPLEFT", st.point)
+		RT:ToggleCollapsed()
+	end)
+
+	it("keeps the open and minimised flags when the window is dragged", function()
+		RT:Open()
+		RT:ToggleCollapsed()
+		RT.frame:GetScript("OnDragStop")(RT.frame)
+		assert.is_true(RT:State().shown)
+		assert.is_true(RT:State().collapsed)
+		RT:ToggleCollapsed()
+	end)
 end)

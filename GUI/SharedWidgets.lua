@@ -1884,6 +1884,39 @@ function addon.GUI.ToolbarCheckbox(owner, key, parent, opts)
     return slot, rec
 end
 
+--- A toolbar number stepper: the library's (- / box / +), labelled like the
+--- dropdowns. The stepper keeps its value across draws, as the menus and
+--- check boxes do, so a redraw while the player is typing in it neither
+--- rebuilds the box nor resets the number. opts:
+---   label, width, min, max, value (first draw only), step
+---   onChange(value)   a committed change (a click, Enter, or focus loss)
+---   tipTitle, tipBody
+--- Returns the slot and the record (`rec.stepper` is the library frame).
+function addon.GUI.ToolbarStepper(owner, key, parent, opts)
+    local W = addon.W
+    local slot = toolbarSlot(parent, opts.width or 120, TOOLBAR_H)
+    if not W then return slot end
+    local rec = toolbarRecord(owner, key)
+    rec.opts = opts
+    if not rec.stepper then
+        rec.stepper = W:CreateStepper(rec.holder, {
+            min = opts.min, max = opts.max, step = opts.step, value = opts.value,
+            tipTitle = opts.tipTitle,
+            onValueChanged = function(v) runHandler(rec.opts.onChange, v) end,
+        })
+        rec.stepper:SetPoint("BOTTOMLEFT", rec.holder, "BOTTOMLEFT", 4, 1)
+    else
+        -- Not SetValue: that rewrites the box even while it has focus.
+        rec.stepper:SetBounds(opts.min, opts.max)
+    end
+    if opts.tipBody then
+        W:AttachTooltip(rec.stepper.edit, opts.tipTitle, opts.tipBody, { owner = addon.Tooltip.Owner })
+    end
+    setSlotLabel(rec, opts.label)
+    parkInSlot(rec, slot)
+    return slot, rec
+end
+
 -- ---------------------------------------------------------------------------
 -- Column header
 -- ---------------------------------------------------------------------------
@@ -1910,6 +1943,9 @@ function addon.GUI.MakeColumnHeader(opts)
     if lbl.label and lbl.label.SetWordWrap then
         lbl.label:SetWordWrap(false)
     end
+    -- e.g. "CENTER" over a column of numbers. AceGUI's Label puts LEFT back
+    -- when the widget is acquired again, so a pooled label does not keep it.
+    if opts.justify then lbl:SetJustifyH(opts.justify) end
 
     if opts.tooltipTitle or opts.tooltipDesc then
         addon.GUI.AttachTooltip(lbl, opts.tooltipTitle, opts.tooltipDesc)

@@ -11,6 +11,7 @@ read_globals = {
 	"GetTradeSkillInfo", "GetNumTradeSkills", "GetTradeSkillLine",
 	"GetTradeSkillItemLink", "GetTradeSkillRecipeLink", "GetTradeSkillReagentItemLink",
 	"GetCraftInfo", "GetNumCrafts", "GetCraftItemLink", "GetCraftDisplaySkillLine",
+	"GetGameMessageInfo",
 	"GetNormalizedRealmName", "UnitName", "UnitFactionGroup", "IsShiftKeyDown",
 	"IsModifiedClick", "GameTooltip_ShowCompareItem", "GameTooltip_HideShoppingTooltips",
 	"ChatFrameUtil", "HandleModifiedItemClick", "GetCVarBool",

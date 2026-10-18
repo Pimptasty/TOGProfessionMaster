@@ -15,25 +15,37 @@ package.path = "./Tests/?.lua;" .. package.path
 local env = require("env_togpm")
 local wow = env.wow
 
-local CD
+local CD, NS
 local ME      = "Testchar-Testrealm"
 local THORIUM = 12359
 local CRYSTAL = 12360
 local ARCANITE = { { id = THORIUM, qty = 1 }, { id = CRYSTAL, qty = 1 } }
 
 setup(function()
-	env.initDb()
+	NS = env.initDb()
 	env.loadModule("Data/CooldownIds.lua")
 	env.loadModule("Modules/HashManager.lua")
 	env.loadModule("Scanner.lua")
 	CD = env.loadModule("GUI/CooldownsTab.lua").CooldownsTab
 end)
 
+-- Globals the examples below stub that the env does not own. Saved before each
+-- example and put back after it, so an assertion that fails mid-example cannot
+-- leave a stub (or a nil) for every later spec file in the same Lua state.
+local STUBBED = { "GetGameMessageInfo", "MailEditBox", "ERR_MAIL_TEST_REFUSED" }
+local saved
+
 before_each(function()
 	env.install()
+	saved = {}
+	for _, k in ipairs(STUBBED) do saved[k] = rawget(_G, k) end
 	wow.items[THORIUM] = { name = "Thorium Bar",    stackCount = 20 }
 	wow.items[CRYSTAL] = { name = "Arcane Crystal", stackCount = 20 }
 	MailFrame:Show()
+end)
+
+after_each(function()
+	for _, k in ipairs(STUBBED) do _G[k] = saved[k] end
 end)
 
 --- The backpack, `slots` wide, empty.
@@ -305,6 +317,67 @@ describe("PrepareSupplyMail", function()
 		assert.equal("Cooldown supply: Transmute: Arcanite", SendMailSubjectEditBox:GetText())
 		assert.is_true(body:find("Hi Testchar!", 1, true) ~= nil)
 		assert.is_true(body:find("Arcanite Bar", 1, true) ~= nil)
+	end)
+
+	it("addresses a crafter on another realm as Name-Realm, and greets them by name", function()
+		-- A bare name goes to that name on the SENDER's realm, so the stored
+		-- key's realm has to reach the recipient box when it is not our own.
+		local body
+		_G.MailEditBox = { SetText = function(_, t) body = t end }
+		local bag = backpack()
+		stack(bag, 1, THORIUM, 1)
+		stack(bag, 2, CRYSTAL, 1)
+		CD._PrepareSupplyMail("Alchemist-Otherrealm", "Transmute: Arcanite", "Arcanite Bar", ARCANITE)
+		_G.MailEditBox = nil
+		assert.equal("Alchemist-Otherrealm", SendMailNameEditBox:GetText())
+		assert.is_true(body:find("Hi Alchemist!", 1, true) ~= nil)
+		assert.equal("Attached 1x Thorium Bar, 1x Arcane Crystal for Alchemist-Otherrealm.", lastChat())
+	end)
+
+	it("repeats the game's reason in chat when the filled-in mail is refused, until it goes", function()
+		-- 1 = a mail error, 2 = anything else, as the client's error table names them.
+		local names = { "ERR_MAIL_TARGET_NOT_FOUND", "ERR_OUT_OF_RANGE" }
+		_G.GetGameMessageInfo = function(i) return names[i] end
+		local bag = backpack()
+		stack(bag, 1, THORIUM, 1)
+		stack(bag, 2, CRYSTAL, 1)
+		CD._PrepareSupplyMail("Alchemist-Otherrealm", "Transmute: Arcanite", "Arcanite Bar", ARCANITE)
+		-- An unrelated error while the mail is pending is not the mail's.
+		local quiet = #wow.chat
+		env.frames.fireEvent("UI_ERROR_MESSAGE", 2, "Out of range.")
+		assert.equal(quiet, #wow.chat)
+		env.frames.fireEvent("UI_ERROR_MESSAGE", 1, "Cannot find player")
+		assert.equal("The mail to Alchemist-Otherrealm was not sent: Cannot find player (ERR_MAIL_TARGET_NOT_FOUND)",
+			lastChat())
+		env.frames.fireEvent("MAIL_FAILED")
+		assert.equal("The mail to Alchemist-Otherrealm was not sent. The game gave no reason.", lastChat())
+		-- Sent: the watch stands down, and a later unrelated error says nothing.
+		env.frames.fireEvent("MAIL_SEND_SUCCESS")
+		local before = #wow.chat
+		env.frames.fireEvent("UI_ERROR_MESSAGE", 1, "Out of range.")
+		assert.equal(before, #wow.chat)
+	end)
+
+	it("tells a mail error from any other by the client's ERR_MAIL_ strings when it has no error-name lookup", function()
+		_G.GetGameMessageInfo = nil
+		_G.ERR_MAIL_TEST_REFUSED = "Test: mail refused"
+		local isMail, name = CD._IsMailError(7, "Test: mail refused")
+		assert.is_true(isMail)
+		assert.equal("ERR_MAIL_TEST_REFUSED", name)
+		assert.is_false(CD._IsMailError(7, "Out of range."))
+	end)
+
+	it("tags an allied guild member in the Character column, and not a guildmate", function()
+		local lib = env.roster({ { name = "Testchar", isOnline = true }, { name = "Bob", isOnline = true } })
+		env.guild.model.canViewOfficerNote = true
+		NS:SetSisterGuilds("The Other Gods")
+		NS.Scanner.GuildRoster = lib
+		lib:SetSisterRoster("Horde-The Other Gods", { { name = "Ahmbrai-Azuresong" } }, {})
+		local sis = CD._CharCellText({ charKey = "Ahmbrai-Azuresong", shortName = "Ahmbrai" })
+		assert.is_true(sis:find("Ahmbrai", 1, true) ~= nil)
+		assert.is_true(sis:find("<Other>", 1, true) ~= nil)
+		local mate = CD._CharCellText({ charKey = "Bob-Testrealm", shortName = "Bob" })
+		assert.is_nil(mate:find("<", 1, true))
 	end)
 
 	it("puts everything back and says so when a stack the plan counted on has moved", function()

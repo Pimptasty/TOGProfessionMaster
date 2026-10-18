@@ -91,68 +91,6 @@ describe("the Crafting tab with a profession open", function()
 	end)
 end)
 
--- Discord 2026-08-23: "when I select a recipe in the crafting tab and hit scan
--- AH, it does not search and update the value of the actual crafted item, only
--- the mats". The scan list is what the button hands the AH scanner.
-describe("what Scan AH looks up for the selected recipe", function()
-	local LINKED = {
-		{ name = "Alchemy", difficulty = "header", available = 0 },
-		{ name = "Healing Potion", available = 5,
-		  link = "|cffffffff|Hitem:929::::::::60:::::|h[Healing Potion]|h|r",
-		  reagents = {
-			{ name = "Peacebloom", need = 1, have = 20, link = "|Hitem:2447|h[Peacebloom]|h" },
-			{ name = "Empty Vial", need = 1, have = 3,  link = "|Hitem:3371|h[Empty Vial]|h" },
-		} },
-		{ name = "Enchant Bracer - Minor Health", available = 1, reagents = {
-			{ name = "Strange Dust", need = 1, have = 9, link = "|Hitem:10940|h[Strange Dust]|h" },
-		} },
-	}
-
-	local function ids(items)
-		local out = {}
-		for i, it in ipairs(items) do out[i] = it.itemId end
-		return out
-	end
-
-	-- Selection the way a row click sets it (CraftingTab._selIndex = rf._index):
-	-- RequestSelect is the cross-tab jump and resolves by recipe id later.
-	local function select(index)
-		env.tradeSkillSession("Alchemy", LINKED)
-		env.drawTab(CT)
-		CT._selIndex = index
-		CT:RefreshDetail()
-		assert.equal(index, CT._selIndex)     -- the engine knows this row
-	end
-
-	it("REPRODUCES the report's shape: the reagents alone are not the answer", function()
-		-- The crafted item's id is on the recipe link; the old list never read it.
-		select(2)
-		local reagentOnly = {}
-		for _, r in ipairs(ns.CraftingEngine:GetReagents(2)) do reagentOnly[#reagentOnly + 1] = r.itemId end
-		assert.same({ 2447, 3371 }, reagentOnly)
-	end)
-
-	it("puts the CRAFTED item first, then every reagent", function()
-		select(2)
-		local items = CT:ScanAHItems()
-		assert.same({ 929, 2447, 3371 }, ids(items))
-		assert.equal("Healing Potion", items[1].itemName)
-		assert.equal("Empty Vial", items[3].itemName)
-	end)
-
-	it("scans only reagents for a recipe with no crafted item", function()
-		select(3)
-		assert.same({ 10940 }, ids(CT:ScanAHItems()))
-	end)
-
-	it("is empty with nothing selected", function()
-		env.tradeSkillSession("Alchemy", LINKED)
-		env.drawTab(CT)
-		CT._selIndex = nil
-		assert.same({}, CT:ScanAHItems())
-	end)
-end)
-
 describe("selecting a recipe", function()
 	it("shows the detail panel for a craftable recipe", function()
 		env.drawTab(CT)

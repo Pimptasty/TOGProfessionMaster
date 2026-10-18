@@ -142,31 +142,6 @@ describe("every tab builds against real AceGUI, with data in it", function()
 		assert.equal(ns.BrowserTab._listSection.content, host:GetParent())
 	end)
 
-	it("the Scan AH button explains itself while disabled, and hands back a clean frame", function()
-		-- Disabled whenever the AH is closed, which is when its tooltip matters.
-		-- A disabled Button hears no OnEnter unless motion scripts are on while
-		-- disabled; up to v1.1.2 they were not, so the tooltip never appeared.
-		local realAH = ns.AH
-		ns.AH = { IsScanning = function() return false end, IsOpen = function() return false end }
-		local AceGUI = LibStub("AceGUI-3.0")
-		local parent = AceGUI:Create("SimpleGroup")
-		local ok, btn = pcall(ns.GUI.MakeScanAHButton, {
-			parent = parent, tabName = "spec", label = "Scan AH", progressLabel = "%d/%d",
-			tooltipTitle = "Scan AH", tooltipDesc = "Open the Auction House first.",
-			getItems = function() return {} end,
-		})
-		ns.AH = realAH
-		assert.is_true(ok, tostring(btn))
-		assert.is_false(btn.frame:IsEnabled())
-		GameTooltip:Hide()
-		btn.frame:Fire("OnEnter")
-		assert.is_true(GameTooltip:IsShown(), "no tooltip on the disabled button")
-		GameTooltip:Hide()
-		AceGUI:Release(btn)
-		assert.is_false(btn.frame:GetMotionScriptsWhileDisabled(),
-			"the pooled frame kept motion-while-disabled after release")
-	end)
-
 	it("Cooldowns lists a running cooldown", function()
 		drawTwice(ns.CooldownsTab)
 		local rows = ns.CooldownsTab._BuildRows(false, "mine")

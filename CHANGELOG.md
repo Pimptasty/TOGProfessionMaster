@@ -6,6 +6,259 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # TOG Profession Master Changelog
 
+## [v1.6.0] (2026-10-17) - Allied guild tags; Reagent Tracker scale, opacity and background; cross-realm supply mail
+
+### New Features
+
+- **Allied guild members carry a short guild tag after their name**, like
+  `Ahmbrai <Other>`, so it is clear at a glance who is in which guild
+  (operator, 2026-10-17: "The Old Gods (TOG) and The Other Gods (TOG) show
+  you the problem"). The tag is worked out automatically from the first word
+  that tells the guild names apart once filler words ("the", "of") are dropped,
+  cut to five letters, and never shared by two guilds -- so The Old Gods and
+  The Other Gods read `<Old>` and `<Other>`. Settings -> Cross-Guild has an
+  "Allied guild tags" box (`Guild Name = Tag`, one per line) to pick your own,
+  and lists the tags in use. Home-guild members carry no tag. The tags are
+  LibGuildRoster's (MINOR 35, GuildRoster 1.4.0), at the operator's direction
+  ("it should feed that to every addon that consumes a sister guild"; inbox
+  49703e36): the library derives them and stores your own tags account-wide
+  under the home guild, so every TOG addon shows one guild under one tag.
+  TOGPM's readers (`GetGuildAbbrev`, `GetCharGuildAbbrev`, the Settings box)
+  are thin wrappers over `GetGuildTag` / `GetCharGuildTag` / `SetGuildTag`,
+  the name columns repaint on the library's `OnGuildTagsChanged`, and
+  `MigrateGuildTagsToLibrary` (from `OnRosterReady`) moves any tags a working
+  copy kept in `profile.guildAbbrevs` into the library once and deletes them.
+  Under an older GuildRoster there are no tags and the Settings box is greyed
+  out. Typing a tag another allied guild already shows keeps it (your choice)
+  but says so in chat, naming that guild, from `SetGuildTag`'s second return
+  (Peer Review G1, inbox 2899de7d) -- once, when that tag is changed, not on
+  every later save, and in the form the library stored (trimmed, at most 12
+  characters). TOGPM's own derivation is gone; its spec fixtures now run against the
+  library's. Specs in `Tests/sisterguild_spec.lua`. Location:
+  `TOGProfessionMaster.lua`, `GUI/Settings.lua`, `Locale/enUS.lua`.
+- **A supply mail the game refuses now says why in chat.** After the Cooldowns
+  tab fills in a mail, the game's own mail error (and a failed send) is
+  repeated in chat with the recipient's name and the error's `ERR_MAIL_` name
+  until the mail goes or the mailbox closes. Only mail errors are repeated --
+  the first cut also blamed unrelated ones such as "Out of range." on the mail
+  (Peer Review F1, inbox 60941923). Added for the operator's report of a mail to an allied-guild member
+  that loops on the "might be someone you don't know" confirm (cause not yet
+  known; GuildRoster asked to check its mailbox autocomplete, inbox 9aa8c30f).
+  Spec in `Tests/cooldownmail_spec.lua`. Location: `GUI/CooldownsTab.lua`.
+- **Scale and opacity sliders for the Reagent Tracker** (the shopping-list
+  window opened by right-clicking the minimap button). Settings -> Display now
+  has "Reagent Tracker scale" (50-150%) and "Reagent Tracker opacity"
+  (0-100%) right below the main window's pair, and both apply live. Changing
+  the scale keeps the window's top-left corner on the same spot on screen.
+  Saved per profile as `trackerScale` / `trackerOpacity`. Specs in
+  `Tests/reagenttracker_spec.lua`. Scale checked in game on Classic Era.
+- **The Reagent Tracker has a dark background, and the opacity slider sets
+  only that.** It had none, so the list read as see-through over bright ground.
+  A black panel (50% at 100% opacity) now sits behind the rows; the slider
+  fades just the panel, never the text, icons or buttons, and 0% removes it,
+  matching the old look. The first cut faded the whole window, text included.
+  Not yet checked in game.
+  Location: `GUI/ReagentTracker.lua`, `GUI/Settings.lua`, `Locale/enUS.lua`.
+
+### Bug Fixes
+
+- **The Professions tab kept showing the recipe list from login until a
+  /reload** -- a guildmate learning a recipe, or someone leaving the guild,
+  never reached it. CallbackHandler keeps one handler per (event, `self`) and a
+  second registration under the same `self` replaces the first (Ace3
+  `CallbackHandler-1.0.lua:126-129`). BrowserTab registered its
+  `GUILD_DATA_UPDATED` re-warm as `addon:RegisterCallback(...)` at load, and
+  MainWindow registered its refresh the same way at OnEnable, so MainWindow's
+  replaced BrowserTab's and the cache built 8 s after login was served all
+  session (Peer Review H1, inbox 95fc14a4). Every addon-event subscription now
+  registers as its own module (`BrowserTab`, `MainWindow`, `CooldownsTab`,
+  `addon.GUI`, `SyncLog`, the Sync Log window's listener), and TOGPM's seven
+  LibGuildRoster subscriptions register as the addon rather than as the
+  library, a slot another addon making the same mistake would have shared
+  (Peer Review M1). Specs in `Tests/callbackkeys_spec.lua`. Its first seven
+  cases (the GUILD_DATA_UPDATED one and the six AH / SYNC key checks) were red
+  against the old code (run 20261017-173040.786-2899038007, 0 of 7 passing);
+  the seven LibGuildRoster key cases were added after the fix and have only
+  been run green. All 14 pass (run 20261017-174130.037-3435744109). Location: `GUI/BrowserTab.lua`,
+  `GUI/MainWindow.lua`, `GUI/CooldownsTab.lua`, `GUI/SharedWidgets.lua`,
+  `GUI/Settings.lua`, `Modules/SyncLog.lua`, `TOGProfessionMaster.lua`.
+- **The crafter-online alert named the two characters the wrong way round.**
+  When an alt of a shopping-list crafter logged in, chat read "Crafter is
+  online (alt of Alt)" instead of "Alt is online (alt of Crafter)" -- the two
+  names were passed to the message in swapped order. Specs (the first for this
+  alert) in `Tests/crafteralert_spec.lua`. Location: `TOGProfessionMaster.lua`.
+- **Right-clicking a crafter on the Professions tab whispered the display text,
+  not the character** -- the crafter list carried no character key, so the
+  whisper fell back to the shown name, which can read "Alt (Main)". Each entry
+  now carries its key -- the online alt's when an alt stands in for an offline
+  crafter, so the whisper reaches someone who is on. Typing in the search box
+  also no longer matches the allied-guild tag's colour code ("cff", "9d").
+  Specs in `Tests/browserlist_spec.lua`. Location: `GUI/BrowserTab.lua`.
+- **Cooldown supply mail to a crafter on another realm went to the wrong
+  person** (operator, 2026-10-16). The mail button cut the realm off the stored
+  `Name-Realm` key before filling the To: box, and a bare name is delivered to
+  that name on the sender's own realm. The recipient now keeps the realm when it
+  is not the sender's, and stays a bare name on the same realm; the greeting
+  still uses the bare name. Spec in `Tests/cooldownmail_spec.lua`. Not yet
+  checked in game. Location: `GUI/CooldownsTab.lua`.
+- **The Reagent Tracker showed a scroll bar and one row too few** (operator,
+  2026-10-15: "why did you add a scroll bar to the tracker?"). The list sizes
+  its host to exactly the rows it holds, then counts the rows that fit by
+  flooring the host's height; a height returned a hair short (likeliest at a
+  tracker scale other than 100%, not verified in game) floored to one row
+  fewer. The host now carries one unit of slack, and the window is sized from
+  the list's own height so the slack never shows. LibAceGUIWidgets is told
+  (inbox 62eb5c52) and RowList tolerates it itself from MINOR 44, so the slack
+  is applied only under an older LibAceGUIWidgets. Spec in
+  `Tests/reagenttracker_spec.lua`. Location: `GUI/ReagentTracker.lua`.
+- **Clicking a recipe on the Professions tab did nothing while
+  TradeSkillMaster's Crafting window was open** -- the recipe went into TSM's
+  search box and our detail panel stayed on "Select a recipe" (operator,
+  2026-10-15, with a screenshot of TSM's search reading the clicked recipe).
+  TSM replaces `HandleModifiedItemClick` with `orig(link) or hookFunc(link)`
+  (LibTSMWoW `Source/API/Item.lua:158-166`), so its hook runs on every click
+  and answers "consumed" whenever its search box takes the link, modifier or
+  not. `ItemLink.Click` handed every click to that router, so a plain left
+  click looked consumed and `ClickRow` returned before drawing. It now asks the
+  router only when a modifier Blizzard's own router acts on is held (CHATLINK
+  and DRESSUP everywhere, plus EXPANDITEM, which on Retail opens the profession
+  window for profession gear), so nothing changes without TSM. Every item
+  link click in the addon goes through this one function, so all of them are
+  fixed. Specs in `Tests/itemlink_spec.lua`. Not yet checked in game.
+  Location: `GUI/SharedWidgets.lua`.
+- **The shopping list on the Professions tab could still draw as an empty box
+  with a scrollbar** (Discord, 2026-10-13, one recipe on the list). v1.3.1 gave
+  the section 2 px of slack against the client's whole-pixel snapping. That
+  figure was a guess and was never confirmed in game, and at a large UI scale
+  several snapped edges can take more than 2 px off. The list then floored one
+  row to zero. The slack is now half a scale-1.0 row (`SL_SLACK = 7`), which is
+  well past what pixel snapping should cost and still less than a row at scale
+  0.5 or above. That snapping is the whole cause is read from the code, not
+  measured in the client. A new spec in `Tests/browserdetail_spec.lua` takes 4 px
+  off the content and requires the row to draw. It was run with 2 px and fails,
+  and only that spec fails. Verified in game on WoW Forever with one item
+  (operator, 2026-10-13: "it looks good in forever with 1 item"). Not seen on
+  the other flavours or with the scale change, and the poster's addon version
+  is not known. Location: `GUI/BrowserTab.lua`.
+- **The shopping list did not re-fit when the shared text scale changed** (Peer
+  Review on the above). The section was sized once, at draw time. Another
+  addon's Text Size slider (TOG Bank's) raising the LibAceGUIWidgets scale
+  grew each row but not the section, so one item could floor to zero rows
+  again until the tab was redrawn. The tab now registers a scale listener and
+  refits the section while it is showing. The listener takes the tab as its
+  owner argument, so the weak-keyed listener table does not keep a reloaded
+  tab alive. The section's row height now comes from the scale itself rather
+  than the list, so it does not depend on which listener runs first. The
+  unused first `SetHeight` in `Draw`, a second formula for the same height, is
+  removed. Spec in `Tests/mainwindow_spec.lua` (scale 1.0 to 2.0). Location:
+  `GUI/BrowserTab.lua`.
+- **TOGPM handed three kinds of damaged widget back to the shared AceGUI pool**
+  (operator, 2026-10-13: "i think we may have some tabs not recycling widgets
+  properly, and they are getting corrupted widgets from teh pool"). A read of
+  every GUI file found three.
+  - Every tab draw set the main TabGroup's `LayoutFinished` to nil. TabGroup
+    copies that method onto each instance, so this deleted it from the pooled
+    widget. Once the window closed, the next addon to get that TabGroup could
+    not auto-size it. It is now `SetAutoAdjustHeight(false)` at creation, and
+    AceGUI's Release clears that.
+  - The shopping-list section's reference outlived the widget. The TOG Bank
+    watcher's timer could refill a section already back in the pool, parking
+    our list inside another addon's box. That box's release would later hide
+    our list while it was showing in our window. The reference is now cleared
+    by a release hook, which also covers the scale refit above.
+  - Column headers turned word wrap off on a pooled label and never turned it
+    back on. AceGUI's Label does not reset that, so the next owner's text was
+    cut to one line. That included our own Missing Recipes empty-state
+    message. A release hook turns it back on.
+  - Also: the Professions tab's three next-frame redraws and the shopping-list
+    refresh only checked that the tab had ever been drawn. They now check that
+    the window is open on that tab (`BrowserTab:IsShowing`), so a close in the
+    same frame cannot draw the tab into a TabGroup already back in the pool.
+
+  Three specs in `Tests/mainwindow_spec.lua`. Each would fail against the old
+  code (read, not run). `CLAUDE.md` said the TabGroup is not pool-recycled. That
+  was wrong, and the rule now says how to undo raw changes. Whether these
+  caused the Discord empty box is not shown. Location: `GUI/MainWindow.lua`,
+  `GUI/BrowserTab.lua`, `GUI/SharedWidgets.lua`.
+
+### Improvements
+
+- **Removed: the Scan AH buttons on the Professions, Cooldowns, Missing
+  Recipes and Crafting tabs** (operator on Discord, 2026-10-17: "remove the
+  scan AH button from TOGPM."; inbox 546bcca7). ItemDB's own button on the
+  Auction House scans the whole house in one pass, and every [AH] button and
+  price in TOGPM already reads that scan. The per-tab button looked items up by
+  name in the game's item cache and silently skipped any it had not seen, which
+  is why Missing Recipes missed patterns that were listed (Discord, GUNNEY,
+  inbox efaad501). `addon.GUI.MakeScanAHButton` and `CraftingTab:ScanAHItems`
+  are gone. What the button's callbacks also did -- repaint the visible tab's
+  [AH] buttons when the AH opens, closes or a scan lands -- is now
+  `addon.GUI.SetAHRefresh(tab, fn)`, registered once per tab and run only for
+  the active tab of an open window. The Crafting list is a row taller without
+  the button, so `craftscroll_spec` scrolls to 35 rather than the list's end.
+  Specs in `Tests/sharedwidgets_spec.lua`. The 12 specs that tested only the
+  button are deleted (operator approval, 2026-10-17: "yes, delete the old
+  tests and leftover test strings"), and so are the button's 11 locale keys
+  (`BrowserScanAH*`, `CooldownsScanAHDesc`, `MissingScanAH*`, `CraftScanAH*`)
+  from all 15 locale files. The six `addon.AH` scan functions only the button
+  called (`StartScan`, `StartFullScan`, `CancelScan`, `IsScanning`,
+  `IsFullScanning`, `GetScanProgress`) are deleted with their five specs in
+  `Tests/pricefacade_spec.lua`, on Peer Review's finding (inbox 0b5694c8)
+  that they had no production caller left. Location: `GUI/SharedWidgets.lua`,
+  `GUI/BrowserTab.lua`, `GUI/CooldownsTab.lua`, `GUI/MissingRecipesTab.lua`,
+  `GUI/CraftingTab.lua`, `Modules/AHScanner.lua`, `Locale/*.lua`.
+- **Less empty space above the shopping list** — the shopping-list box is an
+  AceGUI InlineGroup with no title, but an InlineGroup draws its border 17 px
+  below its top for a title regardless. The Professions tab now lifts the
+  border to the top of the group and puts AceGUI's own anchor back when the
+  pooled group is released (a keyed `OnWidgetRelease` hook). The section's
+  height sum drops the strip with it: the chrome is now `SL_CHROME` (23 px),
+  one exported constant the specs read instead of a hard-coded 40. A spec in
+  `Tests/mainwindow_spec.lua` checks the border is lifted while showing and
+  back at -17 after the window closes. Location: `GUI/BrowserTab.lua`.
+- **A click spec through the row's real mouse handler** — the recipe-list
+  click spec called `onRowClick` directly, skipping the library's dispatch.
+  A new spec drives the row frame's own `OnMouseDown` and checks the detail
+  panel shows the recipe, not the placeholder. Location:
+  `Tests/browservirtual_spec.lua`.
+- **The settings file is fully covered by the offline suite** (Peer Review
+  thread bf2313d2, item F4). New specs drive the purge buttons and their
+  confirm dialogs, the alert options, the cross-guild options and the sync-log
+  window, which no spec reached before. `GUI/Settings.lua` is at 881/881
+  executable lines, and the whole suite passes (1907, 0 failed). Location:
+  `Tests/settings_spec.lua`.
+- **A report line for the toolbar "anchor family connection" error** (seen in
+  game when opening the main window from the minimap; cause not yet found,
+  Peer Review thread 329b6368). Before a toolbar control's slot is laid out,
+  the toolbar now checks whether that slot is already reachable through the
+  toolbar's own anchors. The first time it is, it prints the chain of widgets
+  once per session, so the next report names the stale widget. A loop is only
+  one candidate: warcraft.wiki.gg names anchoring to the screen after a frame
+  is gone instead. So if a control comes out of AceGUI's layout anchored to
+  nothing, the toolbar also prints (once) every point of that control, of the
+  toolbar's first control and of the toolbar, with each target and parent.
+  AceGUI already runs its layout under its own error catcher, which hands the
+  error to BugSack and carries on, so this changes nothing about what is drawn
+  or logged; it only adds the chat line. Specs in `Tests/toolbar_spec.lua`
+  drive the real AceGUI layout with a SetPoint that raises and one that does
+  nothing. The test harness is pinned at `baca63c`, whose frames refuse an
+  anchor loop with the client's message, so the loop spec now checks that
+  AceGUI's layout hit that error and that both report lines print once. A
+  control AceGUI leaves unplaced on purpose is skipped: any but the first
+  child of a Fill layout, and one added after a full-height child in a Flow
+  layout. Every other toolbar case now fails
+  if it prints either report, so an ordinary draw can never show a player a
+  false "please report this line". Location: `GUI/SharedWidgets.lua`.
+- **Spec files no longer leave Settings open or stubbed timers behind.**
+  `Tests/settingsbleed_spec.lua` closed Settings by calling the toggle, which
+  opened it for every example that had not; it now closes through the dialog
+  and moves the clock. `Tests/browserlink_spec.lua`,
+  `Tests/craftsuppress_spec.lua` and `Tests/pettraining_spec.lua` now reinstall
+  the base globals in `teardown`, so the next file does not load against their
+  `C_Timer` / `GetTime` stubs.
+
+---
+
 ## [v1.5.0] (2026-10-13) - Guild tab: search and filter by crafting skill; the Reagent Tracker stays open and minimises
 
 ### New Features
@@ -1416,216 +1669,4 @@
 
 ---
 
-## [v1.0.10] (2026-09-14) - The allied-guild list and rosters move into GuildRoster, and the pause came back intermittently; /togpm perf now says whose it is
-
-### Improvements
-
-- **The allied ("sister") guild list and the allied rosters live in GuildRoster
-  now, once, for every TOG addon.** The user's direction, 2026-09-13, on the
-  same names being wanted in TOGTools' mail autocomplete and in TOGBankClassic:
-  *"i need that and i need it to not step on each other"* / *"probably best
-  to do it in the library"*. Since v0.10.1 TOGPM kept the list in its own
-  settings, gossiped it to the guild on its own prefix, pulled an allied
-  roster over a DeltaSync RosterSync host, persisted the roster in its own
-  guild database and relayed it on a second prefix -- and every other addon
-  wanting the same rosters would have needed all of that too, three lists
-  that could disagree and three feeders doing wipe-and-replace into one
-  store. LibGuildRoster-1.0 MINOR 18 (GuildRoster 0.7.0) owns every one of
-  those now: the list in `LibGuildRosterDB` keyed by home guild, the officer
-  gate, the gossip, the pull (its own two messages over WHISPER -- no
-  DeltaSync needed on either end), the persistence, the login re-feed and the
-  relay. TOGPM is a reader: `GetSisterGuilds` / `GetSisterGuildKeys` /
-  `IsSisterGuildKey` resolve against the library, the Settings input edits
-  through `SetSisterGuildNames` (the library refuses a non-officer itself),
-  and the guild-scoped views refresh on the library's `OnSisterConfigChanged`
-  and `OnSisterRosterUpdated`. `/togpm pullroster <Name>` is
-  `lib:PullSisterRoster` plus TOGPM's own profession-data request to the same
-  peer, which stays: recipes, cooldowns and skills are TOGPM's data and still
-  travel over DeltaSync with the consent proof both sides check, gated on the
-  library's list.
-
-  **An older build's list and rosters are imported once.** On the first
-  roster-ready after upgrading, `profile.sisterGuilds` (with its stamp) and
-  `guild.sisterRosters` move into the library's store and the TOGPM copies
-  are deleted, so nobody re-types a list an officer already typed and TOGPM
-  can never feed the store again. Written directly rather than through the
-  officer-gated setter, because the importing character is usually a member
-  who held the list by gossip; the library's last-writer rule is kept, so a
-  list the library already holds with a newer stamp wins. The library gossips
-  whatever it holds on its own timer.
-
-  **What is gone from TOGPM:** the `TOGPMxgc` / `TOGPMxgr` prefixes, the
-  12-minute config timer, the 5-minute roster timer, the hash-suppressed
-  relay, the RosterSync host, `PersistSisterRoster` / `RefeedSisterRosters` /
-  `DropSisterGuildData`, and the delivery-verdict callback on those sends --
-  TOGPM no longer makes any AceComm send of its own. The two AceDB defaults
-  are removed too (a re-created empty table would have hidden "moved" from
-  "never had one"). Under a GuildRoster older than 0.7.0 cross-guild is
-  simply off -- every reader answers "nothing configured" and the Settings
-  input says which version is needed -- rather than half-working from a list
-  only TOGPM could see. Locations: `TOGProfessionMaster.lua` (the
-  cross-guild configuration section, `MigrateSisterGuildsToLibrary`,
-  `PullSisterRoster`, `OnEnable`), `Scanner.lua` (`InitDeltaSync`),
-  `GUI/Settings.lua`, `Locale/enUS.lua`.
-
-  **Tests:** `Tests/sisterguild_spec.lua` (25 specs) drives the real
-  library: the readers answer from `LibGuildRosterDB` and TOGPM's settings
-  stay empty; the import moves a list and its rosters, keeps a newer list the
-  library holds, drops an unlisted roster, never overwrites a roster the
-  library persisted, is idempotent, and leaves the copies alone under an old
-  library; the library's callbacks reach `GUILD_DATA_UPDATED`; the removed
-  feeders are pinned absent. Mutation-checked: with the list move disabled,
-  four specs go red. The 29 specs that pinned the removed feeders
-  (`purge_spec`, `scanner_broadcast_spec`) are gone with them.
-  `Tests/env_guild.lua` adopts three MINOR-18 resets from GuildRoster's copy
-  (the library's SavedVariables, ChatThrottleLib's queue, stale AceComm
-  registrations) so one spec's roster cannot be re-fed into the next.
-  Whole suite 1538/1538. **Not run in a client.** What proves it in game: an
-  upgraded client whose officer had a list sees it under `/guildroster
-  sisters` after the first login, and `/togpm pullroster <Name>` on a member
-  of that guild prints "sister roster updated" and the Cross-Guild
-  diagnostics list the roster under "Persisted allied rosters
-  (LibGuildRoster)".
-
-- **`/togpm perf` reads the client's own addon profiler.** The 4-5 s pause
-  from v1.0.9 returned, intermittently. The marks added then covered only
-  the sections this addon chose to time -- the window open, the tab draws,
-  the synchronous list build -- so a pause with no window open recorded
-  nothing, and no mark of ours could say whether another addon's frame was
-  the one that stalled. The client keeps that record itself: `C_AddOnProfiler`
-  (present on Classic Era, per `AddOnProfilerDocumentation.lua`) tracks every
-  loaded addon's worst single frame since login and how many of its frames
-  ran over 100 / 500 / 1000 ms. `/togpm perf` now prints the whole-client
-  peak, the all-addons peak, this addon's own peak and hitch counts, and the
-  five addons with the highest peaks. A 4 s frame is on that list against
-  whoever owned it -- and a large whole-client peak beside small addon
-  peaks means no addon's Lua was running during the pause at all. Location:
-  `TOGProfessionMaster.lua` (`PrintPerf`).
-
-  **One thing the profiler cannot do, found from its own rules:** an
-  `OnEvent` script is charged to the addon that created the frame, and
-  AceEvent / AceAddon / AceTimer each own one frame -- so for every addon
-  that loads Ace3 from the standalone folder (this one included), its
-  login work, its events and its timers are all charged to "Ace3", pooled
-  with every other such addon's. The operator's first paste showed exactly
-  that: TOGProfessionMaster 38 ms worst frame, "Ace3" 995 ms, and no way to
-  split the second number. So the login path times itself (next entry).
-
-- **The login path measured, and timed in game.** The operator: *"it
-  'glitched' on login. i told you, this happens ON LOGIN"*. Every
-  synchronous stage of TOGPM's login -- the three `OnInitialize`
-  migrations, `RebuildAltGroups`, the first-load hash rebuild, the name
-  scrub, the +2 s scans and hash broadcast, both backfills -- now runs in
-  order against the operator's real database in `Tests/openperf_spec.lua`
-  ("the login path"), with a 100 ms per-stage budget: **11 ms of Lua in
-  total**, the largest stage the hash rebuild at 8 ms. The wire cost of
-  every crafters leaf as a peer would send it -- `BuildLeafPayload`, then
-  DeltaSync's `SerializeWithChecksum` (AceSerializer plus a byte-by-byte
-  Lua checksum) and `DeserializeWithChecksum` -- is measured the same way:
-  the largest, Cooking at 4,878 pairs / 158 KB, costs 10 ms to receive.
-  Nothing in this addon's login accounts for seconds. What the suite still
-  cannot run is the client's item-cache work inside the +3 s / +4 s
-  backfills and the +2 s scans, so those timers, and the entering-world
-  stage, now record a mark past 50 ms. Locations: `Scanner.lua`
-  (`timedLogin`, the PEW hook), `Tests/openperf_spec.lua`,
-  `Tests/perf_spec.lua`.
-
-- **The profiler is now watched, not only read, so a stall gets a clock
-  time.** The first paste after a 5 s pause (2026-09-12) answered WHOSE:
-  this addon's worst frame 21 ms with no frame over 100 ms; AllTheThings'
-  7,675 ms; the whole client's 7,718 ms, so the frame was addon Lua and
-  almost all of it one addon's. It could not answer WHEN, which is the half
-  a pause report needs: `PeakTime` is a high-water mark, so once one
-  addon's login frame sets it a later 5 s frame by anyone smaller never
-  moves it, and the hitch counts are cumulative with no clock. From
-  `PLAYER_ENTERING_WORLD`, once a second, the all-addon count of frames
-  over 500 ms is compared to its last read; a rise is a stall that happened
-  in that second and leaves a "Client stall" mark with the wall-clock time,
-  the new all-addon peak when it set one, and the addons whose own counts
-  moved -- each with its peak. Counts baseline at zero, so the first tick
-  puts the login load itself on the clock. Every mark now prints its clock
-  time, and the printout carries the attribution rule beside the addon
-  list so an "Ace3 1028 ms" line is never read as Ace3's own doing. One
-  C call per quiet second. Location: `TOGProfessionMaster.lua`
-  (`Perf.WatchStalls`, `PrintPerf`).
-
-- **The two sections that run with nothing open are now timed.** The
-  background warm tick and the sync merge were the untimed candidates for
-  an intermittent pause; each now records a mark when it runs past 50 ms
-  (`Perf.SLOW_MS`), with the resume count or the leaf count and byte size.
-  Quiet ones record nothing, so the 40-entry ring keeps the marks that
-  matter. Locations: `TOGProfessionMaster.lua` (Warmer), `Scanner.lua`
-  (`OnGuildDataReceived`).
-
-### Bug Fixes
-
-- **Four presence guards vetoed the item calls they were guarding, and on a
-  client with deprecation fallbacks off one of them hid every untagged
-  high-ID Era recipe.** Audit findings 29-33, the deprecation-fallback sweep
-  that v1.0.8 started. The v1.0.8 sweep routed the item calls through
-  `addon.Item` (which prefers `C_Item.*` and answers nil itself) but left
-  `if GetItemInfo then`-shaped guards above four of them, testing the BARE
-  name -- a deprecation-fallback alias that is nil when the
-  `loadDeprecationFallbacks` CVar is off. On that client the guard was
-  false, the resolver would have answered through `C_Item`, and the branch
-  was skipped anyway: `Modules/RecipeGate.lua` returned "untagged" for every
-  untagged post-Vanilla recipe (gone from the UI, silently);
-  `Scanner:BackfillReagentItemIds` aborted its whole pass printing
-  "GetItemInfoInstant unavailable", which was false on the client printing
-  it; the Missing Recipes tooltip and crafted-item icon degraded quietly. The
-  four guards are gone (the backfill one now tests EITHER spelling), and the
-  rule that stops it recurring is written where the resolver lives
-  (`Compat.lua`, THE GUARD RULE): a bare global gets a presence guard if and
-  only if it is a deprecation fallback, and a name routed through the
-  resolver never does. Each site is pinned with the bare alias absent and
-  `C_Item` present.
-
-  **`ScanSaltShaker` never tried `C_Item.GetItemCooldown`.** Its ladder
-  reached `C_Container.GetItemCooldown` and the bare `GetItemCooldown` --
-  which is on the deprecated list (`Deprecated_ItemScript.lua:52`) -- so on
-  a client where the container copy is absent or answers nothing AND the
-  fallbacks are off, both tiers missed and the Salt Shaker seeded Ready:
-  verbatim the bug the comment beside it claimed was covered. It was also
-  the one bare, unguarded item-API call left in the addon.
-  `addon.Item.GetCooldown` joins the resolver and is the second tier;
-  mutation-checked (old ladder back: the finding-31 spec goes red).
-
-  **The `GetSpellInfo and GetSpellInfo(id)` idiom is gone from all thirteen
-  sites** that carried it, because it taught a false rule: `GetSpellInfo` is
-  in no `Deprecated_*` file in either Classic tree and Blizzard's own UI
-  calls it bare, so a guard on it can never be false -- and the same idiom
-  applied by name shape rather than by family is exactly where the four
-  wrong item guards came from. **Three `Compat.lua` shims with no production
-  caller are deleted** -- `addon.GetAddOnMetadata`, `addon:GetSpellInfo`,
-  `addon:GetItemInfo` -- along with the three spec cases that vouched for
-  them; `addon.Version` (the copy that actually runs, resolved in the main
-  file because it loads before Compat) is now asserted instead. Locations:
-  `Compat.lua`, `Scanner.lua` (`BackfillReagentItemIds`, `ScanSaltShaker`),
-  `Modules/RecipeGate.lua`, `GUI/MissingRecipesTab.lua`, and the twelve
-  one-line guard removals. Suite 1543/1543.
-
-- **The background warm's frame budget could stop working if any addon
-  reset the shared profiler timer.** The Warmer bounded each tick with
-  `debugprofilestop()`, which is one global timer that `debugprofilestart()`
-  -- callable by any addon at any moment -- resets to zero. A reset between
-  the tick's two reads makes the difference hugely negative and the budget
-  never trips, so the whole warm queue (every profession's list build,
-  tooltip scrapes included) drains in one frame. No addon on the
-  development machine calls it, so this is not the operator's pause, but
-  it is exactly the shape of one and any player's addon set could trigger
-  it. `Perf.now` now prefers `GetTimePreciseSec()`, which has no shared
-  state -- the same clock Blizzard's own console uses to budget its
-  coroutine -- and the Warmer budgets on `Perf.now`. Spec pinned with the
-  shared timer stubbed at zero: one resume per tick with the fix, all five
-  queued tasks drained without it. Location: `TOGProfessionMaster.lua`.
-
-- **Test env:** a reference `C_AddOnProfiler` model in `Tests/env_togpm.lua`
-  (the harness ships none) with the Classic Era enum values; `Tests/perf_spec.lua`
-  covers the clock preference, the budget, both slow-section marks, the
-  login-path marks, the profiler read-out and the stall watch, 18 specs.
-  Suite 1539/1539 at the time (1538/1538 after the allied-guild move above);
-  `TOGProfessionMaster.lua` at 100% line coverage.
-
----
-
-> Releases v1.0.9 and earlier are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
+> Releases v1.0.10 and earlier are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).

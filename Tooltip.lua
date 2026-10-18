@@ -30,6 +30,8 @@ local function TooltipLink(tooltip)
     end
     local util = _G.TooltipUtil
     if util and util.GetDisplayedItem then
+        -- The language server's stub omits the tooltip argument the source takes.
+        ---@diagnostic disable-next-line: redundant-parameter
         local _, link = util.GetDisplayedItem(tooltip)
         return link
     end
@@ -163,7 +165,7 @@ local function FindCrafters(itemID)
             for charKey, tag in pairs(rd.crafters) do
                 if not seen[charKey] and addon:IsVisibleCrafter(charKey, tag) then
                     seen[charKey] = true
-                    local name      = charKey:match("^(.-)%-") or charKey
+                    local name      = (charKey:match("^(.-)%-") or charKey) .. addon:CharGuildSuffix(charKey)
                     local skillData = gdb.skills and gdb.skills[charKey] and gdb.skills[charKey][profId]
                     local online    = GuildRoster and GuildRoster:IsOnline(charKey) or false
                     if not online and gdb.altGroups and gdb.altGroups[charKey] then

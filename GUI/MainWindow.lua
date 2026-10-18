@@ -399,6 +399,15 @@ function MainWindow:Open(tabKey)
     tg:SetLayout("Flow")
     tg:SetFullWidth(true)
     tg:SetFullHeight(true)
+    -- The TabGroup is sized by the window's fill anchors. Its own auto-size
+    -- (LayoutFinished -> SetHeight(content + border)) fires during a tab's
+    -- partial AddChild passes and collapses the content frame. Turned off
+    -- through the API: AceGUI's Release clears noAutoHeight, so the pooled
+    -- TabGroup goes back intact. This used to be `LayoutFinished = nil` on
+    -- every tab draw, which deleted the method from the pooled instance
+    -- (TabGroup copies it onto each widget) and broke auto-sizing for the
+    -- next addon to get that TabGroup.
+    tg:SetAutoAdjustHeight(false)
 
     tg:SetCallback("OnGroupSelected", function(widget, _event, group)
         -- The resizable tabs' size is saved by SetWindowProfile when the
@@ -643,32 +652,6 @@ function MainWindow:SetStatusSuffix(suffix)
 end
 
 function MainWindow:DrawTab(group, container)
-    -- Clear any container.LayoutFinished override left over from the
-    -- previously-active tab. Missing and Browser install their own
-    -- overrides (AnchorAll / AnchorScrollToFill) for custom anchoring,
-    -- and those overrides survive tab switches because the TabGroup
-    -- widget stays alive across switches — only its children get
-    -- released. Without this clear, switching Missing → Cooldowns
-    -- leaves Missing's AnchorAll on the container; it fires during
-    -- Cooldowns' layout pass, references Missing's stale widget refs,
-    -- and silently anchors a recycled-from-Missing scroll frame to
-    -- hidden/wrong frames — the scroll viewport collapses and the
-    -- scrollbar disappears.
-    --
-    -- We set this to nil (not back to the class default). TabGroup's
-    -- class LayoutFinished does `self:SetHeight((height + borderoffset
-    -- + 23))` whose OnHeightSet shrinks `content:SetHeight(height -
-    -- borderoffset - 23)` based on the partially-laid-out height —
-    -- when fired during a tab's intermediate AddChild passes (e.g.
-    -- when Missing has only its toolbar attached so far), it collapses
-    -- the content frame to ~0px and squashes everything anchored
-    -- inside. The TabGroup is sized by its parent Frame's fill anchors
-    -- anyway, so the class auto-size is redundant; nil here is correct.
-    -- Missing/Browser then re-set this to their own AnchorAll/etc. as
-    -- part of their Draw, which is fine — only the inter-tab leftover
-    -- needs to be wiped.
-    container.LayoutFinished = nil
-
     -- Reset the status bar to the addon version on every tab switch. Tabs that
     -- want a custom status line (Profit Planner writes its row count here) over-
     -- write it during their own Draw; this guarantees it reverts when you leave.
@@ -827,8 +810,10 @@ local function activeTabCaresAbout(activeTab, scopes)
     return false
 end
 
+-- Registered as MainWindow: a registration under the addon itself would share
+-- one slot with every other module's and replace theirs (Tests/callbackkeys_spec.lua).
 hooksecurefunc(Ace, "OnEnable", function(_self)
-    addon:RegisterCallback("GUILD_DATA_UPDATED", function(_event, _charKey, scopes)
+    addon.RegisterCallback(MainWindow, "GUILD_DATA_UPDATED", function(_event, _charKey, scopes)
         if not activeTabCaresAbout(MainWindow.activeTab, scopes) then
             addon:DebugPrint("MainWindow: GUILD_DATA_UPDATED skipped — tab",
                 MainWindow.activeTab, "renders none of the changed scope")

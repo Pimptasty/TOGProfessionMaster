@@ -109,8 +109,12 @@ describe("the recipe list on screen", function()
 
 	it("scrolls UP to a recipe above the screen, two rows of context over it", function()
 		env.drawTab(CT)
-		CT._list:SetScrollOffset(40)
-		assert.equal(40, CT._list:GetScrollOffset())
+		-- 35, not the end of the list: the furthest the list scrolls depends on
+		-- how many rows fit. After Scan AH left the toolbar (2026-10-17) an offset
+		-- of 40 was observed to clamp to 39; why the list fits one more row was
+		-- not measured. Any offset well above row 20 tests the same thing.
+		CT._list:SetScrollOffset(35)
+		assert.equal(35, CT._list:GetScrollOffset())
 		local e = target(20)
 		jump(e)
 		assert.equal(e.index, CT._selIndex)

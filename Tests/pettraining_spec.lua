@@ -62,6 +62,11 @@ setup(function()
 		"TOGProfessionMaster", ns).CraftingEngine
 end)
 
+-- Put the base globals back (the synchronous C_Timer above included). Nothing
+-- resets between spec files, so the next file's setup() would otherwise load
+-- its modules against these stubs.
+teardown(function() env.install() end)
+
 before_each(function()
 	calls = { uiparent = {}, open = {}, close = 0 }
 	installGlobals()

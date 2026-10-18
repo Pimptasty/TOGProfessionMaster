@@ -67,18 +67,20 @@ end
 --   SYNC_REQ    (peer)
 --   SYNC_VER    (peer)
 
-addon:RegisterCallback("SYNC_SENT", function(_, peer, bytes, detail)
+-- Registered as SyncLog, not the addon: CallbackHandler keeps one handler per
+-- (event, self), so a second subscriber registering as the addon would evict these.
+addon.RegisterCallback(SyncLog, "SYNC_SENT", function(_, peer, bytes, detail)
     SyncLog:Record("send", peer, bytes, detail)
 end)
 
-addon:RegisterCallback("SYNC_RECV", function(_, peer, bytes, detail)
+addon.RegisterCallback(SyncLog, "SYNC_RECV", function(_, peer, bytes, detail)
     SyncLog:Record("recv", peer, bytes, detail)
 end)
 
-addon:RegisterCallback("SYNC_REQ", function(_, peer)
+addon.RegisterCallback(SyncLog, "SYNC_REQ", function(_, peer)
     SyncLog:Record("request", peer, 0)
 end)
 
-addon:RegisterCallback("SYNC_VER", function(_, peer)
+addon.RegisterCallback(SyncLog, "SYNC_VER", function(_, peer)
     SyncLog:Record("version", peer, 0)
 end)

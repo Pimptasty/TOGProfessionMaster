@@ -74,6 +74,11 @@ before_each(function()
 	installGlobals()
 end)
 
+-- Put the base globals back (GetTime returning 0 and the inert C_Timer above
+-- included). Nothing resets between spec files, so the next file's setup()
+-- would otherwise load its modules against these stubs.
+teardown(function() env.install() end)
+
 describe("BrowserTab entry identity", function()
 	it("exposes the helpers the browser uses for links and spell tooltips", function()
 		assert.is_function(BrowserTab._ResolveRecipeLink)

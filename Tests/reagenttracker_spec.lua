@@ -236,6 +236,49 @@ describe("the tracker window", function()
 		assert.equal(0, #W:Diagnostics())
 	end)
 
+	it("draws every row, with no scroll bar, when the client reports a height a hair short", function()
+		-- At a tracker scale other than 100% the client can give back a height
+		-- just under the exact rows RowList set, which floored to one row
+		-- fewer and showed a scroll bar. The host carries one unit of slack.
+		queue(1, 2, {
+			{ itemId = THORIUM, name = "Thorium Bar", count = 2 },
+			{ itemId = FELCLOTH, name = "Felcloth", count = 1 },
+		})
+		RT:Open()
+		local host = RT._host
+		local realGet = host.GetHeight
+		host.GetHeight = function(f) return realGet(f) - 0.01 end
+		queue(2, 1, { { itemId = 12360, name = "Arcanite Bar", count = 1 } })
+		RT:Refresh()
+		host.GetHeight = realGet
+		assert.equal(3, #RT._list.data)
+		assert.equal(3, RT._list.visibleRowCount)
+		assert.is_false(RT._list.scrollbar:IsShown())
+		assert.equal(20 + 3 * 16 + 6, RT.frame:GetHeight())
+	end)
+
+	it("gives the host one unit of slack only under a LibAceGUIWidgets older than MINOR 44", function()
+		-- MINOR 44 tolerates a short host height itself (inbox 62eb5c52).
+		local minors = LibStub.minors
+		local realMinor = minors["LibAceGUIWidgets-1.0"]
+		queue(1, 2, { { itemId = THORIUM, name = "Thorium Bar", count = 2 } })
+		minors["LibAceGUIWidgets-1.0"] = 43
+		local ok, err = pcall(function()
+			RT:Open()
+			assert.equal(RT._listH + 1, RT._host:GetHeight())
+		end)
+		minors["LibAceGUIWidgets-1.0"] = 44
+		local ok2, err2 = pcall(function()
+			-- A second row changes the fitted height, so RowList reports it again.
+			queue(2, 1, { { itemId = FELCLOTH, name = "Felcloth", count = 1 } })
+			RT:Refresh()
+			assert.equal(RT._listH, RT._host:GetHeight())
+		end)
+		minors["LibAceGUIWidgets-1.0"] = realMinor
+		assert(ok, err)
+		assert(ok2, err2)
+	end)
+
 	it("shows the empty line, and no list, for an empty shopping list", function()
 		RT:Open()
 		assert.is_true(RT._emptyLbl:IsShown())
@@ -334,6 +377,74 @@ describe("the tracker window", function()
 		assert.equal("TOPLEFT", (RT.frame:GetPoint()))
 		assert.equal("TOPLEFT", st.point)
 		RT:ToggleCollapsed()
+	end)
+
+	it("opens at the saved scale and opacity", function()
+		ns.lib.db.profile.trackerScale, ns.lib.db.profile.trackerOpacity = 0.75, 0.5
+		RT:Open()
+		assert.equal(0.75, RT.frame:GetScale())
+		assert.equal(0.25, select(4, RT._bg:GetColorTexture()))
+		assert.equal(1, RT.frame:GetAlpha())
+		ns.lib.db.profile.trackerScale, ns.lib.db.profile.trackerOpacity = nil, nil
+	end)
+
+	it("draws a half-black panel behind the rows at 100% opacity", function()
+		RT:Open()
+		local r, g, b, a = RT._bg:GetColorTexture()
+		assert.same({ 0, 0, 0, 0.5 }, { r, g, b, a })
+		assert.equal("BACKGROUND", (RT._bg:GetDrawLayer()))
+		assert.equal(RT.frame, RT._bg:GetParent())
+	end)
+
+	it("fades only the background: text stays solid, and 0% leaves no background", function()
+		RT:Open()
+		ns.lib.db.profile.trackerOpacity = 0
+		RT:ApplyOpacity()
+		assert.equal(0, select(4, RT._bg:GetColorTexture()))
+		assert.equal(1, RT.frame:GetAlpha())
+		ns.lib.db.profile.trackerOpacity = nil
+		RT:ApplyOpacity()
+	end)
+
+	it("clamps scale to 50-150% and opacity to 0-100%, defaulting both to 100%", function()
+		local p = ns.lib.db.profile
+		assert.equal(1, RT:GetScale())
+		assert.equal(1, RT:GetOpacity())
+		p.trackerScale, p.trackerOpacity = 0.1, -0.5
+		assert.equal(0.5, RT:GetScale())
+		assert.equal(0, RT:GetOpacity())
+		p.trackerScale, p.trackerOpacity = 9, 9
+		assert.equal(1.5, RT:GetScale())
+		assert.equal(1, RT:GetOpacity())
+		p.trackerScale, p.trackerOpacity = nil, nil
+	end)
+
+	it("applies the sliders live, keeping its top-left on the same screen point", function()
+		-- Point offsets are in the frame's scaled units: a bare SetScale moves
+		-- the window toward or away from the screen corner.
+		RT:Open()
+		local left, top = RT.frame:GetLeft(), RT.frame:GetTop()
+		ns.lib.db.profile.trackerScale, ns.lib.db.profile.trackerOpacity = 1.25, 0.4
+		RT:ApplyScale()
+		RT:ApplyOpacity()
+		assert.equal(1.25, RT.frame:GetScale())
+		assert.equal(0.2, select(4, RT._bg:GetColorTexture()))
+		local st = RT:State()
+		assert.equal("TOPLEFT", st.point)
+		assert.equal(left / 1.25, st.x)
+		assert.equal(top / 1.25, st.y)
+		RT:ApplyScale()   -- unchanged setting: the window stays put
+		assert.equal(left / 1.25, st.x)
+		ns.lib.db.profile.trackerScale, ns.lib.db.profile.trackerOpacity = nil, nil
+		RT:ApplyScale()
+		RT:ApplyOpacity()
+	end)
+
+	it("does nothing before the window is built", function()
+		assert.is_nil(RT.frame)
+		RT:ApplyScale()
+		RT:ApplyOpacity()
+		assert.is_nil(RT.frame)
 	end)
 
 	it("keeps the open and minimised flags when the window is dragged", function()

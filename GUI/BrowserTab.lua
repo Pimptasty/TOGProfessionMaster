@@ -456,13 +456,18 @@ local function BuildFullList(profId, viewMode, opts)
     -- crafter, so the roster lookups -- IsOnline per crafter, and per alt of
     -- every offline crafter -- run once per unique crafter instead of once per
     -- recipe-crafter pair. Each row still gets its own { name, online } table.
-    local _shownName, _shownOnline = {}, {}
+    -- Also memoised: the key a right-click whispers -- the ONLINE alt when one
+    -- stands in for an offline crafter, not the offline main -- and the search
+    -- text, which is the shown name plus the bare guild tag WITHOUT the colour
+    -- escape (folding the escape made "cff" or "9d" match every tagged crafter).
+    local _shownName, _shownOnline, _shownKey, _shownSearch = {}, {}, {}, {}
     local GuildRoster = addon.Scanner and addon.Scanner.GuildRoster
     local function crafterDisplay(ck)
         local displayName = _shownName[ck]
-        if displayName ~= nil then return displayName, _shownOnline[ck] end
+        if displayName ~= nil then return displayName, _shownOnline[ck], _shownKey[ck], _shownSearch[ck] end
         local shortName = ck:match("^(.-)%-") or ck
         local online    = GuildRoster and GuildRoster:IsOnline(ck) or false
+        local whisperKey = ck
         displayName = shortName
         if not online and gdb.altGroups and gdb.altGroups[ck] then
             for _, altCk in ipairs(gdb.altGroups[ck]) do
@@ -470,12 +475,16 @@ local function BuildFullList(profId, viewMode, opts)
                     local altShort = altCk:match("^(.-)%-") or altCk
                     displayName = altShort .. " (" .. shortName .. ")"
                     online = true
+                    whisperKey = altCk
                     break
                 end
             end
         end
-        _shownName[ck], _shownOnline[ck] = displayName, online
-        return displayName, online
+        local tag = addon:GetCharGuildAbbrev(ck)
+        local search = tag and (displayName .. " <" .. tag .. ">") or displayName
+        displayName = displayName .. addon.GuildTagSuffix(tag)
+        _shownName[ck], _shownOnline[ck], _shownKey[ck], _shownSearch[ck] = displayName, online, whisperKey, search
+        return displayName, online, whisperKey, search
     end
 
     -- v0.7.5: per-client expansion cap. The shipped recipeDB is a universal
@@ -535,8 +544,12 @@ local function BuildFullList(profId, viewMode, opts)
                     })
                 end
             elseif thisViewMode ~= "mine" and craftIsVisible(ck, tag) then
-                local displayName, online = crafterDisplay(ck)
-                crafterObjs[#crafterObjs + 1] = { name = displayName, online = online }
+                local displayName, online, whisperKey, search = crafterDisplay(ck)
+                -- charKey rides along so the right-click whisper reaches the
+                -- character, not the display text ("Alt (Main) <Tag>") -- and
+                -- the online alt rather than the offline main it stands in for.
+                crafterObjs[#crafterObjs + 1] = { name = displayName, online = online, charKey = whisperKey,
+                                                  search = search }
             end
         end
         table.sort(crafterObjs, crafterOrder)
@@ -630,7 +643,8 @@ local function BuildFullList(profId, viewMode, opts)
                     -- honours the same viewMode/visibility rules as the shown crafter
                     -- list — a name only matches recipes where that crafter is visible.
                     for _, c in ipairs(crafters) do
-                        if c.name then parts[#parts + 1] = c.name:lower() end
+                        local s = c.search or c.name
+                        if s then parts[#parts + 1] = s:lower() end
                     end
                     local hay = table.concat(parts, " ")
                     local itemLink = craftedItemId and select(2, addon.Item.GetInfo(craftedItemId))
@@ -737,10 +751,25 @@ BrowserTab._SKILL_TIER_BANDS       = SKILL_TIER_BANDS
 -- Draw
 -- ---------------------------------------------------------------------------
 
+local function RefitOnScale(_, _, tab) tab:RefitShoppingList() end
+
 function BrowserTab:Draw(container)
     addon:DebugPrint("BrowserTab:Draw — prof=", self._selectedProfId,
         "view=", self._viewMode, "cacheKeys=", self._listCache and "(table)" or "nil")
     self._container = container
+    -- The shopping-list section is sized from the row height at draw time. A
+    -- LibAceGUIWidgets scale change (another addon's Text Size slider) changes
+    -- that height but not our section, so one row could floor to zero again.
+    -- Refit while this tab is showing. FillShoppingListSection derives the
+    -- row height from the scale itself, so it does not matter whether the
+    -- list's own listener has run yet. The listener takes the tab as its
+    -- owner argument rather than closing over it: the library's listener
+    -- table is weak-keyed, and a closure would keep a reloaded tab alive.
+    local W = addon.W
+    if W and W.OnScaleChanged and not self._scaleHooked then
+        self._scaleHooked = true
+        W:OnScaleChanged(self, RefitOnScale)
+    end
     -- Flow, not List: the last row (the recipe list and detail panel) is full
     -- height, and Flow is the layout that gives a full-height child the rest
     -- of the tab -- the Cooldowns tab's shape.
@@ -923,7 +952,7 @@ function BrowserTab:Draw(container)
     end
     local function redraw()
         C_Timer.After(0, function()
-            if self._container then
+            if self:IsShowing() then
                 self._container:ReleaseChildren()
                 self:Draw(self._container)
             end
@@ -967,46 +996,6 @@ function BrowserTab:Draw(container)
                 .. "still needs to cover."),
     })
 
-    local sp3b = AceGUI:Create("Label"); sp3b:SetWidth(8); toolbar:AddChild(sp3b)
-
-    -- Scan AH button — kicks off a throttled scan over every reagent in
-    -- the user's shopping list. After completion, reagent rows in the
-    -- shopping list section AND the detail panel that have live AH
-    -- listings get an [AH] button (gated on AH.GetListingsFor — same
-    -- pattern as [Bank] gating on Bank.GetStock). Disabled when AH is
-    -- closed; shows scan progress while running. Click during scan
-    -- cancels. Mirrors the Missing Recipes tab's Scan AH button.
-    addon.GUI.MakeScanAHButton({
-        parent        = toolbar,
-        tabName       = "browser",
-        label         = L["BrowserScanAH"],
-        progressLabel = L["BrowserScanAHProgress"],
-        tooltipTitle  = L["BrowserScanAH"],
-        tooltipDesc   = L["BrowserScanAHDesc"],
-        noItemsError  = "Shopping list is empty — nothing to scan.",
-        getItems      = function()
-            local items, seen = {}, {}
-            for _, ent in pairs(Ace.db.char.shoppingList or {}) do
-                for _, r in ipairs((ent and ent.reagents) or {}) do
-                    local id   = r.itemId
-                    local name = r.name
-                    if id and type(name) == "string" and name ~= "" and not seen[id] then
-                        seen[id] = true
-                        items[#items + 1] = { itemId = id, itemName = name }
-                    end
-                end
-            end
-            return items
-        end,
-        onRefresh     = function()
-            if BrowserTab._slSection then
-                BrowserTab:FillShoppingListSection(BrowserTab._slSection)
-            end
-            if BrowserTab._selectedEntry then
-                BrowserTab:DrawDetail(BrowserTab._selectedEntry)
-            end
-        end,
-    })
 
     -- ---- Shopping list (below toolbar) -------------------------------------
     if hasSL then
@@ -1014,14 +1003,23 @@ function BrowserTab:Draw(container)
         slSection:SetTitle("")
         slSection:SetLayout("List")
         slSection:SetFullWidth(true)
-        slSection.noAutoHeight = true
-        slSection:SetHeight(slCount * ROW_HEIGHT + 40)
+        slSection:SetAutoAdjustHeight(false)
+        BrowserTab._LiftSectionBorder(slSection)
         -- The list's host is handed back to UIParent when this InlineGroup is
         -- released (ParkList → AttachRawFrames), so it never rides the pooled
         -- widget into another addon's window -- the bleed players hit on TBC /
         -- Anniversary.
         container:AddChild(slSection)
         self._slSection = slSection
+        -- Forget the section the moment it goes back to the pool. A refill
+        -- after that (the TOG Bank watcher's timer, a scale change, a
+        -- shopping-list edit) would otherwise park our list inside a widget
+        -- another addon now owns, and its release would later hide our list.
+        if addon.W then
+            addon.W:OnWidgetRelease(slSection, "togpm:shoppingList", function()
+                if self._slSection == slSection then self._slSection = nil end
+            end)
+        end
         self:FillShoppingListSection(slSection)
     end
 
@@ -1077,8 +1075,30 @@ end
 -- was taller than the tab and the recipe list drew below the frame).
 local SL_MAX_SHARE = 0.4
 local SL_MIN_ROWS  = 4
-local SL_SLACK     = 2   -- pixels; see FillShoppingListSection
+local SL_SLACK     = 7   -- half a scale-1.0 row; see FillShoppingListSection
 BrowserTab.SL_SLACK = SL_SLACK
+-- The InlineGroup's own chrome around the rows: 3 border + 2 x 10 inset. Its
+-- 17 px title strip is not counted: the section has no title, and Draw lifts
+-- the border to the top of the group (see LiftSectionBorder).
+local SL_CHROME    = 23
+BrowserTab.SL_CHROME = SL_CHROME
+
+-- An InlineGroup reserves 17 px above its border for a title even when the
+-- title is empty -- dead space between the toolbar and the shopping list.
+-- Pull the border (the content frame's parent) up to the group's top, and put
+-- AceGUI's own anchor back on release, since the widget is pooled and Release
+-- does not re-anchor it.
+local function LiftSectionBorder(group)
+    local border = group.content and group.content:GetParent()
+    if not (border and border ~= group.frame) then return end
+    border:SetPoint("TOPLEFT", group.frame, "TOPLEFT", 0, 0)
+    if addon.W then
+        addon.W:OnWidgetRelease(group, "togpm:slBorder", function()
+            border:SetPoint("TOPLEFT", group.frame, "TOPLEFT", 0, -17)
+        end)
+    end
+end
+BrowserTab._LiftSectionBorder = LiftSectionBorder
 
 -- Tallest the section's row area may be right now. Derived from the tab
 -- container's live height so a taller window shows more rows; falls back to
@@ -1310,22 +1330,43 @@ function BrowserTab:FillShoppingListSection(container)
         return self:BuildShoppingList(host)
     end)
     -- Whole rows only, at the list's own (scaled) row height, and at least
-    -- one, so the cap never cuts a row in half.
-    local rowH    = rl.rowHeight or ROW_HEIGHT
+    -- one, so the cap never cuts a row in half. Taken from the scale rather
+    -- than rl.rowHeight: during a scale change the list may not have
+    -- re-derived its metrics yet (RefitShoppingList).
+    local W       = addon.W
+    local rowH    = (W.ScaledSize and W:ScaledSize(ROW_HEIGHT)) or rl.rowHeight or ROW_HEIGHT
     local maxRows = math.max(1, math.floor(self:ShoppingListMaxHeight() / rowH))
     local shown   = math.max(1, math.min(#rows, maxRows))
-    -- 40 is the InlineGroup's own chrome (17 title + 3 border + 2 x 10 inset).
+    -- SL_CHROME is the InlineGroup's own chrome, title strip lifted away.
     -- The extra SL_SLACK keeps the row area from landing a fraction UNDER
     -- `shown` rows once the client snaps the anchors to whole pixels: the
     -- RowList floors height / rowHeight, so one recipe drew as zero rows and
     -- a scrollbar (operator, 2026-10-07: "i can't see the stuff on my
-    -- shopping list anymore").
-    container:SetHeight(shown * rowH + 40 + SL_SLACK)
+    -- shopping list anymore"). v1.3.1's 2 px was a guess that was never
+    -- confirmed in game, and the same empty box was reported on Discord on
+    -- 2026-10-13; half a row covers any whole-pixel snap at any UI scale and
+    -- still cannot fit an extra row, since the list draws whole rows only.
+    container:SetHeight(shown * rowH + SL_CHROME + SL_SLACK)
     rl:SetData(rows, true)
 end
 
+-- Is this tab drawn in an open window right now? `_container` alone outlives
+-- the window: a deferred redraw or refill must not write into a TabGroup that
+-- has gone back to the AceGUI pool, or one now showing another tab.
+function BrowserTab:IsShowing()
+    local mw = addon.MainWindow
+    return (mw and mw.frame and mw.activeTab == "browser" and self._container) and true or false
+end
+
+-- Re-size the live shopping-list section to the list's current row height.
+function BrowserTab:RefitShoppingList()
+    if not (self:IsShowing() and self._slSection) then return end
+    self:FillShoppingListSection(self._slSection)
+    self._container:DoLayout()
+end
+
 function BrowserTab:RefreshShoppingList()
-    if not self._container then return end
+    if not self:IsShowing() then return end
     if addon.ReagentTracker then addon.ReagentTracker:QueueRefresh() end
 
     if self._slSection then
@@ -1339,7 +1380,7 @@ function BrowserTab:RefreshShoppingList()
             self._slSection.frame:Hide()
             self._slSection = nil
             C_Timer.After(0, function()
-                if self._container then
+                if self:IsShowing() then
                     self._container:ReleaseChildren()
                     self:Draw(self._container)
                 end
@@ -1347,7 +1388,7 @@ function BrowserTab:RefreshShoppingList()
         end
     else
         C_Timer.After(0, function()
-            if self._container then
+            if self:IsShowing() then
                 self._container:ReleaseChildren()
                 self:Draw(self._container)
             end
@@ -2299,17 +2340,18 @@ end
 -- ---------------------------------------------------------------------------
 -- AH callbacks
 -- ---------------------------------------------------------------------------
--- Refresh the scan button label whenever the AH opens or closes (it
--- enables/disables based on AH availability), and refresh the shopping list
--- section + detail panel so [AH] buttons appear/disappear on reagent rows
--- as scan results arrive or get cleared (addon.AH wipes results on close).
--- Both callbacks early-out unless the browser tab is the active tab and
--- has its widgets built — cheap when the tab is closed.
--- (Removed: per-tab AH_OPEN_STATE_CHANGED / AH_SCAN_COMPLETE handlers.
--- The shared addon.GUI.MakeScanAHButton factory in GUI/SharedWidgets.lua
--- owns one global handler that refreshes the active tab's scan button
--- and runs the tab's onRefresh hook — for browser, that hook re-fills
--- the shopping list section + the detail panel.)
+-- Re-fill the shopping list section and the detail panel so [AH] buttons
+-- appear and go on reagent rows as ItemDB's scan results arrive or are
+-- cleared (addon.AH wipes them when the AH closes). Runs only while this is
+-- the active tab of an open window (addon.GUI.SetAHRefresh).
+addon.GUI.SetAHRefresh("browser", function()
+    if BrowserTab._slSection then
+        BrowserTab:FillShoppingListSection(BrowserTab._slSection)
+    end
+    if BrowserTab._selectedEntry then
+        BrowserTab:DrawDetail(BrowserTab._selectedEntry)
+    end
+end)
 
 -- ---------------------------------------------------------------------------
 -- Background cache warming
@@ -2364,7 +2406,12 @@ do
     -- invalidates it — which is why an ex-member survived a reload. Note this
     -- runs regardless of whether the tab is on screen, on purpose: the background
     -- pre-warm is exactly what caches the unfiltered list.
-    addon:RegisterCallback("GUILD_DATA_UPDATED", function(_event, _charKey, scopes)
+    --
+    -- Registered as BrowserTab, never as the addon: CallbackHandler keeps one
+    -- handler per (event, self), and MainWindow's own GUILD_DATA_UPDATED
+    -- handler (registered later, at OnEnable) used to replace this one, so the
+    -- cache never re-warmed (Peer Review H1; Tests/callbackkeys_spec.lua).
+    addon.RegisterCallback(BrowserTab, "GUILD_DATA_UPDATED", function(_event, _charKey, scopes)
         if type(scopes) == "table" and next(scopes)
            and not (scopes.recipes or scopes.altgroups or scopes.roster) then
             return

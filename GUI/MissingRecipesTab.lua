@@ -842,48 +842,6 @@ function MissingRecipesTab:DrawScope(container)
     -- becomes every recipe for the selected profession (known marked with a tick).
     filterBox("showAll", "_showAll", 110, "MissingShowAll", "MissingShowAllDesc")
 
-    -- Scan AH button — kicks off a throttled scan over the currently-displayed
-    -- missing-recipes list. After completion, rows whose recipe scroll has
-    -- live AH listings get a [AH] button (gated on AH.GetListingsFor — same
-    -- pattern as [Bank] gating on Bank.GetStock). Disabled when AH is closed,
-    -- displays scan progress while running. Filter changes during a scan
-    -- don't affect the in-progress scan; the user can cancel and re-scan
-    -- after narrowing the list to fewer items.
-    addon.GUI.MakeScanAHButton({
-        parent        = toolbar,
-        tabName       = "missing",
-        label         = L["MissingScanAH"],
-        progressLabel = L["MissingScanAHProgress"],
-        tooltipTitle  = L["MissingScanAH"],
-        tooltipDesc   = L["MissingScanAHDesc"],
-        width         = 140,
-        noItemsError  = "No scannable items in the current view.",
-        getItems      = function()
-            -- GetItemInfo (not GetItemInfoInstant — its first return is the
-            -- itemID number not the name) gives us the string name. Items
-            -- not yet in the WoW cache get skipped silently; the user can
-            -- re-scan after scrolling has populated more entries. Trainer-
-            -- only recipes (entry.itemId == nil) have no scroll item and
-            -- can't be auctioned, so we skip them here.
-            local items = {}
-            for _, entry in ipairs(self._list or {}) do
-                local iid = entry.itemId
-                if iid then
-                    local name = addon.Item.GetInfo(iid)
-                    if type(name) == "string" and name ~= "" then
-                        items[#items + 1] = { itemId = iid, itemName = name }
-                    end
-                end
-            end
-            return items
-        end,
-        -- [AH] buttons appear and go with scan results; the list re-reads each
-        -- button column's `show` on every repaint.
-        onRefresh     = function()
-            if MissingRecipesTab._rowList then MissingRecipesTab._rowList:Refresh() end
-        end,
-    })
-
     -- ---- Result section ----------------------------------------------------
     -- Takes the rest of the tab's height. It holds either a hint label or the
     -- list, whose host ParkList parks here; on release (a tab, sub-tab or
@@ -1539,9 +1497,9 @@ end
 -- not on the background item-load storm that used to fire several times a
 -- second and creep the scroll.
 
--- The [AH] buttons follow the scan results (addon.AH wipes them when the AH
--- closes). There is no per-tab AH_OPEN_STATE_CHANGED / AH_SCAN_COMPLETE
--- handler: the shared addon.GUI.MakeScanAHButton factory in
--- GUI/SharedWidgets.lua owns one global handler that refreshes the active
--- tab's scan button and runs the tab's onRefresh hook -- for missing, that
--- hook repaints the list, which re-reads the [AH] column's `show`.
+-- The [AH] buttons follow ItemDB's scan results (addon.AH wipes them when the
+-- AH closes); a repaint re-reads the [AH] column's `show`. Runs only while
+-- this is the active tab of an open window (addon.GUI.SetAHRefresh).
+addon.GUI.SetAHRefresh("missing", function()
+    if MissingRecipesTab._rowList then MissingRecipesTab._rowList:Refresh() end
+end)

@@ -66,7 +66,10 @@ before_each(function()
 	_G.ChatFrameUtil       = nil
 	_G.ChatEdit_InsertLink = nil
 	_G.ChatEdit_GetActiveWindow = function() return nil end
-	_G.IsModifiedClick     = function() return false end
+	-- The CHATLINK modifier is held: Click only consults the router for a
+	-- modified click, and these specs are about what happens when it does.
+	-- The plain-click describe below releases it.
+	_G.IsModifiedClick     = function(what) return what == "CHATLINK" end
 	_G.IsShiftKeyDown      = function() return false end
 	_G.GameTooltip_ShowCompareItem      = function() calls.compareShown  = calls.compareShown  + 1 end
 	_G.GameTooltip_HideShoppingTooltips = function() calls.compareHidden = calls.compareHidden + 1 end
@@ -131,6 +134,37 @@ describe("Click — which router it reaches for", function()
 		IL.Click(LINK)
 		assert.is_false(asked)
 		assert.equal(1, #calls.handled)
+	end)
+end)
+
+describe("Click — a plain click is never routed", function()
+	-- TradeSkillMaster replaces HandleModifiedItemClick with
+	-- `orig(link) or hookFunc(link)`, and its hook answers true whenever its
+	-- Crafting search box takes the link -- on ANY click. A plain left click on
+	-- a Professions row went into TSM's search and the detail panel never drew.
+	before_each(function()
+		_G.IsModifiedClick = function() return false end
+		_G.HandleModifiedItemClick = function(link)
+			calls.handled[#calls.handled + 1] = link
+			return true   -- what TSM's hook answers with its crafting window open
+		end
+	end)
+
+	it("returns false without asking the router", function()
+		assert.is_false(IL.Click(LINK))
+		assert.equal(0, #calls.handled)
+	end)
+
+	it("still routes a DRESSUP click", function()
+		_G.IsModifiedClick = function(what) return what == "DRESSUP" end
+		assert.is_true(IL.Click(LINK))
+		assert.same({ LINK }, calls.handled)
+	end)
+
+	it("still routes an EXPANDITEM click (Mainline opens the profession UI for gear on it)", function()
+		_G.IsModifiedClick = function(what) return what == "EXPANDITEM" end
+		assert.is_true(IL.Click(LINK))
+		assert.same({ LINK }, calls.handled)
 	end)
 end)
 

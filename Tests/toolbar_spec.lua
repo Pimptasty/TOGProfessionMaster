@@ -14,6 +14,7 @@ local env = require("env_togpm")
 local wow = require("env.wow")
 
 local ns, MW, BT, W
+local anchorPrints = {}
 local ALCHEMY = 171
 local ME = "Testchar-Testrealm"
 local POTION = 2330
@@ -45,7 +46,14 @@ before_each(function()
 	env.installFrames()
 	local gdb = env.resetDb()
 	env.roster({ { name = "Testchar", isOnline = true } })
-	ns.Print = function() end
+	-- A toolbar anchor report on an ordinary draw is a false "please report
+	-- this line" to every player; after_each fails any case that prints one.
+	-- The cases that build a broken toolbar on purpose replace ns.Print.
+	ns.GUI._anchorReported.loop, ns.GUI._anchorReported.fail = false, false
+	anchorPrints = {}
+	ns.Print = function(_, msg)
+		if tostring(msg):find("Toolbar anchor", 1, true) then anchorPrints[#anchorPrints + 1] = msg end
+	end
 	env.spellsExist(POTION)
 	env.setRecipeDB({
 		[ALCHEMY] = { [POTION] = { name = "Healing Potion", icon = 1, reagents = {},
@@ -65,6 +73,7 @@ after_each(function()
 	local menu = W._menus and W._menus[1]
 	if menu and menu:IsShown() then menu:Hide() end
 	if MW and MW.Close then pcall(function() MW:Close() end) end
+	assert.same({}, anchorPrints)
 end)
 
 -- AceGUI runs a tab draw through the client's error handler, so a draw that
@@ -302,6 +311,178 @@ describe("a toolbar menu at the edges", function()
 		assert.is_false(menu:IsShown())
 		assert.is_truthy(reported and tostring(reported):find("handler failed", 1, true))
 		AceGUI:Release(parent)
+	end)
+end)
+
+-- Peer Review thread 329b6368: in game, laying out a toolbar slot raised "SetPoint
+-- would result in anchor family connection" and the cause could not be found
+-- offline. toolbarSlot now prints the anchor chain the first time the slot it
+-- was handed is already reachable from the toolbar, so the report names the
+-- widget. The loop is built by hand up to its last link; AceGUI's Flow layout
+-- closes it, and the harness (since baca63c) refuses that SetPoint with the
+-- client's message, inside AceGUI's safecall, as it would in game.
+describe("a toolbar slot already anchored above its toolbar", function()
+	it("prints the anchor chain once, naming each widget and frame in it", function()
+		ns.GUI._anchorReported.loop = false
+		ns.GUI._anchorReported.fail = false
+		local AceGUI = LibStub("AceGUI-3.0")
+		local parent = AceGUI:Create("SimpleGroup")
+		parent:SetLayout("Flow")
+		local stale = AceGUI:Create("SimpleGroup")
+		local probe = CreateFrame("Frame", "TOGPMAnchorLoopProbe", UIParent)
+		probe:SetPoint("TOPLEFT", stale.frame)
+		parent.content:ClearAllPoints()
+		parent.content:SetPoint("TOPLEFT", probe)
+
+		local printed = {}
+		local savedPrint, savedCreate = ns.Print, AceGUI.Create
+		ns.Print = function(_, msg) printed[#printed + 1] = msg end
+		local handed = 0
+		AceGUI.Create = function(self, kind)
+			if kind == "SimpleGroup" and handed < 2 then
+				handed = handed + 1
+				return stale
+			end
+			return savedCreate(self, kind)
+		end
+		local owner = {}
+		local box = { get = function() return false end, set = function() end }
+		local ok, err = pcall(function()
+			ns.GUI.ToolbarCheckbox(owner, "loopA", parent, box)
+			ns.GUI.ToolbarCheckbox(owner, "loopB", parent, box)
+		end)
+		AceGUI.Create, ns.Print = savedCreate, savedPrint
+		assert.is_true(ok, tostring(err))
+
+		assert.truthy(#caught > 0, "the frame model refused the loop inside AceGUI's layout")
+		for _, e in ipairs(caught) do
+			assert.truthy(e:find("anchor family connection", 1, true), e)
+		end
+		assert.equal("TOGPMAnchorLoopProbe", printed[1] and printed[1]:match("TOGPMAnchorLoopProbe"),
+			table.concat(printed, " | "))
+		assert.truthy(printed[1]:find("Toolbar anchor loop: ", 1, true))
+		assert.truthy(printed[1]:find("SimpleGroup", 1, true))
+		-- The refused SetPoint leaves the slot with no anchor, so the failure
+		-- report fires too. Each prints once per session, not once per slot.
+		assert.equal(2, #printed, table.concat(printed, " | "))
+		assert.truthy(printed[2]:find("Toolbar anchor error (no anchor set", 1, true))
+		assert.truthy(printed[2]:find("toolbar [TOPLEFT->TOGPMAnchorLoopProbe:TOPLEFT]", 1, true))
+
+		-- Undo the loop before anything goes back to the shared pool: the stale
+		-- slot is listed twice (Release would raise on the second), and the
+		-- content frame gets SimpleGroup's own anchors back for its next owner.
+		for i = #parent.children, 1, -1 do
+			if parent.children[i] == stale then table.remove(parent.children, i) end
+		end
+		parent.children[#parent.children + 1] = stale
+		probe:ClearAllPoints()
+		probe:Hide()
+		parent.content:ClearAllPoints()
+		parent.content:SetPoint("TOPLEFT")
+		parent.content:SetPoint("BOTTOMRIGHT")
+		AceGUI:Release(parent)
+	end)
+end)
+
+-- The two reports above must stay silent on an ordinary draw, or they print a
+-- false "please report this line" to every player once a session.
+describe("drawing every tab", function()
+	it("prints no toolbar anchor report", function()
+		ns.GUI._anchorReported.loop = false
+		ns.GUI._anchorReported.fail = false
+		local printed = {}
+		ns.Print = function(_, msg) printed[#printed + 1] = msg end
+		MW:Open("browser")
+		for _, tab in ipairs({ "cooldowns", "missing", "guild", "crafting", "ahprofit", "browser" }) do
+			MW:SelectTab(tab)
+		end
+		assert.same({}, printed)
+	end)
+
+	-- Fill places only children[1] (AceGUI-3.0.lua:655-665), so a second
+	-- control under Fill is unplaced on purpose. after_each fails on a print.
+	it("prints no report for a second control under a Fill layout", function()
+		local AceGUI = LibStub("AceGUI-3.0")
+		local parent = AceGUI:Create("SimpleGroup")
+		parent:SetLayout("Fill")
+		local box = { get = function() return false end, set = function() end }
+		ns.GUI.ToolbarCheckbox({}, "fillA", parent, box)
+		ns.GUI.ToolbarCheckbox({}, "fillB", parent, box)
+		assert.equal(0, parent.children[2].frame:GetNumPoints(), "the fixture's second control was placed")
+		AceGUI:Release(parent)
+	end)
+end)
+
+-- Peer Review replies 93223be9, 5dc5beac and ca0596a1 on 329b6368: the wiki
+-- names anchoring to the screen after a frame is gone, not a loop, as the cause
+-- of this error, and whether the client RAISES it or only reports it and skips
+-- the SetPoint is not known. Either way AceGUI's own safecall around the layout
+-- keeps it from reaching the toolbar code, so what is checked is the result: a
+-- control left with no anchor. Both shapes are driven through the real
+-- AddChild and the real Flow layout, with only the slot's SetPoint replaced.
+describe("a toolbar control whose placement fails", function()
+	local AceGUI, parent, printed, savedPrint, made
+
+	before_each(function()
+		AceGUI = LibStub("AceGUI-3.0")
+		ns.GUI._anchorReported.fail = false
+		parent = AceGUI:Create("SimpleGroup")
+		parent:SetLayout("Flow")
+		printed, made = {}, {}
+		savedPrint = ns.Print
+		ns.Print = function(_, msg) printed[#printed + 1] = msg end
+	end)
+
+	after_each(function()
+		ns.Print = savedPrint
+		for _, w in ipairs(made) do AceGUI:Release(w) end
+		AceGUI:Release(parent)
+	end)
+
+	local box = { get = function() return false end, set = function() end }
+
+	--- Add one toolbar check box whose slot has `setPoint` in place of its own.
+	local function addWithSetPoint(key, setPoint)
+		local slot = AceGUI:Create("SimpleGroup")
+		local ownSetPoint = rawget(slot.frame, "SetPoint")
+		slot.frame.SetPoint = setPoint
+		local savedCreate = AceGUI.Create
+		AceGUI.Create = function(self, kind)
+			if kind == "SimpleGroup" then
+				AceGUI.Create = savedCreate
+				return slot
+			end
+			return savedCreate(self, kind)
+		end
+		local ok, err = pcall(ns.GUI.ToolbarCheckbox, {}, key, parent, box)
+		AceGUI.Create = savedCreate
+		slot.frame.SetPoint = ownSetPoint
+		return ok, err
+	end
+
+	local EXPECTED = "Toolbar anchor error (no anchor set in AceGUI's layout): SimpleGroup [] parent "
+
+	it("when SetPoint raises: AceGUI reports it, nothing escapes, and the anchors are printed", function()
+		local ok, err = addWithSetPoint("failA", function()
+			error("SetPoint would result in anchor family connection")
+		end)
+		assert.is_true(ok, tostring(err))
+		assert.equal(1, #caught, "AceGUI's safecall hands it to the error handler once")
+		assert.truthy(caught[1]:find("anchor family connection", 1, true))
+		assert.equal(1, #printed)
+		assert.truthy(printed[1]:find(EXPECTED, 1, true))
+		assert.truthy(printed[1]:find("; first SimpleGroup [] parent ", 1, true))
+		assert.truthy(printed[1]:find("; toolbar [", 1, true))
+	end)
+
+	it("when SetPoint silently does nothing: prints the same, once per session", function()
+		local ok, err = addWithSetPoint("failB", function() end)
+		assert.is_true(ok, tostring(err))
+		ok, err = addWithSetPoint("failC", function() end)
+		assert.is_true(ok, tostring(err))
+		assert.equal(0, #caught)
+		assert.equal(1, #printed, "reported once per session, not per control")
+		assert.truthy(printed[1]:find(EXPECTED, 1, true))
 	end)
 end)
 

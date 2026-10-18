@@ -173,6 +173,24 @@ local ItemLink = addon.ItemLink
 --- deprecated global is LAST and is never assumed to exist.
 function ItemLink.Click(link)
     if not link then return false end
+    -- A PLAIN CLICK IS NEVER A MODIFIED CLICK, so it is not handed to the
+    -- router at all. TradeSkillMaster replaces HandleModifiedItemClick with
+    -- `orig(link) or hookFunc(link)` (LibTSMWoW Source/API/Item.lua:158-166),
+    -- so its hook runs on EVERY click and answers true whenever its Crafting
+    -- search box takes the link -- the Professions tab's left click was being
+    -- swallowed into TSM's search and the detail panel never drew. The gate
+    -- asks for every modifier Blizzard's router acts on, so a client without
+    -- TSM sees no change: CHATLINK and DRESSUP on every flavour (classic_era
+    -- Blizzard_ItemButton/Classic/ItemButtonTemplate.lua:137-160), plus
+    -- EXPANDITEM on Mainline, which opens the Azerite UI or, for profession
+    -- gear, the profession window (live Blizzard_ItemButton/Mainline/
+    -- ItemButtonTemplate.lua:386-396). EXPANDITEM is also a defined modifier on
+    -- the classic trees (PaperDollFrame.lua:2624), so asking costs nothing there.
+    -- Peer Review thread 9cc42c14.
+    if IsModifiedClick and not (IsModifiedClick("CHATLINK") or IsModifiedClick("DRESSUP")
+            or IsModifiedClick("EXPANDITEM")) then
+        return false
+    end
     if HandleModifiedItemClick then
         return HandleModifiedItemClick(link) and true or false
     end
@@ -1472,149 +1490,31 @@ function addon.GUI.PersistentChoice(scope, key, default)
 end
 
 -- ---------------------------------------------------------------------------
--- Scan AH button
+-- [AH] buttons follow the Auction House
 -- ---------------------------------------------------------------------------
--- Replaces the duplicated 80-line block that previously lived in each of
--- BrowserTab / CooldownsTab / MissingRecipesTab. The factory owns:
---   • The Button widget itself, sized + tooltip-attached
---   • The refreshScanBtnLabel closure (4 states: no AH module / scanning /
---     AH open / AH closed) and its calls into addon.AH.IsOpen() etc.
---   • The OnClick handler that cancels in-progress scans or kicks off a
---     new one via addon.AH.StartScan(...) using items the caller provides
---   • Two AH callbacks (AH_OPEN_STATE_CHANGED, AH_SCAN_COMPLETE) registered
---     ONCE at module load — they look up the active tab's current scan
---     button via _activeButtons[tabName] and refresh it. No more N-callback
---     accumulation across redraws.
---
--- Callers pass:
---   parent        — AceGUI container to AddChild into                    REQUIRED
---   tabName       — "browser" / "cooldowns" / "missing" (active-tab guard) REQUIRED
---   label         — button text when idle / closed                       REQUIRED
---   progressLabel — printf format e.g. "Scanning %d/%d"                  REQUIRED
---   tooltipTitle  — first line of tooltip                                REQUIRED
---   tooltipDesc   — body of tooltip                                      REQUIRED
---   getItems      — function() returning { {itemId, itemName}, ... }     REQUIRED
---                   for the current scan's input set
---   onRefresh     — optional function() called after the button refreshes
---                   so the tab can also refresh its row [AH] buttons
---   noItemsError  — optional string shown when getItems returns empty
---                   (defaults to a generic message)
---   width         — optional, defaults to 130
+-- The per-row [AH] buttons show for items ItemDB's scan found listed, and go
+-- when the Auction House closes. TOGPM has no scan button of its own any more
+-- (removed 2026-10-17, the operator on Discord: "remove the scan AH button
+-- from TOGPM" -- ItemDB's Auction House button scans the whole house), so
+-- the only job left here is to repaint the visible tab's [AH] buttons when
+-- the AH opens or closes or a scan finishes. Each tab registers its repaint
+-- once at load; only the active tab's runs, and only while the window is open.
+local _ahRefresh = {}
 
--- One-time global state. Each tab keeps at most one live scan button at
--- a time; redraws replace the entry, releases clear it (see OnRelease).
-local _activeButtons = {}
-
--- Single global refresh entry-point. Called by the AH callbacks below
--- AND by the OnClick handler immediately after kicking off / cancelling
--- a scan, so every state change funnels through one path.
-local function refreshTabButton(tabName)
-    local btn = _activeButtons[tabName]
-    if not btn or not btn._tpmRefresh then return end
-    btn._tpmRefresh()
-    if btn._tpmOnRefresh then btn._tpmOnRefresh() end
+function addon.GUI.SetAHRefresh(tabName, fn)
+    _ahRefresh[tabName] = fn
 end
 
--- One-time callback registration — fires for whichever tab is active.
--- Inactive tabs' buttons get refreshed only when their tab redraws (which
--- happens on tab-switch via OnGroupSelected → DrawTab → tab:Draw). That's
--- the same behaviour the per-tab handlers had after we added the active-
--- tab guard, just centralised.
-addon:RegisterCallback("AH_OPEN_STATE_CHANGED", function()
+local function refreshActiveTab()
     local mw = addon.MainWindow
-    if not mw then return end
-    refreshTabButton(mw.activeTab)
-end)
-addon:RegisterCallback("AH_SCAN_COMPLETE", function()
-    local mw = addon.MainWindow
-    if not mw then return end
-    refreshTabButton(mw.activeTab)
-end)
-
-function addon.GUI.MakeScanAHButton(opts)
-    assert(opts and opts.parent and opts.tabName and opts.label
-           and opts.progressLabel and opts.tooltipTitle and opts.tooltipDesc
-           and opts.getItems, "MakeScanAHButton: missing required option")
-
-    local btn = AceGUI:Create("Button")
-    btn:SetWidth(opts.width or 130)
-
-    -- Label refresh closure. Captures `btn` and `opts` for this specific
-    -- factory call. Stored on btn._tpmRefresh so the global AH callbacks
-    -- can reach it via _activeButtons[tabName] without a separate registry.
-    local function refresh()
-        if not addon.AH then
-            btn:SetText(opts.label)
-            btn:SetDisabled(true)
-            return
-        end
-        if addon.AH.IsScanning() then
-            local done, total = addon.AH.GetScanProgress()
-            btn:SetText(string.format(opts.progressLabel, done, total))
-            btn:SetDisabled(false)  -- click cancels
-        elseif addon.AH.IsOpen() then
-            btn:SetText(opts.label)
-            btn:SetDisabled(false)
-        else
-            btn:SetText(opts.label)
-            btn:SetDisabled(true)
-        end
-    end
-    btn._tpmRefresh   = refresh
-    btn._tpmOnRefresh = opts.onRefresh
-    refresh()  -- initial state before the button is even shown
-
-    btn:SetCallback("OnClick", function()
-        if not addon.AH then return end
-        if addon.AH.IsScanning() then
-            addon.AH.CancelScan()
-            refreshTabButton(opts.tabName)
-            return
-        end
-        local items = opts.getItems() or {}
-        local ok, reason = addon.AH.StartScan(items, {
-            onProgress = function() refreshTabButton(opts.tabName) end,
-            onComplete = function() refreshTabButton(opts.tabName) end,
-        })
-        if not ok then
-            if reason == "ah-closed" then
-                addon:Print(L["AHOpenFirst"])
-            elseif reason == "no-items" then
-                addon:Print(opts.noItemsError or L["AHNoItemsToScan"])
-            end
-        end
-        refreshTabButton(opts.tabName)
-    end)
-
-    addon.GUI.AttachTooltip(btn, opts.tooltipTitle, opts.tooltipDesc)
-    -- The button is disabled whenever the AH is closed -- exactly when its
-    -- tooltip matters -- and a disabled Button fires no OnEnter unless motion
-    -- scripts are enabled while disabled (Blizzard does the same for its own
-    -- disabled-button tooltips: UIButtonTemplate.lua SetDisabledTooltip,
-    -- classic_era). Reset in OnRelease below: the frame is pooled.
-    if btn.frame.SetMotionScriptsWhileDisabled then
-        btn.frame:SetMotionScriptsWhileDisabled(true)
-    end
-
-    -- OnRelease: clear our slot in _activeButtons IF this is still the
-    -- registered button. A redraw replaces the entry with a NEW button
-    -- BEFORE the old one is released, so this check (==btn) guards
-    -- against the old release stomping the new entry.
-    btn:SetCallback("OnRelease", function()
-        if _activeButtons[opts.tabName] == btn then
-            _activeButtons[opts.tabName] = nil
-        end
-        btn._tpmRefresh   = nil
-        btn._tpmOnRefresh = nil
-        if btn.frame.SetMotionScriptsWhileDisabled then
-            btn.frame:SetMotionScriptsWhileDisabled(false)
-        end
-    end)
-
-    _activeButtons[opts.tabName] = btn
-    opts.parent:AddChild(btn)
-    return btn
+    if not (mw and mw.frame) then return end
+    local fn = _ahRefresh[mw.activeTab]
+    if fn then fn() end
 end
+-- Keyed by addon.GUI, not the addon: CallbackHandler keeps one handler per
+-- (event, self), so another module registering as the addon would replace these.
+addon.RegisterCallback(addon.GUI, "AH_OPEN_STATE_CHANGED", refreshActiveTab)
+addon.RegisterCallback(addon.GUI, "AH_SCAN_COMPLETE", refreshActiveTab)
 
 -- ---------------------------------------------------------------------------
 -- Tooltip attachment
@@ -1653,13 +1553,123 @@ end
 local TOOLBAR_H     = 44
 local TOOLBAR_CTL_H = 24
 
+-- Diagnostics for the in-game "SetPoint would result in anchor family
+-- connection" raised when a toolbar control is laid out (Peer Review thread
+-- 329b6368). The cause is not known. A loop is one candidate (a forum report);
+-- warcraft.wiki.gg's SetPoint page instead names anchoring to the screen after
+-- a frame is gone. So two reports, each printed once per session:
+--   * before AddChild, if parent.content's anchor chain already reaches the
+--     control's frame, the widgets that chain runs through;
+--   * if AddChild returns with the control anchored to nothing, every point
+--     of the control's frame, of the toolbar's first child and of
+--     parent.content with its target ("nil/screen" when none) and each
+--     frame's parent.
+-- Remove both once the cause is named. The once-per-session flags sit on a
+-- table so the specs can reset them between cases.
+local anchorReported = { loop = false, fail = false }
+addon.GUI._anchorReported = anchorReported
+
+local function describeFrame(f)
+    local w = f and f.obj
+    if w and w.type then return w.type end
+    return (f and f.GetName and f:GetName()) or tostring(f)
+end
+
+local function reportAnchorLoop(parent, slot)
+    if anchorReported.loop or not (parent and parent.content and slot and slot.frame) then return end
+    -- Breadth-first over anchor targets; `via` records the frame each one was
+    -- reached from, so the path back to parent.content can be printed.
+    local target = slot.frame
+    local queued, queue, via = { [parent.content] = true }, { parent.content }, {}
+    local head = 1
+    while queue[head] and head <= 200 do
+        local f = queue[head]
+        head = head + 1
+        if f == target then
+            local path, cur = {}, f
+            while cur do
+                table.insert(path, 1, describeFrame(cur))
+                cur = via[cur]
+            end
+            anchorReported.loop = true
+            addon:Print("Toolbar anchor loop: " .. table.concat(path, " -> ")
+                .. ". Please report this line.")
+            return
+        end
+        if f.GetNumPoints then
+            for i = 1, f:GetNumPoints() do
+                local _, rel = f:GetPoint(i)
+                if type(rel) == "table" and not queued[rel] then
+                    queued[rel] = true
+                    via[rel] = f
+                    queue[#queue + 1] = rel
+                end
+            end
+        end
+    end
+end
+
+-- One frame's points as "TOPLEFT->SimpleGroup:TOPLEFT, ..." plus its parent.
+local function describePoints(label, f)
+    local parts = {}
+    for i = 1, f:GetNumPoints() do
+        local point, rel, relPoint = f:GetPoint(i)
+        parts[#parts + 1] = tostring(point) .. "->"
+            .. (rel and describeFrame(rel) or "nil/screen") .. ":" .. tostring(relPoint)
+    end
+    return label .. " [" .. table.concat(parts, ", ") .. "] parent "
+        .. describeFrame(f:GetParent())
+end
+
+-- Flow anchors the FIRST child to the toolbar and every later one after it, so
+-- an error there stops the loop before any later child is placed: the first
+-- child's frame is the one whose SetPoint failed, whichever control is checked.
+local function reportAnchorFailure(parent, widget)
+    if anchorReported.fail then return end
+    anchorReported.fail = true
+    local first = parent.children[1]
+    addon:Print("Toolbar anchor error (no anchor set in AceGUI's layout): "
+        .. describePoints(describeFrame(widget.frame), widget.frame) .. "; "
+        .. describePoints("first " .. describeFrame(first.frame), first.frame) .. "; "
+        .. describePoints("toolbar", parent.content) .. ". Please report this line.")
+end
+
+-- AddChild for a toolbar control, with the diagnostics around it. AceGUI runs
+-- every layout under its own safecall, which hands an error to the game's
+-- error handler and returns (AceGUI-3.0.lua:60-67, :426), so a failed SetPoint
+-- never reaches us as an error. What it leaves behind is a laid-out control
+-- with no anchor at all, and that is what is checked. Two layouts leave a
+-- control unplaced on purpose, and neither is a failure: Fill places only
+-- children[1] (AceGUI-3.0.lua:655-665), and Flow stops once a full-height
+-- child has filled the group (AceGUI-3.0.lua:729-733). A container's layout
+-- is the function AceGUI:GetLayout returns (AceGUI-3.0.lua:474).
+local function unplacedOnPurpose(parent, widget)
+    if parent.LayoutFunc == AceGUI:GetLayout("Fill") then
+        return parent.children[1] ~= widget
+    end
+    if parent.LayoutFunc ~= AceGUI:GetLayout("Flow") then return false end
+    for _, child in ipairs(parent.children) do
+        if child == widget then return false end
+        if child.height == "fill" then return true end
+    end
+end
+
+local function addToToolbar(parent, widget)
+    reportAnchorLoop(parent, widget)
+    parent:AddChild(widget)
+    if not parent.LayoutPaused and widget.frame:GetNumPoints() == 0
+        and not unplacedOnPurpose(parent, widget) then
+        reportAnchorFailure(parent, widget)
+    end
+end
+
 local function toolbarSlot(parent, width, height)
     local slot = AceGUI:Create("SimpleGroup")
     slot:SetLayout("Fill")
     slot:SetAutoAdjustHeight(false)
     slot:SetWidth(width)
     slot:SetHeight(height)
-    parent:AddChild(slot)
+    addToToolbar(parent, slot)
     return slot
 end
 
@@ -1842,7 +1852,7 @@ function addon.GUI.ToolbarSearch(parent, opts)
     end)
     if opts.tipTitle then addon.GUI.AttachTooltip(search, opts.tipTitle, opts.tipBody) end
     if not opts.aligned then
-        parent:AddChild(search)
+        addToToolbar(parent, search)
         return search, search
     end
     local slot = AceGUI:Create("SimpleGroup")
@@ -1856,7 +1866,7 @@ function addon.GUI.ToolbarSearch(parent, opts)
     spacer:SetHeight(TOOLBAR_H - TOOLBAR_CTL_H)
     slot:AddChild(spacer)
     slot:AddChild(search)
-    parent:AddChild(slot)
+    addToToolbar(parent, slot)
     return slot, search
 end
 
@@ -1940,8 +1950,17 @@ function addon.GUI.MakeColumnHeader(opts)
     -- and a wrapped header doubles the row height and breaks alignment
     -- with the data rows below. The internal fontstring lives at .label;
     -- guard for older clients that lack SetWordWrap.
+    -- AceGUI's Label does not reset word wrap when it is acquired again, so
+    -- the release hook puts the default (wrap on) back. Without it the next
+    -- owner of this pooled label -- our own Missing Recipes empty-state
+    -- message, or another addon's text -- is cut off on one line.
     if lbl.label and lbl.label.SetWordWrap then
         lbl.label:SetWordWrap(false)
+        if addon.W then
+            addon.W:OnWidgetRelease(lbl, "togpm:headerNoWrap", function(w)
+                if w.label then w.label:SetWordWrap(true) end
+            end)
+        end
     end
     -- e.g. "CENTER" over a column of numbers. AceGUI's Label puts LEFT back
     -- when the widget is acquired again, so a pooled label does not keep it.

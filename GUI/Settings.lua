@@ -363,6 +363,39 @@ local OPTIONS = {
             end,
         },
 
+        -- The same two controls for the Reagent Tracker (minimap right-click).
+        -- ReagentTracker owns both clamps, as MainWindow does for its pair.
+        trackerScale = {
+            name      = L["SettingsTrackerScale"],
+            desc      = L["SettingsTrackerScaleDesc"],
+            type      = "range",
+            order     = 4.7,
+            min       = 0.5,
+            max       = 1.5,
+            step      = 0.05,
+            isPercent = true,
+            get       = function() return addon.ReagentTracker:GetScale() end,
+            set       = function(_, val)
+                Ace.db.profile.trackerScale = val
+                addon.ReagentTracker:ApplyScale()
+            end,
+        },
+        trackerOpacity = {
+            name      = L["SettingsTrackerOpacity"],
+            desc      = L["SettingsTrackerOpacityDesc"],
+            type      = "range",
+            order     = 4.8,
+            min       = 0,
+            max       = 1,
+            step      = 0.05,
+            isPercent = true,
+            get       = function() return addon.ReagentTracker:GetOpacity() end,
+            set       = function(_, val)
+                Ace.db.profile.trackerOpacity = val
+                addon.ReagentTracker:ApplyOpacity()
+            end,
+        },
+
         -- ---- Sync ----------------------------------------------------------
         syncHeader = {
             name  = L["SettingsSyncHeader"],
@@ -986,6 +1019,40 @@ local OPTIONS = {
             end,
         },
 
+        -- The tag drawn after an allied guild member's name. Stored by
+        -- LibGuildRoster (MINOR 35) account-wide, shared with every TOG addon;
+        -- a player preference, not guild config, so anyone may edit it.
+        -- Greyed out under a library without tags.
+        guildAbbrevs = {
+            name      = L["SettingsGuildAbbrevs"],
+            desc      = L["SettingsGuildAbbrevsDesc"],
+            type      = "input",
+            multiline = 3,
+            width     = "full",
+            order     = 47,
+            disabled  = function()
+                local GR = addon.Scanner and addon.Scanner.GuildRoster
+                return not (GR and GR.GetGuildTag)
+            end,
+            get = function() return addon:GetGuildAbbrevOverridesText() end,
+            -- The library fires OnGuildTagsChanged for each guild it changes,
+            -- and addon:OnGuildTagsChanged repaints the window and this panel.
+            set = function(_, val) addon:SetGuildAbbrevOverrides(val) end,
+        },
+
+        guildAbbrevsNow = {
+            name = function()
+                local parts = {}
+                for _, s in ipairs(addon:GetSisterGuilds() or {}) do
+                    parts[#parts + 1] = s .. "  <" .. (addon:GetGuildAbbrev(s) or "?") .. ">"
+                end
+                if #parts == 0 then return "" end
+                return L["SettingsGuildAbbrevsNow"] .. "\n" .. table.concat(parts, "\n")
+            end,
+            type  = "description",
+            order = 48,
+        },
+
         -- ---- Diagnostics ---------------------------------------------------
         diagHeader = {
             name  = L["SettingsCrossGuildDiagHeader"],
@@ -1113,6 +1180,9 @@ end
 local syncLogWin
 local syncLogRefreshTimer
 local syncLogLiveHooked
+-- The key the live refresh registers SYNC_LOG_UPDATED under. Its own table,
+-- never the addon: CallbackHandler keeps one handler per (event, self).
+local syncLogListener = {}
 -- Pause state: when true the live view is frozen so a text selection survives
 -- long enough to copy. Entries keep landing in the ring buffer (SyncLog:Record is
 -- untouched); syncLogPausedCount tracks how many arrived while frozen for the
@@ -1259,7 +1329,7 @@ function addon:OpenSyncLog()
     -- Registered once for the addon's lifetime.
     if not syncLogLiveHooked then
         syncLogLiveHooked = true
-        addon:RegisterCallback("SYNC_LOG_UPDATED", function()
+        addon.RegisterCallback(syncLogListener, "SYNC_LOG_UPDATED", function()
             if not (syncLogWin and syncLogWin.frame and syncLogWin.frame:IsShown()) then return end
             if syncLogPaused then
                 -- Frozen: leave the view (and the user's selection) alone. The

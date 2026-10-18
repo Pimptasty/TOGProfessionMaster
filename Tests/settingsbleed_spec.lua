@@ -83,7 +83,15 @@ before_each(function()
 end)
 
 after_each(function()
-	pcall(function() ns:OpenSettings() end)   -- toggles closed if open
+	-- Close through the dialog, never ns:OpenSettings(): that TOGGLES, so it
+	-- opened Settings for every example that had not, and left it open for the
+	-- next spec file. AceConfigDialog:Close is deferred to the dialog's next
+	-- OnUpdate, so the clock has to move before OpenFrames empties.
+	local AceDialog = LibStub("AceConfigDialog-3.0")
+	if AceDialog.OpenFrames["TOGProfessionMaster"] then
+		AceDialog:Close("TOGProfessionMaster")
+		env.wow.advanceTime(0.05)
+	end
 	if MW and MW.Close then pcall(function() MW:Close() end) end
 end)
 

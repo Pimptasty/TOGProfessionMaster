@@ -11,9 +11,9 @@
 -- finished "0 of 0"), and the Auctionator "historical" read reached for an API
 -- that does not exist and fell back to live.
 --
--- What is left is `addon.AH`, the surface the per-row [AH] buttons and the
--- shared Scan AH button (GUI/SharedWidgets.lua) were written against -- kept
--- so those ~15 call sites did not change, and so the tabs keep their
+-- What is left is `addon.AH`, the surface the per-row [AH] buttons were
+-- written against -- kept so those call sites did not change, and so the tabs
+-- keep their
 -- `if addon.AH then` degrade: this table is only installed when the ItemDB in
 -- play carries the scanner. The [AH] buttons therefore gate on ItemDB's scan
 -- results (GetScanListings) and search through ItemDB (AuctionHouseSearch).
@@ -24,7 +24,9 @@
 --   AH_SCAN_COMPLETE(results, reason)     <- LibItemDB_ScanComplete
 --
 -- Every function is a one-line read of the library; nothing here decides
--- anything about the auction house.
+-- anything about the auction house. Starting, cancelling and reading the
+-- progress of a scan went with the Scan AH buttons (v1.6.0): ItemDB's own
+-- button on the AH frame is the only thing that starts one now.
 
 local _, addon = ...
 local L = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
@@ -32,8 +34,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 local DB = addon.GetItemDB and addon:GetItemDB()
 if not (DB and type(DB.StartTargetedScan) == "function") then
     -- An ItemDB older than the price API: no scanner anywhere, so no [AH]
-    -- buttons and a disabled Scan AH button, which is what every caller's
-    -- `if addon.AH` guard was written for.
+    -- buttons, which is what every caller's `if addon.AH` guard was written for.
     return
 end
 
@@ -58,29 +59,6 @@ function AH.SearchFor(itemName)
     return DB:AuctionHouseSearch(itemName) == true
 end
 
---- A targeted scan over `items` ({ {itemId, itemName}, ... }); same opts and
---- refusal reasons the tabs already handle ("ah-closed", "no-items", ...).
-function AH.StartScan(items, opts)
-    return DB:StartTargetedScan(items, opts)
-end
-
-function AH.StartFullScan(auto)
-    return DB:StartFullScan(auto)
-end
-
-function AH.CancelScan()
-    DB:CancelScan()
-end
-
-function AH.IsScanning()     return DB:IsScanning() == true end
-function AH.IsFullScanning() return DB:IsFullScanning() == true end
-
---- (scanned, total) of the running or last targeted scan.
-function AH.GetScanProgress()
-    local st = DB:GetScanState()
-    return st.scanned or 0, st.total or 0
-end
-
 --- This session's scan record for an item -- `{ listings?, lowestBuyout,
 --- count, scannedAt }`, `count == 0` meaning "looked, nobody is selling it" --
 --- or nil. The per-row [AH] buttons gate on it.
@@ -88,8 +66,8 @@ function AH.GetListingsFor(itemId)
     return DB:GetScanListings(itemId)
 end
 
--- The library's callbacks, re-fired as the two addon events the tabs and the
--- shared Scan AH button subscribe to (addon.callbacks is CallbackHandler-1.0;
+-- The library's callbacks, re-fired as the two addon events the tabs'
+-- [AH] repaint subscribes to (addon.callbacks is CallbackHandler-1.0;
 -- one owner here, one registration each).
 if DB.RegisterCallback and addon.callbacks then
     DB.RegisterCallback(AH, "LibItemDB_AuctionHouse", function(_, isOpen)

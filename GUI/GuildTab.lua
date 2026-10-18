@@ -407,6 +407,7 @@ function GuildTab:BuildMemberList(memberSet, profId)
                     end
                 end
             end
+            displayName = displayName .. addon:CharGuildSuffix(ck)
         end
         -- Enrich with this character's skill level for the profession, e.g.
         -- "You (300/300)". Rendered separately (own grey colour) so it doesn't

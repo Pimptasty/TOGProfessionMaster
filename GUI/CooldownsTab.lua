@@ -736,6 +736,68 @@ local function CdMail_Complain(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. msg)
 end
 
+--- After a supply mail is filled in, say in chat why the game refused it.
+--- The operator, 2026-10-17: Send -> the "might be someone you don't know"
+--- confirm -> Accept -> nothing, in a loop, with no reason on screen they
+--- noticed. The server's answer arrives as UI_ERROR_MESSAGE (errorType,
+--- message -- SystemDocumentation.lua) and MAIL_FAILED, both of which the
+--- mailbox only flashes; this repeats them in chat, naming the recipient, until
+--- the mail goes (MAIL_SEND_SUCCESS) or the mailbox closes. Listening only:
+--- nothing here touches the send path.
+---
+--- Only MAIL errors are repeated. UI_ERROR_MESSAGE carries every red error the
+--- game shows, so an unfiltered watcher blamed "Out of range." or "You are too
+--- far away" on the mail. The error's string id comes from the global
+--- GetGameMessageInfo(errorType) (GameErrorDocumentation.lua, the call
+--- UIErrorsFrame.lua:138 makes); where a client lacks it, the message text is
+--- matched against the client's own ERR_MAIL_* strings instead (a walk of _G,
+--- only on an error while a supply mail is pending, so not worth a cache).
+--- Returns whether it is a mail error, and its ERR_ name -- which the chat line
+--- carries, because which names a real refusal sends is not yet seen in game.
+local function CdMail_IsMailError(errorType, message)
+    if type(GetGameMessageInfo) == "function" and errorType then
+        local name = GetGameMessageInfo(errorType)
+        if type(name) == "string" then
+            return name:find("^ERR_MAIL_") ~= nil, name
+        end
+    end
+    for k, v in pairs(_G) do
+        if v == message and type(k) == "string" and k:find("^ERR_MAIL_") then
+            return true, k
+        end
+    end
+    return false
+end
+CooldownsTab._IsMailError = CdMail_IsMailError
+
+local cdMailWatch
+local function CdMail_WatchSend(recipient)
+    if not cdMailWatch then
+        cdMailWatch = CreateFrame("Frame")
+        cdMailWatch:SetScript("OnEvent", function(self, event, errorType, message)
+            if event == "UI_ERROR_MESSAGE" then
+                local isMail, name = CdMail_IsMailError(errorType, message)
+                if isMail and message and message ~= "" then
+                    CdMail_Complain(string.format(L["MailMsgSendRefusedFormat"], self.recipient or "?", message)
+                        .. " (" .. name .. ")")
+                end
+                return
+            elseif event == "MAIL_FAILED" then
+                CdMail_Complain(string.format(L["MailMsgSendFailedFormat"], self.recipient or "?"))
+                return
+            end
+            -- MAIL_SEND_SUCCESS or MAIL_CLOSED: stop listening.
+            self:UnregisterAllEvents()
+        end)
+    end
+    cdMailWatch.recipient = recipient
+    cdMailWatch:RegisterEvent("UI_ERROR_MESSAGE")
+    cdMailWatch:RegisterEvent("MAIL_FAILED")
+    cdMailWatch:RegisterEvent("MAIL_SEND_SUCCESS")
+    cdMailWatch:RegisterEvent("MAIL_CLOSED")
+end
+CooldownsTab._WatchSend = CdMail_WatchSend
+
 --- Whether ANY send slot already holds something. `HasSendMailItem` is the
 --- client's own occupancy test (Classic Era MailFrame.lua:881/:1087); the old
 --- `if GetSendMailItem(1)` read the NAME, which is the one return an item the
@@ -892,8 +954,15 @@ local function CdMail_AttachSupplyMail(plan, playerName, cooldownName, outputNam
         return
     end
 
-    local baseName = playerName:match("^([^%-]+)") or playerName
-    if SendMailNameEditBox then SendMailNameEditBox:SetText(baseName) end
+    -- playerName is the stored "Name-NormalizedRealm" key. A bare name is
+    -- delivered to that name on the SENDER's realm, so a crafter on another
+    -- realm of the connected cluster must be addressed as Name-Realm (the form
+    -- TOGBankClassic's mail fills in); our own realm keeps the bare name.
+    local baseName, realm = playerName:match("^([^%-]+)%-(.+)$")
+    baseName = baseName or playerName
+    local myRealm = GetNormalizedRealmName and GetNormalizedRealmName() or ""
+    local recipient = (realm and realm ~= "" and realm ~= myRealm) and playerName or baseName
+    if SendMailNameEditBox then SendMailNameEditBox:SetText(recipient) end
     if SendMailSubjectEditBox then
         SendMailSubjectEditBox:SetText(string.format(L["MailSubjectFormat"], cooldownName))
     end
@@ -901,7 +970,8 @@ local function CdMail_AttachSupplyMail(plan, playerName, cooldownName, outputNam
     if bodyBox then
         bodyBox:SetText(string.format(L["MailBodyFormat"], baseName, outputName, outputName))
     end
-    CdMail_Say(string.format(L["MailMsgAttachedListFormat"], CdMail_DescribeLines(plan.lines), baseName))
+    CdMail_Say(string.format(L["MailMsgAttachedListFormat"], CdMail_DescribeLines(plan.lines), recipient))
+    CdMail_WatchSend(recipient)
 end
 
 --- ONE click, ONE mail, EVERY reagent of the cooldown (v1.1.0). Before this,
@@ -1129,97 +1199,6 @@ function CooldownsTab:Draw(container)
         tipBody  = L["FilterViewDesc"],
     })
 
-    -- 8px spacer matching the existing toolbar gap convention.
-    local sp4 = AceGUI:Create("Label"); sp4:SetWidth(8); toolbar:AddChild(sp4)
-
-    -- Scan AH button — kicks off a throttled scan over every unique reagent
-    -- itemId in the currently-visible cooldown rows (after filter applied).
-    -- After completion, rows whose reagent has live AH listings get an
-    -- [AH] button left of [Bank] (gates on AH.GetListingsFor — same pattern
-    -- as [Bank] gating on Bank.GetStock). All boilerplate (label refresh,
-    -- AH state gating, scan dispatch, AH callbacks) lives in the shared
-    -- factory; this site only owns the per-tab item-collection logic.
-    addon.GUI.MakeScanAHButton({
-        parent        = toolbar,
-        tabName       = "cooldowns",
-        label         = L["BrowserScanAH"],
-        progressLabel = L["BrowserScanAHProgress"],
-        tooltipTitle  = L["BrowserScanAH"],
-        tooltipDesc   = L["CooldownsScanAHDesc"],
-        noItemsError  = "No reagents to scan in the current view.",
-        getItems      = function()
-            local rows = BuildRows(self._readyOnly, self._viewMode)
-            local profId = self._filterProfId or 0
-            local cdId   = self._filterCd   or "all"
-            if profId ~= 0 then
-                local kept = {}
-                for _, row in ipairs(rows) do
-                    if ProfessionMatchesRow(profId, row) then
-                        kept[#kept + 1] = row
-                    end
-                end
-                rows = kept
-            end
-            if profId ~= 0 and cdId ~= "all" then
-                local kept = {}
-                local cdEntry
-                for _, cd in ipairs(COOLDOWN_BY_PROFESSION[profId] or {}) do
-                    if cd.id == cdId then cdEntry = cd; break end
-                end
-                if cdEntry then
-                    for _, row in ipairs(rows) do
-                        if cdEntry.match(row) then
-                            kept[#kept + 1] = row
-                        end
-                    end
-                end
-                rows = kept
-            end
-            -- Match the visible-rows scope filter so Scan AH only walks
-            -- reagents the user can actually see in the list.
-            if (self._viewMode or "guild") == "mine" then
-                local kept = {}
-                for _, row in ipairs(rows) do
-                    if addon:IsMyCharacter(row.charKey) then
-                        kept[#kept + 1] = row
-                    end
-                end
-                rows = kept
-            end
-            local items, seen = {}, {}
-            local function addItem(id)
-                if not id or seen[id] then return end
-                local name = addon.Item.GetInfo(id)
-                if type(name) == "string" and name ~= "" then
-                    seen[id] = true
-                    items[#items + 1] = { itemId = id, itemName = name }
-                end
-            end
-            for _, row in ipairs(rows) do
-                if row.transmuteEntries then
-                    -- Group rows carry per-entry reagents and row.reagentItemId
-                    -- == nil: transmute groups (each transmute has its own
-                    -- reagent, sometimes multiple — Arcanite needs Thorium Bar +
-                    -- Arcane Crystal) AND multi-reagent cooldowns (Brilliant
-                    -- Glass = six gems). Iterate the entries so the scan covers
-                    -- every reagent, not just the single-reagent standalone
-                    -- cooldowns (Salt Shaker, Mooncloth, etc.).
-                    for _, e in ipairs(row.transmuteEntries) do
-                        addItem(e.reagentId)
-                    end
-                else
-                    addItem(row.reagentItemId)
-                end
-            end
-            return items
-        end,
-        -- [AH] buttons follow the scan results; the list re-reads each
-        -- button column's `show` on a repaint.
-        onRefresh     = function()
-            if CooldownsTab._rowList then CooldownsTab._rowList:Refresh() end
-        end,
-    })
-
     -- ---- Rows --------------------------------------------------------------
     -- A LibAceGUIWidgets RowList, built once per session on a host the tab
     -- owns (addon.GUI.ParkList), parked in a group that takes the rest of the
@@ -1415,8 +1394,9 @@ local function charCellText(row)
     end
     local color = isYou and (addon.ColorYou or addon.BrandColor or "ffDA8CFF")
         or (online and (addon.ColorOnline or "ffffffff") or (addon.ColorOffline or "ffaaaaaa"))
-    return "|c" .. color .. displayName .. "|r"
+    return "|c" .. color .. displayName .. "|r" .. addon:CharGuildSuffix(row.charKey)
 end
+CooldownsTab._CharCellText = charCellText
 
 --- The cooldown's icon. An item-icon override (cloth crafts whose spell icon
 --- is a generic net texture) is checked BEFORE the group check, so a
@@ -1644,7 +1624,7 @@ function CooldownsTab:BuildRowList(host)
     })
     -- Bag changes recolour the reagent column. Registered once: the list is
     -- built once per session.
-    addon:RegisterCallback("REAGENT_WATCH_UPDATED", function()
+    addon.RegisterCallback(CooldownsTab, "REAGENT_WATCH_UPDATED", function()
         if self._rowList and self._rowListHost and self._rowListHost:IsShown() then
             self._rowList:Refresh()
         end
@@ -1987,8 +1967,9 @@ end
 -- ---------------------------------------------------------------------------
 -- AH callbacks
 -- ---------------------------------------------------------------------------
--- (Removed: per-tab AH_OPEN_STATE_CHANGED / AH_SCAN_COMPLETE handlers.
--- The shared addon.GUI.MakeScanAHButton factory in GUI/SharedWidgets.lua
--- owns one global handler that refreshes the active tab's scan button +
--- runs the tab's onRefresh hook. The hook for this tab repaints the list,
--- which re-reads the [AH] column's `show`.)
+-- [AH] buttons follow ItemDB's scan results; a repaint re-reads the [AH]
+-- column's `show`. Runs only while this is the active tab of an open window
+-- (addon.GUI.SetAHRefresh).
+addon.GUI.SetAHRefresh("cooldowns", function()
+    if CooldownsTab._rowList then CooldownsTab._rowList:Refresh() end
+end)

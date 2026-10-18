@@ -1,5 +1,5 @@
 -- TOG Profession Master — Reagent Tracker
--- Standalone floating window with no backdrop or border.
+-- Standalone floating window: a dark background panel (opacity slider), no border.
 -- Shows every reagent consolidated from the shopping list with live counts:
 --   have = player bags (live) + TOGBankClassic guild stock
 --   need = sum of (reagent × qty) across all shopping list entries
@@ -24,6 +24,7 @@ local ICON_SZ = 13
 local HDR_H   = 20
 local COUNT_W = 90       -- room for "30/30 +99999" worst case
 local BANK_W  = 58   -- [Bank] plus TOGBank's staleness dot in front of it
+local BG_ALPHA = 0.5 -- black panel behind the rows at 100% opacity; 0% is none
 
 -- ---------------------------------------------------------------------------
 -- Data helpers
@@ -130,6 +131,20 @@ function RT:BuildList()
         hoverHighlight = true,
         fitContent     = true,
         onHeightChanged = function(_, h)
+            -- One unit of slack on the host. RowList counts the rows that fit as
+            -- floor(host:GetHeight() / rowHeight); at a tracker scale other
+            -- than 100% the client can hand back a height a hair under the
+            -- exact n rows it was given, which drew n - 1 rows plus a scroll
+            -- bar (operator, 2026-10-15: "why did you add a scroll bar to the
+            -- tracker?"). Not verified in game that this is the cause.
+            -- LibAceGUIWidgets is told; RowList keeps _fitH = h, so this does
+            -- not re-fit. The window is sized from h, never from the host, so
+            -- the slack stays out of the window's height.
+            -- LibAceGUIWidgets MINOR 44 counts with half a unit of tolerance
+            -- itself (inbox 62eb5c52), so the slack is only for older copies.
+            local _, wMinor = LibStub("LibAceGUIWidgets-1.0", true)
+            self._listH = h
+            host:SetHeight(h + (((wMinor or 0) < 44) and 1 or 0))
             if self.frame then self.frame:SetHeight(HDR_H + h + 6) end
         end,
         columns = {
@@ -203,8 +218,8 @@ function RT:Refresh()
     self._list:SetData(list, true)
     -- onHeightChanged fires only when the list's height CHANGES, so coming back
     -- from the empty state with the same row count would leave the window at
-    -- the empty state's height. Size it from the host every time.
-    self.frame:SetHeight(HDR_H + self._host:GetHeight() + 6)
+    -- the empty state's height. Size it from the list's last height every time.
+    self.frame:SetHeight(HDR_H + (self._listH or ROW_H) + 6)
 end
 
 -- ---------------------------------------------------------------------------
@@ -239,6 +254,49 @@ function RT:PinTop()
 end
 
 -- ---------------------------------------------------------------------------
+-- Scale and opacity (Settings → Display, under the main window's pair)
+-- ---------------------------------------------------------------------------
+-- The tracker is our own raw frame, not a pooled AceGUI widget, so SetScale on
+-- it reaches nobody else. Opacity fades ONLY the dark background, never the
+-- text, icons or buttons (operator, 2026-10-15: "it should only do the
+-- background"), and 0% means no background at all, the look the tracker had
+-- before it got one.
+
+function RT:GetScale()
+    local s = tonumber(Ace.db.profile.trackerScale) or 1
+    if s < 0.5 then s = 0.5 elseif s > 1.5 then s = 1.5 end
+    return s
+end
+
+function RT:GetOpacity()
+    local a = tonumber(Ace.db.profile.trackerOpacity) or 1
+    if a < 0 then a = 0 elseif a > 1 then a = 1 end
+    return a
+end
+
+--- Point offsets are in the frame's own scaled units, so a bare SetScale would
+--- move the window toward or away from the screen's corner. Keep its top-left
+--- on the same screen point, then save the new offsets.
+function RT:ApplyScale()
+    local f = self.frame
+    if not f then return end
+    local new = self:GetScale()
+    local old = f:GetScale()
+    if old == new then return end
+    local left, top = f:GetLeft(), f:GetTop()
+    f:SetScale(new)
+    if left and top then
+        f:ClearAllPoints()
+        f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left * old / new, top * old / new)
+        self:PinTop()
+    end
+end
+
+function RT:ApplyOpacity()
+    if self._bg then self._bg:SetColorTexture(0, 0, 0, BG_ALPHA * self:GetOpacity()) end
+end
+
+-- ---------------------------------------------------------------------------
 -- Build (once)
 -- ---------------------------------------------------------------------------
 
@@ -255,6 +313,15 @@ function RT:Build()
     f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
     f:SetFrameStrata("HIGH")
+    -- Before the saved point is applied: that point was saved in these units.
+    f:SetScale(self:GetScale())
+    -- A dark panel behind the rows: without one the list read as see-through
+    -- over bright terrain even at full opacity (operator, 2026-10-15: "make it
+    -- a little darker at full, maybe 50% more"). The opacity slider sets it.
+    local bg = f:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints(f)
+    self._bg = bg
+    self:ApplyOpacity()
     f:SetScript("OnDragStart", function(fr) fr:StartMoving() end)
     f:SetScript("OnDragStop", function(fr)
         fr:StopMovingOrSizing()

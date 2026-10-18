@@ -248,10 +248,14 @@ end)
 
 describe("the library's callbacks reach the guild-scoped views", function()
 	local fired
+	-- One listener per example, removed after it: a listener left registered
+	-- appends to the NEXT example's `fired` too, doubling every event there.
+	local listener
 
 	before_each(function()
 		fired = {}
-		ns.RegisterCallback({}, "GUILD_DATA_UPDATED", function(_e, what, scopes)
+		listener = {}
+		ns.RegisterCallback(listener, "GUILD_DATA_UPDATED", function(_e, what, scopes)
 			fired[#fired + 1] = { what = what, scopes = scopes }
 		end)
 		-- OnEnable is where TOGPM subscribes to the library; the real one, so
@@ -263,11 +267,29 @@ describe("the library's callbacks reach the guild-scoped views", function()
 		ns.lib:OnEnable()
 	end)
 
+	after_each(function()
+		ns.UnregisterCallback(listener, "GUILD_DATA_UPDATED")
+	end)
+
 	it("a changed list refreshes the views", function()
 		officer(true)
 		ns:SetSisterGuilds("Sisterguild")
-		assert.equal(1, #fired)
-		assert.equal("sisterconfig", fired[1].what)
+		-- A list change also fires the library's tag callback (any list change
+		-- can move an automatic tag), so a "guildtags" refresh rides along.
+		local whats = {}
+		for _, f in ipairs(fired) do whats[f.what] = true end
+		assert.is_true(whats.sisterconfig)
+		assert.is_true(whats.guildtags)
+	end)
+
+	it("a changed tag repaints every name column", function()
+		officer(true)
+		ns:SetSisterGuilds("Sisterguild")
+		fired = {}
+		ns:SetGuildAbbrevOverrides("Sisterguild = Sis")
+		local whats = {}
+		for _, f in ipairs(fired) do whats[#whats + 1] = tostring(f.what) end
+		assert.same({ "guildtags" }, whats)
 	end)
 
 	it("a landed roster refreshes the views with the roster scopes", function()
@@ -377,5 +399,180 @@ describe("/togpm pullroster", function()
 	it("prints usage with no name", function()
 		ns:PullSisterRoster("")
 		assert.is_truthy(printed[1] and printed[1]:find("Usage", 1, true))
+	end)
+end)
+
+describe("allied guild tags", function()
+	-- The tags are LibGuildRoster's since MINOR 35 (the user, 2026-10-17: "it
+	-- should feed that to every addon that consumes a sister guild"). These
+	-- first cases are the fixtures TOGPM's own derivation was specified with,
+	-- run against the library's, so the move could not change a tag anyone
+	-- had already seen. The library's suite owns the rest of its behaviour.
+	it("tags The Old Gods and The Other Gods by the word that tells them apart", function()
+		local t = lib.DeriveGuildTags({ "The Old Gods", "The Other Gods" })
+		assert.equal("Old", t["The Old Gods"])
+		assert.equal("Other", t["The Other Gods"])
+	end)
+
+	it("does not depend on the order the guilds were listed in", function()
+		local a = lib.DeriveGuildTags({ "The Old Gods", "The Other Gods", "Sisterguild" })
+		local b = lib.DeriveGuildTags({ "Sisterguild", "The Other Gods", "The Old Gods" })
+		assert.same(a, b)
+	end)
+
+	it("cuts a long word to five letters", function()
+		local t = lib.DeriveGuildTags({ "Testguild", "Knights of Stormwind" })
+		assert.equal("Knigh", t["Knights of Stormwind"])
+	end)
+
+	it("never gives two guilds the same tag", function()
+		local t = lib.DeriveGuildTags({ "Dragonflight", "Dragonmaw", "Dragons" })
+		local seen = {}
+		for _, tag in pairs(t) do
+			assert.is_nil(seen[tag:lower()])
+			seen[tag:lower()] = true
+		end
+		local same = lib.DeriveGuildTags({ "Alpha Wolves", "Alpha Bears" })
+		assert.are_not.equal(same["Alpha Wolves"], same["Alpha Bears"])
+	end)
+
+	it("keeps a name made only of filler words", function()
+		local t = lib.DeriveGuildTags({ "Testguild", "The" })
+		assert.equal("The", t["The"])
+	end)
+
+	describe("on characters", function()
+		before_each(function()
+			officer(true)
+			ns:SetSisterGuilds("The Other Gods")
+			ns.Scanner.GuildRoster = lib
+			lib:SetSisterRoster("Horde-The Other Gods", { { name = "Ahmbrai-Azuresong" } }, {})
+		end)
+
+		it("keeps the player's tags in LibGuildRoster's store, not in TOGPM's settings", function()
+			ns:SetGuildAbbrevOverrides("The Other Gods = TOtG")
+			assert.equal("TOtG", libRecord().guildTags["the other gods"])
+			assert.is_nil(ns.lib.db.profile.guildAbbrevs)
+		end)
+
+		it("moves tags an older working copy kept in its settings into the library, once", function()
+			ns.lib.db.profile.guildAbbrevs = { ["the other gods"] = "Oth", ["strangers"] = "" }
+			assert.is_true(ns:MigrateGuildTagsToLibrary())
+			assert.equal("Oth", ns:GetCharGuildAbbrev("Ahmbrai-Azuresong"))
+			assert.is_nil(ns.lib.db.profile.guildAbbrevs)
+			assert.is_nil(libRecord().guildTags["strangers"])
+			assert.is_false(ns:MigrateGuildTagsToLibrary())
+		end)
+
+		it("does not let an old copy overwrite a tag the library already holds", function()
+			lib:SetGuildTag("The Other Gods", "Lib")
+			ns.lib.db.profile.guildAbbrevs = { ["the other gods"] = "Old copy" }
+			assert.is_false(ns:MigrateGuildTagsToLibrary())
+			assert.equal("Lib", ns:GetCharGuildAbbrev("Ahmbrai-Azuresong"))
+			assert.is_nil(ns.lib.db.profile.guildAbbrevs)
+		end)
+
+		it("under a GuildRoster older than the tags, shows none and keeps the old copy", function()
+			lib.GetGuildTag = nil
+			ns.lib.db.profile.guildAbbrevs = { ["the other gods"] = "Oth" }
+			assert.is_nil(ns:GetCharGuildAbbrev("Ahmbrai-Azuresong"))
+			assert.is_nil(ns:GetGuildAbbrev("The Other Gods"))
+			assert.same({}, ns:GetGuildAbbrevOverrides())
+			assert.is_false(ns:SetGuildAbbrevOverrides("The Other Gods = X"))
+			assert.is_false(ns:MigrateGuildTagsToLibrary())
+			assert.same({ ["the other gods"] = "Oth" }, ns.lib.db.profile.guildAbbrevs)
+			ns.lib.db.profile.guildAbbrevs = nil
+		end)
+
+		it("leaves the old copy in place until the library can store it", function()
+			env.noRoster()
+			ns.lib.db.profile.guildAbbrevs = { ["the other gods"] = "Oth" }
+			assert.is_false(ns:MigrateGuildTagsToLibrary())
+			assert.same({ ["the other gods"] = "Oth" }, ns.lib.db.profile.guildAbbrevs)
+			ns.lib.db.profile.guildAbbrevs = nil
+		end)
+
+		it("tags an allied guild member and leaves a home member bare", function()
+			assert.equal("Other", ns:GetCharGuildAbbrev("Ahmbrai-Azuresong"))
+			assert.is_true(ns:CharGuildSuffix("Ahmbrai-Azuresong"):find("<Other>", 1, true) ~= nil)
+			assert.equal("", ns:CharGuildSuffix("Bob-Testrealm"))
+			assert.equal("", ns:CharGuildSuffix("Nobody-Testrealm"))
+			assert.equal("", ns:CharGuildSuffix(nil))
+		end)
+
+		it("uses the player's own tag when one is set, and drops back when it is removed", function()
+			ns:SetGuildAbbrevOverrides("the other gods = TOtG\nNot A Guild\n = X")
+			assert.equal("TOtG", ns:GetCharGuildAbbrev("Ahmbrai-Azuresong"))
+			assert.equal("The Other Gods = TOtG", ns:GetGuildAbbrevOverridesText())
+			ns:SetGuildAbbrevOverrides("")
+			assert.equal("Other", ns:GetCharGuildAbbrev("Ahmbrai-Azuresong"))
+		end)
+
+		-- Collects chat lines for one example. The real Print and every
+		-- override come back in after_each, so a failed assertion cannot leave
+		-- a capture or a stored tag behind for the examples that follow.
+		local savedPrint
+		local function captureChat()
+			local printed = {}
+			savedPrint = ns.lib.Print
+			ns.lib.Print = function(_, msg) printed[#printed + 1] = msg end
+			return printed
+		end
+		after_each(function()
+			if savedPrint then
+				ns.lib.Print = savedPrint
+				savedPrint = nil
+				ns:SetGuildAbbrevOverrides("")
+			end
+		end)
+
+		it("warns when a typed tag is one another allied guild already shows, and keeps it", function()
+			ns:SetSisterGuilds("The Other Gods\nThe Old Gods")
+			lib:SetSisterRoster("Horde-The Other Gods", { { name = "Ahmbrai-Azuresong" } }, {})
+			local printed = captureChat()
+			ns:SetGuildAbbrevOverrides("The Other Gods = Old")
+			assert.equal("Old", ns:GetCharGuildAbbrev("Ahmbrai-Azuresong"))
+			assert.equal(1, #printed)
+			assert.is_truthy(printed[1]:find("<Old>", 1, true))
+			assert.is_truthy(printed[1]:find("The Old Gods", 1, true))
+			-- Saving the box again unchanged does not repeat a clash already kept.
+			ns:SetGuildAbbrevOverrides("The Other Gods = Old")
+			assert.equal(1, #printed)
+		end)
+
+		it("names the clashing tag as the library stored it, not as typed", function()
+			ns:SetSisterGuilds("The Other Gods\nThe Old Gods")
+			lib:SetGuildTag("The Old Gods", "Abcdefghijkl")
+			local printed = captureChat()
+			ns:SetGuildAbbrevOverrides("The Old Gods = Abcdefghijkl\nThe Other Gods = Abcdefghijklmnop")
+			assert.equal(1, #printed)
+			assert.is_truthy(printed[1]:find("<Abcdefghijkl>", 1, true))
+		end)
+
+		it("treats a typed faction prefix as the plain guild name", function()
+			ns:SetSisterGuilds("The Other Gods\nThe Old Gods")
+			local printed = captureChat()
+			ns:SetGuildAbbrevOverrides("Horde-The Other Gods = Old")
+			ns:SetGuildAbbrevOverrides("Horde-The Other Gods = Old")
+			assert.equal(1, #printed)
+			assert.same({ ["the other gods"] = "Old" }, ns:GetGuildAbbrevOverrides())
+		end)
+
+		it("says nothing when a typed tag is not shared", function()
+			local printed = captureChat()
+			ns:SetGuildAbbrevOverrides("The Other Gods = TOtG")
+			assert.same({}, printed)
+		end)
+
+		it("gives the home guild and an unlisted guild no tag", function()
+			assert.is_nil(ns:GetGuildAbbrev("Testguild"))
+			assert.is_nil(ns:GetGuildAbbrev("Strangers"))
+			assert.is_nil(ns:GetGuildAbbrev(""))
+		end)
+
+		it("tags nothing without a roster library", function()
+			env.noRoster()
+			assert.equal("", ns:CharGuildSuffix("Ahmbrai-Azuresong"))
+		end)
 	end)
 end)

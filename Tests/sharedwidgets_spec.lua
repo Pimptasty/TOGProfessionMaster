@@ -2,22 +2,21 @@
 --
 -- Written for LAGW adoption step 7 (v1.1.3), which asked for the file's
 -- coverage once the hand-rolled list helpers were gone. Each block is a
--- behaviour a player reaches: whispering a crafter, the Scan AH button, the
--- last-resort quality colour, a curated tooltip that redraws while the compare
+-- behaviour a player reaches: whispering a crafter, the AH-scan repaint hook,
+-- the last-resort quality colour, a curated tooltip that redraws while the compare
 -- key is held, and a price label too long to share a row.
 
 ---@diagnostic disable: duplicate-set-field, redundant-parameter
 package.path = "./Tests/?.lua;" .. package.path
 local env = require("env_togpm")
 
-local ns, IL, L
+local ns, IL
 local saved
 
 setup(function()
 	ns = env.initDb()
 	env.loadModule("GUI/SharedWidgets.lua")
 	IL = ns.ItemLink
-	L = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 end)
 
 before_each(function()
@@ -158,100 +157,48 @@ describe("a price label too long to share a row", function()
 	end)
 end)
 
-describe("the Scan AH button", function()
-	local AceGUI, parent, state, printed
+-- TOGPM has no Scan AH button since 2026-10-17 (ItemDB's AH button scans the
+-- whole house), but the [AH] row buttons still have to appear when that scan
+-- lands and go when the AH closes. Only the visible tab repaints, and only
+-- while the window is open.
+describe("the [AH] buttons follow the Auction House", function()
+	local realMW, calls
 
 	before_each(function()
-		AceGUI = LibStub("AceGUI-3.0")
-		parent = AceGUI:Create("SimpleGroup")
-		state = { scanning = false, open = true, started = nil, cancelled = 0, result = { true } }
-		printed = {}
-		ns.Print = function(_, msg) printed[#printed + 1] = msg end
-		ns.AH = {
-			IsScanning      = function() return state.scanning end,
-			IsOpen          = function() return state.open end,
-			GetScanProgress = function() return 3, 10 end,
-			CancelScan      = function() state.cancelled = state.cancelled + 1; state.scanning = false end,
-			StartScan       = function(items)
-				state.started = items
-				return state.result[1], state.result[2]
-			end,
-		}
+		realMW = ns.MainWindow
+		calls = { spec = 0, other = 0 }
+		ns.GUI.SetAHRefresh("spec",  function() calls.spec  = calls.spec  + 1 end)
+		ns.GUI.SetAHRefresh("other", function() calls.other = calls.other + 1 end)
 	end)
 
-	-- The button is parent's child (MakeScanAHButton AddChilds it), so releasing
-	-- parent releases it. Releasing the button as well put it in AceGUI's
-	-- shared pool twice, and toolbar_spec's "hands its frame back to UIParent"
-	-- then failed whenever it ran after this file.
 	after_each(function()
-		AceGUI:Release(parent)
+		ns.MainWindow = realMW
+		ns.GUI.SetAHRefresh("spec", nil)
+		ns.GUI.SetAHRefresh("other", nil)
 	end)
 
-	local function make(extra)
-		local opts = {
-			parent = parent, tabName = "spec", label = "Scan AH", progressLabel = "Scanning %d/%d",
-			tooltipTitle = "Scan AH", tooltipDesc = "desc",
-			getItems = function() return { 2589 } end,
-		}
-		for k, v in pairs(extra or {}) do opts[k] = v end
-		return ns.GUI.MakeScanAHButton(opts)
-	end
-
-	it("is enabled with its label while the Auction House is open", function()
-		local btn = make()
-		assert.equal("Scan AH", btn.text:GetText())
-		assert.is_true(btn.frame:IsEnabled())
+	it("repaints the visible tab when a scan finishes, and no other", function()
+		ns.MainWindow = { frame = {}, activeTab = "spec" }
+		ns.callbacks:Fire("AH_SCAN_COMPLETE", {}, "done")
+		assert.same({ spec = 1, other = 0 }, calls)
 	end)
 
-	it("shows the scan's progress while one is running", function()
-		state.scanning = true
-		local btn = make()
-		assert.equal("Scanning 3/10", btn.text:GetText())
-		assert.is_true(btn.frame:IsEnabled(), "a running scan must stay clickable, to cancel")
+	it("repaints the visible tab when the Auction House opens or closes", function()
+		ns.MainWindow = { frame = {}, activeTab = "spec" }
+		ns.callbacks:Fire("AH_OPEN_STATE_CHANGED", true)
+		ns.callbacks:Fire("AH_OPEN_STATE_CHANGED", false)
+		assert.same({ spec = 2, other = 0 }, calls)
 	end)
 
-	it("starts a scan of the tab's items, and refreshes the tab", function()
-		local refreshed = 0
-		local btn = make({ onRefresh = function() refreshed = refreshed + 1 end })
-		btn:Fire("OnClick")
-		assert.same({ 2589 }, state.started)
-		assert.is_true(refreshed > 0)
+	it("repaints nothing while the window is closed", function()
+		ns.MainWindow = { frame = nil, activeTab = "spec" }
+		ns.callbacks:Fire("AH_SCAN_COMPLETE", {}, "done")
+		assert.same({ spec = 0, other = 0 }, calls)
 	end)
 
-	it("cancels the scan when clicked while one is running", function()
-		state.scanning = true
-		local btn = make()
-		btn:Fire("OnClick")
-		assert.equal(1, state.cancelled)
-		assert.is_nil(state.started)
-		assert.equal("Scan AH", btn.text:GetText())
-	end)
-
-	it("says to open the Auction House when the scan is refused for that", function()
-		state.result = { false, "ah-closed" }
-		local btn = make()
-		btn:Fire("OnClick")
-		assert.same({ L["AHOpenFirst"] }, printed)
-	end)
-
-	it("uses the tab's own message when there is nothing to scan", function()
-		state.result = { false, "no-items" }
-		local btn = make({ noItemsError = "Nothing on this tab to scan." })
-		btn:Fire("OnClick")
-		assert.same({ "Nothing on this tab to scan." }, printed)
-	end)
-
-	it("falls back to the shared message when the tab gives none", function()
-		state.result = { false, "no-items" }
-		local btn = make()
-		btn:Fire("OnClick")
-		assert.same({ L["AHNoItemsToScan"] }, printed)
-	end)
-
-	it("does nothing on a click once the AH module is gone", function()
-		local btn = make()
-		ns.AH = nil
-		assert.has_no.errors(function() btn:Fire("OnClick") end)
-		assert.is_nil(state.started)
+	it("is quiet for a tab with nothing to repaint", function()
+		ns.MainWindow = { frame = {}, activeTab = "guild" }
+		assert.has_no.errors(function() ns.callbacks:Fire("AH_SCAN_COMPLETE", {}, "done") end)
+		assert.same({ spec = 0, other = 0 }, calls)
 	end)
 end)

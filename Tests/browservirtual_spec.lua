@@ -95,6 +95,27 @@ describe("the recipe list", function()
 		BT._rowList.onRowClick(e, 5, BT._rowList, "LeftButton")
 		assert.equal(e, BT._selectedEntry)
 		assert.equal(e, BT._rowList:GetSelected())
+		-- What the player sees: the recipe, not the placeholder.
+		assert.is_false(BT._dpPH:IsShown())
+		assert.is_true(BT._dpBody:IsShown())
+		assert.is_true(BT._detailOuter:IsShown())
+	end)
+
+	it("shows a recipe clicked through the row frame's own mouse handler", function()
+		-- The spec above calls onRowClick directly, which skips the library's
+		-- dispatch. A player's click arrives as OnMouseDown on the row frame.
+		-- No cell-overlay case: the library builds an overlay only for a column
+		-- with onCellEnter/onCellLeave/onCellClick, and this list's columns have
+		-- none (headerTip does not build one), so the row is the only click path.
+		env.drawTab(BT)
+		local row = BT._rowList.rows[3]
+		assert.is_truthy(row, "row frame 3")
+		local down = row:GetScript("OnMouseDown")
+		assert.is_function(down)
+		down(row, "LeftButton")
+		assert.equal(BT._rowList.data[3], BT._selectedEntry)
+		assert.is_false(BT._dpPH:IsShown())
+		assert.is_true(BT._dpBody:IsShown())
 	end)
 
 	it("keeps the tint on the same recipe when a rewarm rebuilds the list", function()

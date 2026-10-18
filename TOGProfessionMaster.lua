@@ -832,7 +832,12 @@ function Ace:OnEnable()
     -- CHAT_MSG_SYSTEM parsing.
     local GuildRoster = LibStub("LibGuildRoster-1.0", true)
     if GuildRoster and GuildRoster.RegisterCallback then
-        GuildRoster:RegisterCallback("OnMemberOnline", function(_, name)
+        -- Every registration here is keyed by the ADDON, never the library
+        -- (`GuildRoster:RegisterCallback(...)` passes the library as `self`).
+        -- CallbackHandler keeps one handler per (event, self), so any other
+        -- addon making the same mistake would share that slot and evict ours
+        -- (Peer Review M1; GuildRoster README: the first argument is your object).
+        GuildRoster.RegisterCallback(addon, "OnMemberOnline", function(_, name)
             addon:OnCrafterCameOnline(name)
         end)
 
@@ -843,22 +848,23 @@ function Ace:OnEnable()
         -- the buffer, walk addon.guildDb.global.pendingPurge and delete
         -- every reference for each flagged charKey (departed members
         -- queued by display-time visibility checks).
-        GuildRoster:RegisterCallback("OnRosterReady", function()
+        GuildRoster.RegisterCallback(addon, "OnRosterReady", function()
             -- The library's sister-guild store is keyed by the home guild, so
             -- it resolves here and not before; the one-shot import of an older
             -- build's list runs first so the scope change below already sees
             -- the re-fed rosters.
             addon:MigrateSisterGuildsToLibrary()
+            addon:MigrateGuildTagsToLibrary()
             addon:OnRosterScopeChanged("ready")
             self:ScheduleTimer(function() addon:RunPendingPurge() end, 60)
         end)
 
         -- Someone joining or leaving mid-session changes who the guild-scoped
         -- views should show, exactly like the ready transition does.
-        GuildRoster:RegisterCallback("OnMemberLeft", function()
+        GuildRoster.RegisterCallback(addon, "OnMemberLeft", function()
             addon:OnRosterScopeChanged("left")
         end)
-        GuildRoster:RegisterCallback("OnMemberJoined", function()
+        GuildRoster.RegisterCallback(addon, "OnMemberJoined", function()
             addon:OnRosterScopeChanged("joined")
         end)
 
@@ -870,11 +876,15 @@ function Ace:OnEnable()
         -- or a landed roster changes cross-guild membership and attribution,
         -- so the guild-scoped views refresh. Both callbacks are MINOR 18
         -- additions; an older library fires neither and cross-guild is off.
-        GuildRoster:RegisterCallback("OnSisterConfigChanged", function(_, names, ts, source)
+        GuildRoster.RegisterCallback(addon, "OnSisterConfigChanged", function(_, names, ts, source)
             addon:OnSisterConfigChanged(names, ts, source)
         end)
-        GuildRoster:RegisterCallback("OnSisterRosterUpdated", function(_, guildKey, source)
+        GuildRoster.RegisterCallback(addon, "OnSisterRosterUpdated", function(_, guildKey, source)
             addon:OnSisterRosterUpdated(guildKey, source)
+        end)
+        -- Allied-guild tags (MINOR 35); an older library never fires it.
+        GuildRoster.RegisterCallback(addon, "OnGuildTagsChanged", function()
+            addon:OnGuildTagsChanged()
         end)
     end
 
@@ -1050,7 +1060,8 @@ function addon:OnCrafterCameOnline(charKey)
                         if crafterKey == charKey then
                             addon:Print(string.format(L["AlertCrafterOnline"], shortKey, label))
                         else
-                            addon:Print(string.format(L["AlertCrafterOnlineAlt"], crafterShort, shortKey, label))
+                            -- "<who came online> is online (alt of <the crafter>)"
+                            addon:Print(string.format(L["AlertCrafterOnlineAlt"], shortKey, crafterShort, label))
                         end
                         alerted = true
                         break
@@ -2458,6 +2469,156 @@ function addon:IsSisterGuildKey(guildKey)
     if not guildKey or guildKey == "" then return false end
     local GR = sisterLib(self)
     return (GR and GR.IsSisterGuildKey and GR:IsSisterGuildKey(guildKey)) or false
+end
+
+-- ---------------------------------------------------------------------------
+-- Sister-guild name tags: "Ahmbrai <Other>" in every character column
+-- ---------------------------------------------------------------------------
+-- The user, 2026-10-17: "show sister guild members on the character column(s)
+-- ... some kind of 3 letter code ... The Old Gods (TOG) and The Other Gods
+-- (TOG) show you the problem ... like <old> <other>". Both: an automatic tag,
+-- and a per-guild override in Settings -> Cross-Guild for when the automatic
+-- one reads badly. Home-guild members carry no tag; only allied guilds do.
+--
+-- The tags are LibGuildRoster's (MINOR 35), not TOGPM's. The user, 2026-10-17:
+-- "for the <old><other> that shouldn't come from you ... it should feed that to
+-- every addon that consumes a sister guild". The library derives them (first
+-- word that tells the guild apart, filler dropped, cut to 5 characters, never
+-- shared by two guilds) and stores the overrides account-wide under the home
+-- guild, so every TOG addon shows one guild under one tag. Everything below is
+-- a thin reader; under an older library there are simply no tags.
+
+-- The roster library, if it carries the tag API.
+local function tagLib(self)
+    local GR = self.Scanner and self.Scanner.GuildRoster
+    if GR and GR.GetGuildTag then return GR end
+    return nil
+end
+
+--- The tag overrides, { [lower guild name] = tag } (a copy).
+function addon:GetGuildAbbrevOverrides()
+    local GR = tagLib(self)
+    return (GR and GR:GetGuildTagOverrides()) or {}
+end
+
+--- Parse "Guild Name = TAG" lines into the library's overrides. A guild left
+-- out, or given an empty tag, has its override cleared.
+function addon:SetGuildAbbrevOverrides(text)
+    local GR = tagLib(self)
+    if not GR then return false end
+    local map = {}
+    for line in (tostring(text or "") .. "\n"):gmatch("(.-)\r?\n") do
+        local name, tag = line:match("^%s*(.-)%s*=%s*(.-)%s*$")
+        if name and name ~= "" and tag and tag ~= "" then
+            -- Key it the way the library stores it: a typed faction prefix
+            -- ("Horde-The Old Gods") is dropped, so the read-back below and
+            -- the clear loop above match the library's own key.
+            for _, faction in ipairs({ "alliance-", "horde-", "neutral-" }) do
+                if name:lower():sub(1, #faction) == faction then
+                    name = name:sub(#faction + 1)
+                    break
+                end
+            end
+            map[name:lower()] = tag
+        end
+    end
+    local before = GR:GetGuildTagOverrides()
+    for name in pairs(before) do
+        if not map[name] then GR:SetGuildTag(name, nil) end
+    end
+    -- SetGuildTag stores the override even when another listed guild already
+    -- shows that tag (the player's choice) and names that guild as its second
+    -- return; say so, or two guilds silently read the same in every column.
+    -- Only for a tag this save changed (every save re-sends every line, and a
+    -- clash the player already chose to keep should not be repeated), and in
+    -- the form the library stored, which it trims and cuts to 12 characters.
+    for name, tag in pairs(map) do
+        local _, clash = GR:SetGuildTag(name, tag)
+        local stored = GR:GetGuildTagOverrides()[name]
+        if clash and stored ~= before[name] then
+            Ace:Print(string.format(L["GuildTagClash"], stored or tag, clash))
+        end
+    end
+    return true
+end
+
+--- The overrides back as editable text, sorted.
+function addon:GetGuildAbbrevOverridesText()
+    local overrides = self:GetGuildAbbrevOverrides()
+    local names = {}
+    for name in pairs(overrides) do names[#names + 1] = name end
+    table.sort(names)
+    local lines = {}
+    for _, name in ipairs(names) do
+        -- Show the guild in the spelling the sister list uses when it is there.
+        local shown = name
+        for _, s in ipairs(self:GetSisterGuilds() or {}) do
+            if s:lower() == name then shown = s; break end
+        end
+        lines[#lines + 1] = shown .. " = " .. overrides[name]
+    end
+    return table.concat(lines, "\n")
+end
+
+--- The tag shown for a guild NAME. Nil for the home guild, for a name that is
+-- not an allied guild, and under a library without tags.
+function addon:GetGuildAbbrev(guildName)
+    if type(guildName) ~= "string" or guildName == "" then return nil end
+    local GR = tagLib(self)
+    return GR and GR:GetGuildTag(guildName) or nil
+end
+
+--- The tag for the allied guild a character is in, or nil (home guild, not
+-- in any roster, or no roster library).
+function addon:GetCharGuildAbbrev(charKey)
+    if not charKey then return nil end
+    local GR = tagLib(self)
+    return GR and GR:GetCharGuildTag(charKey) or nil
+end
+
+--- One-shot move of the overrides an unreleased v1.5.1 working copy kept in
+-- profile.guildAbbrevs into the library, then the TOGPM copy is deleted so
+-- there is one store. A guild the library already holds an override for keeps
+-- the library's. Runs from OnRosterReady (the library's store is keyed by the
+-- home guild and resolves only then). Idempotent.
+function addon:MigrateGuildTagsToLibrary()
+    local profile = Ace.db and Ace.db.profile
+    local legacy = profile and profile.guildAbbrevs
+    if type(legacy) ~= "table" then return false end
+    local GR = tagLib(self)
+    if not (GR and GR.GetSisterDb and GR:GetSisterDb()) then return false end
+    local have = GR:GetGuildTagOverrides()
+    local moved = false
+    for name, tag in pairs(legacy) do
+        if type(name) == "string" and type(tag) == "string" and tag ~= ""
+           and have[name:lower()] == nil then
+            GR:SetGuildTag(name, tag)
+            moved = true
+        end
+    end
+    profile.guildAbbrevs = nil
+    return moved
+end
+
+-- The tags changed -- an override was edited (here or in another TOG addon)
+-- or the allied list moved the automatic ones. Every name column repaints.
+function addon:OnGuildTagsChanged()
+    local AceRegistry = LibStub("AceConfigRegistry-3.0", true)
+    if AceRegistry then AceRegistry:NotifyChange("TOGProfessionMaster") end
+    if self.callbacks then self.callbacks:Fire("GUILD_DATA_UPDATED", "guildtags") end
+end
+
+--- " <Tag>" in a muted colour for a tag already looked up; the empty string
+-- for nil. The one place the suffix's colour escape is spelled.
+function addon.GuildTagSuffix(tag)
+    if not tag then return "" end
+    return " |cff9d9d9d<" .. tag .. ">|r"
+end
+
+--- " <Tag>" in a muted colour, ready to append after a character's name; the
+-- empty string when the character carries no tag.
+function addon:CharGuildSuffix(charKey)
+    return addon.GuildTagSuffix(self:GetCharGuildAbbrev(charKey))
 end
 
 -- The set of guild TAGS whose crafter data we are permitted to STORE and RELAY:

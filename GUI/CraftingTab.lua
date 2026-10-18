@@ -265,32 +265,6 @@ function CraftingTab:Draw(container)
         tipBody  = L["CraftHaveMaterialsDesc"],
     })
 
-    -- Scan AH for the selected recipe: the CRAFTED item first, so the AH price
-    -- and Profit line in the detail panel have a number to show, then every
-    -- reagent so the per-reagent [AH] buttons light up. Self-attaches to the
-    -- toolbar (between Have Materials and WoW UI).
-    --
-    -- The crafted item was missing from this list until 2026-09-11 (Discord,
-    -- 2026-08-23: "when I select a recipe in the crafting tab and hit scan AH,
-    -- it does not search and update the value of the actual crafted item, only
-    -- the mats"). Its id comes from the recipe's item link, exactly as the
-    -- profit line resolves it (see RefreshDetail).
-    addon.GUI.MakeScanAHButton({
-        parent        = toolbar,
-        tabName       = "crafting",
-        label         = L["CraftScanAH"],
-        progressLabel = L["CraftScanAHProgress"],
-        tooltipTitle  = L["CraftScanAH"],
-        tooltipDesc   = L["CraftScanAHDesc"],
-        width         = 110,
-        noItemsError  = L["CraftScanAHNoItems"],
-        getItems      = function() return self:ScanAHItems() end,
-        onRefresh     = function()
-            local mw = addon.MainWindow
-            if mw and mw.activeTab == "crafting" then CraftingTab:RefreshDetail() end
-        end,
-    })
-
     local blizBtn = AceGUI:Create("Button")
     blizBtn:SetText(L["CraftBlizzardUI"])
     blizBtn:SetWidth(80)
@@ -971,33 +945,6 @@ function CraftingTab:EnsureCraftButton()
     return craftBtn
 end
 
---- The items Scan AH looks up for the selected recipe: the crafted item first
---- (so the detail panel's AH price and Profit line get a number), then each
---- reagent (so the per-reagent [AH] buttons light up). Empty with nothing
---- selected. An enchant has no crafted item and contributes only reagents.
-function CraftingTab:ScanAHItems()
-    local items = {}
-    local Engine = addon.CraftingEngine
-    if not (self._selIndex and Engine) then return items end
-
-    local sel
-    for _, e in ipairs(Engine:GetRecipeList()) do
-        if e.kind == "recipe" and e.index == self._selIndex then sel = e; break end
-    end
-    local craftedId = sel and sel.link and tonumber(sel.link:match("item:(%d+)"))
-    local craftedName = sel and sel.link and sel.link:match("%[(.-)%]")
-    if craftedId and craftedName and craftedName ~= "" then
-        items[#items + 1] = { itemId = craftedId, itemName = craftedName }
-    end
-
-    for _, r in ipairs(Engine:GetReagents(self._selIndex)) do
-        if r.itemId and r.name and r.name ~= "" and r.itemId ~= craftedId then
-            items[#items + 1] = { itemId = r.itemId, itemName = r.name }
-        end
-    end
-    return items
-end
-
 function CraftingTab:RefreshDetail()
     local panel = self._detailPanel
     if not panel then return end
@@ -1442,14 +1389,12 @@ function CraftingTab:OnSessionChanged()
     end
 end
 
--- Refresh cost-to-craft (and per-row [AH] buttons) when an AH scan finishes —
--- so prices populate live after the auto full-scan on AH open, with no need to
--- re-select the recipe. Distinct receiver (CraftingTab) so this coexists with
--- the addon-keyed AH_SCAN_COMPLETE handler in GUI/SharedWidgets.lua.
-if addon.RegisterCallback then
-    addon.RegisterCallback(CraftingTab, "AH_SCAN_COMPLETE", function()
-        if addon.CraftingTab then addon.CraftingTab:OnLiveRefresh() end
-    end)
-    -- No WINDOW_RESIZED handler: the dock re-lays itself from its own size, and
-    -- each RowList re-sizes its pool from its parent's.
-end
+-- Refresh cost-to-craft and the per-reagent [AH] buttons when ItemDB's scan
+-- lands or the AH opens or closes (results are wiped on close), so prices
+-- populate live with no need to re-select the recipe. One path for all three:
+-- a second AH_SCAN_COMPLETE handler here used to redraw the detail twice.
+-- No WINDOW_RESIZED handler: the dock re-lays itself from its own size, and
+-- each RowList re-sizes its pool from its parent's.
+addon.GUI.SetAHRefresh("crafting", function()
+    CraftingTab:OnLiveRefresh()
+end)

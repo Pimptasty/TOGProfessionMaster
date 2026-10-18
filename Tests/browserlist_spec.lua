@@ -231,6 +231,29 @@ describe("BuildFullList", function()
 		assert.is_true(row.searchText:find("minor healing potion", 1, true) ~= nil)
 	end)
 
+	it("whispers the ONLINE alt that stands in for an offline crafter, not the offline main", function()
+		env.roster({ { name = "Testchar", isOnline = true }, { name = "Bob", isOnline = false },
+		             { name = "Bobalt", isOnline = true } })
+		gdb.altGroups["Bob-Testrealm"] = { "Bob-Testrealm", "Bobalt-Testrealm" }
+		knows("Bob-Testrealm", ALCHEMY, POTION_SPELL)
+		local c = B._BuildFullList(ALCHEMY, "guild", {})[1].crafters[1]
+		assert.equal("Bobalt (Bob)", c.name)
+		assert.is_true(c.online)
+		assert.equal("Bobalt-Testrealm", c.charKey)
+	end)
+
+	it("searches an allied crafter by name and tag, never by the tag's colour code", function()
+		local prev = ns.GetCharGuildAbbrev
+		ns.GetCharGuildAbbrev = function(_, ck) return ck == "Bob-Testrealm" and "Other" or nil end
+		knows("Bob-Testrealm", ALCHEMY, POTION_SPELL)
+		local list = B._BuildFullList(ALCHEMY, "guild", {})
+		ns.GetCharGuildAbbrev = prev
+		assert.is_true(list[1].crafters[1].name:find("|cff", 1, true) ~= nil)
+		assert.equal(1, #B._FilterList(list, "bob <other>"))
+		assert.equal(0, #B._FilterList(list, "cff"))
+		assert.equal(0, #B._FilterList(list, "9d"))
+	end)
+
 	it("marks every row as spell-keyed with its crafted item recorded separately", function()
 		-- The v1.0.5 tooltip bug in one assertion: an id is a SPELL id, and the
 		-- item it makes is a different field.

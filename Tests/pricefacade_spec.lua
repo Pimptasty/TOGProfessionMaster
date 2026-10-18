@@ -1,10 +1,9 @@
 -- The seams between this addon and ItemDB's price API (v1.1.0):
 --
 --   * `addon.AH` -- the facade Modules/AHScanner.lua now IS. The per-row [AH]
---     buttons gate on `GetListingsFor` and search through `SearchFor`, the
---     shared Scan AH button drives `StartScan` / `CancelScan` / the progress
---     reads, and every tab subscribes to two addon events this file re-fires
---     from the library's callbacks. Installed only when the ItemDB in play
+--     buttons gate on `GetListingsFor` and search through `SearchFor`, and
+--     every tab subscribes to two addon events this file re-fires from the
+--     library's callbacks. Installed only when the ItemDB in play
 --     carries the scanner, which is what every caller's `if addon.AH` was
 --     written for.
 --   * `addon:MigratePriceSettingsToItemDB` -- the one-shot carry-over of a
@@ -71,8 +70,8 @@ describe("addon.AH -- installed only over an ItemDB that carries the scanner", f
 	end)
 
 	it("is NOT installed over an ItemDB that predates the scanner", function()
-		-- The [AH] buttons then never draw and the Scan AH button stays
-		-- disabled: the degrade every caller's `if addon.AH` guard exists for.
+		-- The [AH] buttons then never draw: the degrade every caller's
+		-- `if addon.AH` guard exists for.
 		ns._itemDB = { GetPrice = function() return nil end }
 		assert.is_nil(loadFacade())
 	end)
@@ -96,24 +95,6 @@ describe("addon.AH -- the reads the tabs make", function()
 		assert.is_nil(AH.GetListingsFor(ORE))
 		DB.scan.results[ORE] = { lowestBuyout = 123, count = 2, scannedAt = 1000 }
 		assert.equal(123, AH.GetListingsFor(ORE).lowestBuyout)
-	end)
-
-	it("reports no scan running and no progress at rest", function()
-		local AH = loadFacade()
-		assert.is_false(AH.IsScanning())
-		assert.is_false(AH.IsFullScanning())
-		local scanned, total = AH.GetScanProgress()
-		assert.equal(0, scanned)
-		assert.equal(0, total)
-	end)
-
-	it("reads the library's progress while a scan runs", function()
-		local AH = loadFacade()
-		DB.scan.scanning, DB.scan.scannedItems, DB.scan.totalItems = true, 3, 7
-		assert.is_true(AH.IsScanning())
-		local scanned, total = AH.GetScanProgress()
-		assert.equal(3, scanned)
-		assert.equal(7, total)
 	end)
 end)
 
@@ -145,28 +126,6 @@ describe("addon.AH -- the actions", function()
 		DB.AuctionHouseSearch = function(_, name) searched = name return true end
 		assert.is_true(AH.SearchFor("Copper Ore"))
 		assert.equal("Copper Ore", searched)
-	end)
-
-	it("StartScan passes the library's refusal through, reason and all", function()
-		local AH = loadFacade()
-		local started, reason = AH.StartScan({ { ORE, "Copper Ore" } })
-		assert.is_false(started)
-		assert.equal("ah-closed", reason)
-	end)
-
-	it("StartFullScan passes the library's refusal through too", function()
-		local AH = loadFacade()
-		local started, reason = AH.StartFullScan(true)
-		assert.is_false(started)
-		assert.equal("ah-closed", reason)
-	end)
-
-	it("CancelScan reaches the library", function()
-		local AH = loadFacade()
-		local cancelled = false
-		DB.CancelScan = function() cancelled = true end
-		AH.CancelScan()
-		assert.is_true(cancelled)
 	end)
 end)
 

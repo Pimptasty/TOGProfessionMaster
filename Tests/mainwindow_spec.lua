@@ -286,6 +286,89 @@ describe("a long shopping list inside the real window", function()
 		ns.BrowserTab._slExpanded = {}
 	end)
 
+	-- Pooled widgets must go back the way AceGUI handed them out: another
+	-- addon gets them next. Operator, 2026-10-13: "i think we may have some
+	-- tabs not recycling widgets properly, and they are getting corrupted
+	-- widgets from teh pool".
+	it("leaves the pooled TabGroup its own auto-size method", function()
+		MW:Open("browser")
+		local tg = MW.tabs
+		MW:SelectTab("cooldowns")
+		MW:SelectTab("browser")
+		assert.equal("function", type(rawget(tg, "LayoutFinished")))
+		MW:Close()
+		assert.equal("function", type(rawget(tg, "LayoutFinished")))
+		assert.is_nil(tg.noAutoHeight)
+	end)
+
+	it("forgets the shopping-list section when the window closes", function()
+		ns.lib.db.char.shoppingList[602] = { name = "Linen Bandage", quantity = 1, reagents = {} }
+		MW:Open("browser")
+		local BT = ns.BrowserTab
+		assert.is_not_nil(BT._slSection)
+		MW:Close()
+		ns.lib.db.char.shoppingList[602] = nil
+		-- A late refill (the TOG Bank watcher, a scale change) now has
+		-- nothing to park our list in.
+		assert.is_nil(BT._slSection)
+	end)
+
+	it("hands a column header back with word wrap on", function()
+		local AceGUI = LibStub("AceGUI-3.0")
+		local parent = AceGUI:Create("SimpleGroup")
+		local lbl = ns.GUI.MakeColumnHeader({ parent = parent, label = "Name", width = 80 })
+		local last
+		local real = lbl.label.SetWordWrap
+		lbl.label.SetWordWrap = function(fs, on) last = on; return real(fs, on) end
+		AceGUI:Release(parent)
+		lbl.label.SetWordWrap = nil
+		assert.is_true(last)
+	end)
+
+	-- Peer Review on Discord 872cd3bf: the section was sized once, at draw
+	-- time. Another addon raising the shared LibAceGUIWidgets scale grew the
+	-- row but not the section, and one item floored to zero rows again.
+	it("refits the section when the shared scale changes", function()
+		ns.lib.db.char.shoppingList[601] = { name = "Runecloth Bag", quantity = 1, reagents = {} }
+		MW:Open("browser")
+		local BT, W = ns.BrowserTab, ns.W
+		-- Restore the scale it found even when an assert throws.
+		local found = W:GetScale()
+		local ok, err = pcall(function()
+			assert.equal(W:ScaledSize(14) + BT.SL_CHROME + BT.SL_SLACK, BT._slSection.frame:GetHeight())
+			W:SetScale(2.0)
+			assert.equal(28 + BT.SL_CHROME + BT.SL_SLACK, BT._slSection.frame:GetHeight())   -- 14 x 2.0
+			assert.equal(1, BT._slList.visibleRowCount)   -- the row the player sees
+		end)
+		W:SetScale(found)
+		ns.lib.db.char.shoppingList[601] = nil
+		if not ok then error(err, 0) end
+	end)
+
+	-- The InlineGroup reserves a 17 px title strip even with no title; the
+	-- section lifts its border into it, and must hand the pooled group back
+	-- with AceGUI's own anchor so the next owner's title has its room.
+	it("lifts the empty title strip and puts it back on release", function()
+		ns.lib.db.char.shoppingList[601] = { name = "Runecloth Bag", quantity = 1, reagents = {} }
+		MW:Open("browser")
+		local section = ns.BrowserTab._slSection
+		local border  = section.content:GetParent()
+		local function topOffset()
+			for i = 1, border:GetNumPoints() do
+				local point, _, _, _, y = border:GetPoint(i)
+				if point == "TOPLEFT" then return y end
+			end
+			error("border has no TOPLEFT point")
+		end
+		local ok, err = pcall(function()
+			assert.equal(0, topOffset())
+			MW:Close()   -- releases the section the way the game does
+			assert.equal(-17, topOffset())
+		end)
+		ns.lib.db.char.shoppingList[601] = nil
+		if not ok then error(err, 0) end
+	end)
+
 	-- The column header anchors to the section's BOTTOM and the recipe list
 	-- to the header's, so "the section is taller than the tab" IS the report.
 	-- Sizes are what the harness measures reliably; its anchor resolution for
@@ -304,7 +387,7 @@ describe("a long shopping list inside the real window", function()
 		-- inside it...
 		local shown = math.floor(BT:ShoppingListMaxHeight() / 14)
 		local sectionH = BT._slSection.frame:GetHeight()
-		assert.equal(shown * 14 + 40 + BT.SL_SLACK, sectionH)
+		assert.equal(shown * 14 + BT.SL_CHROME + BT.SL_SLACK, sectionH)
 		assert.is_true(sectionH < tabH * 0.6)
 		-- ...and the scrollbar is what reaches the rest.
 		assert.is_true(rl.scrollbar:IsShown())
@@ -322,7 +405,7 @@ describe("a long shopping list inside the real window", function()
 		local BT = ns.BrowserTab
 		local sectionH, tabH = BT._slSection.frame:GetHeight(), BT._container.frame:GetHeight()
 		ns.BrowserTab.ShoppingListMaxHeight = real
-		assert.equal(30 * 14 + 40 + BT.SL_SLACK, sectionH)
+		assert.equal(30 * 14 + BT.SL_CHROME + BT.SL_SLACK, sectionH)
 		assert.is_true(sectionH > tabH)
 	end)
 end)

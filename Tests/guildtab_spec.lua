@@ -479,6 +479,10 @@ describe("the filter strip", function()
 
 	it("redraws the window on a scale change only while the Guild tab shows", function()
 		env.drawTab(GT)
+		-- MainWindow.lua is not loaded by this file; a whole-suite run had one
+		-- from an earlier spec file, a single-file run had none.
+		local savedMW = ns.MainWindow
+		ns.MainWindow = ns.MainWindow or {}
 		local W, mw = ns.W, ns.MainWindow
 		local savedTab, savedFrame, savedRefresh = mw.activeTab, mw.frame, mw.Refresh
 		local calls = 0
@@ -491,6 +495,7 @@ describe("the filter strip", function()
 		W:SetScale(1.5)
 		W:SetScale(savedScale)
 		mw.activeTab, mw.frame, mw.Refresh = savedTab, savedFrame, savedRefresh
+		ns.MainWindow = savedMW
 		assert.equal(1, calls)
 	end)
 
@@ -530,6 +535,55 @@ describe("the filter strip", function()
 		GT._filter.maxSkill = nil
 		assert.equal(200, kept)
 		assert.equal(300, focused)
+	end)
+
+	-- Operator, in game 2026-10-21: "i'm having trouble clicking the + buttons
+	-- to expand. the click isn't working". A guild sync asked for a full
+	-- redraw every few seconds, and the teardown hid the list between a
+	-- mouse-down and its mouse-up, which cancels the click. A data refresh now
+	-- updates the tree in place.
+	describe("a guild-data refresh", function()
+		local function total(tree, profId)
+			for _, n in ipairs(tree or {}) do
+				if n.key == profId then return n.valueText end
+			end
+		end
+
+		it("updates the counts without hiding the list", function()
+			crafts(ALCHEMY, 2330, MATE)
+			env.drawTab(GT)
+			local frame = assert(GT._list).frame
+			local hides = 0
+			local realHide = frame.Hide
+			frame.Hide = function(f) hides = hides + 1; return realHide(f) end
+			assert.equal("1", total(GT._tree, ALCHEMY))
+			crafts(ALCHEMY, 2330, "Testchar-Testrealm")
+			local inPlace = GT:RefreshInPlace()
+			frame.Hide = realHide
+			assert.is_true(inPlace)
+			assert.equal(0, hides)
+			assert.equal("2", total(GT._tree, ALCHEMY))
+		end)
+
+		it("asks for the full redraw when the empty-guild message has to give way to the list", function()
+			-- Every profession on the client gets a row even at zero, so the
+			-- message shows only when there are no professions at all.
+			local realCounts = GT.BuildCounts
+			GT.BuildCounts = function() return {}, 0 end
+			env.drawTab(GT)
+			local drawnEmpty = GT._drawnEmpty
+			GT.BuildCounts = realCounts
+			local inPlace = GT:RefreshInPlace()
+			assert.is_true(drawnEmpty)
+			assert.is_false(inPlace)
+		end)
+
+		it("asks for the full redraw when the tab is not drawn", function()
+			crafts(ALCHEMY, 2330, MATE)
+			local container = env.drawTab(GT)
+			container:ReleaseChildren()
+			assert.is_false(GT:RefreshInPlace())
+		end)
 	end)
 
 	it("leaves out the empty rows in the tree while filtering", function()

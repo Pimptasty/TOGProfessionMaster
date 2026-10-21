@@ -1,4 +1,4 @@
--- TOG Profession Master -- Portuguese (Brazil) locale
+-- Ultimate Profession Master -- Portuguese (Brazil) locale
 -- Any missing key falls back to enUS automatically via AceLocale.
 -- Translations are best-effort; native-speaker review welcome.
 
@@ -8,8 +8,8 @@ local L = addon.NewLocale("ptBR")
 -- ---------------------------------------------------------------------------
 -- Main window
 -- ---------------------------------------------------------------------------
-L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "TOG Profession Master|r"
-L["SyncLogTitle"]       = "TOG Profession Master — Registro de sincronização"
+L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r"
+L["SyncLogTitle"]       = "Ultimate Profession Master — Registro de sincronização"
 
 -- Tab labels
 L["TabProfessions"]     = "Profissões"
@@ -186,9 +186,9 @@ L["MissingSrcUnknown"]          = "Desconhecida"
 -- Settings: global item tooltip lines
 L["SettingsTooltipHeader"]          = "Dica de item"
 L["SettingsTooltipShowCrafters"]    = "Mostrar artesãos da guilda nas dicas de itens"
-L["SettingsTooltipShowCraftersDesc"]= "Adiciona uma linha [TOGPM] listando cada companheiro de guilda que pode fabricar o item sob o cursor. Online em branco, offline em cinza. Itens vinculados ao pegar são ignorados (não negociáveis de qualquer forma)."
+L["SettingsTooltipShowCraftersDesc"]= "Adiciona uma linha [UPM] listando cada companheiro de guilda que pode fabricar o item sob o cursor. Online em branco, offline em cinza. Itens vinculados ao pegar são ignorados (não negociáveis de qualquer forma)."
 L["SettingsTooltipShowIds"]         = "Mostrar ID de item / ID de feitiço nas dicas"
-L["SettingsTooltipShowIdsDesc"]     = "Adiciona uma linha [TOGPM] com o ID de item e (se conhecido) o ID de feitiço da receita. Útil principalmente para diagnosticar ícones errados ou receitas faltantes — cole os IDs no Wowhead para verificar a correspondência."
+L["SettingsTooltipShowIdsDesc"]     = "Adiciona uma linha [UPM] com o ID de item e (se conhecido) o ID de feitiço da receita. Útil principalmente para diagnosticar ícones errados ou receitas faltantes — cole os IDs no Wowhead para verificar a correspondência."
 
 -- Settings: TBC Anniversary phase filter
 L["SettingsTBCPhaseHeader"]     = "Fase de TBC Anniversary"
@@ -240,7 +240,7 @@ L["SyncLogNoEntries"]       = "|cffaaaaaa(ainda sem eventos de sincronização r
 -- ---------------------------------------------------------------------------
 -- Minimap
 -- ---------------------------------------------------------------------------
-L["MinimapHidden"]          = "Botão do minimapa oculto. Use |cffda8cff/togpm minimap|r para restaurar."
+L["MinimapHidden"]          = "Botão do minimapa oculto. Use |cffFF8000/upm minimap|r para restaurar."
 
 -- ---------------------------------------------------------------------------
 -- Tooltip
@@ -255,13 +255,13 @@ L["AlertReadyFormat"]       = "|cff00ff00Pronto para fabricar:|r %s × %d  (%s �
 -- Shopping list crafter alert
 L["ShoppingAlertEnable"]               = "Ativar alerta de artesão para esta receita"
 L["ShoppingAlertDisable"]              = "Desativar alerta de artesão para esta receita"
-L["AlertCrafterOnline"]                = "|cffFFD700[TOGPM]|r %s está online — pode fabricar: %s"
-L["AlertCrafterOnlineAlt"]             = "|cffFFD700[TOGPM]|r %s está online (alt de %s) — pode fabricar: %s"
+L["AlertCrafterOnline"]                = "|cffFFD700[UPM]|r %s está online — pode fabricar: %s"
+L["AlertCrafterOnlineAlt"]             = "|cffFFD700[UPM]|r %s está online (alt de %s) — pode fabricar: %s"
 
 -- Cooldown-ready alert
 L["CooldownAlertEnable"]               = "Ativar alerta de pronto para esta recarga"
 L["CooldownAlertDisable"]              = "Desativar alerta de pronto para esta recarga"
-L["AlertCooldownReady"]                = "|cff00ffff[TOGPM]|r Recarga pronta: %s — %s"
+L["AlertCooldownReady"]                = "|cff00ffff[UPM]|r Recarga pronta: %s — %s"
 
 -- Settings
 L["SettingsAlertsHeader"]              = "Alertas de artesão"
@@ -301,7 +301,7 @@ L["TooltipAHTitle"]              = "Buscar na casa de leilões"
 L["TooltipAHDescScroll"]         = "Abre este pergaminho de receita na busca da LE."
 L["TooltipAHDescReagent"]        = "Abre este reagente na busca da LE."
 L["TooltipSettingsTitle"]        = "Configurações"
-L["TooltipSettingsDesc"]         = "Abre o painel de configurações do TOG Profession Master (|cffffd700ESC > Opções > AddOns > TOG Profession Master|r). Mesmo destino de |cffffd700/togpm settings|r e Shift+clique esquerdo no botão do minimapa."
+L["TooltipSettingsDesc"]         = "Abre o painel de configurações do Ultimate Profession Master (|cffffd700ESC > Opções > AddOns > Ultimate Profession Master|r). Mesmo destino de |cffffd700/upm settings|r e Shift+clique esquerdo no botão do minimapa."
 L["TooltipWhisperRightClick"]    = "Clique direito para sussurrar"
 L["TooltipClickTransmutes"]      = "Clique para ver as transmutações"
 L["TooltipClickDetailsFormat"]   = "Clique para ver %s"
@@ -326,13 +326,14 @@ L["MinimapTooltipShiftLeft"]   = "|cffffd100Shift+esquerdo|r abre as configuraç
 L["MinimapButtonShown"]        = "Botão do minimapa mostrado."
 
 -- ---------------------------------------------------------------------------
--- Slash command help (/togpm help) -- nomes dos comandos não são traduzidos
+-- Slash command help (/upm help) -- nomes dos comandos não são traduzidos
 -- ---------------------------------------------------------------------------
-L["SlashHelpHeader"]        = "|cffda8cffTOG Profession Master|r — comandos:"
+L["SlashHelpHeader"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r — comandos:"
 L["SlashHelpOpen"]          = "abre o navegador de profissões"
 L["SlashHelpReagents"]      = "abre os reagentes faltantes"
 L["SlashHelpMinimap"]       = "mostrar botão do minimapa"
 L["SlashHelpPurge"]         = "abre o diálogo de limpeza"
+L["SlashHelpSettings"]      = "abre o painel de configurações"
 L["SlashHelpSync"]          = "força uma ressincronização completa da guilda"
 L["SlashHelpStatus"]        = "imprime informações de diagnóstico sync/comm"
 L["SlashHelpVersionCheck"]  = "verifica versões do addon na guilda"
@@ -391,7 +392,7 @@ L["CraftHaveMaterials"]   = "Have Materials"
 L["CraftCostLabel"]       = "Crafting Cost"
 L["CraftCostNone"]        = "—"
 L["CraftColCostHdr"]      = "Cost"
-L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else TOGPM's own scan) or vendor; \"—\" when no price is known yet."
+L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else UPM's own scan) or vendor; \"—\" when no price is known yet."
 L["CraftSearchDesc"]      = "Filter recipes by name or by what they do. Searches the enriched effect text too, so \"5 damage\", \"agility\", or \"mining\" all find matching recipes."
 L["CraftColRecipe"]       = "Recipe Name"
 L["CraftColRecipeDesc"]   = "The recipes you can make in this profession. Colour shows skill-up difficulty (orange/yellow/green/grey)."

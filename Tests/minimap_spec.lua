@@ -99,7 +99,11 @@ describe("minimap launcher", function()
 		dataObj.OnTooltipShow({ AddLine = function(_, text) lines[#lines + 1] = text end })
 		-- Title, blank, and one line per binding.
 		assert.equal(5, #lines)
-		assert.is_truthy(lines[1]:find("TOG Profession Master", 1, true))
+		assert.is_truthy(lines[1]:find("Ultimate Profession Master", 1, true))
+		assert.is_falsy(lines[1]:find("TOG Profession Master", 1, true))   -- the old brand is gone after the rename
+		-- The title draws in the brand colour, not the old TOG purple.
+		assert.is_truthy(lines[1]:find("|c" .. (ns.BrandColor or "ffFF8000") .. "Ultimate Profession Master", 1, true))
+		assert.is_falsy(lines[1]:lower():find("da8cff", 1, true))
 	end)
 end)
 

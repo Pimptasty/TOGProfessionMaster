@@ -346,6 +346,17 @@ local function TierBandLabel(band)
     return ("%s (%d-%d)"):format(L[band.labelKey] or band.labelKey, band.min, band.cap)
 end
 
+-- Whether the bands mean anything on this client. Retail splits a profession
+-- into one skill line per expansion (Khaz Algar Blacksmithing runs 1-100 on
+-- its own), so a recipe's learn skill is on its line's scale and the classic
+-- 75-point trainer ranks cannot classify it: RecipeGate:Client() falls
+-- through to the Mists cap there, and every band from Master to Zen Master
+-- was offered and could never match (self-audit cd8c79f4 #5). Retail has no
+-- tier filter; the classic flavours keep theirs.
+local function TierFilterApplies()
+    return not addon.isRetail
+end
+
 -- Map a learn skill (requiredSkill, or difficulty[1] fallback) to a band key.
 local function TierBandKey(reqSkill)
     if not reqSkill or reqSkill < 1 then return nil end
@@ -496,14 +507,15 @@ local function BuildFullList(profId, viewMode, opts)
     -- data and our addon.recipeDB happens to include it. The MissingRecipesTab
     -- already applies the same gate (see GUI/MissingRecipesTab.lua:284-318);
     -- pull the rules in here so the Browser tab agrees with it.
-    --   minExpansion       : recipeDB ships 1=Vanilla, 2=TBC, 3=Wrath,
-    --                        4=Cata, 5=MoP — primary cross-expansion gate.
-    --   clientMaxSkill cap : belt-and-suspenders against future-expansion
-    --                        recipes whose minExpansion tag is missing but
-    --                        whose requiredSkill exceeds the client's cap.
-    --   spellId > 25000    : defensive gate for Classic Era against untagged
-    --                        post-Vanilla recipes (covers Cata / SoD /
-    --                        Anniversary additions that lack minExpansion).
+    --   cross-expansion    : not a live gate. The data is flavour-scoped (each
+    --                        ProfessionDB file opens with IsGameVersion), and
+    --                        no shipped file carries the old merged dataset's
+    --                        `minExpansion` tag, so RecipeGate's check of it is
+    --                        defensive only. The skill cap is no gate at all
+    --                        (Modules/RecipeGate.lua says why).
+    --   spellId > 25000    : Classic Era only: a high-id recipe must resolve
+    --                        both its spell and an item, which keeps TBC rows
+    --                        in the shared 1.15 tables off an Era list.
     --   season             : SoD seasonal content — hidden on EVERY client,
     --                        including a SoD realm. This addon does not support
     --                        Season of Discovery; IsSoD() exists only to relax
@@ -753,75 +765,9 @@ BrowserTab._SKILL_TIER_BANDS       = SKILL_TIER_BANDS
 
 local function RefitOnScale(_, _, tab) tab:RefitShoppingList() end
 
-function BrowserTab:Draw(container)
-    addon:DebugPrint("BrowserTab:Draw — prof=", self._selectedProfId,
-        "view=", self._viewMode, "cacheKeys=", self._listCache and "(table)" or "nil")
-    self._container = container
-    -- The shopping-list section is sized from the row height at draw time. A
-    -- LibAceGUIWidgets scale change (another addon's Text Size slider) changes
-    -- that height but not our section, so one row could floor to zero again.
-    -- Refit while this tab is showing. FillShoppingListSection derives the
-    -- row height from the scale itself, so it does not matter whether the
-    -- list's own listener has run yet. The listener takes the tab as its
-    -- owner argument rather than closing over it: the library's listener
-    -- table is weak-keyed, and a closure would keep a reloaded tab alive.
-    local W = addon.W
-    if W and W.OnScaleChanged and not self._scaleHooked then
-        self._scaleHooked = true
-        W:OnScaleChanged(self, RefitOnScale)
-    end
-    -- Flow, not List: the last row (the recipe list and detail panel) is full
-    -- height, and Flow is the layout that gives a full-height child the rest
-    -- of the tab -- the Cooldowns tab's shape.
-    container:SetLayout("Flow")
-
-    self._slSection = nil
-    local slData = Ace.db.char.shoppingList
-    -- One pass. The count already answers "is it non-empty?", so the previous
-    -- probe-then-count walked the table twice and the probe was a `for … break`
-    -- that never loops.
-    local slCount = 0
-    for _ in pairs(slData) do slCount = slCount + 1 end
-    local hasSL = slCount > 0
-
-    -- ---- Toolbar -----------------------------------------------------------
-    local toolbar = AceGUI:Create("SimpleGroup")
-    toolbar:SetLayout("Flow")
-    toolbar:SetFullWidth(true)
-    container:AddChild(toolbar)
-
-    local profEntries = GetProfDropdownEntries()
-    -- Initialize to "All Professions" (0) if no selection exists. The saved
-    -- filter is account-wide (profile scope) and only honoured when the user has
-    -- opted in via the persistProfFilter setting. Storage goes through the shared
-    -- addon.GUI.PersistentChoice helper.
-    if not self._selectedProfId then
-        local getProfFilter = addon.GUI.PersistentChoice("profile", "savedProfFilter", 0)
-        self._selectedProfId = (Ace.db.profile.persistProfFilter and getProfFilter()) or 0
-    end
-
-    local profItems = {}
-    for _, p in ipairs(profEntries) do
-        profItems[#profItems + 1] = { value = p.profId, text = p.name }
-    end
-
-    addon.GUI.ToolbarDropdown(self, "prof", toolbar, {
-        label    = L["PanelProfessions"],
-        width    = 180,
-        items    = function() return profItems end,
-        value    = self._selectedProfId,
-        onChange = function(value)
-            self._selectedProfId = value
-            if Ace.db.profile.persistProfFilter then
-                local _, setProfFilter = addon.GUI.PersistentChoice("profile", "savedProfFilter")
-                setProfFilter(value)
-            end
-            self:RefreshList()
-        end,
-        tipTitle = "Profession Filter",
-        tipBody  = "Pick a profession to filter the recipe list.",
-    })
-
+-- The Skill tier filter, on the toolbar after the profession picker. Draw
+-- calls it only where TierFilterApplies.
+function BrowserTab:AddTierFilter(toolbar)
     local spTier = AceGUI:Create("Label"); spTier:SetWidth(8); toolbar:AddChild(spTier)
 
     -- Skill-tier multi-select filter: a tick-box menu that stays open while
@@ -913,6 +859,78 @@ function BrowserTab:Draw(container)
         tipTitle  = L["BrowserSkillTierTip"],
         tipBody   = L["BrowserSkillTierDesc"],
     })
+end
+
+function BrowserTab:Draw(container)
+    addon:DebugPrint("BrowserTab:Draw — prof=", self._selectedProfId,
+        "view=", self._viewMode, "cacheKeys=", self._listCache and "(table)" or "nil")
+    self._container = container
+    -- The shopping-list section is sized from the row height at draw time. A
+    -- LibAceGUIWidgets scale change (another addon's Text Size slider) changes
+    -- that height but not our section, so one row could floor to zero again.
+    -- Refit while this tab is showing. FillShoppingListSection derives the
+    -- row height from the scale itself, so it does not matter whether the
+    -- list's own listener has run yet. The listener takes the tab as its
+    -- owner argument rather than closing over it: the library's listener
+    -- table is weak-keyed, and a closure would keep a reloaded tab alive.
+    local W = addon.W
+    if W and W.OnScaleChanged and not self._scaleHooked then
+        self._scaleHooked = true
+        W:OnScaleChanged(self, RefitOnScale)
+    end
+    -- Flow, not List: the last row (the recipe list and detail panel) is full
+    -- height, and Flow is the layout that gives a full-height child the rest
+    -- of the tab -- the Cooldowns tab's shape.
+    container:SetLayout("Flow")
+
+    self._slSection = nil
+    local slData = Ace.db.char.shoppingList
+    -- One pass. The count already answers "is it non-empty?", so the previous
+    -- probe-then-count walked the table twice and the probe was a `for … break`
+    -- that never loops.
+    local slCount = 0
+    for _ in pairs(slData) do slCount = slCount + 1 end
+    local hasSL = slCount > 0
+
+    -- ---- Toolbar -----------------------------------------------------------
+    local toolbar = AceGUI:Create("SimpleGroup")
+    toolbar:SetLayout("Flow")
+    toolbar:SetFullWidth(true)
+    container:AddChild(toolbar)
+
+    local profEntries = GetProfDropdownEntries()
+    -- Initialize to "All Professions" (0) if no selection exists. The saved
+    -- filter is account-wide (profile scope) and only honoured when the user has
+    -- opted in via the persistProfFilter setting. Storage goes through the shared
+    -- addon.GUI.PersistentChoice helper.
+    if not self._selectedProfId then
+        local getProfFilter = addon.GUI.PersistentChoice("profile", "savedProfFilter", 0)
+        self._selectedProfId = (Ace.db.profile.persistProfFilter and getProfFilter()) or 0
+    end
+
+    local profItems = {}
+    for _, p in ipairs(profEntries) do
+        profItems[#profItems + 1] = { value = p.profId, text = p.name }
+    end
+
+    addon.GUI.ToolbarDropdown(self, "prof", toolbar, {
+        label    = L["PanelProfessions"],
+        width    = 180,
+        items    = function() return profItems end,
+        value    = self._selectedProfId,
+        onChange = function(value)
+            self._selectedProfId = value
+            if Ace.db.profile.persistProfFilter then
+                local _, setProfFilter = addon.GUI.PersistentChoice("profile", "savedProfFilter")
+                setProfFilter(value)
+            end
+            self:RefreshList()
+        end,
+        tipTitle = "Profession Filter",
+        tipBody  = "Pick a profession to filter the recipe list.",
+    })
+
+    if TierFilterApplies() then self:AddTierFilter(toolbar) end
 
     local sp = AceGUI:Create("Label")
     sp:SetWidth(8)
@@ -2117,16 +2135,13 @@ end
 --   { kind = "none" }                      -- nobody is known to craft it
 -- Reagent cells read the shopping-list quantity when drawn, so the +/- buttons
 -- restate the counts with a Refresh.
+BrowserTab.DETAIL_SPAN_MINOR = 46   -- LibAceGUIWidgets RowList col.span / col.collapse
 function BrowserTab:BuildDetailList(host)
     local colorOnline  = function() return "|c" .. (addon.ColorOnline  or "ffffffff") end
     local colorOffline = function() return "|c" .. (addon.ColorOffline or "ffaaaaaa") end
     local colorYou     = function() return "|c" .. (addon.ColorYou or addon.BrandColor or "ffDA8CFF") end
     local function isReagent(e) return e.kind == "reagent" end
-    return addon.W.RowList:New(host, {
-        rowHeight      = DP_ROW,
-        hoverHighlight = true,
-        headerFont     = "GameFontNormalSmall",
-        columns = {
+    local columns = {
             { key = "_icon", width = 14, iconSize = 12, iconTexCoord = true, sortable = false,
               icon = function(e)
                   if not isReagent(e) then return nil end
@@ -2135,7 +2150,16 @@ function BrowserTab:BuildDetailList(host)
               end },
             -- Reagent names are resolved at draw time: see addon:ResolveReagentName
             -- for why a name frozen at build time rendered as "Item #15417".
-            { key = "name", sortable = false,
+            -- The name runs across every following cell that draws nothing
+            -- for its row, instead of being cut at this column's edge
+            -- (operator, 2026-10-21: "you're truncating the names here when
+            -- we have a lot of space in the row left"). Crafter and no-data
+            -- rows draw nothing after it, so they run to the end; a reagent
+            -- row runs over a hidden [Bank]/[AH] and stops at its count,
+            -- which is the LAST column for exactly that reason.
+            -- LibAceGUIWidgets RowList col.span, MINOR 46; an older RowList
+            -- ignores the key and truncates as before.
+            { key = "name", sortable = false, span = true,
               format = function(_, e)
                   if e.kind == "reagent" then return addon:ResolveReagentName(e.r) end
                   if e.kind == "none" then return "|cffaaaaaa" .. L["NoDataYet"] .. "|r" end
@@ -2144,12 +2168,11 @@ function BrowserTab:BuildDetailList(host)
                   local col = c.isYou and colorYou() or (c.online and colorOnline() or colorOffline())
                   return col .. c.name .. "|r"
               end },
-            { key = "count", width = 40, align = "RIGHT", sortable = false,
-              format = function(_, e)
-                  if not isReagent(e) then return "" end
-                  return "|cffffffff\195\151" .. (e.r.count or 1) * detailMultiplier(e.entryId) .. "|r"
-              end },
-            { key = "bankBtn", width = 56, button = true, sortable = false, gapBefore = 4,
+            -- collapse (RowList MINOR 46): a hidden button gives its slot back
+            -- on that row, so a lone [Bank] or [AH] sits beside the count and
+            -- the name spans the rest (operator, in game 2026-10-21, "Raw
+            -- Brillian..." with an empty [AH] slot after [Bank]).
+            { key = "bankBtn", width = 56, button = true, sortable = false, gapBefore = 4, collapse = true,
               show = function(e) return isReagent(e) and select(2, reagentStock(e.r)) end,
               text = function(e) return addon.Bank.ButtonText(ResolveReagentItemId(e.r)) end,
               tip  = function(e)
@@ -2162,12 +2185,29 @@ function BrowserTab:BuildDetailList(host)
                   addon.Bank.ShowRequestDialog(ResolveReagentItemId(e.r), e.r.name or "",
                       ResolveReagentItemLink(e.r))
               end },
-            { key = "ahBtn", width = 32, button = true, sortable = false,
+            { key = "ahBtn", width = 32, button = true, sortable = false, collapse = true,
               show = function(e) return isReagent(e) and select(3, reagentStock(e.r)) end,
               text = function() return "|cFF88CCFF[AH]|r" end,
               tip  = function() return L["TooltipAHTitle"], L["TooltipAHDescReagent"] end,
               onClick = function(e) addon.AH.SearchFor(e.r.name) end },
-        },
+            { key = "count", width = 40, align = "RIGHT", sortable = false,
+              format = function(_, e)
+                  if not isReagent(e) then return "" end
+                  return "|cffffffff\195\151" .. (e.r.count or 1) * detailMultiplier(e.entryId) .. "|r"
+              end },
+    }
+    -- Below MINOR 46 the RowList ignores span and collapse, so the count at
+    -- the end would sit behind both always-reserved button slots, far from
+    -- the name it belongs to. Keep v1.6.1's order there: name, count, [Bank],
+    -- [AH] (Peer Review F1 on self-audit 3ea3379a).
+    if (addon.W_LOADED_MINOR or 0) < BrowserTab.DETAIL_SPAN_MINOR then
+        table.insert(columns, 3, table.remove(columns))
+    end
+    return addon.W.RowList:New(host, {
+        rowHeight      = DP_ROW,
+        hoverHighlight = true,
+        headerFont     = "GameFontNormalSmall",
+        columns        = columns,
         onRowEnter = function(e, _, _, rowFrame)
             if isReagent(e) then
                 local link, id = ResolveReagentItemLink(e.r), ResolveReagentItemId(e.r)

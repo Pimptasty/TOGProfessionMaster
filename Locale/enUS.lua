@@ -1,4 +1,4 @@
--- TOG Profession Master — English (enUS) locale
+-- Ultimate Profession Master — English (enUS) locale
 -- This is the authoritative locale and serves as the fallback for all other
 -- locales. Add a new file under Locale/ for each additional language, using
 -- the same keys. Missing keys fall back to the enUS string automatically via
@@ -14,8 +14,8 @@ local L = addon.NewLocale("enUS", true)   -- true = default fallback for missing
 -- ---------------------------------------------------------------------------
 -- Main window
 -- ---------------------------------------------------------------------------
-L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "TOG Profession Master|r"
-L["SyncLogTitle"]       = "TOG Profession Master \226\128\148 Sync Log"
+L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r"
+L["SyncLogTitle"]       = "Ultimate Profession Master \226\128\148 Sync Log"
 L["SyncLogPause"]       = "Pause"
 L["SyncLogResume"]      = "Resume"
 L["SyncLogPausedNote"]  = "  |cffffcc00(paused \226\128\148 %d buffered)|r"
@@ -40,12 +40,12 @@ L["CraftOpenAProfession"] = "Open a profession to craft."
 L["CraftBlizzardUI"]      = "WoW UI"
 L["CraftHaveMaterials"]   = "Have Materials"
 L["CraftCostLabel"]       = "Crafting Cost"
-L["CraftCostDesc"]        = "Estimated material cost for one craft. A reagent a vendor sells is priced at the vendor price, even if someone has listed it on the Auction House; anything else is priced from the Auction House (Auctionator if installed, otherwise TOGPM's own AH scan). \"*\" means one or more reagents had no price yet, so the total is a lower bound. \"~\" means a price is stale (>14 days). When the crafted item also has an Auction House price, AH (its lowest buyout) and Profit (AH price minus crafting cost — green if you'd profit, red if you'd lose) are shown alongside."
+L["CraftCostDesc"]        = "Estimated material cost for one craft. A reagent a vendor sells is priced at the vendor price, even if someone has listed it on the Auction House; anything else is priced from the Auction House (Auctionator if installed, otherwise UPM's own AH scan). \"*\" means one or more reagents had no price yet, so the total is a lower bound. \"~\" means a price is stale (>14 days). When the crafted item also has an Auction House price, AH (its lowest buyout) and Profit (AH price minus crafting cost — green if you'd profit, red if you'd lose) are shown alongside."
 L["CraftCostNone"]        = "—"
 L["CraftAHPriceLabel"]    = "AH"
 L["CraftProfitLabel"]     = "Profit"
 L["CraftColCostHdr"]      = "Cost"
-L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else TOGPM's own scan) or vendor; \"—\" when no price is known yet."
+L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else UPM's own scan) or vendor; \"—\" when no price is known yet."
 L["CraftSearchDesc"]      = "Filter recipes by name or by what they do. Searches the enriched effect text too, so \"5 damage\", \"agility\", or \"mining\" all find matching recipes. Type a crafter's name to list every recipe that player can make."
 L["CraftColRecipe"]       = "Recipe Name"
 L["CraftColRecipeDesc"]   = "The recipes you can make in this profession. Colour shows skill-up difficulty (orange/yellow/green/grey)."
@@ -200,7 +200,7 @@ L["Ready"]                  = "|cff00ff00Ready|r"
 L["Transmute"]              = "Transmute"
 L["MailBtn"]                = "Mail"
 L["MailBtnTooltip"]         = "Send Supply Mail"
-L["MailBtnTooltipDesc"]     = "Open a mailbox, then click to attach reagents and compose a supply mail to this player."
+L["MailBtnTooltipDesc"]     = "Open a mailbox, then click to attach reagents and compose a supply mail to this player. Click again to send it."
 L["BankBtn"]                = "[Bank]"
 L["CloseBtn"]               = "Close"
 
@@ -340,9 +340,9 @@ L["TooltipVendorBuyPrice"]      = "Vendor Buy Price"
 -- Settings: global item tooltip lines
 L["SettingsTooltipHeader"]          = "Item tooltip"
 L["SettingsTooltipShowCrafters"]    = "Show guild crafters on item tooltips"
-L["SettingsTooltipShowCraftersDesc"]= "Append a [TOGPM] line listing every guildmate who can craft the item you're hovering. Online crafters in white, offline in grey. Bind-on-Pickup items are skipped (can't be traded anyway)."
+L["SettingsTooltipShowCraftersDesc"]= "Append a [UPM] line listing every guildmate who can craft the item you're hovering. Online crafters in white, offline in grey. Bind-on-Pickup items are skipped (can't be traded anyway)."
 L["SettingsTooltipShowIds"]         = "Show item ID / spell ID on item tooltips"
-L["SettingsTooltipShowIdsDesc"]     = "Append a [TOGPM] line with the item ID and (if known) the recipe spell ID. Mostly useful for troubleshooting wrong icons or missing recipes — paste the IDs into Wowhead to verify what the addon is matching against."
+L["SettingsTooltipShowIdsDesc"]     = "Append a [UPM] line with the item ID and (if known) the recipe spell ID. Mostly useful for troubleshooting wrong icons or missing recipes — paste the IDs into Wowhead to verify what the addon is matching against."
 L["SettingsTooltipRecipeDetails"]       = "Recipe details on tooltips"
 L["SettingsTooltipRecipeDetailsDesc"]   = "Add a block showing the recipe's skill-up difficulty (orange / yellow / green / grey) and where it comes from (trainer, drop, vendor, quest, container) — on recipe scrolls and on the items they make, anywhere in the game.\n\nThis addon's own windows always show it (RecipeMaster cannot see a tooltip we build ourselves), except on Never."
 L["SettingsTooltipRecipeDetailsAuto"]   = "Automatic — skip it when RecipeMaster is loaded"
@@ -380,7 +380,7 @@ L["SettingsMinimapBtnDesc"]      = "Show or hide the minimap launcher button."
 L["SettingsPersistProfFilter"]     = "Remember profession filter"
 L["SettingsPersistProfFilterDesc"] = "Restore the selected profession when you log in or reload."
 L["SettingsWindowScale"]           = "Window scale"
-L["SettingsWindowScaleDesc"]       = "Scale the whole TOG Profession Master window (every tab). Lower it to make the window — the Crafting tab included — take less screen space than dragging it smaller allows: scaling shrinks text, columns and panels together instead of squeezing the layout. 100% is default; combine with dragging the window's corner for full control."
+L["SettingsWindowScaleDesc"]       = "Scale the whole Ultimate Profession Master window (every tab). Lower it to make the window — the Crafting tab included — take less screen space than dragging it smaller allows: scaling shrinks text, columns and panels together instead of squeezing the layout. 100% is default; combine with dragging the window's corner for full control."
 L["SettingsWindowOpacity"]         = "Background opacity"
 L["SettingsWindowOpacityDesc"]     = "How solid the window's background is. Lower it to see the game world through the window; text, borders and icons stay fully visible. 100% is default. Applies immediately while the window is open."
 L["SettingsTrackerScale"]          = "Reagent Tracker scale"
@@ -388,7 +388,7 @@ L["SettingsTrackerScaleDesc"]      = "Scale the Reagent Tracker (the shopping-li
 L["SettingsTrackerOpacity"]        = "Reagent Tracker opacity"
 L["SettingsTrackerOpacityDesc"]    = "How dark the Reagent Tracker's background is. 0% shows no background; the text and icons always stay solid. 100% is default. Applies immediately while it is open."
 L["SettingsUILangOverride"]        = "UI Language Override"
-L["SettingsUILangOverrideDesc"]    = "Force the TOGPM addon UI (tabs, buttons, tooltips, settings) into a specific language regardless of your WoW client's language. \"Auto\" follows your WoW client's language. In-game item / spell / recipe names still render in the client's actual language since those come from Blizzard's APIs, not from this addon. Includes Thai and Filipino, which Blizzard's client doesn't natively support but TOGPM ships translations for via this override."
+L["SettingsUILangOverrideDesc"]    = "Force the UPM addon UI (tabs, buttons, tooltips, settings) into a specific language regardless of your WoW client's language. \"Auto\" follows your WoW client's language. In-game item / spell / recipe names still render in the client's actual language since those come from Blizzard's APIs, not from this addon. Includes Thai and Filipino, which Blizzard's client doesn't natively support but UPM ships translations for via this override."
 L["SettingsUILangAuto"]            = "Auto (use WoW client language)"
 L["SettingsUILangReloadHint"]      = "UI language changed. Type |cffffd100/reload|r for the change to apply everywhere."
 L["SettingsSyncHeader"]     = "Sync"
@@ -399,14 +399,14 @@ L["SettingsMailReadyOnly"]  = "Mail: show ready cooldowns only"
 L["SettingsMailReadyOnlyDesc"] = "When composing supply mail from the cooldowns panel, only list guild members whose cooldown is ready."
 L["SettingsCraftingHeader"] = "Crafting"
 L["SettingsCraftingHandsOff"] = "Don't take over the crafting window (use Blizzard / TSM)"
-L["SettingsCraftingHandsOffDesc"] = "On by default. When you open a profession, TOGPM stays out of the way and lets Blizzard's own crafting window — or another addon such as TSM or Skillet — own it, so no extra window appears beside it. The TOGPM toggle button still rides on the Blizzard window whenever it's shown (so you can jump to the TOGPM Crafting tab), and the Crafting tab is always available from the main window. Turn this OFF to let TOGPM manage the crafting window itself (the takeover settings below then apply). Requires /reload."
+L["SettingsCraftingHandsOffDesc"] = "On by default. When you open a profession, UPM stays out of the way and lets Blizzard's own crafting window — or another addon such as TSM or Skillet — own it, so no extra window appears beside it. The UPM toggle button still rides on the Blizzard window whenever it's shown (so you can jump to the UPM Crafting tab), and the Crafting tab is always available from the main window. Turn this OFF to let UPM manage the crafting window itself (the takeover settings below then apply). Requires /reload."
 L["SettingsHideCraftingTab"] = "Hide the Crafting tab"
-L["SettingsHideCraftingTabDesc"] = "Off by default. Removes the Crafting tab from the main window entirely, for those who craft with another addon and never want TOGPM's crafting UI. Requires /reload."
+L["SettingsHideCraftingTabDesc"] = "Off by default. Removes the Crafting tab from the main window entirely, for those who craft with another addon and never want UPM's crafting UI. Requires /reload."
 L["SettingsCraftingReloadHint"] = "|cffFFD100Crafting setting changed.|r Type |cffFF4040/reload|r for it to take effect."
-L["SettingsCraftingTakeover"] = "Open the TOGPM Crafting tab automatically"
-L["SettingsCraftingTakeoverDesc"] = "Off by default. When you open a profession, the normal Blizzard crafting window opens — and a TOGPM button on it lets you switch to the TOGPM Crafting tab whenever you want. Enable this to open straight into the TOGPM Crafting tab instead of the Blizzard window."
+L["SettingsCraftingTakeover"] = "Open the UPM Crafting tab automatically"
+L["SettingsCraftingTakeoverDesc"] = "Off by default. When you open a profession, the normal Blizzard crafting window opens — and a UPM button on it lets you switch to the UPM Crafting tab whenever you want. Enable this to open straight into the UPM Crafting tab instead of the Blizzard window."
 L["SettingsCraftingRememberLast"] = "Remember the last crafting UI used"
-L["SettingsCraftingRememberLastDesc"] = "Off by default. When on, opening a profession reopens whichever crafting UI you used last — the Blizzard window or the TOGPM Crafting tab — overriding the setting above. Saved per character."
+L["SettingsCraftingRememberLastDesc"] = "Off by default. When on, opening a profession reopens whichever crafting UI you used last — the Blizzard window or the UPM Crafting tab — overriding the setting above. Saved per character."
 L["SettingsClearQueueOnProfSwitch"] = "Clear craft queue when switching professions"
 L["SettingsClearQueueOnProfSwitchDesc"] = "Off by default. The craft queue is normally kept when you switch the Crafting tab's profession dropdown, so you can move between professions toward one goal without losing it. Enable this to empty the queue each time you switch professions."
 L["SettingsDevHeader"]      = "Developer"
@@ -427,7 +427,7 @@ L["SettingsViewLogDesc"]    = "Open a scrollable list of recent sync events (las
 L["SettingsClearLog"]       = "Clear sync log"
 L["SettingsClearLogConfirm"]= "Clear all sync log entries?"
 L["SettingsCrossGuildHeader"] = "Cross-Guild Sharing"
-L["SettingsCrossGuildDesc"]   = "Share profession data across allied guilds. The allied-guild list lives in GuildRoster and is shared by every TOG addon (one list, set once); list each allied guild below (one per line, exact in-game name). Their rosters arrive through GuildRoster — pull once from any online member of theirs and it keeps itself current — and TOGPM syncs recipes, cooldowns and skills with them. Allied guilds must be on the same faction."
+L["SettingsCrossGuildDesc"]   = "Share profession data across allied guilds. The allied-guild list lives in GuildRoster and is shared by every TOG addon (one list, set once); list each allied guild below (one per line, exact in-game name). Their rosters arrive through GuildRoster — pull once from any online member of theirs and it keeps itself current — and UPM syncs recipes, cooldowns and skills with them. Allied guilds must be on the same faction."
 L["SettingsSisterGuilds"]     = "Allied guild names"
 L["SettingsSisterGuildsDesc"] = "One guild name per line, exactly as it appears in-game (no faction prefix). Officers and the guild leader only — the list is shared with the whole guild. Members see it but can't change it. Same list as /guildroster sisters."
 L["SettingsGuildAbbrevs"] = "Allied guild tags"
@@ -444,7 +444,7 @@ L["SettingsCrossGuildDiagRefresh"] = "Refresh"
 L["SettingsCrossGuildDiagRefreshDesc"] = "Re-read the live cross-guild state and update the panel above."
 L["SettingsCrossGuildPullHeader"] = "Manual pull (testing)"
 L["SettingsCrossGuildPull"]   = "Pull from player"
-L["SettingsCrossGuildPullDesc"] = "Enter the name of an online member of an allied guild (Name-Realm for another realm) to pull their roster + crafter data now. Same as /togpm pullroster. One pull is enough: GuildRoster keeps the roster current from then on. The diagnostics above refresh automatically."
+L["SettingsCrossGuildPullDesc"] = "Enter the name of an online member of an allied guild (Name-Realm for another realm) to pull their roster + crafter data now. Same as /upm pullroster. One pull is enough: GuildRoster keeps the roster current from then on. The diagnostics above refresh automatically."
 L["SettingsCrossGuildSyncNow"]     = "Sync allied-guild list to my guild now"
 L["SettingsCrossGuildSyncNowDesc"] = "Send your allied-guild list and the allied rosters you hold to your guild immediately so other members pick them up. Both also propagate automatically — when the list changes, and every few minutes."
 
@@ -457,7 +457,7 @@ L["SyncLogNoEntries"]       = "|cffaaaaaa(no sync events recorded yet)|r"
 -- ---------------------------------------------------------------------------
 -- Minimap
 -- ---------------------------------------------------------------------------
-L["MinimapHidden"]          = "Minimap button hidden. Use |cffda8cff/togpm minimap|r to restore."
+L["MinimapHidden"]          = "Minimap button hidden. Use |cffFF8000/upm minimap|r to restore."
 
 -- ---------------------------------------------------------------------------
 -- Tooltip
@@ -473,13 +473,13 @@ L["AlertReadyAllFormat"]    = "|cff00ff00Ready to craft:|r %s \195\151 %d  (all 
 -- Shopping list crafter alert
 L["ShoppingAlertEnable"]               = "Enable crafter alert for this recipe"
 L["ShoppingAlertDisable"]              = "Disable crafter alert for this recipe"
-L["AlertCrafterOnline"]                = "|cffFFD700[TOGPM]|r %s is online — can craft: %s"
-L["AlertCrafterOnlineAlt"]             = "|cffFFD700[TOGPM]|r %s is online (alt of %s) — can craft: %s"
+L["AlertCrafterOnline"]                = "|cffFFD700[UPM]|r %s is online — can craft: %s"
+L["AlertCrafterOnlineAlt"]             = "|cffFFD700[UPM]|r %s is online (alt of %s) — can craft: %s"
 
 -- Cooldown-ready alert (own characters only; toggled per row in the Cooldowns tab)
 L["CooldownAlertEnable"]               = "Enable ready alert for this cooldown"
 L["CooldownAlertDisable"]              = "Disable ready alert for this cooldown"
-L["AlertCooldownReady"]                = "|cff00ffff[TOGPM]|r Cooldown ready: %s — %s"
+L["AlertCooldownReady"]                = "|cff00ffff[UPM]|r Cooldown ready: %s — %s"
 
 -- Settings
 L["SettingsAlertsHeader"]              = "Crafter Alerts"
@@ -533,7 +533,7 @@ L["GuideStopDesc"]               = "Take Questbook's HUD off whatever it is guid
 L["GuideStopIdle"]               = "Questbook is not guiding you to anything."
 L["GuideStopped"]                = "Guide stopped."
 L["TooltipSettingsTitle"]        = "Settings"
-L["TooltipSettingsDesc"]         = "Open the TOG Profession Master settings panel (|cffffd700ESC > Options > AddOns > TOG Profession Master|r). Same target as |cffffd700/togpm settings|r and Shift+left-click on the minimap button."
+L["TooltipSettingsDesc"]         = "Open the Ultimate Profession Master settings panel (|cffffd700ESC > Options > AddOns > Ultimate Profession Master|r). Same target as |cffffd700/upm settings|r and Shift+left-click on the minimap button."
 L["TooltipWhisperRightClick"]    = "Right-click to whisper"
 L["TooltipClickTransmutes"]      = "Click to see transmutes"
 L["TooltipClickDetailsFormat"]   = "Click to see %s"
@@ -556,6 +556,18 @@ L["MailMsgSplitNotLanded"]  = "The split stacks did not land in your bags \226\1
 L["MailMsgAttachedListFormat"] = "Attached %s for %s."
 L["MailMsgSendRefusedFormat"] = "The mail to %s was not sent: %s"
 L["MailMsgSendFailedFormat"] = "The mail to %s was not sent. The game gave no reason."
+L["MailMsgClickAgainToSend"] = "Supply mail ready \226\128\148 click Mail again to send it."
+L["MailMsgStillPreparing"]   = "Still preparing the supply mail \226\128\148 click again in a moment to send it."
+L["MailMsgStillSending"]     = "The supply mail is on its way."
+L["MailMsgSendNotReady"]     = "The mailbox will not send this yet \226\128\148 check the To and Subject boxes."
+L["MailMsgSendBlocked"]      = "The game would not let the addon send this mail \226\128\148 click the mailbox's Send button instead."
+L["MailMsgSentFormat"]       = "Supply mail sent to %s."
+L["ColMatsSent"]             = "Sent"
+L["ColMatsSentDesc"]         = "When you last mailed this crafter the materials for this cooldown. Clears once they use the cooldown."
+L["MatsSentTooltipFormat"]   = "Materials mailed %s. Clears once they use the cooldown."
+L["SentAgoMinutes"]          = "%dm ago"
+L["SentAgoHours"]            = "%dh ago"
+L["SentAgoDays"]             = "%dd ago"
 
 -- ---------------------------------------------------------------------------
 -- Minimap button tooltip (LDB)
@@ -566,14 +578,15 @@ L["MinimapTooltipShiftLeft"]   = "|cffffd100Shift+Left|r to open settings"
 L["MinimapButtonShown"]        = "Minimap button shown."
 
 -- ---------------------------------------------------------------------------
--- Slash command help (/togpm help)
--- Command names (/togpm, reagents, sync, etc.) are NOT translated.
+-- Slash command help (/upm help)
+-- Command names (/upm, reagents, sync, etc.) are NOT translated.
 -- ---------------------------------------------------------------------------
-L["SlashHelpHeader"]        = "|cffda8cffTOG Profession Master|r \226\128\148 commands:"
+L["SlashHelpHeader"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r \226\128\148 commands:"
 L["SlashHelpOpen"]          = "open profession browser"
 L["SlashHelpReagents"]      = "open missing reagents"
 L["SlashHelpMinimap"]       = "show minimap button"
 L["SlashHelpPurge"]         = "open purge dialog"
+L["SlashHelpSettings"]      = "open the settings panel"
 L["SlashHelpSync"]          = "force full guild re-sync"
 L["SlashHelpStatus"]        = "dump sync/comm diagnostic info"
 L["SlashHelpVersionCheck"]  = "check addon versions across guild"

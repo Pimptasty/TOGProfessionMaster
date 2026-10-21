@@ -656,6 +656,14 @@ end
 -- worked out by RefreshDetail, which runs on every bag update. Columns, left to
 -- right: icon, "<need>x name", the line cost under the "Cost" heading, [Bank],
 -- [AH], and bags/bank (green when bags + bank cover the need, else red).
+-- A reagent's link. The engine's tables spell it `link`; ResolveReagentName
+-- heals a cold reagent's link from LibItemDB into `itemLink`, the spelling
+-- every other reagent table in the addon uses. Read both, so a healed link
+-- reaches the hover and the [Bank] dialog (Peer Review, thread 13bd501f).
+local function ReagentLink(r)
+    return r.link or r.itemLink
+end
+
 function CraftingTab:BuildReagentList(host)
     return addon.W.RowList:New(host, {
         rowHeight  = DREAG_H,
@@ -668,7 +676,13 @@ function CraftingTab:BuildReagentList(host)
             -- Eternal Essence"): as a third number in the count column it read
             -- as an inventory figure.
             { key = "name", header = L["CraftReagents"], headerTip = L["CraftReagentsDesc"], sortable = false,
-              format = function(_, e) return Color("ffa0a0a0", e.need .. "x ") .. (e.r.name or "?") end },
+              -- Through ResolveReagentName, the one reagent-name chain: a
+              -- reagent the API handed over without a name (a cold item) gets
+              -- LibItemDB's, not "?".
+              format = function(_, e)
+                  local name = addon:ResolveReagentName(e.r)
+                  return Color("ffa0a0a0", e.need .. "x ") .. (name ~= "" and name or "?")
+              end },
             { key = "cost", width = DREAG_COST_W, align = "RIGHT", sortable = false,
               header = L["CraftColCostHdr"], headerTip = L["CraftColCostHdrDesc"],
               format = function(_, e) return e.costText end },
@@ -686,7 +700,7 @@ function CraftingTab:BuildReagentList(host)
               end,
               onClick = function(e)
                   if addon.Bank.ShowRequestDialog then
-                      addon.Bank.ShowRequestDialog(e.r.itemId, e.r.name, e.r.link)
+                      addon.Bank.ShowRequestDialog(e.r.itemId, addon:ResolveReagentName(e.r), ReagentLink(e.r))
                   end
               end },
             { key = "ahBtn", width = 30, button = true, sortable = false,
@@ -698,15 +712,16 @@ function CraftingTab:BuildReagentList(host)
               text = function() return "|cFF88CCFF[AH]|r" end,
               tip  = function() return L["TooltipAHTitle"], L["CraftAHReagentDesc"] end,
               onClick = function(e)
-                  if addon.AH.SearchFor then addon.AH.SearchFor(e.r.name) end
+                  if addon.AH.SearchFor then addon.AH.SearchFor(addon:ResolveReagentName(e.r)) end
               end },
             { key = "cnt", width = 60, align = "RIGHT", sortable = false, gapBefore = 2,
               format = function(_, e) return e.cntText end },
         },
         onRowEnter = function(e, _, _, rowFrame)
-            if not e.r.link then return end
+            local link = ReagentLink(e.r)
+            if not link then return end
             addon.Tooltip.Owner(rowFrame)
-            addon.ItemLink.SetItem(GameTooltip, e.r.link)
+            addon.ItemLink.SetItem(GameTooltip, link)
             GameTooltip:Show()
         end,
         onRowLeave = function()

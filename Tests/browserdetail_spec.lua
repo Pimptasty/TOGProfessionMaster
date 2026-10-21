@@ -341,6 +341,82 @@ describe("the Known By list", function()
 		assert.equal(2, #shownCrafterRows(tab))
 	end)
 
+	-- Operator, in game 2026-10-21: crafter names were cut at the name column
+	-- while the count/[Bank]/[AH] cells beside them were empty. The name column
+	-- spans (LibAceGUIWidgets RowList col.span, MINOR 46): on a crafter or
+	-- no-data row it runs to the end (stop 0). The same screenshot cut a reagent
+	-- ("Refreshing...") while its [Bank]/[AH] were hidden, so the count is the
+	-- LAST column and a reagent name runs over hidden buttons up to it.
+	it("lets a crafter's name run across the empty reagent columns", function()
+		local tab = panel()
+		tab:DrawDetail(entryWith({ crafters = {
+			{ name = "Cactusbrichz (Shellznchz) <Other>", charKey = MATE, online = true },
+		} }))
+		local list = tab._dpList
+		local nameIdx, countIdx, bankIdx, ahIdx
+		for i, col in ipairs(list.columns) do
+			if col.key == "name" then nameIdx = i end
+			if col.key == "count" then countIdx = i end
+			if col.key == "bankBtn" then bankIdx = i end
+			if col.key == "ahBtn" then ahIdx = i end
+		end
+		assert.equal(#list.columns, countIdx, "the count is the last column")
+		-- A hidden [Bank]/[AH] gives its slot back on that row (RowList
+		-- col.collapse, MINOR 46; "Raw Brillian..." in the operator's
+		-- Brilliant Smallfish screenshot sat before an empty [AH] slot).
+		for _, col in ipairs(list.columns) do
+			if col.key == "bankBtn" or col.key == "ahBtn" then
+				assert.is_true(col.collapse, col.key .. " collapses when hidden")
+			end
+		end
+		-- RowList:RowPlan (LibAceGUIWidgets MINOR 47, public, thread e8e490b8)
+		-- returns (span plan, collapse plan); it replaced the private _rowPlan,
+		-- which had already been renamed once under this spec.
+		assert.is_function(list.RowPlan, "the loaded LibAceGUIWidgets has RowPlan (MINOR 47)")
+		assert.same({ [nameIdx] = 0 }, (list:RowPlan(shownCrafterRows(tab)[1])))
+		local span, collapse = list:RowPlan(shownReagentRows(tab)[1])
+		assert.same({ [nameIdx] = countIdx }, span)
+		-- This fixture's reagent has no bank or AH stock: both slots close up.
+		assert.same({ [bankIdx] = true, [ahIdx] = true }, collapse)
+
+		tab:DrawDetail(entryWith({ crafters = {} }))
+		assert.same({ [nameIdx] = 0 }, (tab._dpList:RowPlan(shownCrafterRows(tab)[1])))
+	end)
+
+	-- Peer Review F1 on self-audit 3ea3379a: a released LibAceGUIWidgets below
+	-- MINOR 46 ignores span and collapse, so the count-last order would park
+	-- the count behind two always-reserved button slots. Below 46 the list
+	-- keeps v1.6.1's order. The loaded RowList here is the working copy at 46;
+	-- this pins TOGPM's branch on the MINOR it was handed, not an older RowList.
+	it("keeps the count beside the name on a LibAceGUIWidgets below MINOR 46", function()
+		local saved = ns.W_LOADED_MINOR
+		ns.W_LOADED_MINOR = BT.DETAIL_SPAN_MINOR - 1
+		local ok, err = pcall(function()
+			local tab = panel()
+			tab:DrawDetail(entryWith())
+			local keys = {}
+			for i, col in ipairs(tab._dpList.columns) do keys[i] = col.key end
+			assert.same({ "_icon", "name", "count", "bankBtn", "ahBtn" }, keys)
+			assert.is_truthy(cell(tab, "count", shownReagentRows(tab)[1]):find("\195\151", 1, true))
+		end)
+		ns.W_LOADED_MINOR = saved
+		assert(ok, err)
+	end)
+
+	it("puts the count last on MINOR 46 and later", function()
+		local saved = ns.W_LOADED_MINOR
+		ns.W_LOADED_MINOR = BT.DETAIL_SPAN_MINOR
+		local ok, err = pcall(function()
+			local tab = panel()
+			tab:DrawDetail(entryWith())
+			local keys = {}
+			for i, col in ipairs(tab._dpList.columns) do keys[i] = col.key end
+			assert.same({ "_icon", "name", "bankBtn", "ahBtn", "count" }, keys)
+		end)
+		ns.W_LOADED_MINOR = saved
+		assert(ok, err)
+	end)
+
 	it("colours your own character differently from a guildmate", function()
 		local tab = panel()
 		tab:DrawDetail(entryWith({ crafters = {

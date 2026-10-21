@@ -396,6 +396,9 @@ function M.boot()
 	-- silence ns.Print and do not put it back, so a spec that saves ns.Print in
 	-- before_each can save another file's stub; restore this one instead.
 	M.addonPrint = ns.Print
+	-- The same for the AceAddon object's Print/Printf (the "UPM:" prefix lives
+	-- there), which slash_spec, perf_spec and sisterguild_spec replace.
+	M.libPrint, M.libPrintf = ns.lib.Print, ns.lib.Printf
 
 	booted = ns
 	return ns
@@ -894,6 +897,7 @@ function M.resetDb()
 	-- Many specs silence ns.Print and never put it back; every reset starts
 	-- from the addon's own, so one file's stub cannot reach the next file.
 	ns.Print = M.addonPrint
+	ns.lib.Print, ns.lib.Printf = M.libPrint, M.libPrintf
 	local g  = ns.guildDb.global
 	for key, value in pairs(g) do
 		if type(value) == "table" then

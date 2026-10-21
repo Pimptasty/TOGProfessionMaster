@@ -129,7 +129,7 @@ describe("vendor prices render on an ordinary item with no crafting at all", fun
 		ns.Price.GetVendorBuy = function() return 8000, "vendor-static" end
 		local t = tip()
 		IL.AppendVendorPrices(t, QUAIL)
-		assert.is_truthy(textOf(t):find("TOGPM", 1, true))
+		assert.is_truthy(textOf(t):find("UPM", 1, true))
 	end)
 
 	it("does NOT brand itself when anything else already did", function()
@@ -140,7 +140,7 @@ describe("vendor prices render on an ordinary item with no crafting at all", fun
 		local t = tip()
 		t._togpmBranded = true
 		IL.AppendVendorPrices(t, QUAIL)
-		local _, count = textOf(t):gsub("TOGPM", "")
+		local _, count = textOf(t):gsub("UPM", "")
 		assert.equal(0, count)
 	end)
 
@@ -150,10 +150,10 @@ describe("vendor prices render on an ordinary item with no crafting at all", fun
 		cacheItem(QUAIL, 2000)
 		ns.Price.GetVendorBuy = function() return 8000, "vendor-static" end
 		local t = tip()
-		t:AddLine("[TOGPM] Bob")
+		t:AddLine("[UPM] Bob")
 		t._togpmBranded = true                  -- as the crafters line leaves it
 		IL.AppendVendorPrices(t, QUAIL)
-		local _, count = textOf(t):gsub("TOGPM", "")
+		local _, count = textOf(t):gsub("UPM", "")
 		assert.equal(1, count)
 		assert.is_true(t._togpmBranded)
 	end)

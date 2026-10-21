@@ -1,4 +1,4 @@
--- TOG Profession Master -- Thai (thTH) locale
+-- Ultimate Profession Master -- Thai (thTH) locale
 --
 -- IMPORTANT: thTH is NOT a WoW-recognized locale code. GetLocale() will
 -- never return "thTH" on any Blizzard client, so AceLocale will never
@@ -16,8 +16,8 @@ local L = addon.NewLocale("thTH")
 -- ---------------------------------------------------------------------------
 -- Main window
 -- ---------------------------------------------------------------------------
-L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "TOG Profession Master|r"
-L["SyncLogTitle"]       = "TOG Profession Master — บันทึกการซิงค์"
+L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r"
+L["SyncLogTitle"]       = "Ultimate Profession Master — บันทึกการซิงค์"
 
 -- Tab labels
 L["TabProfessions"]     = "วิชาชีพ"
@@ -193,9 +193,9 @@ L["MissingSrcUnknown"]          = "ไม่ทราบ"
 -- Settings: global item tooltip lines
 L["SettingsTooltipHeader"]          = "คำแนะนำไอเทม"
 L["SettingsTooltipShowCrafters"]    = "แสดงผู้ผลิตในกิลด์บนคำแนะนำไอเทม"
-L["SettingsTooltipShowCraftersDesc"]= "เพิ่มบรรทัด [TOGPM] ที่แสดงรายชื่อสมาชิกกิลด์ทุกคนที่สามารถผลิตไอเทมที่คุณกำลังชี้อยู่ ออนไลน์เป็นสีขาว ออฟไลน์เป็นสีเทา ไอเทมผูกเมื่อหยิบจะถูกข้าม (ไม่สามารถซื้อขายได้อยู่แล้ว)"
+L["SettingsTooltipShowCraftersDesc"]= "เพิ่มบรรทัด [UPM] ที่แสดงรายชื่อสมาชิกกิลด์ทุกคนที่สามารถผลิตไอเทมที่คุณกำลังชี้อยู่ ออนไลน์เป็นสีขาว ออฟไลน์เป็นสีเทา ไอเทมผูกเมื่อหยิบจะถูกข้าม (ไม่สามารถซื้อขายได้อยู่แล้ว)"
 L["SettingsTooltipShowIds"]         = "แสดง ID ไอเทม / ID คาถาบนคำแนะนำไอเทม"
-L["SettingsTooltipShowIdsDesc"]     = "เพิ่มบรรทัด [TOGPM] พร้อม ID ไอเทมและ (ถ้าทราบ) ID คาถาของสูตร มีประโยชน์ส่วนใหญ่สำหรับการวินิจฉัยไอคอนผิดหรือสูตรที่ขาด — วาง ID ใน Wowhead เพื่อตรวจสอบการจับคู่"
+L["SettingsTooltipShowIdsDesc"]     = "เพิ่มบรรทัด [UPM] พร้อม ID ไอเทมและ (ถ้าทราบ) ID คาถาของสูตร มีประโยชน์ส่วนใหญ่สำหรับการวินิจฉัยไอคอนผิดหรือสูตรที่ขาด — วาง ID ใน Wowhead เพื่อตรวจสอบการจับคู่"
 
 -- Settings: TBC Anniversary phase filter
 L["SettingsTBCPhaseHeader"]     = "เฟส TBC Anniversary"
@@ -247,7 +247,7 @@ L["SyncLogNoEntries"]       = "|cffaaaaaa(ยังไม่มีกิจก�
 -- ---------------------------------------------------------------------------
 -- Minimap
 -- ---------------------------------------------------------------------------
-L["MinimapHidden"]          = "ซ่อนปุ่มมินิแมปแล้ว ใช้ |cffda8cff/togpm minimap|r เพื่อกู้คืน"
+L["MinimapHidden"]          = "ซ่อนปุ่มมินิแมปแล้ว ใช้ |cffFF8000/upm minimap|r เพื่อกู้คืน"
 
 -- ---------------------------------------------------------------------------
 -- Tooltip
@@ -262,13 +262,13 @@ L["AlertReadyFormat"]       = "|cff00ff00พร้อมผลิต:|r %s × %d
 -- Shopping list crafter alert
 L["ShoppingAlertEnable"]               = "เปิดใช้งานการแจ้งเตือนผู้ผลิตสำหรับสูตรนี้"
 L["ShoppingAlertDisable"]              = "ปิดการแจ้งเตือนผู้ผลิตสำหรับสูตรนี้"
-L["AlertCrafterOnline"]                = "|cffFFD700[TOGPM]|r %s ออนไลน์ — สามารถผลิต: %s"
-L["AlertCrafterOnlineAlt"]             = "|cffFFD700[TOGPM]|r %s ออนไลน์ (ตัวรองของ %s) — สามารถผลิต: %s"
+L["AlertCrafterOnline"]                = "|cffFFD700[UPM]|r %s ออนไลน์ — สามารถผลิต: %s"
+L["AlertCrafterOnlineAlt"]             = "|cffFFD700[UPM]|r %s ออนไลน์ (ตัวรองของ %s) — สามารถผลิต: %s"
 
 -- Cooldown-ready alert
 L["CooldownAlertEnable"]               = "เปิดใช้งานการแจ้งเตือนพร้อมสำหรับคูลดาวน์นี้"
 L["CooldownAlertDisable"]              = "ปิดการแจ้งเตือนพร้อมสำหรับคูลดาวน์นี้"
-L["AlertCooldownReady"]                = "|cff00ffff[TOGPM]|r คูลดาวน์พร้อม: %s — %s"
+L["AlertCooldownReady"]                = "|cff00ffff[UPM]|r คูลดาวน์พร้อม: %s — %s"
 
 -- Settings
 L["SettingsAlertsHeader"]              = "การแจ้งเตือนผู้ผลิต"
@@ -308,7 +308,7 @@ L["TooltipAHTitle"]              = "ค้นหาตลาดประมู�
 L["TooltipAHDescScroll"]         = "เปิดม้วนสูตรนี้ในการค้นหา AH"
 L["TooltipAHDescReagent"]        = "เปิดส่วนผสมนี้ในการค้นหา AH"
 L["TooltipSettingsTitle"]        = "การตั้งค่า"
-L["TooltipSettingsDesc"]         = "เปิดแผงการตั้งค่า TOG Profession Master (|cffffd700ESC > ตัวเลือก > ส่วนเสริม > TOG Profession Master|r) เป้าหมายเดียวกับ |cffffd700/togpm settings|r และ Shift+คลิกซ้ายที่ปุ่มมินิแมป"
+L["TooltipSettingsDesc"]         = "เปิดแผงการตั้งค่า Ultimate Profession Master (|cffffd700ESC > ตัวเลือก > ส่วนเสริม > Ultimate Profession Master|r) เป้าหมายเดียวกับ |cffffd700/upm settings|r และ Shift+คลิกซ้ายที่ปุ่มมินิแมป"
 L["TooltipWhisperRightClick"]    = "คลิกขวาเพื่อกระซิบ"
 L["TooltipClickTransmutes"]      = "คลิกเพื่อดูการแปรธาตุ"
 L["TooltipClickDetailsFormat"]   = "คลิกเพื่อดู %s"
@@ -333,13 +333,14 @@ L["MinimapTooltipShiftLeft"]   = "|cffffd100Shift+ซ้าย|r เพื่อ
 L["MinimapButtonShown"]        = "แสดงปุ่มมินิแมปแล้ว"
 
 -- ---------------------------------------------------------------------------
--- Slash command help (/togpm help) -- ชื่อคำสั่งไม่แปล
+-- Slash command help (/upm help) -- ชื่อคำสั่งไม่แปล
 -- ---------------------------------------------------------------------------
-L["SlashHelpHeader"]        = "|cffda8cffTOG Profession Master|r — คำสั่ง:"
+L["SlashHelpHeader"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r — คำสั่ง:"
 L["SlashHelpOpen"]          = "เปิดเบราว์เซอร์วิชาชีพ"
 L["SlashHelpReagents"]      = "เปิดส่วนผสมที่ขาด"
 L["SlashHelpMinimap"]       = "แสดงปุ่มมินิแมป"
 L["SlashHelpPurge"]         = "เปิดกล่องโต้ตอบล้างข้อมูล"
+L["SlashHelpSettings"]      = "เปิดแผงการตั้งค่า"
 L["SlashHelpSync"]          = "บังคับซิงค์กิลด์เต็มรูปแบบใหม่"
 L["SlashHelpStatus"]        = "ถ่ายโอนข้อมูลการวินิจฉัย sync/comm"
 L["SlashHelpVersionCheck"]  = "ตรวจสอบเวอร์ชันส่วนเสริมในกิลด์"
@@ -398,7 +399,7 @@ L["CraftHaveMaterials"]   = "Have Materials"
 L["CraftCostLabel"]       = "Crafting Cost"
 L["CraftCostNone"]        = "—"
 L["CraftColCostHdr"]      = "Cost"
-L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else TOGPM's own scan) or vendor; \"—\" when no price is known yet."
+L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else UPM's own scan) or vendor; \"—\" when no price is known yet."
 L["CraftSearchDesc"]      = "Filter recipes by name or by what they do. Searches the enriched effect text too, so \"5 damage\", \"agility\", or \"mining\" all find matching recipes."
 L["CraftColRecipe"]       = "Recipe Name"
 L["CraftColRecipeDesc"]   = "The recipes you can make in this profession. Colour shows skill-up difficulty (orange/yellow/green/grey)."

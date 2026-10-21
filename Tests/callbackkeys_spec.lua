@@ -60,6 +60,7 @@ describe("GUILD_DATA_UPDATED after the real OnEnable", function()
 		-- The re-warm is debounced on a timer; run it at once so the count says
 		-- whether it was scheduled at all.
 		_G.C_Timer.NewTimer = function(_, fn)
+			---@diagnostic disable-next-line: missing-parameter
 			fn()
 			return { Cancel = function() end }
 		end

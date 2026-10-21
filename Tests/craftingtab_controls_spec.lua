@@ -705,6 +705,45 @@ describe("the reagent rows' Bank and AH buttons", function()
 		assert.equal(134400, icon({ r = {} }))
 		assert.equal(9, icon({ r = { texture = 9 } }))
 	end)
+
+	-- The modern-client reagent path names a reagent from the client cache
+	-- only, so a cold item reached this column with no name and drew as "?"
+	-- while LibItemDB knew it (self-audit b37931c3).
+	it("name a reagent the API handed over without a name from LibItemDB", function()
+		stub(ns, "_itemDB", { GetName = function(_, id) return id == 3821 and "Goldthorn" or nil end })
+		select(2)
+		local fmt = column(CT._dpReagList, "name").format
+		local text = fmt(nil, { need = 2, r = { itemId = 3821 } })
+		assert.is_truthy(text:find("Goldthorn", 1, true))
+		assert.is_falsy(text:find("?", 1, true))
+		assert.is_truthy(fmt(nil, { need = 1, r = { name = "Silverleaf" } }):find("Silverleaf", 1, true))
+		assert.is_truthy(fmt(nil, { need = 1, r = {} }):find("?", 1, true))
+	end)
+
+	-- Peer Review F2 on thread 13bd501f: the heal writes `itemLink`, the
+	-- engine's tables say `link`, and the hover and [Bank] read only `link`.
+	it("hover and request a reagent through the link LibItemDB healed", function()
+		local healed = "|cffffffff|Hitem:3821::::::::|h[Goldthorn]|h|r"
+		stub(ns, "_itemDB", {
+			GetName = function(_, id) return id == 3821 and "Goldthorn" or nil end,
+			GetLink = function(_, id) return id == 3821 and healed or nil end,
+		})
+		local requested
+		stub(ns, "Bank", {
+			GetStock = function() return 1 end,
+			ButtonText = function() return "[Bank]" end,
+			StatusText = function() return nil end,
+			ShowRequestDialog = function(id, name, link) requested = { id, name, link } end,
+		})
+		select(2)
+		local e = { need = 2, r = { itemId = 3821 } }
+		column(CT._dpReagList, "bankBtn").onClick(e)
+		assert.same({ 3821, "Goldthorn", healed }, requested)
+		GameTooltip:Hide()
+		CT._dpReagList.onRowEnter(e, nil, nil, CreateFrame("Frame"))
+		assert.is_true(GameTooltip:IsShown())
+		CT._dpReagList.onRowLeave(e)
+	end)
 end)
 
 describe("the crafting cost line", function()

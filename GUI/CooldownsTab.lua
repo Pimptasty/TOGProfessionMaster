@@ -194,6 +194,7 @@ local COL = {
     ah      = 36,
     bank    = 50,
     mail    = 20,
+    sent    = 64,
     time    = 80,
     alert   = 18,
 }
@@ -727,10 +728,10 @@ CooldownsTab._CountItemInBags           = CdMail_CountItemInBags
 CooldownsTab._CalculateFulfillmentPlan  = CdMail_CalculateFulfillmentPlan
 
 local function CdMail_Say(msg)
-    DEFAULT_CHAT_FRAME:AddMessage("|cFF88CCCCTOG Profession Master:|r " .. msg)
+    DEFAULT_CHAT_FRAME:AddMessage("|cFF88CCCCUPM:|r " .. msg)
 end
 local function CdMail_Complain(msg)
-    DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444TOG Profession Master:|r " .. msg)
+    DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444UPM:|r " .. msg)
 end
 
 --- After a supply mail is filled in, say in chat why the game refused it.
@@ -767,6 +768,84 @@ local function CdMail_IsMailError(errorType, message)
 end
 CooldownsTab._IsMailError = CdMail_IsMailError
 
+-- ---------------------------------------------------------------------------
+-- The supply mail in flight, and the record of who has been sent materials
+-- ---------------------------------------------------------------------------
+-- One supply mail at a time, in three phases:
+--   "building" -- splits and attaches are running on their timers. A click now
+--                 is ignored: a second split landed on the first one's empty
+--                 slot and stacked, so a 1-reagent mail carried 2 (operator, in
+--                 game 2026-10-21, a Salt Shaker mail with 2 Deeprock Salt).
+--   "ready"    -- attached and addressed. The same row's button now SENDS it,
+--                 so the player keeps clicking one button instead of reaching
+--                 for the mailbox's Send (operator, same day).
+--   "sending"  -- sent, waiting for MAIL_SEND_SUCCESS or MAIL_FAILED.
+-- `key` names the row (CooldownsTab.SentKey) and `expiresAt` its cooldown at
+-- the time, which the "Sent" column compares against.
+-- `sendOk` is what the Send hook saw (CdMail_HookSend): false when the mail
+-- that went was not ours -- another recipient, or our items detached.
+local cdMail = {}
+local function CdMail_Reset()
+    cdMail.phase, cdMail.key, cdMail.expiresAt, cdMail.recipient = nil, nil, nil, nil
+    cdMail.sendOk = nil
+end
+CooldownsTab._MailState = cdMail
+CooldownsTab._MailReset = CdMail_Reset
+
+--- The record key for a cooldown row: the crafter plus the cooldown. Every
+--- transmute shares one cooldown, so a transmute group and each transmute in
+--- its popup share one key.
+function CooldownsTab.SentKey(charKey, row)
+    local what = (row.isTransmuteGroup or row.isTransmute) and "transmute"
+        or tostring(row.spellId or row.cdName or "")
+    return tostring(charKey) .. "|" .. what
+end
+
+local SENT_EXPIRY_SLACK = 60   -- seconds; see CooldownsTab:SentInfo
+
+local function SentStore()
+    local char = addon.lib.db.char
+    char.supplySent = char.supplySent or {}
+    return char.supplySent
+end
+
+--- Remember that materials went to this row's crafter. Kept per character
+--- (the sender's own record), with the cooldown's expiry at the time.
+local function CdMail_RecordSent(key, expiresAt)
+    if not key then return end
+    SentStore()[key] = { at = GetServerTime(), expiresAt = expiresAt }
+end
+
+--- The sent record for a row, or nil. A record stops counting the moment the
+--- crafter uses the cooldown -- its expiry moves -- because the materials are
+--- spent then; a stale record is dropped.
+function CooldownsTab:SentInfo(row)
+    if not (row and row.charKey) then return nil end
+    local key = CooldownsTab.SentKey(row.charKey, row)
+    local store = SentStore()
+    local rec = store[key]
+    if not rec then return nil end
+    -- "Used" is the expiry jumping FORWARD into the future, not any change:
+    -- cooldowns travel as seconds-remaining and are turned back into an
+    -- absolute time on receipt, so a resync of the same cooldown lands a few
+    -- seconds either side of what was recorded. A minute of slack absorbs that.
+    local now, exp = GetServerTime(), tonumber(row.expiresAt) or 0
+    if exp > now and exp > (tonumber(rec.expiresAt) or 0) + SENT_EXPIRY_SLACK then
+        store[key] = nil
+        return nil
+    end
+    return rec
+end
+
+--- "5m ago", "3h ago", "2d ago" -- how long since the mail went.
+local function SentAgo(at)
+    local s = math.max(0, GetServerTime() - (at or 0))
+    if s < 3600 then return string.format(L["SentAgoMinutes"], math.max(1, math.floor(s / 60))) end
+    if s < 86400 then return string.format(L["SentAgoHours"], math.floor(s / 3600)) end
+    return string.format(L["SentAgoDays"], math.floor(s / 86400))
+end
+CooldownsTab._SentAgo = SentAgo
+
 local cdMailWatch
 local function CdMail_WatchSend(recipient)
     if not cdMailWatch then
@@ -781,9 +860,33 @@ local function CdMail_WatchSend(recipient)
                 return
             elseif event == "MAIL_FAILED" then
                 CdMail_Complain(string.format(L["MailMsgSendFailedFormat"], self.recipient or "?"))
+                -- The items are still attached: the next click tries again.
+                if cdMail.phase == "sending" then cdMail.phase = "ready" end
                 return
+            elseif event == "ADDON_ACTION_FORBIDDEN" or event == "ADDON_ACTION_BLOCKED" then
+                -- (isTainted, function) -- RestrictedActionsDocumentation.lua;
+                -- only the function name is read here. A
+                -- refused SendMail from our click raises no MAIL_FAILED, and
+                -- the mailbox's handler disabled its Send button before the
+                -- call (MailFrame.lua:845), so both would sit until the
+                -- mailbox closed. Hand the send back to the player instead.
+                if cdMail.phase == "sending" and type(message) == "string" and message:find("SendMail") then
+                    cdMail.phase = "ready"
+                    if SendMailFrame_EnableSendMailButton then SendMailFrame_EnableSendMailButton() end
+                    CdMail_Complain(L["MailMsgSendBlocked"])
+                end
+                return
+            elseif event == "MAIL_SEND_SUCCESS" then
+                -- By our button or the mailbox's own Send: either way it went,
+                -- unless the Send hook saw a different mail go.
+                if cdMail.key and cdMail.sendOk ~= false then
+                    CdMail_RecordSent(cdMail.key, cdMail.expiresAt)
+                    CdMail_Say(string.format(L["MailMsgSentFormat"], self.recipient or "?"))
+                    if CooldownsTab._rowList then CooldownsTab._rowList:Refresh() end
+                end
             end
-            -- MAIL_SEND_SUCCESS or MAIL_CLOSED: stop listening.
+            -- MAIL_SEND_SUCCESS or MAIL_CLOSED: this mail is over.
+            CdMail_Reset()
             self:UnregisterAllEvents()
         end)
     end
@@ -792,6 +895,8 @@ local function CdMail_WatchSend(recipient)
     cdMailWatch:RegisterEvent("MAIL_FAILED")
     cdMailWatch:RegisterEvent("MAIL_SEND_SUCCESS")
     cdMailWatch:RegisterEvent("MAIL_CLOSED")
+    cdMailWatch:RegisterEvent("ADDON_ACTION_FORBIDDEN")
+    cdMailWatch:RegisterEvent("ADDON_ACTION_BLOCKED")
 end
 CooldownsTab._WatchSend = CdMail_WatchSend
 
@@ -807,6 +912,27 @@ local function CdMail_MailHasItems()
     end
     return false
 end
+
+--- Note, at the moment a mail is sent, whether it is the supply mail: still
+--- addressed to our recipient and still carrying attachments. Both the
+--- mailbox's Send and our click reach SendMailFrame_SendMail (MailFrame.lua:
+--- 861, :864); MAIL_SEND_SUCCESS itself names no mail, so without this a
+--- player who swapped our items for others and sent them would mark the row
+--- Sent. A post-hook: the send slots are only emptied by the mailbox's reset
+--- on MAIL_SEND_SUCCESS (MailFrame.lua:54-55), so they are still loaded here.
+local cdMailHooked = false
+local function CdMail_OnSendMail()
+    if not cdMail.key then return end
+    local to = SendMailNameEditBox and SendMailNameEditBox:GetText() or nil
+    cdMail.sendOk = (to == cdMail.recipient) and CdMail_MailHasItems()
+end
+local function CdMail_HookSend()
+    if cdMailHooked or type(hooksecurefunc) ~= "function"
+        or type(SendMailFrame_SendMail) ~= "function" then return end
+    hooksecurefunc("SendMailFrame_SendMail", CdMail_OnSendMail)
+    cdMailHooked = true
+end
+CooldownsTab._OnSendMail = CdMail_OnSendMail
 
 --- The first `n` empty carried-bag slots, as { {bag, slot}, ... } -- fewer when the
 --- bags have fewer. Enumerated UP FRONT because a split that has not been picked
@@ -903,16 +1029,19 @@ local function CdMail_AttachSupplyMail(plan, playerName, cooldownName, outputNam
                 end)
             else
                 CdMail_Complain(L["MailMsgSplitNotLanded"])
+                CdMail_Reset()
             end
             return
         end
     end
     if not MailFrame or not MailFrame:IsShown() then
         CdMail_Complain(L["MailMsgOpenMailbox"])
+        CdMail_Reset()
         return
     end
     if CdMail_MailHasItems() then
         CdMail_Complain(L["MailMsgHasItems"])
+        CdMail_Reset()
         return
     end
     -- The Send Mail tab, so the attachments are in front of the player when
@@ -948,6 +1077,7 @@ local function CdMail_AttachSupplyMail(plan, playerName, cooldownName, outputNam
     if not ok then
         for i = attachSlot - 1, 1, -1 do ClickSendMailItemButton(i, true) end
         CdMail_Complain(L["MailMsgCouldNotAttach"])
+        CdMail_Reset()
         return
     end
 
@@ -967,8 +1097,47 @@ local function CdMail_AttachSupplyMail(plan, playerName, cooldownName, outputNam
     if bodyBox then
         bodyBox:SetText(string.format(L["MailBodyFormat"], baseName, outputName, outputName))
     end
+    cdMail.phase, cdMail.recipient = "ready", recipient
+    -- The hint first, so the attached list stays the last word in chat.
+    CdMail_Say(L["MailMsgClickAgainToSend"])
     CdMail_Say(string.format(L["MailMsgAttachedListFormat"], CdMail_DescribeLines(plan.lines), recipient))
+    CdMail_HookSend()
     CdMail_WatchSend(recipient)
+end
+
+--- Send the prepared mail from the player's click, through the mailbox's own
+--- Send button handler (Classic Era MailFrame.lua:844): it clears any money
+--- and COD left in the money boxes, disables the button and calls SendMail
+--- with what the boxes hold, exactly as clicking Send does. SendMail is a
+--- restricted call (SecureTransferDocumentation.lua: HasRestrictions); this
+--- runs inside the click on our button, the same kind of click the mailbox's
+--- Send is. Whether the client accepts it from an addon button is the in-game
+--- check (not verified offline).
+local function CdMail_SendPrepared()
+    if SendMailMailButton and SendMailMailButton.IsEnabled and not SendMailMailButton:IsEnabled() then
+        CdMail_Complain(L["MailMsgSendNotReady"])
+        return
+    end
+    if not (SendMailMailButton_OnClick and SendMailMailButton) then
+        -- No mailbox Send handler to drive: leave the send to the player.
+        CdMail_Complain(L["MailMsgSendNotReady"])
+        return
+    end
+    -- "sending" BEFORE the call: a refused SendMail raises
+    -- ADDON_ACTION_FORBIDDEN synchronously, inside it, and the watcher only
+    -- hands the send back when it sees this phase.
+    cdMail.phase = "sending"
+    -- The annotations declare no parameter; the Classic Era handler is
+    -- `function SendMailMailButton_OnClick(self) self:Disable() ...`
+    -- (MailFrame.lua:844-845), so the button must be passed.
+    local ok, err = pcall(SendMailMailButton_OnClick, SendMailMailButton)
+    if not ok then
+        -- An error inside the handler: nothing is in flight, so nothing will
+        -- end this phase. Back to ready, with the mailbox's Send re-enabled.
+        cdMail.phase = "ready"
+        if SendMailFrame_EnableSendMailButton then SendMailFrame_EnableSendMailButton() end
+        CdMail_Complain(L["MailMsgSendBlocked"] .. " (" .. tostring(err) .. ")")
+    end
 end
 
 --- ONE click, ONE mail, EVERY reagent of the cooldown (v1.1.0). Before this,
@@ -984,10 +1153,32 @@ end
 --- after the last placement and verifies every split landed before it
 --- touches a send slot. Whole stacks with nothing to split attach immediately.
 --- The sequence is TOGBankClassic's FulfillStep, which is in players' hands.
-local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, reagents)
+--- `sent` = { key = CooldownsTab.SentKey(...), expiresAt = <the row's> } names
+--- the row, so a second click on the same row sends and the Sent column can
+--- mark it once the mail goes.
+local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, reagents, sent)
+    sent = sent or {}
+    if cdMail.phase == "building" then
+        CdMail_Say(L["MailMsgStillPreparing"])
+        return
+    end
+    if cdMail.phase == "sending" then
+        CdMail_Say(L["MailMsgStillSending"])
+        return
+    end
     if not MailFrame or not MailFrame:IsShown() then
         CdMail_Complain(L["MailMsgOpenMailbox"])
+        CdMail_Reset()
         return
+    end
+    if cdMail.phase == "ready" then
+        if not CdMail_MailHasItems() then
+            -- Detached or sent by hand since: start over.
+            CdMail_Reset()
+        elseif cdMail.key == sent.key then
+            CdMail_SendPrepared()
+            return
+        end
     end
     if CdMail_MailHasItems() then
         CdMail_Complain(L["MailMsgHasItems"])
@@ -998,6 +1189,7 @@ local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, re
         for _, msg in ipairs(plan.problems) do CdMail_Complain(msg) end
         return
     end
+    cdMail.phase, cdMail.key, cdMail.expiresAt = "building", sent.key, sent.expiresAt
     if #plan.splits == 0 then
         CdMail_AttachSupplyMail(plan, playerName, cooldownName, outputName, 0)
         return
@@ -1005,6 +1197,7 @@ local function CdMail_PrepareSupplyMail(playerName, cooldownName, outputName, re
     local empties = CdMail_EmptyBagSlots(#plan.splits)
     if #empties < #plan.splits then
         CdMail_Complain(string.format(L["MailMsgNeedEmptySlots"], #plan.splits))
+        CdMail_Reset()
         return
     end
     local pieces = {}
@@ -1583,8 +1776,28 @@ function CooldownsTab:BuildRowList(host)
         onClick = function(row)
             local cdName = row.isTransmuteGroup and L["Transmute"] or row.cdName
             CdMail_PrepareSupplyMail(row.charKey, cdName, row.outputName or cdName,
-                { { id = row.reagentItemId, qty = row.reagentQty or 1 } })
+                { { id = row.reagentItemId, qty = row.reagentQty or 1 } },
+                { key = CooldownsTab.SentKey(row.charKey, row), expiresAt = row.expiresAt })
         end }
+    -- When materials were last mailed to this crafter for this cooldown, until
+    -- they use it (operator, 2026-10-21: "a column ... to annotate who we've
+    -- sent mats to"). Blank otherwise.
+    columns[#columns + 1] = { key = "sent", header = L["ColMatsSent"], width = COL.sent, sortable = false,
+        headerTip = L["ColMatsSentDesc"],
+        format = function(_, row)
+            local rec = self:SentInfo(row)
+            return rec and ("|cff88ff88" .. SentAgo(rec.at) .. "|r") or ""
+        end,
+        onCellEnter = function(row, _, _, cell)
+            local rec = self:SentInfo(row)
+            if not rec then return end
+            addon.Tooltip.Owner(cell)
+            GameTooltip:SetText(L["ColMatsSent"], 1, 1, 1, 1, true)
+            GameTooltip:AddLine(string.format(L["MatsSentTooltipFormat"], date("%Y-%m-%d %H:%M", rec.at)),
+                nil, nil, nil, true)
+            GameTooltip:Show()
+        end,
+        onCellLeave = hideTip }
     columns[#columns + 1] = { key = "time", header = L["ColTimeLeft"], width = COL.time, align = "RIGHT",
         headerTip = "How long until this cooldown is ready. Green = ready now.",
         format = function(_, row)
@@ -1777,7 +1990,11 @@ function CooldownsTab:PopupColumns(hasReagents, popup)
             if not row.mail or button ~= "LeftButton" then return end
             local e = row.e
             local spellName = (e.spellId and addon.Spell.GetInfo(e.spellId)) or e.name
-            CdMail_PrepareSupplyMail(row.charKey, spellName, popupOutputName(e, spellName), row.mail)
+            -- Every transmute shares one cooldown, so the record is the group's.
+            local group = row.group or {}
+            CdMail_PrepareSupplyMail(row.charKey, spellName, popupOutputName(e, spellName), row.mail,
+                { key = CooldownsTab.SentKey(row.charKey, { isTransmute = true }),
+                  expiresAt = group.expiresAt })
             return true
         end }
     return cols
@@ -1915,7 +2132,7 @@ function CooldownsTab:ShowGroupPopup(row, sourceWidget)
     -- The rows, then the height they need (fitContent sized the host).
     local rows = {}
     for _, e in ipairs(entries) do
-        rows[#rows + 1] = { e = e, charKey = charKey, mail = mailEntry[e] }
+        rows[#rows + 1] = { e = e, charKey = charKey, mail = mailEntry[e], group = row }
     end
     popup._list:SetColumns(self:PopupColumns(hasReagents, popup))
     popup._list:SetData(rows)

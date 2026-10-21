@@ -211,7 +211,7 @@ local RESET_COLOR   = "|r"
 -- global hook's IDs line and BrowserTab's AppendBrandIds), which used to format
 -- it independently. Marks the tooltip branded -- see `_togpmBranded` below.
 local function AddIdsLine(tooltip, idParts, prefix)
-    tooltip:AddLine(prefix .. HEADER_COLOR .. "[TOGPM]" .. RESET_COLOR
+    tooltip:AddLine(prefix .. HEADER_COLOR .. "[UPM]" .. RESET_COLOR
         .. " " .. HEADER_COLOR .. table.concat(idParts, "  ") .. RESET_COLOR,
         1, 1, 1, true)
     tooltip._togpmBranded = true
@@ -260,7 +260,7 @@ local function AppendCraftersAndIds(tooltip, itemID)
         end
         -- |n embeds the blank line inside a single AddLine so it can't be
         -- reordered by the tooltip's internal build order.
-        tooltip:AddLine("|n" .. HEADER_COLOR .. "[TOGPM]" .. RESET_COLOR .. " " .. table.concat(parts, ", "),
+        tooltip:AddLine("|n" .. HEADER_COLOR .. "[UPM]" .. RESET_COLOR .. " " .. table.concat(parts, ", "),
             1, 1, 1, true)
         -- The recipe and vendor blocks read this and skip their own "TOGPM"
         -- heading, so one tooltip carries one brand label, not two.

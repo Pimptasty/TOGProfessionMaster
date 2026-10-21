@@ -211,7 +211,7 @@ end
 -- /togpm xgdiag — dump the same cross-guild diagnostics to chat (raw print, no
 -- addon prefix) so it's easy to copy-paste for troubleshooting.
 function addon:PrintCrossGuildDiagnostics()
-    print("|c" .. (addon.BrandColor or "ffFF8000") .. "TOGPM cross-guild diagnostics|r")
+    print("|c" .. (addon.BrandColor or "ffFF8000") .. "UPM cross-guild diagnostics|r")
     for line in (BuildCrossGuildDiagnostics() .. "\n"):gmatch("(.-)\n") do
         print(line)
     end
@@ -222,7 +222,7 @@ end
 -- ---------------------------------------------------------------------------
 
 local OPTIONS = {
-    name    = "TOG Profession Master",
+    name    = "Ultimate Profession Master",
     handler = addon,
     type    = "group",
     childGroups = "tab",
@@ -254,6 +254,9 @@ local OPTIONS = {
                     if val then icon:Show("TOGProfessionMaster")
                     else        icon:Hide("TOGProfessionMaster") end
                 end
+                -- Say how to get it back: the string was translated in every
+                -- locale and never printed until v1.7.0.
+                if not val then addon:Print(L["MinimapHidden"]) end
             end,
         },
 
@@ -1109,7 +1112,7 @@ local OPTIONS = {
 
 hooksecurefunc(Ace, "OnInitialize", function(_self)
     AceConfig:RegisterOptionsTable("TOGProfessionMaster", OPTIONS)
-    AceDialog:AddToBlizOptions("TOGProfessionMaster", "TOG Profession Master")
+    AceDialog:AddToBlizOptions("TOGProfessionMaster", "Ultimate Profession Master")
 
     -- Persist the standalone settings window's position/size and selected tab
     -- across /reload. AceConfigDialog keeps per-app status (Status[appName] =

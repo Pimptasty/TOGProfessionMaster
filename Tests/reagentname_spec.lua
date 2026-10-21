@@ -139,3 +139,26 @@ describe("ResolveReagentName precedence", function()
 		assert.equal("",        ns:ResolveReagentName(nil))
 	end)
 end)
+
+-- The bare-id form, for the draw sites with no reagent table to heal: the
+-- Missing Recipes tooltip of a scroll the client has not cached, and the name
+-- the [Bank] dialog is opened with. Self-audit b37931c3: both went straight to
+-- "Item #<id>" while LibItemDB knew the name.
+describe("ItemDisplayName", function()
+	it("names a cold item from LibItemDB rather than by number", function()
+		ns._itemDB = itemDB({ [DEVILSAUR] = "Devilsaur Leather" })
+		assert.equal("Devilsaur Leather", ns:ItemDisplayName(DEVILSAUR))
+	end)
+
+	it("prefers the client's localized name when the cache has it", function()
+		env.wow.items[DEVILSAUR] = { name = "Cuir de diablosaure", link = LINK }
+		ns._itemDB = itemDB({ [DEVILSAUR] = "Devilsaur Leather" })
+		assert.equal("Cuir de diablosaure", ns:ItemDisplayName(DEVILSAUR))
+	end)
+
+	it("falls back to the same placeholder as a reagent, and to nil without an id", function()
+		assert.equal("Item #15417", ns:ItemDisplayName(DEVILSAUR))
+		assert.equal(nil, ns:ItemDisplayName(nil))
+		assert.equal("Item #8170", ns:ItemDisplayName(RUGGED))
+	end)
+end)

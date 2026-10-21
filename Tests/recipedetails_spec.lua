@@ -190,7 +190,8 @@ describe("AppendRecipeDetails — what lands on the tooltip", function()
 	it("writes the heading, then each section flush with its values indented", function()
 		local tip = fakeTooltip()
 		assert.is_true(IL.AppendRecipeDetails(tip, ALCHEMY, TRANSMUTE))
-		assert.is_true(tip.has("TOGPM"))
+		assert.is_true(tip.has("UPM"))
+		assert.is_false(tip.has("TOGPM"))   -- the old brand is gone after the rename
 		assert.is_true(tip.has("Difficulty"))
 		assert.is_true(tip.has("Sources"))
 		-- Two-space indent on values, headings flush. Deliberately not
@@ -230,7 +231,7 @@ describe("AppendRecipeDetails — what lands on the tooltip", function()
 		assert.is_true(IL.AppendRecipeDetails(tip, ALCHEMY, TRANSMUTE))
 		assert.is_false(IL.AppendRecipeDetails(tip, ALCHEMY, TRANSMUTE))
 		local headings = 0
-		for _, l in ipairs(tip.lines) do if l:find("TOGPM", 1, true) then headings = headings + 1 end end
+		for _, l in ipairs(tip.lines) do if l:find("UPM", 1, true) then headings = headings + 1 end end
 		assert.equal(1, headings)
 	end)
 
@@ -252,7 +253,7 @@ describe("AppendRecipeDetails — what lands on the tooltip", function()
 		assert.is_true(IL.AppendRecipeDetails(tip, ALCHEMY, TRANSMUTE))
 		assert.is_false(IL.AppendRecipeDetails(tip, LEATHER, 2108))
 		local headings = 0
-		for _, l in ipairs(tip.lines) do if l:find("TOGPM", 1, true) then headings = headings + 1 end end
+		for _, l in ipairs(tip.lines) do if l:find("UPM", 1, true) then headings = headings + 1 end end
 		assert.equal(1, headings)
 	end)
 
@@ -549,7 +550,7 @@ describe("AppendRecipeBlocks — one entry point, so every tab agrees", function
 		IL.AppendRecipeBlocks(tip, ALCHEMY, TRANSMUTE)
 		IL.AppendRecipeBlocks(tip, ALCHEMY, TRANSMUTE)
 		local headings = 0
-		for _, l in ipairs(tip.lines) do if l:find("TOGPM", 1, true) then headings = headings + 1 end end
+		for _, l in ipairs(tip.lines) do if l:find("UPM", 1, true) then headings = headings + 1 end end
 		assert.equal(1, headings)
 	end)
 

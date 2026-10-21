@@ -1,7 +1,7 @@
--- TOG Profession Master -- English (Great Britain) locale
+-- Ultimate Profession Master -- English (Great Britain) locale
 --
 -- enGB clients fall back to enUS for every key not explicitly overridden
--- below. The TOGPM string set has no current US/UK divergence (no "color"
+-- below. The UPM string set has no current US/UK divergence (no "color"
 -- vs "colour" / "center" vs "centre" / etc. that the user would see), so
 -- this file just registers the locale so the client recognises it and
 -- inherits enUS verbatim. Add UK-specific overrides here if any string
@@ -22,7 +22,7 @@ L["CraftHaveMaterials"]   = "Have Materials"
 L["CraftCostLabel"]       = "Crafting Cost"
 L["CraftCostNone"]        = "—"
 L["CraftColCostHdr"]      = "Cost"
-L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else TOGPM's own scan) or vendor; \"—\" when no price is known yet."
+L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else UPM's own scan) or vendor; \"—\" when no price is known yet."
 L["CraftSearchDesc"]      = "Filter recipes by name or by what they do. Searches the enriched effect text too, so \"5 damage\", \"agility\", or \"mining\" all find matching recipes."
 L["CraftColRecipe"]       = "Recipe Name"
 L["CraftColRecipeDesc"]   = "The recipes you can make in this profession. Colour shows skill-up difficulty (orange/yellow/green/grey)."

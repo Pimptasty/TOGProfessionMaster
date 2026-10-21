@@ -24,6 +24,8 @@ read_globals = {
 	"C_Container", "ClearCursor",
 	"MailFrame", "MailFrameTab2", "HasSendMailItem", "ClickSendMailItemButton", "ATTACHMENTS_MAX_SEND",
 	"SendMailNameEditBox", "SendMailSubjectEditBox", "SendMailBodyEditBox", "MailEditBox",
+	"SendMailMailButton", "SendMailMailButton_OnClick", "SendMail",
+	"SendMailFrame_SendMail", "SendMailFrame_EnableSendMailButton",
 	"BackdropTemplateMixin",
 	"SPELL_REAGENTS", "Item", "C_Timer", "C_ChatInfo",
 	-- GetScreenHeight is a first-class bare global (GlobalAPI.lua:5509).

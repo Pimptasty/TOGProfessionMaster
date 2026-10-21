@@ -181,6 +181,7 @@ end)
 --- A tab instance of its own for the tooltip specs below, so nothing they set
 --- leaks into the shared tab. The arguments are ignored: the tooltip is drawn
 --- straight from an entry, with no list behind it.
+---@diagnostic disable-next-line: unused-vararg
 local function tabWith(...) return setmetatable({}, { __index = BT }) end   -- luacheck: ignore 212
 local function recipes(...) end                                               -- luacheck: ignore 212
 

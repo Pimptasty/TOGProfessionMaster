@@ -152,7 +152,7 @@ local function buildReport()
         or addon.isVanilla and "Vanilla" or "?"
     local guild = addon.GetGuildKey and addon:GetGuildKey() or nil
 
-    p(("|cffFF8000TOGPM CommTest|r — build %s (%s)  guild: %s"):format(
+    p(("|cffFF8000UPM CommTest|r — build %s (%s)  guild: %s"):format(
         tostring(build), ver, guild or "|cff999999none|r"))
 
     local guildRawRecv, guildAceRecv, guildAceDelivered

@@ -1,4 +1,4 @@
--- TOG Profession Master -- Dutch (nlNL) locale
+-- Ultimate Profession Master -- Dutch (nlNL) locale
 --
 -- IMPORTANT: nlNL is NOT a WoW-recognized locale code. GetLocale() will
 -- never return "nlNL" on any Blizzard client, so AceLocale will never
@@ -17,8 +17,8 @@ local L = addon.NewLocale("nlNL")
 -- ---------------------------------------------------------------------------
 -- Main window
 -- ---------------------------------------------------------------------------
-L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "TOG Profession Master|r"
-L["SyncLogTitle"]       = "TOG Profession Master — Synchronisatielogboek"
+L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r"
+L["SyncLogTitle"]       = "Ultimate Profession Master — Synchronisatielogboek"
 
 -- Tab labels
 L["TabProfessions"]     = "Professions"
@@ -194,9 +194,9 @@ L["MissingSrcUnknown"]          = "Onbekend"
 -- Settings: global item tooltip lines
 L["SettingsTooltipHeader"]          = "Itemtooltip"
 L["SettingsTooltipShowCrafters"]    = "Toon guild in itemtooltips"
-L["SettingsTooltipShowCraftersDesc"]= "Voegt een [TOGPM]-regel toe met alle guildgenoten die het voorwerp waarover je zweeft kunnen maken. Online in wit, offline in grijs. BoP voorwerpen worden overgeslagen (toch niet verhandelbaar)."
+L["SettingsTooltipShowCraftersDesc"]= "Voegt een [UPM]-regel toe met alle guildgenoten die het voorwerp waarover je zweeft kunnen maken. Online in wit, offline in grijs. BoP voorwerpen worden overgeslagen (toch niet verhandelbaar)."
 L["SettingsTooltipShowIds"]         = "Toon item-ID / spell-ID in tooltips"
-L["SettingsTooltipShowIdsDesc"]     = "Voegt een [TOGPM]-regel toe met het item-ID en (indien bekend) het spell-ID van het recept. Vooral nuttig voor het diagnosticeren van verkeerde iconen of ontbrekende recepten — plak de ID's in WoWhead om de overeenkomst te verifiëren."
+L["SettingsTooltipShowIdsDesc"]     = "Voegt een [UPM]-regel toe met het item-ID en (indien bekend) het spell-ID van het recept. Vooral nuttig voor het diagnosticeren van verkeerde iconen of ontbrekende recepten — plak de ID's in WoWhead om de overeenkomst te verifiëren."
 
 -- Settings: TBC Anniversary phase filter
 L["SettingsTBCPhaseHeader"]     = "TBC Anniversary-fase"
@@ -248,7 +248,7 @@ L["SyncLogNoEntries"]       = "|cffaaaaaa(nog geen synchronisatiegebeurtenissen 
 -- ---------------------------------------------------------------------------
 -- Minimap
 -- ---------------------------------------------------------------------------
-L["MinimapHidden"]          = "Minimapknop verborgen. Gebruik |cffda8cff/togpm minimap|r om te herstellen."
+L["MinimapHidden"]          = "Minimapknop verborgen. Gebruik |cffFF8000/upm minimap|r om te herstellen."
 
 -- ---------------------------------------------------------------------------
 -- Tooltip
@@ -263,13 +263,13 @@ L["AlertReadyFormat"]       = "|cff00ff00Klaar om te maken:|r %s × %d  (%s × %
 -- Shopping list crafter alert
 L["ShoppingAlertEnable"]               = "Activeer crafterswaarschuwing voor dit recept"
 L["ShoppingAlertDisable"]              = "Deactiveer crafterswaarschuwing voor dit recept"
-L["AlertCrafterOnline"]                = "|cffFFD700[TOGPM]|r %s is online — kan maken: %s"
-L["AlertCrafterOnlineAlt"]             = "|cffFFD700[TOGPM]|r %s is online (alt van %s) — kan maken: %s"
+L["AlertCrafterOnline"]                = "|cffFFD700[UPM]|r %s is online — kan maken: %s"
+L["AlertCrafterOnlineAlt"]             = "|cffFFD700[UPM]|r %s is online (alt van %s) — kan maken: %s"
 
 -- Cooldown-ready alert
 L["CooldownAlertEnable"]               = "Activeer gereed-waarschuwing voor deze cooldown"
 L["CooldownAlertDisable"]              = "Deactiveer gereed-waarschuwing voor deze cooldown"
-L["AlertCooldownReady"]                = "|cff00ffff[TOGPM]|r Cooldown klaar: %s — %s"
+L["AlertCooldownReady"]                = "|cff00ffff[UPM]|r Cooldown klaar: %s — %s"
 
 -- Settings
 L["SettingsAlertsHeader"]              = "Crafterswaarschuwingen"
@@ -309,7 +309,7 @@ L["TooltipAHTitle"]              = "Zoek in Auction House"
 L["TooltipAHDescScroll"]         = "Opent deze receptrol in de AH-zoekfunctie."
 L["TooltipAHDescReagent"]        = "Opent deze reagent in de AH-zoekfunctie."
 L["TooltipSettingsTitle"]        = "Instellingen"
-L["TooltipSettingsDesc"]         = "Opent het instellingenscherm van TOG Profession Master (|cffffd700ESC > Opties > AddOns > TOG Profession Master|r). Hetzelfde doel als |cffffd700/togpm settings|r en Shift+linkermuisknop op de minimapknop."
+L["TooltipSettingsDesc"]         = "Opent het instellingenscherm van Ultimate Profession Master (|cffffd700ESC > Opties > AddOns > Ultimate Profession Master|r). Hetzelfde doel als |cffffd700/upm settings|r en Shift+linkermuisknop op de minimapknop."
 L["TooltipWhisperRightClick"]    = "Rechterklik om te whisperen"
 L["TooltipClickTransmutes"]      = "Klik om transmutaties te bekijken"
 L["TooltipClickDetailsFormat"]   = "Klik om %s te bekijken"
@@ -334,13 +334,14 @@ L["MinimapTooltipShiftLeft"]   = "|cffffd100Shift+links|r opent instellingen"
 L["MinimapButtonShown"]        = "Minimapknop getoond."
 
 -- ---------------------------------------------------------------------------
--- Slash command help (/togpm help) -- commando-namen worden niet vertaald
+-- Slash command help (/upm help) -- commando-namen worden niet vertaald
 -- ---------------------------------------------------------------------------
-L["SlashHelpHeader"]        = "|cffda8cffTOG Profession Master|r — commando's:"
+L["SlashHelpHeader"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r — commando's:"
 L["SlashHelpOpen"]          = "open professionzoekmachine"
 L["SlashHelpReagents"]      = "open ontbrekende reagents"
 L["SlashHelpMinimap"]       = "toon minimapknop"
 L["SlashHelpPurge"]         = "open wisdialoog"
+L["SlashHelpSettings"]      = "open het instellingenscherm"
 L["SlashHelpSync"]          = "forceer volledige gilde-hersynchronisatie"
 L["SlashHelpStatus"]        = "dump sync/comm-diagnose-informatie"
 L["SlashHelpVersionCheck"]  = "controleer addon-versies in de guild"
@@ -399,7 +400,7 @@ L["CraftHaveMaterials"]   = "Have Materials"
 L["CraftCostLabel"]       = "Crafting Cost"
 L["CraftCostNone"]        = "—"
 L["CraftColCostHdr"]      = "Cost"
-L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else TOGPM's own scan) or vendor; \"—\" when no price is known yet."
+L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else UPM's own scan) or vendor; \"—\" when no price is known yet."
 L["CraftSearchDesc"]      = "Filter recipes by name or by what they do. Searches the enriched effect text too, so \"5 damage\", \"agility\", or \"mining\" all find matching recipes."
 L["CraftColRecipe"]       = "Recipe Name"
 L["CraftColRecipeDesc"]   = "The recipes you can make in this profession. Colour shows skill-up difficulty (orange/yellow/green/grey)."

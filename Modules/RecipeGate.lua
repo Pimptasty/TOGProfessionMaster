@@ -137,6 +137,10 @@ function RecipeGate:IsValidOnClient(profId, recipeId, meta)
 	if isEra and recipeId >= SOD_RECIPE_ID_MIN then
 		return false, "sod"
 	end
+	-- DEFENSIVE ONLY: no shipped ProfessionDB file carries minExpansion (only
+	-- the old all-expansion merge did; its build tool still can), because the
+	-- data is flavour-scoped. Kept so a merged dataset could never leak later
+	-- expansions onto an earlier client. Peer Review, thread 13bd501f.
 	if meta.minExpansion and meta.minExpansion > clientExp then
 		return false, "minExpansion"
 	end

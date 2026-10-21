@@ -813,6 +813,12 @@ local function buildBankDialog()
     return d
 end
 
+-- The "[UPM] " chat tag in the brand colour, read at call time so the
+-- brand colour stays the single source of truth.
+local function upmTag()
+    return "|c" .. (addon.BrandColor or "ffFF8000") .. "[UPM]|r "
+end
+
 --- Open the "Request from Guild Bank" dialog.
 -- itemId   numeric item ID
 -- itemName display name (used in the request payload)
@@ -823,7 +829,7 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
 
     local banksWithItem = addon.Bank.GetBanksWithItem(itemId)
     if #banksWithItem == 0 then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFDA8CFF[TOGPM]|r No bankers currently have this item in stock.")
+        DEFAULT_CHAT_FRAME:AddMessage(upmTag() .. "No bankers currently have this item in stock.")
         return
     end
     -- A view-only banker's stock is shown (tooltips, the [Bank] dot) but
@@ -836,7 +842,7 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
         end
         if #requestable == 0 then
             DEFAULT_CHAT_FRAME:AddMessage(
-                "|cFFDA8CFF[TOGPM]|r Only view-only bankers hold this item, and they do not take requests.")
+                upmTag() .. "Only view-only bankers hold this item, and they do not take requests.")
             return
         end
         banksWithItem = requestable
@@ -878,7 +884,7 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
     -- The item row shows a link. Without one (an item the client has not
     -- cached), a plain item link built from the id still hovers and links.
     d.currentItemLink = itemLink
-    d.itemRow:SetItem(itemLink or ("|Hitem:%d|h[%s]|h"):format(itemId, itemName or ("Item #" .. itemId)),
+    d.itemRow:SetItem(itemLink or ("|Hitem:%d|h[%s]|h"):format(itemId, itemName or addon:ItemDisplayName(itemId)),
         addon.Item.GetIcon(itemId))
     applyLimit()
 
@@ -900,16 +906,16 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
         -- Over the allowance (including none left at all) says TOGBank's own
         -- sentence when it has one: it names the open orders that used it up.
         if d.maxRequestable < 1 or qty > d.maxRequestable then
-            DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444[TOGPM] " .. (d.limitWhy or string.format(
-                "Maximum requestable quantity is %d.", d.maxRequestable)) .. "|r")
+            DEFAULT_CHAT_FRAME:AddMessage(upmTag() .. "|cFFFF4444"
+                .. (d.limitWhy or string.format("Maximum requestable quantity is %d.", d.maxRequestable)) .. "|r")
             return
         end
         if qty < 1 then
-            DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444[TOGPM] Quantity must be at least 1.|r")
+            DEFAULT_CHAT_FRAME:AddMessage(upmTag() .. "|cFFFF4444Quantity must be at least 1.|r")
             return
         end
         if not d.selectedBank or d.selectedBank == "" then
-            DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444[TOGPM] Please select a banker.|r")
+            DEFAULT_CHAT_FRAME:AddMessage(upmTag() .. "|cFFFF4444Please select a banker.|r")
             return
         end
         local reqName = d.currentItemName
@@ -930,12 +936,12 @@ function addon.Bank.ShowRequestDialog(itemId, itemName, itemLink, anchorBelow)
         if ok then
             local dispBank = d.selectedBank:match("^([^%-]+)") or d.selectedBank
             DEFAULT_CHAT_FRAME:AddMessage(string.format(
-                "|cFFDA8CFF[TOGPM]|r Bank request sent: %dx %s \226\134\146 %s", qty, reqName, dispBank))
+                upmTag() .. "Bank request sent: %dx %s \226\134\146 %s", qty, reqName, dispBank))
             d:Hide()
         else
             -- AddRequest returns `false, <sentence>` for every gate it refuses on
             -- (limit, shop closed, view-only bank...), written for the player.
-            DEFAULT_CHAT_FRAME:AddMessage("|cFFFF4444[TOGPM] Request failed. "
+            DEFAULT_CHAT_FRAME:AddMessage(upmTag() .. "|cFFFF4444Request failed. "
                 .. (why or "Check that TOGBankClassic is synced.") .. "|r")
         end
     end

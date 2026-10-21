@@ -248,7 +248,7 @@ function MainWindow:Open(tabKey)
                 " ",
                 brand .. "Detail area (right):|r Name hover = item tooltip, shift-click = link in chat. Shopping-list controls mirror the top. Reagents support the same hover/shift-click + per-reagent [Bank]. Full crafters list at the bottom — right-click a name to whisper.",
                 " ",
-                brand .. "Everywhere else:|r A [TOGPM] line is appended to every item tooltip in the game (bags, AH, chat links, comparison tooltips) listing guild crafters.",
+                brand .. "Everywhere else:|r A [UPM] line is appended to every item tooltip in the game (bags, AH, chat links, comparison tooltips) listing guild crafters.",
             },
         },
         cooldowns = {
@@ -752,6 +752,14 @@ function MainWindow:Refresh()
         return
     end
     self._refreshDeferrals = 0
+
+    -- The Guild tab updates its tree in place rather than being torn down:
+    -- a teardown hides its list mid-click (GuildTab:RefreshInPlace says why).
+    if self.activeTab == "guild" and addon.GuildTab and addon.GuildTab.RefreshInPlace
+        and addon.GuildTab:RefreshInPlace() then
+        addon:DebugPrint("MainWindow:Refresh — Guild tab updated in place")
+        return
+    end
 
     self._redrawCount = (self._redrawCount or 0) + 1   -- perf-churn counter (shown in status bar when debug is on)
     addon:DebugPrint("MainWindow:Refresh — ReleaseChildren + DrawTab(", self.activeTab, ")")

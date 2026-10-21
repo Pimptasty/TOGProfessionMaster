@@ -71,7 +71,8 @@ describe("crafters line", function()
 		local t = fakeTooltip(POTION)
 		Tooltip.Tooltip.AppendCrafters(t, POTION)
 		assert.is_true(allText(t):find("Bob", 1, true) ~= nil)
-		assert.is_true(allText(t):find("[TOGPM]", 1, true) ~= nil)
+		assert.is_true(allText(t):find("[UPM]", 1, true) ~= nil)
+		assert.is_true(allText(t):find("[TOGPM]", 1, true) == nil)   -- the old brand is gone after the rename
 	end)
 
 	it("says nothing when nobody in the guild crafts it", function()

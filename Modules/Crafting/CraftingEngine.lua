@@ -424,7 +424,7 @@ blockWatch:SetScript("OnEvent", function(_, event, who, func)
         if last and GetTime and (GetTime() - last.t) <= 1 then r = last end
     end
     if r then r.blocked = event:gsub("ADDON_ACTION_", "") end
-    addon:Print("Profession open was blocked -- please send the output of /togpm opendebug. "
+    addon:Print("Profession open was blocked -- please send the output of /upm opendebug. "
         .. (r and Engine:_FormatOpenAttempt(r) or ("no matching attempt for " .. tostring(func))))
 end)
 
@@ -1505,7 +1505,7 @@ function Engine:ShowToggleButton(frame)
     if not b then
         b = CreateFrame("Button", "TOGPMCraftBackButton", frame, "UIPanelButtonTemplate")
         b:SetSize(72, 18)
-        b:SetText("|c" .. (addon.BrandColor or "ffFF8000") .. "TOGPM|r")
+        b:SetText("|c" .. (addon.BrandColor or "ffFF8000") .. "UPM|r")
         b:SetScript("OnClick", function() Engine:ShowOurUI() end)
         self._toggleBtn = b
     end

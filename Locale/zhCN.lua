@@ -1,4 +1,4 @@
--- TOG Profession Master -- Simplified Chinese (zhCN) locale
+-- Ultimate Profession Master -- Simplified Chinese (zhCN) locale
 -- Any missing key falls back to enUS automatically via AceLocale.
 -- Translations are best-effort; native-speaker review welcome.
 
@@ -8,8 +8,8 @@ local L = addon.NewLocale("zhCN")
 -- ---------------------------------------------------------------------------
 -- Main window
 -- ---------------------------------------------------------------------------
-L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "TOG Profession Master|r"
-L["SyncLogTitle"]       = "TOG Profession Master — 同步日志"
+L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r"
+L["SyncLogTitle"]       = "Ultimate Profession Master — 同步日志"
 
 -- Tab labels
 L["TabProfessions"]     = "专业"
@@ -185,9 +185,9 @@ L["MissingSrcUnknown"]          = "未知"
 -- Settings: global item tooltip lines
 L["SettingsTooltipHeader"]          = "物品提示"
 L["SettingsTooltipShowCrafters"]    = "在物品提示中显示公会制造者"
-L["SettingsTooltipShowCraftersDesc"]= "添加一行 [TOGPM],列出可以制造你正在悬停的物品的每个公会成员。在线为白色,离线为灰色。拾取绑定的物品会被跳过(无论如何都不能交易)。"
+L["SettingsTooltipShowCraftersDesc"]= "添加一行 [UPM],列出可以制造你正在悬停的物品的每个公会成员。在线为白色,离线为灰色。拾取绑定的物品会被跳过(无论如何都不能交易)。"
 L["SettingsTooltipShowIds"]         = "在物品提示中显示物品 ID / 法术 ID"
-L["SettingsTooltipShowIdsDesc"]     = "添加一行 [TOGPM],包含物品 ID 和(如果已知)配方法术 ID。主要用于诊断错误的图标或缺失的配方 — 将 ID 粘贴到 Wowhead 以验证匹配。"
+L["SettingsTooltipShowIdsDesc"]     = "添加一行 [UPM],包含物品 ID 和(如果已知)配方法术 ID。主要用于诊断错误的图标或缺失的配方 — 将 ID 粘贴到 Wowhead 以验证匹配。"
 
 -- Settings: TBC Anniversary phase filter
 L["SettingsTBCPhaseHeader"]     = "TBC 周年阶段"
@@ -239,7 +239,7 @@ L["SyncLogNoEntries"]       = "|cffaaaaaa(尚未记录同步事件)|r"
 -- ---------------------------------------------------------------------------
 -- Minimap
 -- ---------------------------------------------------------------------------
-L["MinimapHidden"]          = "小地图按钮已隐藏。使用 |cffda8cff/togpm minimap|r 恢复。"
+L["MinimapHidden"]          = "小地图按钮已隐藏。使用 |cffFF8000/upm minimap|r 恢复。"
 
 -- ---------------------------------------------------------------------------
 -- Tooltip
@@ -254,13 +254,13 @@ L["AlertReadyFormat"]       = "|cff00ff00可以制造:|r %s × %d  (%s × %d 在
 -- Shopping list crafter alert
 L["ShoppingAlertEnable"]               = "为此配方启用制造者提醒"
 L["ShoppingAlertDisable"]              = "为此配方禁用制造者提醒"
-L["AlertCrafterOnline"]                = "|cffFFD700[TOGPM]|r %s 在线 — 可以制造:%s"
-L["AlertCrafterOnlineAlt"]             = "|cffFFD700[TOGPM]|r %s 在线(%s 的小号)— 可以制造:%s"
+L["AlertCrafterOnline"]                = "|cffFFD700[UPM]|r %s 在线 — 可以制造:%s"
+L["AlertCrafterOnlineAlt"]             = "|cffFFD700[UPM]|r %s 在线(%s 的小号)— 可以制造:%s"
 
 -- Cooldown-ready alert
 L["CooldownAlertEnable"]               = "为此冷却时间启用就绪提醒"
 L["CooldownAlertDisable"]              = "为此冷却时间禁用就绪提醒"
-L["AlertCooldownReady"]                = "|cff00ffff[TOGPM]|r 冷却时间就绪:%s — %s"
+L["AlertCooldownReady"]                = "|cff00ffff[UPM]|r 冷却时间就绪:%s — %s"
 
 -- Settings
 L["SettingsAlertsHeader"]              = "制造者提醒"
@@ -300,7 +300,7 @@ L["TooltipAHTitle"]              = "搜索拍卖行"
 L["TooltipAHDescScroll"]         = "在拍卖行搜索中打开此配方卷轴。"
 L["TooltipAHDescReagent"]        = "在拍卖行搜索中打开此材料。"
 L["TooltipSettingsTitle"]        = "设置"
-L["TooltipSettingsDesc"]         = "打开 TOG Profession Master 设置面板(|cffffd700ESC > 选项 > 插件 > TOG Profession Master|r)。与 |cffffd700/togpm settings|r 和 Shift+左键单击小地图按钮目标相同。"
+L["TooltipSettingsDesc"]         = "打开 Ultimate Profession Master 设置面板(|cffffd700ESC > 选项 > 插件 > Ultimate Profession Master|r)。与 |cffffd700/upm settings|r 和 Shift+左键单击小地图按钮目标相同。"
 L["TooltipWhisperRightClick"]    = "右键单击私聊"
 L["TooltipClickTransmutes"]      = "点击查看转化"
 L["TooltipClickDetailsFormat"]   = "点击查看 %s"
@@ -325,13 +325,14 @@ L["MinimapTooltipShiftLeft"]   = "|cffffd100Shift+左键|r 打开设置"
 L["MinimapButtonShown"]        = "小地图按钮已显示。"
 
 -- ---------------------------------------------------------------------------
--- Slash command help (/togpm help) -- 命令名称不翻译
+-- Slash command help (/upm help) -- 命令名称不翻译
 -- ---------------------------------------------------------------------------
-L["SlashHelpHeader"]        = "|cffda8cffTOG Profession Master|r — 命令:"
+L["SlashHelpHeader"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r — 命令:"
 L["SlashHelpOpen"]          = "打开专业浏览器"
 L["SlashHelpReagents"]      = "打开缺失的材料"
 L["SlashHelpMinimap"]       = "显示小地图按钮"
 L["SlashHelpPurge"]         = "打开清除对话框"
+L["SlashHelpSettings"]      = "打开设置面板"
 L["SlashHelpSync"]          = "强制完整公会重新同步"
 L["SlashHelpStatus"]        = "转储同步/通信诊断信息"
 L["SlashHelpVersionCheck"]  = "检查公会中的插件版本"
@@ -390,7 +391,7 @@ L["CraftHaveMaterials"]   = "Have Materials"
 L["CraftCostLabel"]       = "Crafting Cost"
 L["CraftCostNone"]        = "—"
 L["CraftColCostHdr"]      = "Cost"
-L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else TOGPM's own scan) or vendor; \"—\" when no price is known yet."
+L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else UPM's own scan) or vendor; \"—\" when no price is known yet."
 L["CraftSearchDesc"]      = "Filter recipes by name or by what they do. Searches the enriched effect text too, so \"5 damage\", \"agility\", or \"mining\" all find matching recipes."
 L["CraftColRecipe"]       = "Recipe Name"
 L["CraftColRecipeDesc"]   = "The recipes you can make in this profession. Colour shows skill-up difficulty (orange/yellow/green/grey)."

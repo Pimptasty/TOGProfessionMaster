@@ -1,10 +1,10 @@
 ## Interface: 11509
 ## X-Min-Interface: 11509
-## Title: |cffFF8000TOG Profession Master|r |cff999999Vanilla|r
+## Title: |cffFF8000Ultimate Profession Master|r |cff999999Vanilla|r
 ## Version: @project-version@
 ## Author: Pimptasty
 ## Category: Professions
-## IconTexture: Interface\AddOns\TOGProfessionMaster\icons\TOGPM_MMB_Icon
+## IconTexture: Interface\AddOns\TOGProfessionMaster\icons\UPM_MMB_Icon
 ## SavedVariables: TOGPM_Settings TOGPM_GuildDB
 ## SavedVariablesPerCharacter:
 ## X-Curse-Project-ID: 1513588

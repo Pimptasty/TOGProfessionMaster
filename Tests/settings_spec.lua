@@ -453,6 +453,23 @@ describe("display setters with side effects", function()
 		assert.same({ "hide:TOGProfessionMaster", "show:TOGProfessionMaster" }, calls)
 	end)
 
+	-- The hint was translated in every locale and never printed until v1.7.0,
+	-- so a player who hid the button had no pointer to /upm minimap.
+	it("says how to bring the minimap button back when it is hidden, and only then", function()
+		local said, savedPrint = {}, ns.Print
+		ns.Print = function(_, msg) said[#said + 1] = msg end
+		local restore = swap(LibStub.libs, { ["LibDBIcon-1.0"] = { Show = function() end, Hide = function() end } })
+		local ok, err = pcall(function()
+			opt("minimapButton").set(nil, false)
+			opt("minimapButton").set(nil, true)
+		end)
+		restore()
+		ns.Print = savedPrint
+		assert(ok, err)
+		assert.same({ L["MinimapHidden"] }, said)
+		assert.is_truthy(said[1]:find("/upm minimap", 1, true))
+	end)
+
 	it("saves the minimap choice even with LibDBIcon absent", function()
 		local restore = swap(LibStub.libs, { ["LibDBIcon-1.0"] = false })
 		opt("minimapButton").set(nil, false)
@@ -796,9 +813,16 @@ describe("opening Settings re-lays the dialog once skins have run", function()
 		AceDialog = LibStub("AceConfigDialog-3.0")
 		-- Another spec file can leave the dialog open.
 		closeNow()
-		-- The two deferred passes are captured and run by hand.
+		-- The two deferred passes are captured and run by hand. Only timers
+		-- scheduled from GUI/Settings.lua count: Ace3's Slider constructor
+		-- schedules its own font workaround (AceGUIWidget-Slider.lua:276) for
+		-- every slider it builds new, so a run of this file alone, with no
+		-- pooled sliders yet, saw 6 timers where a whole-suite run saw 2.
 		passes = {}
-		undo = swap(_G, { C_Timer = { After = function(delay, fn) passes[#passes + 1] = { delay, fn } end } })
+		undo = swap(_G, { C_Timer = { After = function(delay, fn)
+			local src = debug.getinfo(2, "S").short_src or ""
+			if src:find("GUI/Settings.lua", 1, true) then passes[#passes + 1] = { delay, fn } end
+		end } })
 	end)
 
 	after_each(function()

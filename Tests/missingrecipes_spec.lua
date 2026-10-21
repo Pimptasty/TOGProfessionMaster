@@ -466,6 +466,144 @@ describe("the [Where] button", function()
 		end)
 	end)
 
+	-- Sorting by Sources asks LibItemDB for every row without ProfessionDB
+	-- sources -- on Retail, nearly every row -- and each answer decodes every
+	-- spawn of the scroll's places. Self-audit cd8c79f4 #1: that must not all
+	-- land in one frame. Each lookup below costs 1 ms on a fake clock; the
+	-- slice budget is 4 ms.
+	describe("sorting by Sources", function()
+		local savedNow, savedList, savedRowList, savedCol, savedAsc, savedProf
+		local clock, setData
+
+		-- Rows whose scrolls are ids 1..n; scroll i's only place kind is
+		-- kinds[i]. Lookups advance the clock and count themselves.
+		local function rows(kinds)
+			local list = {}
+			for i, kind in ipairs(kinds) do
+				list[i] = { spellId = 9000 + i, itemId = i, kind = kind, sourcesText = "" }
+			end
+			ns._itemDB = {
+				GetName = function() return nil end,
+				GetLink = function() return nil end,
+				GetQuality = function() return nil end,
+				OpenWhereWindow = function() end,
+				BuildWhereRows = function(_, id)
+					built = built + 1
+					clock = clock + 1
+					return { { kind = kinds[id] } }
+				end,
+			}
+			return list
+		end
+
+		local function order(list)
+			local out = {}
+			for i, e in ipairs(list) do out[i] = e.kind end
+			return table.concat(out, ",")
+		end
+
+		before_each(function()
+			savedNow = ns.Perf.now
+			savedList, savedRowList = M._list, M._rowList
+			savedCol, savedAsc, savedProf = M._sortCol, M._sortAsc, M._profId
+			clock, built, setData = 0, 0, 0
+			ns.Perf.now = function() return clock end
+			M._rowList = { SetData = function() setData = setData + 1 end }
+			M._sortCol, M._sortAsc, M._profId = "source", true, ALCHEMY
+			M._sourceResortList = nil
+		end)
+
+		after_each(function()
+			ns.Perf.now = savedNow
+			M._list, M._rowList = savedList, savedRowList
+			M._sortCol, M._sortAsc, M._profId = savedCol, savedAsc, savedProf
+			M._sourceResortList = nil
+		end)
+
+		it("sorts a list that fits the slice at once, with no later redraw", function()
+			local list = rows({ "Vendor", "Quest", "Drop" })
+			M._list = list
+			M:SortList(list)
+			assert.equal("Drop,Quest,Vendor", order(list))
+			assert.equal(3, built)
+			env.wow.flushTimers()
+			assert.equal(0, setData)
+		end)
+
+		it("stops looking up after the slice and finishes on the next frame with one redraw", function()
+			local kinds = {}
+			for i = 1, 12 do kinds[i] = (i % 2 == 0) and "Drop" or "Vendor" end
+			local list = rows(kinds)
+			M._list = list
+			M:SortList(list)
+			-- The slice spends 4 ms, then one more lookup crosses it.
+			assert.equal(5, built)
+			assert.equal(0, setData)
+			env.wow.flushTimers()
+			assert.equal(12, built)
+			assert.equal(1, setData)
+			assert.equal("Drop,Drop,Drop,Drop,Drop,Drop,Vendor,Vendor,Vendor,Vendor,Vendor,Vendor", order(list))
+		end)
+
+		it("schedules one continuation however many sorts land before it runs", function()
+			local kinds = {}
+			for i = 1, 30 do kinds[i] = "Vendor" end
+			local list = rows(kinds)
+			M._list = list
+			local before = env.wow.pendingTimerCount()
+			M:SortList(list)
+			M:SortList(list)
+			-- Each sort spent its own slice; only one continuation is pending.
+			assert.equal(10, built)
+			assert.equal(list, M._sourceResortList)
+			assert.equal(before + 1, env.wow.pendingTimerCount())
+			env.wow.flushTimers()
+			-- Every key is known after the frames run, and the list was
+			-- redrawn once, at the end, not on every frame of the warm.
+			assert.equal(30, built)
+			assert.equal(1, setData)
+			assert.equal(nil, M._sourceResortList)
+		end)
+
+		it("does no new lookups when a rebuilt list sorts again (Peer Review N6)", function()
+			-- FillList builds new entry tables on every keystroke and sync; the
+			-- places are static for the session, so the second sort is free.
+			local list = rows({ "Vendor", "Drop", "Quest" })
+			M._list = list
+			M:SortList(list)
+			assert.equal(3, built)
+			local again = {}
+			for i, e in ipairs(list) do
+				again[i] = { spellId = e.spellId, itemId = e.itemId, kind = e.kind, sourcesText = "" }
+			end
+			M._list = again
+			M:SortList(again)
+			assert.equal(3, built)
+			assert.equal("Drop,Quest,Vendor", order(again))
+		end)
+
+		it("gives up when the list was rebuilt or the sort changed before the next frame", function()
+			local kinds = {}
+			for i = 1, 12 do kinds[i] = "Vendor" end
+			local list = rows(kinds)
+			M._list = list
+			M:SortList(list)
+			M._list = {}                  -- FillList built a new list
+			env.wow.flushTimers()
+			assert.equal(0, setData)
+			assert.equal(5, built)
+
+			local again = rows(kinds)
+			M._list = again
+			built = 0
+			M:SortList(again)
+			M._sortCol = "skill"          -- the player sorted by Skill instead
+			env.wow.flushTimers()
+			assert.equal(0, setData)
+			assert.equal(5, built)
+		end)
+	end)
+
 	it("opens LibItemDB's window on the scroll item, not the recipe spell", function()
 		itemDB(2)
 		whereColumn().onClick({ spellId = B, itemId = SCROLL })

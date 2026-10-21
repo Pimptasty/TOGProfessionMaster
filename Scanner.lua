@@ -816,7 +816,7 @@ end
 -- /togpm status — dump comm/sync diagnostic snapshot to chat.
 function addon:PrintStatus()
     local sep = "|cffaaaaaa----------------------------------------|r"
-    addon:Print("|cffda8cffTOG Profession Master — Status|r")
+    addon:Print("|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master — Status|r")
     addon:Print(sep)
 
     -- ── DeltaSync ────────────────────────────────────────────────────────────
@@ -943,7 +943,7 @@ end
 --- prove isolation: each should report its own namespace and prefixes.
 function addon:PrintDeltaSyncStatus()
     local sep = "|cffaaaaaa----------------------------------------|r"
-    addon:Print("|cffda8cffTOG Profession Master — DeltaSync|r")
+    addon:Print("|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master — DeltaSync|r")
     addon:Print(sep)
 
     local DSlib = LibStub and LibStub("DeltaSync-1.0", true)

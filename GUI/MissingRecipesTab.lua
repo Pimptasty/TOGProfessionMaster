@@ -403,20 +403,11 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
     -- addon.RecipeGate, which reads the same Settings value and applies it to
     -- every recipe list rather than only this one.)
 
-    -- Per-client expansion index. The shipped recipeDB tags each recipe
-    -- with `minExpansion` = the earliest build (1=Vanilla, 2=TBC, 3=Wrath,
-    -- 4=Cata, 5=MoP) where the spell first appeared in wago.tools
-    -- SkillLineAbility. We hide recipes whose minExpansion > the current
-    -- client's expansion index — that's how Wrath transmute spell 53771
-    -- gets blocked on a TBC client even though its raw difficulty values
-    -- might look TBC-compatible (wago.tools' MoP build inherits every
-    -- spell ever shipped, so a forward-union of all 5 builds means Wrath /
-    -- Cata / MoP spells appear in our DB; the minExpansion tag keeps them
-    -- from displaying on earlier clients).
-    --
-    -- Also keep the requiredSkill > clientMaxSkill filter as belt-and-
-    -- suspenders — minExpansion is the primary gate but a misclassified
-    -- recipe still gets caught if its required-skill exceeds the cap.
+    -- Cross-expansion recipes are kept out by the DATA, not by a gate here:
+    -- every ProfessionDB file is flavour-scoped (it opens with IsGameVersion),
+    -- and none carries the `minExpansion` tag the old merged dataset had, so
+    -- RecipeGate's check of that tag is defensive only. The skill cap is not
+    -- a gate either; Modules/RecipeGate.lua says why it was removed.
     -- Even with lib-backed recipe data, keep defensive client-validity gates
     -- enabled: Season-of-Discovery and Anniversary content can still leak into
     -- Era/HC clients through shared 1.15 data tables. (There is no "trust the
@@ -424,9 +415,9 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
     -- the local it read was never consulted.)
 
     for spellId, data in pairs(recipes) do
-        -- Client-validity gates — the SoD ID range, minExpansion, spell
-        -- presence, the Era blacklists, the untagged high-ID rule, the skill
-        -- cap, the TBC phase limit and season. All of it lives in
+        -- Client-validity gates — the SoD ID range, the defensive
+        -- minExpansion check, spell presence, the Era blacklists, the
+        -- untagged high-ID rule, the TBC phase limit and season. All of it lives in
         -- addon.RecipeGate (Modules/RecipeGate.lua) and is shared with
         -- BrowserTab; this tab used to carry its own copy, which drifted (it
         -- never got the First Aid blacklist, so both Netherweave bandages
@@ -1007,7 +998,7 @@ function MissingRecipesTab:ShowRowTooltip(entry, owner)
         tip:SetSpellByID(spellId)
     else
         local name = (spellId and addon.Spell.GetInfo(spellId))
-                     or (itemId and ("Item #" .. itemId))
+                     or addon:ItemDisplayName(itemId)
                      or "?"
         tip:SetText(name, 1, 1, 1, 1, true)
     end
@@ -1023,7 +1014,7 @@ function MissingRecipesTab:ShowRowTooltip(entry, owner)
         if spellId then table.insert(idParts, "spellId=" .. tostring(spellId)) end
         if #idParts > 0 then
             tip:AddLine(" ")
-            tip:AddLine("|c" .. brandColor .. "[TOGPM]|r " ..
+            tip:AddLine("|c" .. brandColor .. "[UPM]|r " ..
                         "|c" .. brandColor .. table.concat(idParts, "  ") .. "|r",
                         1, 1, 1, true)
         end
@@ -1070,6 +1061,16 @@ end
 -- on its display table, which FillList rebuilds) because the list asks on every
 -- paint. The faction is the window's own: by default it hides the other
 -- faction's vendors, so a scroll only they sell would open on an empty list.
+--
+-- The rows are also cached per scroll for the session. The display table dies
+-- with every FillList (a search keystroke, a guild sync), and LibItemDB's
+-- places do not change while the game runs, so without this a Sources sort
+-- redid every lookup after each rebuild (Peer Review, thread 13bd501f, N6).
+-- Keyed by the LibItemDB object first, weakly, so a different library -- a
+-- reload, or a spec's stub -- never answers from another one's rows; and by
+-- faction, which the window's own-faction setting can change mid-session.
+local whereCache = setmetatable({}, { __mode = "k" })
+
 function MissingRecipesTab:HasWhere(entry)
     if not entry.itemId then return false end
     local d = self:RowDisplay(entry)
@@ -1078,7 +1079,19 @@ function MissingRecipesTab:HasWhere(entry)
         local ok = idb and idb.OpenWhereWindow and idb.BuildWhereRows and true or false
         local faction = ok and idb.GetWhereOwnFactionOnly and idb:GetWhereOwnFactionOnly()
             and UnitFactionGroup and UnitFactionGroup("player") or nil
-        d.whereRows = ok and idb:BuildWhereRows(entry.itemId, faction) or {}
+        if ok then
+            local byIdb = whereCache[idb]
+            if not byIdb then byIdb = {}; whereCache[idb] = byIdb end
+            local key = entry.itemId .. ":" .. (faction or "")
+            local rows = byIdb[key]
+            if not rows then
+                rows = idb:BuildWhereRows(entry.itemId, faction) or {}
+                byIdb[key] = rows
+            end
+            d.whereRows = rows
+        else
+            d.whereRows = {}
+        end
         d.hasWhere = #d.whereRows > 0
     end
     return d.hasWhere
@@ -1247,7 +1260,7 @@ function MissingRecipesTab:BuildRowList(host)
               end,
               onClick = function(e)
                   local d = self:RowDisplay(e)
-                  addon.Bank.ShowRequestDialog(e.itemId, d.itemName or ("Item #" .. e.itemId), d.itemLink)
+                  addon.Bank.ShowRequestDialog(e.itemId, d.itemName or addon:ItemDisplayName(e.itemId), d.itemLink)
               end },
             -- [AH]: only once a scan has found live listings for the scroll.
             -- The click searches the Browse tab for it; with the AH closed,
@@ -1284,6 +1297,61 @@ function MissingRecipesTab:BuildRowList(host)
     })
 end
 
+-- The Sources sort key is the one that can cost real time: a row without
+-- ProfessionDB sources asks LibItemDB for every place its scroll comes from
+-- (HasWhere -> BuildWhereRows decodes each spawn and names each zone), and on
+-- Retail that is nearly every row. Asking for all of them inside one sort is a
+-- one-frame hitch proportional to the list (self-audit cd8c79f4 #1). So a sort
+-- resolves keys for at most SOURCE_SLICE_MS, sorts with what is ready (a row
+-- still waiting sorts by its ProfessionDB text, which BuildMissingList set to
+-- "Unknown", so it sits among the U's until its key lands), and finishes
+-- the rest one slice per frame, re-sorting once when every key is known.
+local SOURCE_SLICE_MS = 4
+
+-- Whether this row's Sources text still needs the LibItemDB lookup.
+function MissingRecipesTab:SourceLookupPending(entry)
+    return entry.itemId ~= nil and not entry.sources
+        and self:RowDisplay(entry).sourcesText == nil
+end
+
+-- Resolve pending Sources keys until the slice budget runs out. True when
+-- every row's key is now known.
+function MissingRecipesTab:WarmSourceKeys(list)
+    local now   = addon.Perf.now
+    local start = now()
+    for _, e in ipairs(list) do
+        if self:SourceLookupPending(e) then
+            if now() - start > SOURCE_SLICE_MS then return false end
+            self:SourcesText(e)
+        end
+    end
+    return true
+end
+
+-- Finish the Sources keys on later frames, then re-sort and redraw once. One
+-- continuation per list; it gives up if the list was rebuilt or released, or
+-- the player sorted by something else meanwhile.
+function MissingRecipesTab:ScheduleSourceResort(list)
+    if self._sourceResortList == list then return end
+    self._sourceResortList = list
+    -- Next frame: nothing in the game reports "a frame passed", and the work
+    -- is this tab's own keys and list.
+    -- writ:internal next-frame slice of our own sort keys; touches only our list
+    C_Timer.After(0, function()
+        if self._sourceResortList ~= list then return end
+        self._sourceResortList = nil
+        if self._list ~= list or self._sortCol ~= "source" then return end
+        -- Another slice; sort and redraw only once nothing is left, so the
+        -- rows do not shuffle on every frame of the warm.
+        if not self:WarmSourceKeys(list) then
+            self:ScheduleSourceResort(list)
+            return
+        end
+        self:SortList(list)
+        if self._rowList then self._rowList:SetData(list, true) end
+    end)
+end
+
 -- A header click, reported by the list after it set its own key and arrow.
 function MissingRecipesTab:OnSortChanged(key, desc)
     self._sortCol = key or "skill"
@@ -1306,6 +1374,10 @@ function MissingRecipesTab:SortList(list)
 
     -- Precompute the text sort key once per entry so the comparator doesn't call
     -- GetItemInfo O(n log n) times (skill sorts on the numeric field directly).
+    if col == "source" and not self:WarmSourceKeys(list) then
+        self:ScheduleSourceResort(list)
+    end
+
     local key
     if col == "recipe" or col == "source" then
         key = {}
@@ -1317,6 +1389,8 @@ function MissingRecipesTab:SortList(list)
                           or addon.Spell.GetInfo(e.spellId)
                           or e.name or ""
                 key[e] = tostring(n):lower()
+            elseif self:SourceLookupPending(e) then
+                key[e] = (e.sourcesText or ""):lower()
             else
                 key[e] = self:SourcesText(e):lower()
             end

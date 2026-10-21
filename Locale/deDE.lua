@@ -1,4 +1,4 @@
--- TOG Profession Master -- German (deDE) locale
+-- Ultimate Profession Master -- German (deDE) locale
 -- Any missing key falls back to enUS automatically via AceLocale.
 -- Translations are best-effort; native-speaker review welcome.
 
@@ -8,8 +8,8 @@ local L = addon.NewLocale("deDE")
 -- ---------------------------------------------------------------------------
 -- Main window
 -- ---------------------------------------------------------------------------
-L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "TOG Profession Master|r"
-L["SyncLogTitle"]       = "TOG Profession Master \226\128\148 Sync-Protokoll"
+L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r"
+L["SyncLogTitle"]       = "Ultimate Profession Master \226\128\148 Sync-Protokoll"
 
 -- Tab labels
 L["TabProfessions"]     = "Berufe"
@@ -186,9 +186,9 @@ L["MissingSrcUnknown"]          = "Unbekannt"
 -- Settings: global item tooltip lines
 L["SettingsTooltipHeader"]          = "Gegenstands-Tooltip"
 L["SettingsTooltipShowCrafters"]    = "Gildenhandwerker in Gegenstands-Tooltips zeigen"
-L["SettingsTooltipShowCraftersDesc"]= "F\195\188gt eine [TOGPM]-Zeile hinzu, die jeden Gildenkameraden auflistet, der den gerade betrachteten Gegenstand herstellen kann. Online in Wei\195\159, offline in Grau. Bei-Abholen-gebundene Gegenst\195\164nde werden \195\188bersprungen (ohnehin nicht handelbar)."
+L["SettingsTooltipShowCraftersDesc"]= "F\195\188gt eine [UPM]-Zeile hinzu, die jeden Gildenkameraden auflistet, der den gerade betrachteten Gegenstand herstellen kann. Online in Wei\195\159, offline in Grau. Bei-Abholen-gebundene Gegenst\195\164nde werden \195\188bersprungen (ohnehin nicht handelbar)."
 L["SettingsTooltipShowIds"]         = "Gegenstands-ID / Zauber-ID in Tooltips zeigen"
-L["SettingsTooltipShowIdsDesc"]     = "F\195\188gt eine [TOGPM]-Zeile mit der Gegenstands-ID und (falls bekannt) der Rezept-Zauber-ID hinzu. Vor allem n\195\188tzlich zur Fehlersuche bei falschen Symbolen oder fehlenden Rezepten \226\128\148 IDs in Wowhead einf\195\188gen, um zu pr\195\188fen, womit der Addon abgleicht."
+L["SettingsTooltipShowIdsDesc"]     = "F\195\188gt eine [UPM]-Zeile mit der Gegenstands-ID und (falls bekannt) der Rezept-Zauber-ID hinzu. Vor allem n\195\188tzlich zur Fehlersuche bei falschen Symbolen oder fehlenden Rezepten \226\128\148 IDs in Wowhead einf\195\188gen, um zu pr\195\188fen, womit der Addon abgleicht."
 
 -- Settings: TBC Anniversary phase filter
 L["SettingsTBCPhaseHeader"]     = "TBC-Anniversary-Phase"
@@ -208,7 +208,7 @@ L["SettingsMinimapBtnDesc"]      = "Blendet den Minimap-Starter-Knopf ein oder a
 L["SettingsPersistProfFilter"]     = "Berufsfilter merken"
 L["SettingsPersistProfFilterDesc"] = "Stellt den gew\195\164hlten Beruf beim Einloggen oder Reload wieder her."
 L["SettingsUILangOverride"]        = "UI-Sprache \195\188berschreiben"
-L["SettingsUILangOverrideDesc"]    = "Erzwingt die TOGPM-Addon-UI (Tabs, Kn\195\182pfe, Tooltips, Einstellungen) in eine bestimmte Sprache, unabh\195\164ngig von der Sprache eures WoW-Clients. \"Automatisch\" folgt der Sprache eures WoW-Clients. Namen von Gegenst\195\164nden / Zaubern / Rezepten im Spiel werden weiterhin in der tats\195\164chlichen Client-Sprache angezeigt, da diese aus Blizzards APIs stammen und nicht aus diesem Addon. Inklusive Thai und Filipino, die Blizzards Client nicht nativ unterst\195\188tzt, f\195\188r die TOGPM aber \195\156bersetzungen \195\188ber diese \195\156berschreibung mitliefert."
+L["SettingsUILangOverrideDesc"]    = "Erzwingt die UPM-Addon-UI (Tabs, Kn\195\182pfe, Tooltips, Einstellungen) in eine bestimmte Sprache, unabh\195\164ngig von der Sprache eures WoW-Clients. \"Automatisch\" folgt der Sprache eures WoW-Clients. Namen von Gegenst\195\164nden / Zaubern / Rezepten im Spiel werden weiterhin in der tats\195\164chlichen Client-Sprache angezeigt, da diese aus Blizzards APIs stammen und nicht aus diesem Addon. Inklusive Thai und Filipino, die Blizzards Client nicht nativ unterst\195\188tzt, f\195\188r die UPM aber \195\156bersetzungen \195\188ber diese \195\156berschreibung mitliefert."
 L["SettingsUILangAuto"]            = "Automatisch (WoW-Client-Sprache verwenden)"
 L["SettingsUILangReloadHint"]      = "UI-Sprache ge\195\164ndert. Tippt |cffffd100/reload|r, damit die \195\132nderung \195\188berall wirksam wird."
 L["SettingsSyncHeader"]     = "Synchronisation"
@@ -244,7 +244,7 @@ L["SyncLogNoEntries"]       = "|cffaaaaaa(noch keine Sync-Ereignisse aufgezeichn
 -- ---------------------------------------------------------------------------
 -- Minimap
 -- ---------------------------------------------------------------------------
-L["MinimapHidden"]          = "Minimap-Knopf verborgen. Benutzt |cffda8cff/togpm minimap|r zum Wiederherstellen."
+L["MinimapHidden"]          = "Minimap-Knopf verborgen. Benutzt |cffFF8000/upm minimap|r zum Wiederherstellen."
 
 -- ---------------------------------------------------------------------------
 -- Tooltip
@@ -259,13 +259,13 @@ L["AlertReadyFormat"]       = "|cff00ff00Bereit zum Herstellen:|r %s \195\151 %d
 -- Shopping list crafter alert
 L["ShoppingAlertEnable"]               = "Handwerker-Alarm f\195\188r dieses Rezept aktivieren"
 L["ShoppingAlertDisable"]              = "Handwerker-Alarm f\195\188r dieses Rezept deaktivieren"
-L["AlertCrafterOnline"]                = "|cffFFD700[TOGPM]|r %s ist online \226\128\148 kann herstellen: %s"
-L["AlertCrafterOnlineAlt"]             = "|cffFFD700[TOGPM]|r %s ist online (Twink von %s) \226\128\148 kann herstellen: %s"
+L["AlertCrafterOnline"]                = "|cffFFD700[UPM]|r %s ist online \226\128\148 kann herstellen: %s"
+L["AlertCrafterOnlineAlt"]             = "|cffFFD700[UPM]|r %s ist online (Twink von %s) \226\128\148 kann herstellen: %s"
 
 -- Cooldown-ready alert
 L["CooldownAlertEnable"]               = "Bereit-Alarm f\195\188r diese Abklingzeit aktivieren"
 L["CooldownAlertDisable"]              = "Bereit-Alarm f\195\188r diese Abklingzeit deaktivieren"
-L["AlertCooldownReady"]                = "|cff00ffff[TOGPM]|r Abklingzeit bereit: %s \226\128\148 %s"
+L["AlertCooldownReady"]                = "|cff00ffff[UPM]|r Abklingzeit bereit: %s \226\128\148 %s"
 
 -- Settings
 L["SettingsAlertsHeader"]              = "Handwerker-Alarme"
@@ -305,7 +305,7 @@ L["TooltipAHTitle"]              = "Auktionshaus durchsuchen"
 L["TooltipAHDescScroll"]         = "\195\150ffnet diese Rezeptrolle in der AH-Suche."
 L["TooltipAHDescReagent"]        = "\195\150ffnet dieses Reagenz in der AH-Suche."
 L["TooltipSettingsTitle"]        = "Einstellungen"
-L["TooltipSettingsDesc"]         = "\195\150ffnet das Einstellungsmen\195\188 von TOG Profession Master (|cffffd700ESC > Optionen > AddOns > TOG Profession Master|r). Gleiches Ziel wie |cffffd700/togpm settings|r und Shift+Linksklick auf den Minimap-Knopf."
+L["TooltipSettingsDesc"]         = "\195\150ffnet das Einstellungsmen\195\188 von Ultimate Profession Master (|cffffd700ESC > Optionen > AddOns > Ultimate Profession Master|r). Gleiches Ziel wie |cffffd700/upm settings|r und Shift+Linksklick auf den Minimap-Knopf."
 L["TooltipWhisperRightClick"]    = "Rechtsklick zum Fl\195\188stern"
 L["TooltipClickTransmutes"]      = "Klicken, um Transmutationen zu sehen"
 L["TooltipClickDetailsFormat"]   = "Klicken, um %s zu sehen"
@@ -330,13 +330,14 @@ L["MinimapTooltipShiftLeft"]   = "|cffffd100Shift+Links|r \195\182ffnet die Eins
 L["MinimapButtonShown"]        = "Minimap-Knopf eingeblendet."
 
 -- ---------------------------------------------------------------------------
--- Slash command help (/togpm help) -- command names stay englisch
+-- Slash command help (/upm help) -- command names stay englisch
 -- ---------------------------------------------------------------------------
-L["SlashHelpHeader"]        = "|cffda8cffTOG Profession Master|r \226\128\148 Befehle:"
+L["SlashHelpHeader"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r \226\128\148 Befehle:"
 L["SlashHelpOpen"]          = "\195\150ffnet den Berufe-Browser"
 L["SlashHelpReagents"]      = "\195\150ffnet die fehlenden Reagenzien"
 L["SlashHelpMinimap"]       = "Minimap-Knopf einblenden"
 L["SlashHelpPurge"]         = "\195\150ffnet den L\195\182sch-Dialog"
+L["SlashHelpSettings"]      = "\195\182ffnet die Einstellungen"
 L["SlashHelpSync"]          = "Erzwingt eine vollst\195\164ndige Gildensynchronisation"
 L["SlashHelpStatus"]        = "Gibt Sync-/Comm-Diagnoseinfos aus"
 L["SlashHelpVersionCheck"]  = "Pr\195\188ft Addon-Versionen in der Gilde"
@@ -395,7 +396,7 @@ L["CraftHaveMaterials"]   = "Have Materials"
 L["CraftCostLabel"]       = "Crafting Cost"
 L["CraftCostNone"]        = "—"
 L["CraftColCostHdr"]      = "Cost"
-L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else TOGPM's own scan) or vendor; \"—\" when no price is known yet."
+L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else UPM's own scan) or vendor; \"—\" when no price is known yet."
 L["CraftSearchDesc"]      = "Filter recipes by name or by what they do. Searches the enriched effect text too, so \"5 damage\", \"agility\", or \"mining\" all find matching recipes."
 L["CraftColRecipe"]       = "Recipe Name"
 L["CraftColRecipeDesc"]   = "The recipes you can make in this profession. Colour shows skill-up difficulty (orange/yellow/green/grey)."

@@ -723,7 +723,7 @@ function ItemLink.AppendRecipeDetails(tooltip, profId, recipeId)
     -- it instead of opening a second "TOGPM" heading, which read as two addons.
     local brand = addon.BrandColor or "ffFF8000"
     if not tooltip._togpmBranded then
-        BlockLine(tooltip, "|n|c" .. brand .. "TOGPM|r")
+        BlockLine(tooltip, "|n|c" .. brand .. "UPM|r")
         tooltip._togpmBranded = true
     end
 
@@ -889,7 +889,7 @@ function ItemLink.AppendVendorPrices(tooltip, itemId)
     -- line or the recipe block wrote a label first. It used to test the recipe
     -- block's flag only, so a crafters line plus a vendor price carried two.
     if not tooltip._togpmBranded then
-        BlockLine(tooltip, "|n|c" .. brand .. "TOGPM|r")
+        BlockLine(tooltip, "|n|c" .. brand .. "UPM|r")
         tooltip._togpmBranded = true
     end
 
@@ -1564,8 +1564,10 @@ local TOOLBAR_CTL_H = 24
 --     of the control's frame, of the toolbar's first child and of
 --     parent.content with its target ("nil/screen" when none) and each
 --     frame's parent.
--- Remove both once the cause is named. The once-per-session flags sit on a
--- table so the specs can reset them between cases.
+-- Kept as a dormant net: the operator has not seen the error since the
+-- toolbar fixes (2026-10-21), and both reports are silent on an ordinary draw
+-- (Tests/toolbar_spec.lua). The once-per-session flags sit on a table so the
+-- specs can reset them between cases.
 local anchorReported = { loop = false, fail = false }
 addon.GUI._anchorReported = anchorReported
 

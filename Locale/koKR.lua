@@ -1,4 +1,4 @@
--- TOG Profession Master -- Korean (koKR) locale
+-- Ultimate Profession Master -- Korean (koKR) locale
 -- Any missing key falls back to enUS automatically via AceLocale.
 -- Translations are best-effort; native-speaker review welcome.
 
@@ -8,8 +8,8 @@ local L = addon.NewLocale("koKR")
 -- ---------------------------------------------------------------------------
 -- Main window
 -- ---------------------------------------------------------------------------
-L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "TOG Profession Master|r"
-L["SyncLogTitle"]       = "TOG Profession Master — 동기화 기록"
+L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r"
+L["SyncLogTitle"]       = "Ultimate Profession Master — 동기화 기록"
 
 -- Tab labels
 L["TabProfessions"]     = "전문기술"
@@ -185,9 +185,9 @@ L["MissingSrcUnknown"]          = "알 수 없음"
 -- Settings: global item tooltip lines
 L["SettingsTooltipHeader"]          = "아이템 툴팁"
 L["SettingsTooltipShowCrafters"]    = "아이템 툴팁에 길드 제작자 표시"
-L["SettingsTooltipShowCraftersDesc"]= "현재 가리키는 아이템을 제작할 수 있는 모든 길드 동료를 나열하는 [TOGPM] 줄을 추가합니다. 접속 중은 흰색, 접속하지 않음은 회색. 획득 시 귀속 아이템은 건너뜁니다(어차피 거래 불가)."
+L["SettingsTooltipShowCraftersDesc"]= "현재 가리키는 아이템을 제작할 수 있는 모든 길드 동료를 나열하는 [UPM] 줄을 추가합니다. 접속 중은 흰색, 접속하지 않음은 회색. 획득 시 귀속 아이템은 건너뜁니다(어차피 거래 불가)."
 L["SettingsTooltipShowIds"]         = "툴팁에 아이템 ID / 주문 ID 표시"
-L["SettingsTooltipShowIdsDesc"]     = "아이템 ID와 (알 경우) 제조법 주문 ID를 포함한 [TOGPM] 줄을 추가합니다. 잘못된 아이콘이나 누락된 제조법을 진단할 때 주로 유용 — ID를 Wowhead에 붙여넣어 일치 여부를 확인하세요."
+L["SettingsTooltipShowIdsDesc"]     = "아이템 ID와 (알 경우) 제조법 주문 ID를 포함한 [UPM] 줄을 추가합니다. 잘못된 아이콘이나 누락된 제조법을 진단할 때 주로 유용 — ID를 Wowhead에 붙여넣어 일치 여부를 확인하세요."
 
 -- Settings: TBC Anniversary phase filter
 L["SettingsTBCPhaseHeader"]     = "TBC 기념 단계"
@@ -239,7 +239,7 @@ L["SyncLogNoEntries"]       = "|cffaaaaaa(아직 기록된 동기화 이벤트�
 -- ---------------------------------------------------------------------------
 -- Minimap
 -- ---------------------------------------------------------------------------
-L["MinimapHidden"]          = "미니맵 버튼 숨김. |cffda8cff/togpm minimap|r을 사용하여 복원하세요."
+L["MinimapHidden"]          = "미니맵 버튼 숨김. |cffFF8000/upm minimap|r을 사용하여 복원하세요."
 
 -- ---------------------------------------------------------------------------
 -- Tooltip
@@ -254,13 +254,13 @@ L["AlertReadyFormat"]       = "|cff00ff00제작 준비 완료:|r %s × %d  (%s �
 -- Shopping list crafter alert
 L["ShoppingAlertEnable"]               = "이 제조법에 대한 제작자 알림 활성화"
 L["ShoppingAlertDisable"]              = "이 제조법에 대한 제작자 알림 비활성화"
-L["AlertCrafterOnline"]                = "|cffFFD700[TOGPM]|r %s 접속 — 제작 가능: %s"
-L["AlertCrafterOnlineAlt"]             = "|cffFFD700[TOGPM]|r %s 접속 (%s의 부캐) — 제작 가능: %s"
+L["AlertCrafterOnline"]                = "|cffFFD700[UPM]|r %s 접속 — 제작 가능: %s"
+L["AlertCrafterOnlineAlt"]             = "|cffFFD700[UPM]|r %s 접속 (%s의 부캐) — 제작 가능: %s"
 
 -- Cooldown-ready alert
 L["CooldownAlertEnable"]               = "이 재사용 대기시간 준비 알림 활성화"
 L["CooldownAlertDisable"]              = "이 재사용 대기시간 준비 알림 비활성화"
-L["AlertCooldownReady"]                = "|cff00ffff[TOGPM]|r 재사용 대기시간 준비: %s — %s"
+L["AlertCooldownReady"]                = "|cff00ffff[UPM]|r 재사용 대기시간 준비: %s — %s"
 
 -- Settings
 L["SettingsAlertsHeader"]              = "제작자 알림"
@@ -300,7 +300,7 @@ L["TooltipAHTitle"]              = "경매장 검색"
 L["TooltipAHDescScroll"]         = "이 제조법 두루마리를 경매장 검색에서 엽니다."
 L["TooltipAHDescReagent"]        = "이 재료를 경매장 검색에서 엽니다."
 L["TooltipSettingsTitle"]        = "설정"
-L["TooltipSettingsDesc"]         = "TOG Profession Master 설정 패널을 엽니다(|cffffd700ESC > 옵션 > 애드온 > TOG Profession Master|r). |cffffd700/togpm settings|r 및 미니맵 버튼의 쉬프트+왼쪽 클릭과 동일한 대상입니다."
+L["TooltipSettingsDesc"]         = "Ultimate Profession Master 설정 패널을 엽니다(|cffffd700ESC > 옵션 > 애드온 > Ultimate Profession Master|r). |cffffd700/upm settings|r 및 미니맵 버튼의 쉬프트+왼쪽 클릭과 동일한 대상입니다."
 L["TooltipWhisperRightClick"]    = "귓속말 보내려면 우클릭"
 L["TooltipClickTransmutes"]      = "변환 보려면 클릭"
 L["TooltipClickDetailsFormat"]   = "%s 보려면 클릭"
@@ -325,13 +325,14 @@ L["MinimapTooltipShiftLeft"]   = "|cffffd100쉬프트+왼쪽|r으로 설정 열�
 L["MinimapButtonShown"]        = "미니맵 버튼 표시됨."
 
 -- ---------------------------------------------------------------------------
--- Slash command help (/togpm help) -- 명령어 이름은 번역되지 않음
+-- Slash command help (/upm help) -- 명령어 이름은 번역되지 않음
 -- ---------------------------------------------------------------------------
-L["SlashHelpHeader"]        = "|cffda8cffTOG Profession Master|r — 명령어:"
+L["SlashHelpHeader"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r — 명령어:"
 L["SlashHelpOpen"]          = "전문기술 탐색기 열기"
 L["SlashHelpReagents"]      = "부족한 재료 열기"
 L["SlashHelpMinimap"]       = "미니맵 버튼 표시"
 L["SlashHelpPurge"]         = "삭제 대화상자 열기"
+L["SlashHelpSettings"]      = "설정 패널 열기"
 L["SlashHelpSync"]          = "전체 길드 재동기화 강제"
 L["SlashHelpStatus"]        = "동기화/통신 진단 정보 덤프"
 L["SlashHelpVersionCheck"]  = "길드의 애드온 버전 확인"
@@ -390,7 +391,7 @@ L["CraftHaveMaterials"]   = "Have Materials"
 L["CraftCostLabel"]       = "Crafting Cost"
 L["CraftCostNone"]        = "—"
 L["CraftColCostHdr"]      = "Cost"
-L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else TOGPM's own scan) or vendor; \"—\" when no price is known yet."
+L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else UPM's own scan) or vendor; \"—\" when no price is known yet."
 L["CraftSearchDesc"]      = "Filter recipes by name or by what they do. Searches the enriched effect text too, so \"5 damage\", \"agility\", or \"mining\" all find matching recipes."
 L["CraftColRecipe"]       = "Recipe Name"
 L["CraftColRecipeDesc"]   = "The recipes you can make in this profession. Colour shows skill-up difficulty (orange/yellow/green/grey)."

@@ -147,6 +147,38 @@ describe("the Professions tab's skill-tier menu", function()
 		assert.same({}, BT._selectedTiers)
 		assert.is_false(menu:IsShown())
 	end)
+
+	-- Retail measures each expansion line on its own scale (Khaz Algar 1-100),
+	-- so the classic 75-point trainer bands cannot classify a Retail recipe, and
+	-- the menu offered bands up to Zen Master that matched nothing (self-audit
+	-- cd8c79f4 #5). The records are session-lifetime, so start from none.
+	describe("on Retail", function()
+		local savedRetail
+		before_each(function()
+			savedRetail = ns.isRetail
+			BT._toolbar = nil
+		end)
+		after_each(function()
+			ns.isRetail = savedRetail
+			BT._toolbar = nil
+		end)
+
+		it("draws no tier filter, and the profession picker still draws", function()
+			ns.isRetail = true
+			MW:Open("browser")
+			expectToolbar()
+			assert.is_table(BT._toolbar.prof)
+			assert.equal(nil, BT._toolbar.tier)
+		end)
+
+		it("keeps the tier filter on a classic client", function()
+			ns.isRetail = false
+			MW:Open("browser")
+			expectToolbar()
+			assert.is_table(BT._toolbar.prof)
+			assert.is_table(BT._toolbar.tier)
+		end)
+	end)
 end)
 
 -- The window's stop icon: Questbook's own control (its red X, dimmed while

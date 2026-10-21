@@ -25,7 +25,7 @@ local COMMANDS = {
 	"versioncheck", "debug", "craft", "spellcache", "itemgaps",
 	"dumprecipe Healing Potion", "dumphashes", "dumpcooldowns", "transmutedebug",
 	"dumpprice 12359", "forcebroadcast", "backfill", "myalts",
-	"pullroster Bob", "xgdiag", "whyvisible Bob", "commtest", "perf", "opendebug", "help",
+	"pullroster Bob", "xgdiag", "whyvisible Bob", "commtest", "perf", "opendebug", "settings", "help",
 }
 
 
@@ -122,6 +122,19 @@ describe("the dispatcher itself", function()
 		end
 		table.sort(missing)
 		assert.equal("", table.concat(missing, ", "))
+	end)
+
+	-- The settings tooltip in every locale names "/upm settings"; until v1.7.0
+	-- the command was not registered and printed the help list instead.
+	it("opens the settings panel for settings, and prints no help", function()
+		local saved, opened = ns.OpenSettings, 0
+		ns.OpenSettings = function() opened = opened + 1 end
+		printed = {}
+		local ok, err = pcall(Ace.OnSlashCommand, Ace, "settings")
+		ns.OpenSettings = saved
+		assert(ok, err)
+		assert.equal(1, opened)
+		assert.equal(0, #printed)
 	end)
 
 	it("prints help for a command it does not know", function()

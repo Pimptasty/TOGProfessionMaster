@@ -91,6 +91,29 @@ addon.lib = Ace
 -- interleaving under load. Must run after AceComm-3.0 has embedded.
 LibStub("AceCommQueue-1.0"):Embed(Ace)
 
+-- AceConsole's Print/Printf prefix every line with tostring(self), which is
+-- the AceAddon name "TOGProfessionMaster" -- kept because saved data and sync
+-- are keyed by it. Players see the brand instead (operator, in game
+-- 2026-10-21: "/upm help" printed "TOGProfessionMaster:" on every line).
+-- Same contract as AceConsole-3.0.lua:33-57: an optional leading chat frame,
+-- then every argument tostring'd and space-joined.
+function Ace:Print(...)
+    local out, first = DEFAULT_CHAT_FRAME, 1
+    local frame = ...
+    if type(frame) == "table" and frame.AddMessage then out, first = frame, 2 end
+    local parts = { "|c" .. (addon.BrandColor or "ffFF8000") .. "UPM|r:" }
+    for i = first, select("#", ...) do parts[#parts + 1] = tostring((select(i, ...))) end
+    out:AddMessage(table.concat(parts, " "))
+end
+
+function Ace:Printf(...)
+    local frame = ...
+    if type(frame) == "table" and frame.AddMessage then
+        return self:Print(frame, string.format(select(2, ...)))
+    end
+    return self:Print(string.format(...))
+end
+
 -- Custom callback bus used by Scanner.lua and Modules/SyncLog.lua.
 -- CallbackHandler-1.0 ships with Ace3 so it is always available.
 addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
@@ -104,6 +127,10 @@ addon.W_MINOR = 36
 do
     local W, minor = LibStub("LibAceGUIWidgets-1.0", true)
     addon.W = (W and (minor or 0) >= addon.W_MINOR) and W or nil
+    -- The loaded MINOR, for features newer than W_MINOR that TOGPM uses only
+    -- when present (RowList col.span / col.collapse are MINOR 46). Never raise
+    -- W_MINOR for one of those: it turns the whole GUI off on an older copy.
+    addon.W_LOADED_MINOR = addon.W and minor or 0
 end
 
 -- ---------------------------------------------------------------------------
@@ -660,6 +687,9 @@ local SLASH_COMMANDS = {
     ["whyvisible"]   = "ExplainVisibility",
     ["commtest"]     = "RunCommTest",
     ["opendebug"]    = "DumpOpenDebug",
+    -- The settings tooltip has promised this command in every locale; it was
+    -- never registered, so it printed the help list (found 2026-10-21).
+    ["settings"]     = "OpenSettings",
     ["help"]         = "PrintHelp",
 }
 
@@ -815,6 +845,8 @@ end
 function Ace:OnEnable()
     -- Slash command: /togpm [subcommand]
     self:RegisterChatCommand("togpm", "OnSlashCommand")
+    -- /upm is the new brand's alias; /togpm stays so existing players' habits and macros keep working.
+    self:RegisterChatCommand("upm", "OnSlashCommand")
 
     -- Debug persists across sessions, so a player who left it on gets the
     -- tooltip-width reporting without having to toggle it off and on again.
@@ -1181,7 +1213,7 @@ function addon:ForceSync()      addon:DebugPrint("ForceSync — sync not yet loa
 function addon:PullSisterRoster(args)
     local peer = strtrim(args or "")
     if peer == "" then
-        Ace:Print("Usage: /togpm pullroster <Name> (an online member of an allied guild)")
+        Ace:Print("Usage: /upm pullroster <Name> (an online member of an allied guild)")
         return
     end
     local GR = addon.Scanner and addon.Scanner.GuildRoster
@@ -1205,7 +1237,7 @@ end
 function addon:DumpRecipe(args)
     local name = strtrim(args or "")
     if name == "" then
-        Ace:Print("Usage: /togpm dumprecipe <recipe name>")
+        Ace:Print("Usage: /upm dumprecipe <recipe name>")
         return
     end
     local gdb = addon:GetGuildDb()
@@ -1260,7 +1292,7 @@ end
 --- IsMyCharacter is returning true for them, which is the bug we're
 --- chasing).
 function addon:DumpMyAlts()
-    Ace:Print("|cffda8cff[TOGPM] My Characters diagnostic|r")
+    Ace:Print("|c" .. (addon.BrandColor or "ffFF8000") .. "[UPM] My Characters diagnostic|r")
     local ac = addon.guildDb and addon.guildDb.global and addon.guildDb.global.accountChars
     if not ac then
         Ace:Print("  global.accountChars: |cffff4444nil|r (db not loaded)")
@@ -1674,7 +1706,7 @@ function addon:DumpPrice(args)
         itemId = tonumber(raw:match("item:(%d+)"))
     end
     if not itemId then
-        Ace:Print("Usage: /togpm dumpprice <itemId|itemLink>")
+        Ace:Print("Usage: /upm dumpprice <itemId|itemLink>")
         return
     end
 
@@ -1849,7 +1881,7 @@ function addon:ReportItemDBGaps(args)
     Ace:Print(("Scanned %d crafted items: %d not in ItemDB, %d with no stats%s."):format(
         total, unknown, nostat, (shown >= CAP) and (" (showing first " .. CAP .. ")") or ""))
     if shown >= CAP then
-        Ace:Print("Tip: scope with /togpm itemgaps <profId> to list the rest.")
+        Ace:Print("Tip: scope with /upm itemgaps <profId> to list the rest.")
     end
 end
 
@@ -1941,24 +1973,26 @@ end
 
 function Ace:PrintHelp()
     self:Print(L["SlashHelpHeader"])
-    self:Print("  /togpm              \226\128\148 " .. L["SlashHelpOpen"])
-    self:Print("  /togpm reagents     \226\128\148 " .. L["SlashHelpReagents"])
-    self:Print("  /togpm minimap      \226\128\148 " .. L["SlashHelpMinimap"])
-    self:Print("  /togpm purge        \226\128\148 " .. L["SlashHelpPurge"])
-    self:Print("  /togpm sync         \226\128\148 " .. L["SlashHelpSync"])
-    self:Print("  /togpm status       \226\128\148 " .. L["SlashHelpStatus"])
-    self:Print("  /togpm dsstatus     \226\128\148 DeltaSync multi-host health check"
+    self:Print("  /togpm still works the same as /upm for every command below")
+    self:Print("  /upm              \226\128\148 " .. L["SlashHelpOpen"])
+    self:Print("  /upm reagents     \226\128\148 " .. L["SlashHelpReagents"])
+    self:Print("  /upm minimap      \226\128\148 " .. L["SlashHelpMinimap"])
+    self:Print("  /upm purge        \226\128\148 " .. L["SlashHelpPurge"])
+    self:Print("  /upm settings     \226\128\148 " .. L["SlashHelpSettings"])
+    self:Print("  /upm sync         \226\128\148 " .. L["SlashHelpSync"])
+    self:Print("  /upm status       \226\128\148 " .. L["SlashHelpStatus"])
+    self:Print("  /upm dsstatus     \226\128\148 DeltaSync multi-host health check"
         .. " (namespace / MINOR / prefixes / P2P)")
-    self:Print("  /togpm versioncheck \226\128\148 " .. L["SlashHelpVersionCheck"])
-    self:Print("  /togpm dumpprice <itemId|itemLink> \226\128\148 Dump full price diagnostics for an item")
-    self:Print("  /togpm commtest [name] \226\128\148 Probe which addon-message channels the server relays")
-    self:Print("  /togpm whyvisible <name> \226\128\148 Explain why a character is still shown (or hidden)")
-    self:Print("  /togpm perf         \226\128\148 Timings of the last opens, draws, builds and syncs;"
+    self:Print("  /upm versioncheck \226\128\148 " .. L["SlashHelpVersionCheck"])
+    self:Print("  /upm dumpprice <itemId|itemLink> \226\128\148 Dump full price diagnostics for an item")
+    self:Print("  /upm commtest [name] \226\128\148 Probe which addon-message channels the server relays")
+    self:Print("  /upm whyvisible <name> \226\128\148 Explain why a character is still shown (or hidden)")
+    self:Print("  /upm perf         \226\128\148 Timings of the last opens, draws, builds and syncs;"
         .. " every addon's worst frame; the saved data's size")
-    self:Print("  /togpm opendebug    \226\128\148 Every attempt this session to open a profession"
+    self:Print("  /upm opendebug    \226\128\148 Every attempt this session to open a profession"
         .. " from the Crafting tab, with what blocked it")
-    self:Print("  /togpm debug        \226\128\148 " .. L["SlashHelpDebug"])
-    self:Print("  /togpm help         \226\128\148 " .. L["SlashHelpHelp"])
+    self:Print("  /upm debug        \226\128\148 " .. L["SlashHelpDebug"])
+    self:Print("  /upm help         \226\128\148 " .. L["SlashHelpHelp"])
 end
 
 --- /togpm opendebug -- the Crafting tab's profession-open attempts (WoW
@@ -2812,7 +2846,7 @@ end
 function addon:ExplainVisibility(args)
     local name = strtrim(args or "")
     if name == "" then
-        Ace:Print("Usage: /togpm whyvisible <Name> or <Name-Realm>")
+        Ace:Print("Usage: /upm whyvisible <Name> or <Name-Realm>")
         return
     end
     -- Bare name: assume our own realm, taken from our own character key so the
@@ -3106,6 +3140,22 @@ function addon:ResolveReagentName(r)
     end
     r.name = reagentPlaceholder(id)
     return r.name
+end
+
+-- An item's display name when there is no reagent table to heal: the client
+-- cache, then LibItemDB's shipped name, then the same "Item #<id>" placeholder
+-- ResolveReagentName uses. The one fallback chain for a bare item id, so a
+-- tooltip or dialog never shows a number while LibItemDB knows the name
+-- (self-audit b37931c3: three draw sites went straight to the number). nil
+-- without an id.
+function addon:ItemDisplayName(itemId)
+    if not itemId then return nil end
+    local name = addon.Item.GetInfo(itemId)
+    if not name then
+        local db = self:GetItemDB()
+        name = db and db.GetName and db:GetName(itemId)
+    end
+    return name or reagentPlaceholder(itemId)
 end
 
 -- Return reagents as the array-of-tables form GUI consumers expect:

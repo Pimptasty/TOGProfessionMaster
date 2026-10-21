@@ -1,4 +1,4 @@
--- TOG Profession Master -- Filipino (filPH) locale
+-- Ultimate Profession Master -- Filipino (filPH) locale
 --
 -- IMPORTANT: filPH is NOT a WoW-recognized locale code. GetLocale() will
 -- never return "filPH" on any Blizzard client, so AceLocale will never
@@ -17,8 +17,8 @@ local L = addon.NewLocale("filPH")
 -- ---------------------------------------------------------------------------
 -- Main window
 -- ---------------------------------------------------------------------------
-L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "TOG Profession Master|r"
-L["SyncLogTitle"]       = "TOG Profession Master — Talaan ng Sync"
+L["WindowTitle"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r"
+L["SyncLogTitle"]       = "Ultimate Profession Master — Talaan ng Sync"
 
 -- Tab labels
 L["TabProfessions"]     = "Mga Propesyon"
@@ -194,9 +194,9 @@ L["MissingSrcUnknown"]          = "Hindi alam"
 -- Settings: global item tooltip lines
 L["SettingsTooltipHeader"]          = "Tooltip ng Item"
 L["SettingsTooltipShowCrafters"]    = "Ipakita ang mga tagagawa ng guild sa mga tooltip ng item"
-L["SettingsTooltipShowCraftersDesc"]= "Magdaragdag ng linyang [TOGPM] na naglilista ng bawat kasama sa guild na maaaring gumawa ng item na iyong ini-hover. Online sa puti, offline sa kulay abo. Ang mga item na bound-on-pickup ay nilalaktawan (hindi naman maipagpapalit)."
+L["SettingsTooltipShowCraftersDesc"]= "Magdaragdag ng linyang [UPM] na naglilista ng bawat kasama sa guild na maaaring gumawa ng item na iyong ini-hover. Online sa puti, offline sa kulay abo. Ang mga item na bound-on-pickup ay nilalaktawan (hindi naman maipagpapalit)."
 L["SettingsTooltipShowIds"]         = "Ipakita ang item ID / spell ID sa mga tooltip"
-L["SettingsTooltipShowIdsDesc"]     = "Magdaragdag ng linyang [TOGPM] na may item ID at (kung alam) spell ID ng resipi. Higit na kapaki-pakinabang para sa pag-diagnose ng maling icon o kulang na resipi — i-paste ang mga ID sa Wowhead upang i-verify ang tugma."
+L["SettingsTooltipShowIdsDesc"]     = "Magdaragdag ng linyang [UPM] na may item ID at (kung alam) spell ID ng resipi. Higit na kapaki-pakinabang para sa pag-diagnose ng maling icon o kulang na resipi — i-paste ang mga ID sa Wowhead upang i-verify ang tugma."
 
 -- Settings: TBC Anniversary phase filter
 L["SettingsTBCPhaseHeader"]     = "Phase ng TBC Anniversary"
@@ -248,7 +248,7 @@ L["SyncLogNoEntries"]       = "|cffaaaaaa(wala pang naitalang kaganapan ng sync)
 -- ---------------------------------------------------------------------------
 -- Minimap
 -- ---------------------------------------------------------------------------
-L["MinimapHidden"]          = "Nakatago ang pindutan ng minimap. Gamitin ang |cffda8cff/togpm minimap|r upang ibalik."
+L["MinimapHidden"]          = "Nakatago ang pindutan ng minimap. Gamitin ang |cffFF8000/upm minimap|r upang ibalik."
 
 -- ---------------------------------------------------------------------------
 -- Tooltip
@@ -263,13 +263,13 @@ L["AlertReadyFormat"]       = "|cff00ff00Handang gawin:|r %s × %d  (%s × %d sa
 -- Shopping list crafter alert
 L["ShoppingAlertEnable"]               = "I-enable ang alerto ng tagagawa para sa resiping ito"
 L["ShoppingAlertDisable"]              = "I-disable ang alerto ng tagagawa para sa resiping ito"
-L["AlertCrafterOnline"]                = "|cffFFD700[TOGPM]|r %s ay online — maaaring gumawa: %s"
-L["AlertCrafterOnlineAlt"]             = "|cffFFD700[TOGPM]|r %s ay online (alt ni %s) — maaaring gumawa: %s"
+L["AlertCrafterOnline"]                = "|cffFFD700[UPM]|r %s ay online — maaaring gumawa: %s"
+L["AlertCrafterOnlineAlt"]             = "|cffFFD700[UPM]|r %s ay online (alt ni %s) — maaaring gumawa: %s"
 
 -- Cooldown-ready alert
 L["CooldownAlertEnable"]               = "I-enable ang alerto ng handa para sa cooldown na ito"
 L["CooldownAlertDisable"]              = "I-disable ang alerto ng handa para sa cooldown na ito"
-L["AlertCooldownReady"]                = "|cff00ffff[TOGPM]|r Handa ang cooldown: %s — %s"
+L["AlertCooldownReady"]                = "|cff00ffff[UPM]|r Handa ang cooldown: %s — %s"
 
 -- Settings
 L["SettingsAlertsHeader"]              = "Mga Alerto ng Tagagawa"
@@ -309,7 +309,7 @@ L["TooltipAHTitle"]              = "Maghanap sa Auction House"
 L["TooltipAHDescScroll"]         = "Buksan ang scroll ng resiping ito sa paghahanap ng AH."
 L["TooltipAHDescReagent"]        = "Buksan ang sangkap na ito sa paghahanap ng AH."
 L["TooltipSettingsTitle"]        = "Mga Setting"
-L["TooltipSettingsDesc"]         = "Buksan ang panel ng setting ng TOG Profession Master (|cffffd700ESC > Mga Opsyon > Mga AddOn > TOG Profession Master|r). Parehong target ng |cffffd700/togpm settings|r at Shift+kaliwang click sa pindutan ng minimap."
+L["TooltipSettingsDesc"]         = "Buksan ang panel ng setting ng Ultimate Profession Master (|cffffd700ESC > Mga Opsyon > Mga AddOn > Ultimate Profession Master|r). Parehong target ng |cffffd700/upm settings|r at Shift+kaliwang click sa pindutan ng minimap."
 L["TooltipWhisperRightClick"]    = "Kanang-click upang mag-whisper"
 L["TooltipClickTransmutes"]      = "Pindutin upang makita ang mga transmute"
 L["TooltipClickDetailsFormat"]   = "Pindutin upang makita ang %s"
@@ -334,13 +334,14 @@ L["MinimapTooltipShiftLeft"]   = "|cffffd100Shift+Kaliwa|r upang buksan ang mga 
 L["MinimapButtonShown"]        = "Ipinakita ang pindutan ng minimap."
 
 -- ---------------------------------------------------------------------------
--- Slash command help (/togpm help) -- hindi isinasalin ang mga pangalan ng utos
+-- Slash command help (/upm help) -- hindi isinasalin ang mga pangalan ng utos
 -- ---------------------------------------------------------------------------
-L["SlashHelpHeader"]        = "|cffda8cffTOG Profession Master|r — mga utos:"
+L["SlashHelpHeader"]        = "|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r — mga utos:"
 L["SlashHelpOpen"]          = "buksan ang browser ng propesyon"
 L["SlashHelpReagents"]      = "buksan ang mga kulang na sangkap"
 L["SlashHelpMinimap"]       = "ipakita ang pindutan ng minimap"
 L["SlashHelpPurge"]         = "buksan ang dialog ng pagbura"
+L["SlashHelpSettings"]      = "buksan ang panel ng setting"
 L["SlashHelpSync"]          = "pwersahing buong pag-resync ng guild"
 L["SlashHelpStatus"]        = "i-dump ang sync/comm diagnostic info"
 L["SlashHelpVersionCheck"]  = "tingnan ang mga bersyon ng addon sa guild"
@@ -399,7 +400,7 @@ L["CraftHaveMaterials"]   = "Have Materials"
 L["CraftCostLabel"]       = "Crafting Cost"
 L["CraftCostNone"]        = "—"
 L["CraftColCostHdr"]      = "Cost"
-L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else TOGPM's own scan) or vendor; \"—\" when no price is known yet."
+L["CraftColCostHdrDesc"]  = "Per-reagent cost: the price for the quantity this recipe needs (unit price × needed). Priced from the Auction House (Auctionator if enabled, else UPM's own scan) or vendor; \"—\" when no price is known yet."
 L["CraftSearchDesc"]      = "Filter recipes by name or by what they do. Searches the enriched effect text too, so \"5 damage\", \"agility\", or \"mining\" all find matching recipes."
 L["CraftColRecipe"]       = "Recipe Name"
 L["CraftColRecipeDesc"]   = "The recipes you can make in this profession. Colour shows skill-up difficulty (orange/yellow/green/grey)."

@@ -530,8 +530,9 @@ end
 
 function GuildTab:FillContent(scroll)
     local data = self:Update()
+    self._drawnEmpty = (#data == 0 and not self:IsFiltering())
 
-    if #data == 0 and not self:IsFiltering() then
+    if self._drawnEmpty then
         local empty = AceGUI:Create("Label")
         empty:SetFullWidth(true)
         empty:SetText(L["GuildTabEmpty"])
@@ -751,6 +752,29 @@ function GuildTab:Draw(container)
     -- sat at the top of the tab with the headers drawn over its first rows.
     -- Lay the tab out again now the top group has its real height.
     container:DoLayout()
+end
+
+--- A guild-data refresh, done in place: recount and re-hand the tree to the
+--- list, the same path a filter change takes. True when that was enough.
+---
+--- Why not the full redraw MainWindow:Refresh does for other tabs: the Guild
+--- tab renders every scope a sync carries, so it was torn down every few
+--- seconds, and each teardown hides the list frame (AttachRawFrames on the
+--- released group) and shows it again. A hide between a mouse-down and its
+--- mouse-up cancels the click, so the + on a profession often did nothing
+--- (operator, in game 2026-10-21: "the click isn't working"). The tree, the
+--- counts and the status line are all Update's; nothing else in the tab
+--- depends on the data except whether the empty-guild message or the list
+--- is showing, and a change in THAT still takes the full redraw.
+function GuildTab:RefreshInPlace()
+    local list = self._list
+    if not (list and list.frame and list.frame:IsShown()) then return false end
+    if list.frame:GetParent() == UIParent then return false end   -- parked: the tab is not drawn
+    -- Update first (it is the whole refresh); if the empty/non-empty shape
+    -- changed, the caller's full redraw replaces what it just set.
+    local data = self:Update()
+    local empty = (#data == 0 and not self:IsFiltering())
+    return empty == (self._drawnEmpty == true)
 end
 
 -- Kept for callers that redraw the tab after its data changed.

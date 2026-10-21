@@ -26,13 +26,19 @@ setup(function()
 	env.loadModule("Data/CooldownIds.lua")
 	env.loadModule("Modules/HashManager.lua")
 	env.loadModule("Scanner.lua")
+	-- Before the tab, as in the TOC: CooldownsTab.lua calls addon.GUI at file
+	-- scope. A whole-suite run had it from an earlier spec file; a run of this
+	-- file alone did not, and failed to load.
+	env.loadModule("GUI/SharedWidgets.lua")
 	CD = env.loadModule("GUI/CooldownsTab.lua").CooldownsTab
 end)
 
 -- Globals the examples below stub that the env does not own. Saved before each
 -- example and put back after it, so an assertion that fails mid-example cannot
 -- leave a stub (or a nil) for every later spec file in the same Lua state.
-local STUBBED = { "GetGameMessageInfo", "MailEditBox", "ERR_MAIL_TEST_REFUSED" }
+local STUBBED = { "GetGameMessageInfo", "MailEditBox", "ERR_MAIL_TEST_REFUSED",
+                  "SendMailMailButton", "SendMailMailButton_OnClick",
+                  "SendMailFrame_EnableSendMailButton" }
 local saved
 
 before_each(function()
@@ -42,6 +48,9 @@ before_each(function()
 	wow.items[THORIUM] = { name = "Thorium Bar",    stackCount = 20 }
 	wow.items[CRYSTAL] = { name = "Arcane Crystal", stackCount = 20 }
 	MailFrame:Show()
+	-- The mail in flight is module state: one example's half-built mail must
+	-- not make the next one's click a "send".
+	CD._MailReset()
 end)
 
 after_each(function()
@@ -79,7 +88,7 @@ end
 --- The last chat line with the addon's coloured prefix stripped.
 local function lastChat()
 	local line = wow.chat[#wow.chat] or ""
-	return (line:gsub("^|c%x%x%x%x%x%x%x%xTOG Profession Master:|r ", ""))
+	return (line:gsub("^|c%x%x%x%x%x%x%x%xUPM:|r ", ""))
 end
 
 local function send(reagents)
@@ -427,5 +436,186 @@ describe("PrepareSupplyMail", function()
 		assert.equal(19, bag[1].count)       -- the split happened; the piece sits in the bag
 		assert.equal(THORIUM, bag[3].itemID)
 		assert.is_true(lastChat():find("mailbox", 1, true) ~= nil)
+	end)
+end)
+
+-- Operator, in game 2026-10-21: a Salt Shaker supply mail (1 Deeprock Salt)
+-- went out with 2 attached, "and we need to be able to keep clicking the
+-- button to also send the mail". A second click while the split was landing
+-- split again into the same empty slot, which stacked; now a click while a
+-- mail is being built is ignored, and a click on a ready mail sends it.
+describe("clicking Mail again", function()
+	local ROW = { key = ME .. "|15846", expiresAt = 1000 }
+	local sends
+
+	before_each(function()
+		NS.lib.db.char.supplySent = nil
+		sends = 0
+		_G.SendMailMailButton = { IsEnabled = function() return true end }
+		_G.SendMailMailButton_OnClick = function() sends = sends + 1 end
+	end)
+
+	local function click(reagents, row)
+		CD._PrepareSupplyMail(ME, "Salt Shaker", "Refined Deeprock Salt", reagents, row or ROW)
+	end
+
+	it("attaches one, not two, when the button is clicked again while the split lands", function()
+		local bag = backpack()
+		stack(bag, 1, THORIUM, 20)
+		click({ { id = THORIUM, qty = 1 } })
+		click({ { id = THORIUM, qty = 1 } })
+		assert.is_true(lastChat():find("Still preparing", 1, true) ~= nil)
+		wow.flushTimers()
+		assert.same({ { THORIUM, 1 } }, attached())
+		assert.equal(19, bag[1].count)
+		assert.equal(0, sends)
+	end)
+
+	it("sends the ready mail on the next click of the same row", function()
+		local bag = backpack()
+		stack(bag, 1, THORIUM, 1)
+		click({ { id = THORIUM, qty = 1 } })
+		assert.equal("ready", CD._MailState.phase)
+		assert.equal(0, sends)
+		click({ { id = THORIUM, qty = 1 } })
+		assert.equal(1, sends)
+		assert.equal("sending", CD._MailState.phase)
+		-- Clicking while it is on its way does not send twice.
+		click({ { id = THORIUM, qty = 1 } })
+		assert.equal(1, sends)
+	end)
+
+	it("does not send another row's mail", function()
+		local bag = backpack()
+		stack(bag, 1, THORIUM, 1)
+		click({ { id = THORIUM, qty = 1 } })
+		click({ { id = THORIUM, qty = 1 } }, { key = "Bob-Testrealm|15846", expiresAt = 1 })
+		assert.equal(0, sends)
+		assert.is_true(lastChat():find("already has items", 1, true) ~= nil)
+	end)
+
+	it("says so rather than sending while the mailbox's own Send is not ready", function()
+		local bag = backpack()
+		stack(bag, 1, THORIUM, 1)
+		_G.SendMailMailButton = { IsEnabled = function() return false end }
+		click({ { id = THORIUM, qty = 1 } })
+		click({ { id = THORIUM, qty = 1 } })
+		assert.equal(0, sends)
+		assert.is_true(lastChat():find("will not send", 1, true) ~= nil)
+		assert.equal("ready", CD._MailState.phase)
+	end)
+
+	it("lets a failed send be retried, and records the row once it goes", function()
+		local bag = backpack()
+		stack(bag, 1, THORIUM, 1)
+		click({ { id = THORIUM, qty = 1 } })
+		click({ { id = THORIUM, qty = 1 } })
+		env.frames.fireEvent("MAIL_FAILED")
+		assert.equal("ready", CD._MailState.phase)
+		click({ { id = THORIUM, qty = 1 } })
+		assert.equal(2, sends)
+		env.frames.fireEvent("MAIL_SEND_SUCCESS")
+		assert.equal(nil, CD._MailState.phase)
+		assert.is_true(lastChat():find("Supply mail sent to Testchar", 1, true) ~= nil)
+		local rec = CD:SentInfo({ charKey = ME, spellId = 15846, expiresAt = 1000 })
+		assert.is_table(rec)
+		assert.equal(1000, rec.expiresAt)
+	end)
+
+	it("starts over when the ready mail was emptied by hand", function()
+		local bag = backpack()
+		stack(bag, 1, THORIUM, 1)
+		click({ { id = THORIUM, qty = 1 } })
+		wow.sendMailItems = {}               -- the player took the items back off
+		stack(bag, 1, THORIUM, 1)
+		click({ { id = THORIUM, qty = 1 } })
+		assert.equal(0, sends)
+		assert.same({ { THORIUM, 1 } }, attached())
+	end)
+
+	-- Peer Review on f4523e37: a SendMail the client refuses from our click
+	-- raises no MAIL_FAILED, and the mailbox had already disabled its Send.
+	it("hands the send back when the game blocks SendMail from the addon", function()
+		local enabled = 0
+		_G.SendMailFrame_EnableSendMailButton = function() enabled = enabled + 1 end
+		local bag = backpack()
+		stack(bag, 1, THORIUM, 1)
+		click({ { id = THORIUM, qty = 1 } })
+		click({ { id = THORIUM, qty = 1 } })
+		-- A block naming some other function is not this mail's.
+		env.frames.fireEvent("ADDON_ACTION_BLOCKED", "TOGProfessionMaster", "CastSpellByName()")
+		assert.equal("sending", CD._MailState.phase)
+		env.frames.fireEvent("ADDON_ACTION_FORBIDDEN", "TOGProfessionMaster", "SendMail()")
+		assert.equal("ready", CD._MailState.phase)
+		assert.equal(1, enabled)
+		assert.is_true(lastChat():find("would not let the addon send", 1, true) ~= nil)
+	end)
+
+	it("goes back to ready when the mailbox's Send handler errors", function()
+		local enabled = 0
+		_G.SendMailFrame_EnableSendMailButton = function() enabled = enabled + 1 end
+		_G.SendMailMailButton_OnClick = function() error("boom") end
+		local bag = backpack()
+		stack(bag, 1, THORIUM, 1)
+		click({ { id = THORIUM, qty = 1 } })
+		click({ { id = THORIUM, qty = 1 } })
+		assert.equal("ready", CD._MailState.phase)
+		assert.equal(1, enabled)
+		assert.is_true(lastChat():find("boom", 1, true) ~= nil)
+	end)
+
+	it("records the row only when the mail that went was the supply mail", function()
+		local bag = backpack()
+		stack(bag, 1, THORIUM, 1)
+		click({ { id = THORIUM, qty = 1 } })
+		-- The supply mail as filled in: recorded.
+		CD._OnSendMail()
+		assert.is_true(CD._MailState.sendOk)
+		-- Readdressed by hand before Send: not ours.
+		SendMailNameEditBox:SetText("Somebodyelse")
+		CD._OnSendMail()
+		assert.is_false(CD._MailState.sendOk)
+		env.frames.fireEvent("MAIL_SEND_SUCCESS")
+		assert.equal(nil, CD:SentInfo({ charKey = ME, spellId = 15846, expiresAt = 1000 }))
+	end)
+end)
+
+describe("the Sent column's record", function()
+	before_each(function() NS.lib.db.char.supplySent = nil end)
+
+	it("keys a transmute group and every transmute in its popup together", function()
+		assert.equal(CD.SentKey(ME, { isTransmuteGroup = true }), CD.SentKey(ME, { isTransmute = true }))
+		assert.is_true(CD.SentKey(ME, { spellId = 18560 }) ~= CD.SentKey(ME, { spellId = 15846 }))
+	end)
+
+	it("drops the record once the crafter uses the cooldown", function()
+		local key = CD.SentKey(ME, { spellId = 15846 })
+		local now = GetServerTime()
+		NS.lib.db.char.supplySent = { [key] = { at = now - 10, expiresAt = now - 100 } }
+		assert.is_table(CD:SentInfo({ charKey = ME, spellId = 15846, expiresAt = now - 100 }))
+		-- Used: the expiry is now three days out.
+		assert.equal(nil, CD:SentInfo({ charKey = ME, spellId = 15846, expiresAt = now + 3 * 86400 }))
+		assert.equal(nil, NS.lib.db.char.supplySent[key])
+	end)
+
+	it("keeps the record through a resync that moves the expiry by seconds", function()
+		-- Cooldowns travel as seconds-remaining; the absolute time is rebuilt on
+		-- receipt, so the same cooldown can come back a few seconds off.
+		local key = CD.SentKey(ME, { spellId = 15846 })
+		local now = GetServerTime()
+		NS.lib.db.char.supplySent = { [key] = { at = now - 10, expiresAt = now + 3600 } }
+		assert.is_table(CD:SentInfo({ charKey = ME, spellId = 15846, expiresAt = now + 3603 }))
+		assert.is_table(CD:SentInfo({ charKey = ME, spellId = 15846, expiresAt = now + 3597 }))
+		-- Ready at the send, and still ready after a resync stamps a new past time.
+		NS.lib.db.char.supplySent[key] = { at = now - 10, expiresAt = now - 500 }
+		assert.is_table(CD:SentInfo({ charKey = ME, spellId = 15846, expiresAt = now - 5 }))
+	end)
+
+	it("says how long ago in minutes, hours and days", function()
+		local now = GetServerTime()
+		assert.equal("5m ago", CD._SentAgo(now - 300))
+		assert.equal("1m ago", CD._SentAgo(now))
+		assert.equal("3h ago", CD._SentAgo(now - 3 * 3600))
+		assert.equal("2d ago", CD._SentAgo(now - 2 * 86400))
 	end)
 end)

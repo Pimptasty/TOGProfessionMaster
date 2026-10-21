@@ -1,4 +1,4 @@
--- TOG Profession Master — Minimap Button
+-- Ultimate Profession Master — Minimap Button
 -- LibDataBroker-1.1 data object + LibDBIcon-1.0 minimap button.
 --
 -- Left-click        → open profession browser
@@ -26,8 +26,19 @@ end
 -- reloaded copy with no object to register. Peer Review 427847d6.
 local dataObj = LDB:GetDataObjectByName("TOGProfessionMaster") or LDB:NewDataObject("TOGProfessionMaster", {
     type  = "launcher",
-    label = "TOG Profession Master",
-    icon  = "Interface\\AddOns\\TOGProfessionMaster\\icons\\TOGPM_MMB_Icon",
+    label = "Ultimate Profession Master",
+    icon  = "Interface\\AddOns\\TOGProfessionMaster\\icons\\UPM_MMB_Icon",
+    -- The UPM art is a disc with transparent margin around it, so drawn whole
+    -- into LibDBIcon's 17px slot it came out small inside the dark backing
+    -- (operator, in game 2026-10-21: "the rest of the icons aren't squished
+    -- like mine"). LibDBIcon crops by dataObject.iconCoords (LibDBIcon-1.0
+    -- updateCoord); zoom past the margin so the disc fills the slot. The
+    -- window spans 0.69 of the art, so one pixel of the 17px slot is ~0.04;
+    -- it sits off-centre to centre the coin, tuned in game by the operator
+    -- ("needs to go down 1px and right 1px", then "about 50% of that back
+    -- up and left" -> net window up and left 0.02).
+    -- Order is { left, right, top, bottom }.
+    iconCoords = { 0.135, 0.825, 0.105, 0.795 },
 
     OnClick = function(_self, button)
         if button == "LeftButton" then
@@ -48,7 +59,7 @@ local dataObj = LDB:GetDataObjectByName("TOGProfessionMaster") or LDB:NewDataObj
         -- colour slots must be filled even when we do not want to set a colour.
         -- Audit finding 20: this file was outside the wrap sweep entirely, and
         -- these lines are localised, so their length is not ours to bound.
-        tt:AddLine("|cffda8cffTOG Profession Master|r", nil, nil, nil, true)
+        tt:AddLine("|c" .. (addon.BrandColor or "ffFF8000") .. "Ultimate Profession Master|r", nil, nil, nil, true)
         tt:AddLine(" ")
         tt:AddLine(L["MinimapTooltipLeftClick"], nil, nil, nil, true)
         tt:AddLine(L["MinimapTooltipRightClick"], nil, nil, nil, true)

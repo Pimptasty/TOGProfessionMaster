@@ -1,4 +1,4 @@
-# TOG Profession Master — Feature Specification
+# Ultimate Profession Master — Feature Specification
 
 **Status:** Clean-room build from scratch  
 **Tech stack:** Ace3 · AceCommQueue-1.0 · DeltaSync-1.0 · GuildCache-1.0 · VersionCheck-1.0 · LibDataBroker-1.1 · LibDBIcon-1.0  
@@ -43,7 +43,7 @@ The communication layer was redesigned in **v0.2.0** to replace the v0.1.x full-
 
 - **DeltaSync-1.0 MINOR ≥ 9** is the comm backend. v0.2.0 requires the hash-mismatch offer condition shipped in DeltaSync v2.0.3 — it falls back to silent no-sync mode against older DeltaSync versions.
 - **AceCommQueue-1.0** wraps all `SendCommMessage` calls to prevent CRC errors from chunk interleaving.
-- TOGPM registers a single DeltaSync instance with namespace `"TOGPmv2"` on `OnInitialize` (was `"TOGPmv1"` in v0.1.x — namespace bump prevents cross-version cross-talk).
+- UPM registers a single DeltaSync instance with namespace `"TOGPmv2"` on `OnInitialize` (was `"TOGPmv1"` in v0.1.x — namespace bump prevents cross-version cross-talk).
 
 ### 4.2 Channel allocation
 
@@ -73,7 +73,7 @@ Each leaf stores `{ hash, updatedAt }` where both fields are pure functions of t
 - `CRAFT_SHOW` / `CRAFT_UPDATE` — Vanilla enchanting / weapon crafting rescan.
 - `BAG_UPDATE_COOLDOWN` — Vanilla item-cooldown (Salt Shaker) rescan.
 - Periodic 10-minute timer — broadcast hash list (differential — only leaves whose `(hash, updatedAt)` has changed since last broadcast).
-- Manual `/togpm sync` command — force immediate broadcast bypassing the debounce.
+- Manual `/upm sync` command — force immediate broadcast bypassing the debounce.
 
 ### 4.5 Relay / anyone-can-serve
 
@@ -207,7 +207,7 @@ Built with `AceGUI-3.0`:
 ## 12. Settings Panel
 
 - `AceConfig-3.0` option table registered with `AceConfigRegistry`
-- `AceConfigDialog-3.0` renders it under ESC → Options → Addons → TOG Profession Master
+- `AceConfigDialog-3.0` renders it under ESC → Options → Addons → Ultimate Profession Master
 - Settings:
   - Minimap button visibility toggle
   - Mail ready-cooldowns-only toggle
@@ -222,8 +222,8 @@ Built with `AceGUI-3.0`:
 ## 12a. Prices and the Auction House (via ItemDB)
 
 - Every price this addon shows comes from **LibItemDB-1.0 MINOR 25** (`Price/Sources.lua`, `Price/Scanner.lua`): the Auctionator / Auctioneer / TSM adapters, the realm+faction scan store, the merchant-price capture and the source toggles all live there. `Modules/Price.lua` is a facade -- `Get` / `GetSaleLive` / `GetSaleHistorical` -> `DB:GetPrice(id, "best" | "historical")`, `GetVendorBuy` -> `DB:GetVendorBuyPrice`, `Money` -> `DB:FormatMoney` -- keeping the three-return shape `(copper, source, age)`
-- What stays TOGPM's is policy: **a vendor-sold reagent is costed at the vendor price** whatever the AH says (`GetReagentCost`), the crafting-cost sum with BoP exclusion and lower-bound / stale flags (`CraftCost`, `CraftCostForReagents`), the vendor SELL row (`GetVendorSell`), and the source labels / colours (`addon.PriceSourceLabels` / `PriceSourceColors`, keyed by ItemDB's ids `scan` / `auctionator` / `auctioneer` / `tsm` / `auctionator-vendor` / `merchant` / `vendor-static`)
-- `Modules/AHScanner.lua` is the `addon.AH` facade over ItemDB's scanner (`IsOpen`, `SearchFor`, `GetListingsFor`), installed only when the ItemDB in play carries `StartTargetedScan` -- so the per-row **[AH]** buttons gate on ItemDB's scan results and search through ItemDB. TOGPM has no scan button of its own since v1.6.0: ItemDB's Auction House button scans the whole house, and `addon.GUI.SetAHRefresh` repaints the visible tab's [AH] buttons when that scan lands or the AH opens or closes. The addon events `AH_OPEN_STATE_CHANGED` / `AH_SCAN_COMPLETE` are re-fired from `LibItemDB_AuctionHouse` / `LibItemDB_ScanComplete`
+- What stays UPM's is policy: **a vendor-sold reagent is costed at the vendor price** whatever the AH says (`GetReagentCost`), the crafting-cost sum with BoP exclusion and lower-bound / stale flags (`CraftCost`, `CraftCostForReagents`), the vendor SELL row (`GetVendorSell`), and the source labels / colours (`addon.PriceSourceLabels` / `PriceSourceColors`, keyed by ItemDB's ids `scan` / `auctionator` / `auctioneer` / `tsm` / `auctionator-vendor` / `merchant` / `vendor-static`)
+- `Modules/AHScanner.lua` is the `addon.AH` facade over ItemDB's scanner (`IsOpen`, `SearchFor`, `GetListingsFor`), installed only when the ItemDB in play carries `StartTargetedScan` -- so the per-row **[AH]** buttons gate on ItemDB's scan results and search through ItemDB. UPM has no scan button of its own since v1.6.0: ItemDB's Auction House button scans the whole house, and `addon.GUI.SetAHRefresh` repaints the visible tab's [AH] buttons when that scan lands or the AH opens or closes. The addon events `AH_OPEN_STATE_CHANGED` / `AH_SCAN_COMPLETE` are re-fired from `LibItemDB_AuctionHouse` / `LibItemDB_ScanComplete`
 - Every read is feature-gated on the METHOD, never a MINOR: an older ItemDB answers nil for the AH tiers, still answers the static vendor tier (`GetVendorBasePrice`), and gets no [AH] buttons
 - The Profit Planner's source filter reads `DB:GetPriceSources()`; the Historical subtab offers only sources carrying a `historical` statistic. A filter saved before v1.1.0 is folded onto the provider ids on load
 - Specs: `Tests/price_spec.lua` and `Tests/pricefacade_spec.lua`, both over the REAL ItemDB price files (`env.priceDB()`)

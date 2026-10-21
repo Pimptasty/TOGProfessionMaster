@@ -8,14 +8,14 @@
      Added 2026-08-19 while filing section 12. -->
 # Dependency contracts
 
-Requirements TOGProfessionMaster has on code it does **not** own — required
+Requirements Ultimate Profession Master has on code it does **not** own — required
 libraries (LibProfessionDB, DeltaSync, LibGuildRoster, LibItemDB, Ace3), the
 shared test harness (WoWAPITesting), and third-party addons we integrate with
 (TradeSkillMaster, TOGBankClassic, GreenWall, Auctionator).
 
 ## Why this file exists
 
-**Those repos are read-only from here.** When work in TOGPM needs something from
+**Those repos are read-only from here.** When work in UPM needs something from
 a dependency, the fix does not get made in the dependency's source — it gets
 written up here as a contract and applied upstream separately, by hand, in that
 repo. Reading a dependency's source to find the right integration point is fine
@@ -24,7 +24,7 @@ suite: run it, report what it says, do not "fix" it here.
 
 Each entry states **what** is needed, **why** (traced to the behaviour that
 forced it), and the **exact contract** — the API shape, so the upstream change is
-unambiguous. Where TOGPM ships a workaround in the meantime, the entry says so
+unambiguous. Where UPM ships a workaround in the meantime, the entry says so
 and what the workaround costs, because that is what gets deleted once the
 contract lands.
 
@@ -47,14 +47,14 @@ session doesn't have to re-derive the same conclusions.
 | Send-size second return | DS 14 | `BroadcastItemHashes` / `BroadcastData` call sites, fed to the Sync Log |
 | `InitRosterSync` | DS 12 | cross-guild sister rosters |
 | `InitGuildMode` | DS 13 | the whisper-broken-server toggle in Settings |
-| `onSendFailed` + delivery counters | DS 17 | `Scanner:InitDeltaSync` and `/togpm dsstatus` |
+| `onSendFailed` + delivery counters | DS 17 | `Scanner:InitDeltaSync` and `/upm dsstatus` |
 | `MakeHashEntry` / `ComputeHashV2` | DS 16 | `HashManager` mints both revisions; `Scanner` ships, adopts and compares them. See the rollout notes below |
 | `GetRosterHash` | LGR 6 | `BroadcastSisterRosters` suppression — a roster whose membership set hasn't changed isn't re-broadcast |
 | AceCommQueue embedded on the AceAddon instance | ACQ 1 | `TOGProfessionMaster.lua`, immediately after `NewAddon` — the one non-optional item on DeltaSync's checklist |
-| Delivery verdict + `reason` on our own sends | ACQ 5 | `OnXGuildSendResult` in `TOGProfessionMaster.lua` (both cross-guild broadcasts) and the `ace GUILD` probe in `Modules/CommTest.lua`. Adopted in v1.0.6 — before that these three were the only sends in the addon with nobody listening, so a refusal reached the player's bug catcher from inside the comm layer and never reached TOGPM |
+| Delivery verdict + `reason` on our own sends | ACQ 5 | `OnXGuildSendResult` in `TOGProfessionMaster.lua` (both cross-guild broadcasts) and the `ace GUILD` probe in `Modules/CommTest.lua`. Adopted in v1.0.6 — before that these three were the only sends in the addon with nobody listening, so a refusal reached the player's bug catcher from inside the comm layer and never reached UPM |
 | `RegisterSlashCommand` | ACQ 1 | `Ace:OnInitialize` registers `/acq`. Nothing else does — the standalone ships the library and its tests, no loader file — so without this call the library's only runtime diagnostic does not exist in game. Registering it is also what puts MINOR 6's `/acq unstick` in the player's hands, at no further cost here |
 | `reason = "lost"` | ACQ 6 | `OnXGuildSendResult` and the `ace GUILD` probe. **Not free on upgrade:** `"lost"` arrives with `delivered == nil`, so the MINOR 5 test (`delivered == false or rejected or error`) walked straight past it. It is also the failure that matters most — a send reported `"lost"` has already been released, re-sent under the retry budget and failed again, so unlike a refusal it will *not* heal itself on the next periodic pass |
-| Price API: `GetPrice` / `GetVendorBuyPrice` / `FormatMoney` / `GetPriceSources` / `GetPriceSetting` / `SetPriceSetting` / `OpenPriceWindow`; scanner: `GetScanListings` / `AuctionHouseSearch` / `IsAuctionHouseOpen`, plus `StartTargetedScan` as a feature-detect only (since v1.6.0 TOGPM starts no scan; ItemDB's own AH button does); callbacks `LibItemDB_AuctionHouse` / `LibItemDB_ScanComplete` | LibItemDB 25 | Adopted in v1.1.0 (2026-09-14), and it is a MOVE, not an addition: the Auctionator / Auctioneer / TSM adapters, the scan store, the merchant capture, the scanner and the nine source toggles left this repo for ItemDB at the user's direction. `Modules/Price.lua` and `Modules/AHScanner.lua` are facades; `addon:MigratePriceSettingsToItemDB` carries a profile's toggles once per account. Feature-gated on the METHOD (`DB.GetPrice`, `DB.StartTargetedScan`), never a MINOR: an older ItemDB answers the static vendor tier only and installs no `addon.AH`. The trigger was the user's in-game test quoted by ItemDB on inbox thread `6b52f51f`; the per-account stamp is their `5bb73440` |
+| Price API: `GetPrice` / `GetVendorBuyPrice` / `FormatMoney` / `GetPriceSources` / `GetPriceSetting` / `SetPriceSetting` / `OpenPriceWindow`; scanner: `GetScanListings` / `AuctionHouseSearch` / `IsAuctionHouseOpen`, plus `StartTargetedScan` as a feature-detect only (since v1.6.0 UPM starts no scan; ItemDB's own AH button does); callbacks `LibItemDB_AuctionHouse` / `LibItemDB_ScanComplete` | LibItemDB 25 | Adopted in v1.1.0 (2026-09-14), and it is a MOVE, not an addition: the Auctionator / Auctioneer / TSM adapters, the scan store, the merchant capture, the scanner and the nine source toggles left this repo for ItemDB at the user's direction. `Modules/Price.lua` and `Modules/AHScanner.lua` are facades; `addon:MigratePriceSettingsToItemDB` carries a profile's toggles once per account. Feature-gated on the METHOD (`DB.GetPrice`, `DB.StartTargetedScan`), never a MINOR: an older ItemDB answers the static vendor tier only and installs no `addon.AH`. The trigger was the user's in-game test quoted by ItemDB on inbox thread `6b52f51f`; the per-account stamp is their `5bb73440` |
 
 ### The stall report: fixed upstream, and what that means here
 
@@ -73,10 +73,10 @@ this addon should and should not do about it:
 - A genuine stall now **recovers**: the slot is released and the message re-sent
   at the head of its bucket under the retry budget.
 
-**So TOGPM overrides neither `SetStallTimeout` nor `SetRetryPolicy`, and does not
+**So UPM overrides neither `SetStallTimeout` nor `SetRetryPolicy`, and does not
 call `Unstick`.** The defaults are the tuned values, and forcing a release from
 here would re-introduce the duplicate-on-the-wire risk the library's own CTL
-safety test exists to prevent. What TOGPM owes the contract is reading the fifth
+safety test exists to prevent. What UPM owes the contract is reading the fifth
 reason correctly, which is the row above.
 
 ### AceCommQueue: deliberately not adopted
@@ -84,7 +84,7 @@ reason correctly, which is the row above.
 | Capability | Since | Why not |
 | --- | --- | --- |
 | `SetStallTimeout` / `SetRetryPolicy` | ACQ 5 | The MINOR 6 defaults (300s, standard retry budget) are the tuned values, chosen against exactly the traffic pattern that produced our stall reports. Overriding them here would be guessing against the library author's measurements |
-| `Unstick` / `/acq unstick` (called from TOGPM) | ACQ 6 | The command is already in the player's hands via our `/acq` registration. Calling it *automatically* from the addon would defeat the point: recovery already happens on its own after 300s, and a programmatic force-release is a way to reintroduce interleaved chunks if our own timing guess is worse than the library's |
+| `Unstick` / `/acq unstick` (called from UPM) | ACQ 6 | The command is already in the player's hands via our `/acq` registration. Calling it *automatically* from the addon would defeat the point: recovery already happens on its own after 300s, and a programmatic force-release is a way to reintroduce interleaved chunks if our own timing guess is worse than the library's |
 
 ### Revision-2 hash rollout — how it works here
 
@@ -113,13 +113,13 @@ fallback in `hashesDiffer`. No call site changes. Covered by
 
 ### Deliberately not adopted
 
-- **`RegisterDebugCategory` / `config.logger` (DS 16).** TOGPM has its own debug
+- **`RegisterDebugCategory` / `config.logger` (DS 16).** UPM has its own debug
   output (`addon:DebugPrint`) and an in-window Sync Log, so a user with debug on
   can end up with two surfaces. Worth resolving, but it is a UI consolidation
   question rather than a correctness one — and `config.onDebugMessage` (feeding
   DeltaSync's lines into our Sync Log) is probably the better shape than adopting
   its tab wholesale. Not attempted here.
-- **`RegisterLeafType` (DS 12), `options.strictKeys` (DS 16).** TOGPM routes its
+- **`RegisterLeafType` (DS 12), `options.strictKeys` (DS 16).** UPM routes its
   sub-protocols on a `type` field inside its own payloads and never calls the
   delta-array API, so neither applies.
 
@@ -133,7 +133,7 @@ fallback in `hashesDiffer`. No call site changes. Covered by
 
 ## 1. TradeSkillMaster — a way to suppress the crafting UI for one session
 
-**Status:** open. TOGPM ships a workaround (v1.0.5).
+**Status:** open. UPM ships a workaround (v1.0.5).
 
 ### What
 
@@ -157,12 +157,12 @@ TSM_API.ShowUI("CRAFTING")
 On Classic there is exactly one way to obtain a trade-skill session: **cast the
 profession**. The session — not any frame — is what `GetTradeSkillInfo` /
 `GetCraftInfo` / `DoTradeSkill` / `DoCraft` read and act on, and it is what
-TOGPM's Crafting tab is built on.
+UPM's Crafting tab is built on.
 
 That cast fires `TRADE_SKILL_SHOW` (or `CRAFT_SHOW` on Vanilla/TBC). TSM
 registers those events itself (`Core/UI/CraftingUI/Core.lua`, `private.FSMCreate`)
 and transitions its state machine to `ST_FRAME_OPEN`. So a player who clicks
-TOGPM's Crafting tab gets **two** windows: ours, and TSM's — reported in-game on
+UPM's Crafting tab gets **two** windows: ours, and TSM's — reported in-game on
 TBC. Neither addon is doing anything wrong; there is simply no way to say "this
 session is mine" through TSM's public surface:
 
@@ -172,13 +172,13 @@ session is mine" through TSM's public surface:
 - `TSM.UI.CraftingUI.Toggle()` — would do it, but `TSM` is a file-local upvalue,
   not reachable from another addon.
 
-Unregistering `UIParent`'s show events (how TOGPM suppresses *Blizzard's* window)
+Unregistering `UIParent`'s show events (how UPM suppresses *Blizzard's* window)
 has no effect on TSM, which holds its own registration.
 
-### Workaround TOGPM ships today
+### Workaround UPM ships today
 
 `Modules/Crafting/CraftingEngine.lua` registers the public UI callback and, when
-the session is one TOGPM's tab opened, hides the frame TSM hands it — with the
+the session is one UPM's tab opened, hides the frame TSM hands it — with the
 frame's `OnHide` script cleared around the hide, because TSM's `OnHide` runs
 `EV_FRAME_HIDE` → `TradeSkill.CloseUI(true)`, which would close the very session
 our tab is reading. (Clearing the script around a hide is the same technique TSM
@@ -193,7 +193,7 @@ What it costs, and why the contract is still wanted:
 - **It is a frame poke, not an integration** — it breaks the moment TSM changes
   how the base frame's `OnHide` is wired.
 - **A one-frame flicker**: TSM's window is shown, then hidden.
-- TOGPM guards against the worst case (`_tsmSuppressFailed`): if the hide is ever
+- UPM guards against the worst case (`_tsmSuppressFailed`): if the hide is ever
   observed to close the trade-skill session, suppression disables itself for the
   rest of the play session — a second window beats a Crafting tab with no data.
 
@@ -206,7 +206,7 @@ Covered offline by `Tests/craftsuppress_spec.lua`.
 **Status:** DELIVERED 2026-08-03, adopted here 2026-08-04 (harness pin `b389a54`). The runner now
 resolves luassert's full modifier chain generically, so `assert.is_truthy` / `assert.is_falsy` and
 any other combination work. `assert.has_error`'s second argument is now the **expected error**
-rather than an ignored message — no TOGPM spec passed one, so nothing changed here.
+rather than an ignored message — no UPM spec passed one, so nothing changed here.
 
 Existing specs still use the `assert.is_true(x ~= nil)` workaround; it is equivalent and correct, so
 it is being left alone rather than churned. New specs should use `assert.is_truthy`.
@@ -242,13 +242,13 @@ assert.is_falsy(v)   -- passes when v is nil or false
 -- Aliases, matching busted: assert.truthy / assert.falsy
 ```
 
-Until then TOGPM specs use `assert.is_true(x ~= nil)`, which is equivalent but
+Until then UPM specs use `assert.is_true(x ~= nil)`, which is equivalent but
 noisier.
 
 ### Related — also delivered
 
 `Tests/coverage.lua` used to be **copied** into each addon (seven copies existed across the suite,
-in three functionally distinct lineages). It moved into the harness on 2026-08-03; TOGPM's local
+in three functionally distinct lineages). It moved into the harness on 2026-08-03; UPM's local
 copy was deleted on 2026-08-04 and the invocation is now
 `lua Tests/wowapi/coverage.lua <targets>`. Verified identical on the switch — `TOGProfessionMaster.lua`
 703/1409, `Modules/HashManager.lua` 340/340 — so the number moving later means the code moved, not
@@ -265,12 +265,12 @@ Every key in `lib:GetRecipes(profId)` is the recipe's trade-skill **spell** id
 crafted item, when there is one, is the separate `craftedItemId` field;
 `itemId` is the recipe *scroll*, not the product.
 
-TOGPM depends on this in `GUI/BrowserTab.lua` and `Data/RecipeDB.lua`. Treating a
+UPM depends on this in `GUI/BrowserTab.lua` and `Data/RecipeDB.lua`. Treating a
 key as an item id resolves whatever unrelated item shares the number — spell
 13937 (*Enchant 2H Weapon - Greater Impact*) vs item 13937 (*Headmaster's
 Charge*) — which is the v1.0.5 enchant-tooltip bug. Guarded by
 `Tests/browserlink_spec.lua`. If LibProfessionDB ever re-keys its tables, that is
-a breaking change for TOGPM and belongs in its changelog as one.
+a breaking change for UPM and belongs in its changelog as one.
 
 ---
 
@@ -285,7 +285,7 @@ that teaches it** (`Pattern:` / `Plans:` / `Recipe:` / `Formula:` /
 `Schematic:` / `Design:` / `Manual:` / `Technique:` scrolls and books), covering
 the recipes that ship today with no `itemId`.
 
-### Why TOGPM wants it
+### Why UPM wants it
 
 The Professions tab lists the **crafted item's** name and icon — "Barbaric
 Shoulders", not "Plans: Barbaric Shoulders" — and that display is staying. What
@@ -353,9 +353,9 @@ the professions that clearly *do* have scrolls.
 
 Please also report, per build, the count of recipes with **no** teaching item
 after the join — that number is the real answer to "how much of this can ever be
-uniform", and TOGPM's fallback design depends on it.
+uniform", and UPM's fallback design depends on it.
 
-### What TOGPM will do with it
+### What UPM will do with it
 
 Recipes with a teaching item get the genuine item tooltip on hover. The
 remainder keep the hand-built tooltip, shaped to match, so the seam is not
@@ -431,7 +431,7 @@ This is the point of the request, and the reason it is not being solved locally.
 lists profession recipes hits the same wall: two thirds of rows can show a real scroll tooltip and
 one third cannot, so each invents its own fallback and they all look different. That is the exact
 fragmentation ProfessionDB exists to prevent for recipe data. Put the descriptor in the shared
-library and Skillet, TSM, TOGPM and anything else render the identical thing without coordinating.
+library and Skillet, TSM, UPM and anything else render the identical thing without coordinating.
 
 The alternative — every consumer hardcoding `"Plans: %s"` in English — is precisely the trap the
 name-match linker fell into, and §4 has just finished getting us out of it.
@@ -460,7 +460,7 @@ a profession's prefix in a locale is the common leading substring of its own `Re
 that locale's `ItemSparse`. That keeps it authoritative and locale-complete without a hand-written
 table — the same discipline as §4.
 
-Everything else in the record TOGPM already holds (recipe name, required skill, profession, crafted
+Everything else in the record UPM already holds (recipe name, required skill, profession, crafted
 item), so **the prefix alone would unblock a uniform fallback**. The fuller record is the more useful
 shape for other consumers, which is why it is worth doing once, here.
 
@@ -473,7 +473,7 @@ shape for other consumers, which is why it is worth doing once, here.
 - Mining should come out almost entirely synthetic (4.3% real, by your own measurement) and Cooking
   almost entirely real. A result that inverts that has matched something wrong.
 
-### What TOGPM will do with it
+### What UPM will do with it
 
 Render one tooltip shape for both paths — real scroll where one exists, synthetic descriptor where it
 does not — so a player scrolling a single list sees one consistent thing instead of the seam at 65%
@@ -667,7 +667,7 @@ Third-party tooltip addons hook `OnTooltipSetItem`. That fires when a tooltip is
 item**. A hand-built tooltip — `ClearLines` plus `AddLine` — never sets one, so the hook never
 fires and no third-party addon contributes to it.
 
-This is not a guess. TOGPM's own crafters line has to be appended by an explicit call on that path,
+This is not a guess. UPM's own crafters line has to be appended by an explicit call on that path,
 and the comment explaining why predates this whole line of work
 (`GUI/BrowserTab.lua`, *"For SetSpellByID branches the hook does NOT fire (no item context), so this
 manual call is the only way…"*). If our own hook does not fire there, ATT's does not either.
@@ -688,11 +688,11 @@ manual call is the only way…"*). If our own hook does not fire there, ATT's do
 the scroll — there is no drop, no vendor, no source, because the item does not exist. The lines a
 player misses are lines that would have been empty.
 
-What TOGPM will guarantee instead is **action parity**: shift-click to link, ctrl-click to preview,
+What UPM will guarantee instead is **action parity**: shift-click to link, ctrl-click to preview,
 hold-to-compare all behave identically on both paths, because those operate on the crafted item and
 the recipe link rather than on the tooltip. That is already true as of the item-link unification.
 
-### What TOGPM will do with it
+### What UPM will do with it
 
 Add the `Use:` line to the synthetic path, which closes the last visible difference. At that point
 the two tooltips differ only in which third-party addons had something to add — and on the synthetic
@@ -787,7 +787,7 @@ lib:AttachExternalRecipeInfo(tooltip, spellID)
 --> false (never an error) when ATT is absent, disabled, or its API has moved
 ```
 
-### Why this belongs in ItemDB and not in TOGPM
+### Why this belongs in ItemDB and not in UPM
 
 Identical reasoning to §5, and it is the reason this is not being written locally even though the
 call is four lines. Every addon that draws a recipe tooltip wants ATT's lines on it. If each writes
@@ -838,7 +838,7 @@ trainer-taught recipes.** Caching a field is not the same as having rows in it, 
 ATT has nothing for them, that is a useful finding and this request should be closed as
 NOT-WORTH-DOING rather than left open.
 
-### What TOGPM will do with it
+### What UPM will do with it
 
 Call it from the hand-built recipe tooltip, so the ~35% with no scroll get the same ATT block the
 other ~65% already get through Blizzard's item tooltip. That closes the last real difference between
@@ -899,7 +899,7 @@ the two paths.
 ## 8. ItemDB — third-party tooltip integrations beyond ATT, and the one that needs no code
 
 **Status:** delivered 2026-08-06 by ItemDB, `LibItemDB-1.0` MINOR 20. Raised here because the
-useful half of the answer is something TOGPM can act on **without** calling anything.
+useful half of the answer is something UPM can act on **without** calling anything.
 
 ### The ask
 
@@ -915,7 +915,7 @@ directly. So a tooltip built on **GameTooltip** that calls `SetItemByID` / `SetH
 `SetSpellByID` gets every one of them automatically, in their own styling, with no integration code
 anywhere:
 
-| Addon | How it attaches | What TOGPM must do |
+| Addon | How it attaches | What UPM must do |
 | --- | --- | --- |
 | RecipeMaster | `GameTooltip:HookScript("OnTooltipSetItem")` **and `OnTooltipSetSpell`** (`Source/Handlers/TooltipHandler.lua:165,176`) | `SetSpellByID` or `SetItemByID` — nothing else |
 | SmexyMats | its own GameTooltip hook | as above |
@@ -1116,16 +1116,16 @@ Suite **107 passed, 0 failed**.
 
 ---
 
-## 9. TOGPM — please TEST the universal tooltip bridge in game
+## 9. UPM — please TEST the universal tooltip bridge in game
 
-**Status:** open — **action for TOGProfessionMaster**. Raised 2026-08-06 by ItemDB.
+**Status:** open — **action for Ultimate Profession Master**. Raised 2026-08-06 by ItemDB.
 
 Raised as its own numbered item because the detail sits under §8, which is marked *delivered* — so
 a scan for open requests would skip it, and this needs someone to actually do something.
 
 ### What is being asked
 
-Wire `lib:ApplyExternalTooltipHooks` into TOGPM's own recipe tooltip and tell us whether other
+Wire `lib:ApplyExternalTooltipHooks` into UPM's own recipe tooltip and tell us whether other
 addons' lines appear. **It has never run in a live client.** It is implemented, wired into all five
 TOCs at `LibItemDB-1.0` MINOR 20, and covered by 123 passing offline specs — but every one of those
 drives a *fake* tooltip, so none of them proves the mechanism works in game. That is the gap, and
@@ -1356,7 +1356,7 @@ written there at the user's direction, and ItemDB is implementing it now.
 
 Deliberately **not** duplicated here. A contract copied into two files is the same drift
 problem this section exists to solve, one level up; ItemDB's copy is the one with the
-responses appended to it. What follows is only what TOGProfessionMaster owes.
+responses appended to it. What follows is only what Ultimate Profession Master owes.
 
 ### The ask, in one line
 
@@ -1368,7 +1368,7 @@ responses appended to it. What follows is only what TOGProfessionMaster owes.
 `Data/VendorPrices.lua` is **item** data — what a vendor charges — sitting in a profession
 addon. It holds 93 rows only because it is filtered to reagents that appear in recipes,
 which is an artifact of where it lives rather than anything about the data. It was also the
-last generated file TOGPM still stored after the 2026-08-07 migration moved everything else
+last generated file UPM still stored after the 2026-08-07 migration moved everything else
 into ProfessionDB, and it is the reason ProfessionDB's builder still writes across a repo
 boundary.
 
@@ -1397,7 +1397,7 @@ ProfessionDB then drops `emit_vendor_prices` and its cross-repo write.
 ### The cost of the workaround, while it stands
 
 2,930 vendor-sold items that could be priced are not; only those that happen to be crafting
-reagents are covered. **Nothing is broken** — tier 2c answers today for the cases TOGPM
+reagents are covered. **Nothing is broken** — tier 2c answers today for the cases UPM
 actually reaches. This is a boundary fix and a coverage win, not a bug report.
 
 ### The trap to carry into any UI that shows it
@@ -1429,12 +1429,12 @@ a player with standing**. That is why 2c is last in the chain and must stay last
 
 ## 11. ItemDB — `AttachExternalRecipeInfo` makes the host tooltip wider than the game's
 
-**Status:** open request. Raised 2026-08-08. TOGPM ships a local reference implementation
+**Status:** open request. Raised 2026-08-08. UPM ships a local reference implementation
 (v1.0.7).
 
 ### The defect, as a player sees it
 
-A user hovered *Schematic: Advanced Target Dummy* in TOGPM's recipe browser and reported the
+A user hovered *Schematic: Advanced Target Dummy* in UPM's recipe browser and reported the
 tooltip as visibly wider than a stock WoW one. The line setting the width is ATT's source
 breadcrumb:
 
@@ -1442,7 +1442,7 @@ breadcrumb:
 ATT > Zone > Kalimdor > Tanaris > Professions > Engineering > Buzzek Bracketswing > Miscellaneous
 ```
 
-It is not a guess which line does it. TOGPM's own `/togpm` width probe measured this exact item:
+It is not a guess which line does it. UPM's own `/upm` width probe measured this exact item:
 **ATT's breadcrumb at 583.1px against a 603.6px frame** — the difference being the tooltip
 template's 10px inset per side. Recorded at `TOGProfessionMaster.lua:1370`.
 
@@ -1487,7 +1487,7 @@ lib:AttachExternalRecipeInfo(tooltip, spellID, { wrap = true })
 
 ### The mechanism, verified rather than assumed
 
-Two implementations are possible and the second is what TOGPM ships, because the first is a
+Two implementations are possible and the second is what UPM ships, because the first is a
 per-integration patch:
 
 1. **Re-render ATT's data yourself.** ATT's data path is reachable without its renderer, and both
@@ -1530,7 +1530,7 @@ this request is scoped strictly to lines a THIRD PARTY adds.
 
 ### What must NOT be done, because it was tried here and deleted
 
-Do not measure the tooltip and cap it. TOGPM built exactly that (`ConstrainTooltipWidth`, a
+Do not measure the tooltip and cap it. UPM built exactly that (`ConstrainTooltipWidth`, a
 `DEFAULT_TOOLTIP_MAX_WIDTH = 390`) and removed it — the trace is in `docs/AUDIT.md` findings 8-11
 and 14. Two reasons, both of which apply to a library far more than to an addon:
 
@@ -1548,7 +1548,7 @@ zone is the reliable shape, *Schematic: Advanced Target Dummy* being the reporte
 should be the same width as a bag item's. A test using a recipe with a short ATT block proves
 nothing, because that case was never wide.
 
-### What TOGPM ships in the meantime
+### What UPM ships in the meantime
 
 `ItemLink.WithWrappedLines(tooltip, fn)` in `GUI/SharedWidgets.lua` — approach (2) above. Every
 foreign render goes through it: `AttachExternalRecipeInfo`, `ApplyExternalTooltipHooks`, and
@@ -1571,7 +1571,7 @@ neither failure mode — a second unwrapped line, or the title starting to wrap 
 
 ## 12. LibProfessionDB -- 26 recipes carry a `requiredSkill` above their own expansion's cap
 
-**Status:** open question, not a blocker. Raised 2026-08-19. **TOGPM needs no change from this and
+**Status:** open question, not a blocker. Raised 2026-08-19. **UPM needs no change from this and
 is not waiting on it** -- the player-visible bug these numbers were implicated in was ours and is
 fixed. This is an accuracy question about the shipped data, filed so it is measured once rather than
 re-derived by whoever meets it next.
@@ -1620,7 +1620,7 @@ the file.
 **A `GetTrainerServiceSkillReq` reading from a TBC Anniversary trainer would settle all twelve in one
 visit**, which is the same instrument that README already names.
 
-### What TOGPM did about it, so the finding is not read as blocking
+### What UPM did about it, so the finding is not read as blocking
 
 Nothing, deliberately, and this is the part worth carrying away. **We had a gate that turned "this
 number is above the cap" into "this recipe does not exist on this client", and it deleted all twelve

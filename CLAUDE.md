@@ -172,9 +172,9 @@ Context for why it can wait: the user develops against an **unpackaged working c
 
 **Release tagging (Always Follow):**
 
-- Release tags MUST use the template **`TOGProfessionMaster-vX.Y.Z`** (e.g. `TOGProfessionMaster-v0.9.1`) — **never** a bare `vX.Y.Z`. Every release tag in this repo follows this format; the BigWigs packager + CurseForge release rely on it.
+- Release tags MUST use the template **`UltimateProfessionMaster-vX.Y.Z`** (e.g. `UltimateProfessionMaster-v1.7.0`) — **never** a bare `vX.Y.Z`. Changed at v1.7.0 for the rebrand (operator, 2026-10-21: "you need to tag this as UltimateProfessionMaster-v1.7.0 we need to change the tags to align with the brand"); every release through v1.6.1 is tagged `TOGProfessionMaster-vX.Y.Z` and those tags stay as they are. The tag is the addon's version string (`@project-version@`); VersionCheck-1.0 compares only its digit groups, so the prefix change does not affect guild version checks.
 - Pushing any tag triggers the release workflow (`.github/workflows/release.yml` fires on `tags: '**'`), which packages and publishes to CurseForge. Only create/push a tag when the user explicitly asks.
-- Tag the exact commit being released (annotated tag) and push it: `git tag -a TOGProfessionMaster-vX.Y.Z -m "..." <sha>` then `git push origin TOGProfessionMaster-vX.Y.Z`.
+- Tag the exact commit being released (annotated tag) and push it: `git tag -a UltimateProfessionMaster-vX.Y.Z -m "..." <sha>` then `git push origin UltimateProfessionMaster-vX.Y.Z`.
 
 **Changelog rules:**
 

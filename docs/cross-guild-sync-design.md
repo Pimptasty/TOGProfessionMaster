@@ -3,8 +3,8 @@
 > **Where this landed (2026-09-13, v1.0.10).** The roster half of this design
 > -- the allied-guild list, its gossip, the roster pull, the persistence, the
 > login re-feed and the GUILD relay -- is **LibGuildRoster's** now (MINOR 18,
-> GuildRoster 0.7.0), so that TOGPM, TOGTools and TOGBankClassic read one list
-> and one roster store. TOGPM keeps only the profession DATA exchange
+> GuildRoster 0.7.0), so that UPM, TOGTools and TOGBankClassic read one list
+> and one roster store. UPM keeps only the profession DATA exchange
 > (`sister-pull` over DeltaSync with the consent proof). Discovery is NOT
 > `/who`: `C_FriendList.SendWho` needs a hardware event, and GuildRoster
 > carries a recorded directive against any `/who` in the library; presence
@@ -13,18 +13,18 @@
 
 Status: **exploration — no decisions committed yet.**
 
-Goal: let users who belong to two (or more) configured sister guilds share TOGPM
+Goal: let users who belong to two (or more) configured sister guilds share UPM
 profession/cooldown/recipe data across those guilds, since the normal GUILD
 addon-comm channel can't reach a sister guild. Discovery is via `/who`;
 **GreenWall is NOT used (dropped — see D6).**
 
 This doc records ONLY what we discuss and decisions as we make them.
 
-**Stack ownership:** we own and can modify every layer — TOGPM, GreenWall,
+**Stack ownership:** we own and can modify every layer — UPM, GreenWall,
 DeltaSync (which contains the GuildCache-1.0 roster lib), and LibGuildRoster.
 So any layer is fair game to change rather than work around.
 
-> Compat note: TOGPM resolves the roster lib by the LibStub major string
+> Compat note: UPM resolves the roster lib by the LibStub major string
 > `"GuildCache-1.0"` (Scanner.lua:184, TOGProfessionMaster.lua:459, + the `.toc`
 > `## Dependencies`). If the lib is renamed inside DeltaSync, the major string,
 > both call sites, and the `.toc` dep must change together or roster goes nil
@@ -72,7 +72,7 @@ refactored into the flat, tag-based model below.)
 
 ## Background fact — roster source for sister guilds (verified)
 
-- TOGPM's roster truth is **GuildCache-1.0** (bundled in the DeltaSync addon at
+- UPM's roster truth is **GuildCache-1.0** (bundled in the DeltaSync addon at
   `DeltaSync/Libs/GuildCache-1.0/`), NOT LibGuildRoster-1.0. LibGuildRoster
   lives in other addons (fastguildinvite, standalone GuildRoster). Source:
   Scanner.lua:184, TOGProfessionMaster.lua:459.
@@ -81,22 +81,22 @@ refactored into the flat, tag-based model below.)
   `GetGuildRosterInfo` / guild events only ever return the player's OWN guild.
   GuildCache and LibGuildRoster both populate solely from that API. Therefore a
   sister-guild roster **cannot be scanned** — it can only be **built from
-  over-the-wire presence** (the `sender` field of TOGPM messages bridged across
+  over-the-wire presence** (the `sender` field of UPM messages bridged across
   GreenWall, and/or an explicit roster-announce sent over the bridge).
 
 - Owning a roster lib helps only by letting us extend it to *hold* N named
   rosters (one self-scanned + others externally fed). It can never *populate*
-  the sister rosters; that is TOGPM's job, sourced from GreenWall traffic.
+  the sister rosters; that is UPM's job, sourced from GreenWall traffic.
 
 - **Open question (not yet decided):** does the sync need a full sister-guild
   roster mirror, or just a lightweight **confederation-peer presence table**
   `{ sisterCharKey → { guildTag, lastSeen } }` built from sync traffic?
-  - Presence table covers everything the *sync* needs: isValidPeer (any TOGPM
+  - Presence table covers everything the *sync* needs: isValidPeer (any UPM
     sender over the GreenWall bridge is self-certifyingly confederated), online
     inference, whisper targeting. Tag→name display already handled by
     `guildRegistry`.
   - Full roster mirror is only needed to *display* complete sister membership
-    (incl. members with no TOGPM data), and is the expensive path — big payload
+    (incl. members with no UPM data), and is the expensive path — big payload
     vs. GreenWall's ~186-byte / no-fragmentation cap.
 
 ---
@@ -106,7 +106,7 @@ refactored into the flat, tag-based model below.)
 ### D1 — Mirror the FULL sister-guild roster (membership list)
 
 We will maintain a full membership list for each sister guild, not just the
-sister characters that have TOGPM data.
+sister characters that have UPM data.
 
 **Why (the real driver):** the display/purge gate `IsVisibleCrafter`
 (TOGProfessionMaster.lua:1346) hides+purges any crafter whose tag ≠ the local
@@ -120,7 +120,7 @@ is what forces full membership.)
 
 **Implications / costs accepted:**
 
-- Only members of a guild can scan its own roster, so each guild's TOGPM users
+- Only members of a guild can scan its own roster, so each guild's UPM users
   broadcast THEIR roster over GreenWall; the other guild ingests it. Needs a
   designated/coalesced broadcaster per guild to avoid duplicate copies.
 - We only need the charKey membership set for the gate (not ranks/levels/notes),
@@ -182,7 +182,7 @@ boundary. We use GreenWall purely as a thin confederation-wide doorbell.
 
 ### D3 — LibGuildRoster stays framework-agnostic; gains only "sister guild" wiring
 
-Dependency direction: **DeltaSync (and TOGPM) integrate WITH LibGuildRoster; the
+Dependency direction: **DeltaSync (and UPM) integrate WITH LibGuildRoster; the
 lib is NOT aware of DeltaSync or GreenWall.** (This supersedes the earlier
 Scope A/B question — Scope A confirmed. A lib that registered DeltaSync leaves
 would invert the dependency.)
@@ -199,7 +199,7 @@ Minimum:
 
 1. **Multi-roster storage** — `lib.roster` → `lib.rosters[guildKey]`; one
    self-scanned *home* roster (unchanged) + N externally-fed *sister* rosters.
-   Key on `"Faction-GuildName"`; the FNV *tag* concept stays in TOGPM.
+   Key on `"Faction-GuildName"`; the FNV *tag* concept stays in UPM.
 2. **Ingest API** — `lib:SetSisterRoster(guildKey, members[, meta])` (wipe+
    replace), `lib:RemoveSisterRoster(guildKey)`. Caller hands plain data; the lib
    has no idea it came from sync.
@@ -220,14 +220,14 @@ Strongly recommended (correctness, still framework-agnostic):
 Explicitly NOT in the lib:
 
 - Any DeltaSync/GreenWall reference (sync+transport glue lives in DeltaSync +
-  TOGPM).
+  UPM).
 - Export/import persistence — the consumer fed the data, already has it, and
   persists it in its own SavedVariables, re-feeding via `SetSisterRoster` on
   login. Lib stays in-memory.
 
 Contracts to pin (not lib code):
 
-- `guildKey` / `charKey` / realm spelling identical across lib + TOGPM or
+- `guildKey` / `charKey` / realm spelling identical across lib + UPM or
   `IsInAnyRoster` matches nothing.
 - `SetSisterRoster` on the home guildKey is ignored (self-scan wins).
 - Fed charKeys are full `"Name-Realm"` (guaranteed within the connected-realm
@@ -249,8 +249,8 @@ reuse the sync for free. Three layers:
   hash from LibGuildRoster, broadcasts it, resolves sister rosters over WHISPER,
   feeds them back via `lib:SetSisterRoster`. Natural home: DeltaSync already
   depends on a roster lib. **TOGBank reuses this by embedding DeltaSync + Lib.**
-- **TOGPM / TOGBank** — inject the *discovery transport* (GreenWall beacon for
-  TOGPM's confederation) as an adapter, and read `IsInAnyRoster` for the gate.
+- **UPM / TOGBank** — inject the *discovery transport* (GreenWall beacon for
+  UPM's confederation) as an adapter, and read `IsInAnyRoster` for the gate.
 
 Note on the confederation medium (we own GreenWall, so this is a real choice, not
 a coupling-avoidance default):
@@ -294,11 +294,11 @@ Why /who wins for our case (2 guilds):
 
 - WoW allows only 10 chat channels; burning one per addon integration is wasteful.
   /who needs none.
-- Zero dependency / zero setup: sister guild(s) configured by NAME in TOGPM options.
+- Zero dependency / zero setup: sister guild(s) configured by NAME in UPM options.
   No GreenWall, no confederation config. Trivially reusable for TOGBank.
 - Pull, on our schedule. Rosters rarely change, so no real-time push medium needed.
 - The probe is invisible: once /who yields an online name, the DeltaSync handshake is
-  a WHISPER = CHAT_MSG_ADDON, invisible to the recipient. Non-TOGPM members simply
+  a WHISPER = CHAT_MSG_ADDON, invisible to the recipient. Non-UPM members simply
   never reply. No human is spammed.
 
 Architectural payoff: discovery becomes a PURE CONSUMER concern. DeltaSync RosterSync
@@ -316,10 +316,10 @@ Hazards / must-handle (downgraded — see note):
   rarely change, so steady-state polling is slow (minutes) to avoid spamming other
   players' /who.
 - Residual (minor): the /who result buffer + WHO_LIST_UPDATE are a shared singleton,
-  so TOGPM's poller must coexist with the player's manual /who AND with FGI's /who
+  so UPM's poller must coexist with the player's manual /who AND with FGI's /who
   (user runs both addons). Not a correctness risk — share a who-queue / don't poll
   simultaneously. We own both, so coordinate.
-- ~50-result cap: only bites if >50 online and none of the first 50 run TOGPM. We need
+- ~50-result cap: only bites if >50 online and none of the first 50 run UPM. We need
   one hit to seed — low severity.
 - Same-faction only (/who + whispers don't cross factions). GreenWall had the same
   effective limit.
@@ -333,7 +333,7 @@ Two distinct roles, do not conflate:
 - known sister CRAFTERS → whisper TARGETING (D5). Known crafters are ALREADY held in
   persisted recipe data, so targeting doesn't need the roster.
 
-Persistence (the D3 consumer-persists decision applied here): TOGPM persists the
+Persistence (the D3 consumer-persists decision applied here): UPM persists the
 sister roster in `TOGPM_GuildDB` and re-feeds `SetSisterRoster` on login/reload; the
 lib stays in-memory. Crafter data already persists (it IS the DB).
 
@@ -367,7 +367,7 @@ Resulting clean architecture:
 - **DeltaSync `RosterSync`** — thin adapter: builds/serves the `roster:<guildKey>` leaf
   from LibGuildRoster, syncs it over WHISPER via the existing leaf machinery, feeds
   `SetSisterRoster` on receipt. Driven by a consumer-supplied peer. No broadcast.
-- **TOGPM** — `/who` discovery + known-crafter targeting + persistence +
+- **UPM** — `/who` discovery + known-crafter targeting + persistence +
   confederation-aware gate.
 
 ### D7 — Sister presence: YES, sourced from `/who` only (GreenWall stays dropped)
@@ -381,7 +381,7 @@ Lib API (presence overlay — distinct from the roster snapshot, source-agnostic
 
 - `lib:MarkOnline(guildKey, names)` — stamp `lastSeenOnline = now` for each name that
   exists in `rosters[guildKey]` (ignore unknowns — they hint the roster is stale, but
-  that's TOGPM's concern). Fed from a `/who` snapshot.
+  that's UPM's concern). Fed from a `/who` snapshot.
 - `lib:GetOnlineMembers(guildKey)` — for a SISTER guild, return members stamped within
   a freshness window (`lib.PRESENCE_TTL`, ~a couple poll cycles); for the HOME guild,
   keep using the authoritative live `member.isOnline`. (Add a scoped read; existing

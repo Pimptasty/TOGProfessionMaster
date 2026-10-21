@@ -41,7 +41,12 @@
   folder), the internal addon, locale, options, LibDataBroker and DeltaSync
   names (guild sync derives its message prefix from the namespace, so a
   renamed one would not talk to players on older versions), frame global
-  names, the release tag prefix and the CurseForge slug.
+  names and the CurseForge slug. The release tag prefix DOES change, to
+  `UltimateProfessionMaster-vX.Y.Z` from this release on (operator,
+  2026-10-21: "we need to change the tags to align with the brand"); older
+  `TOGProfessionMaster-vX.Y.Z` tags stay. The tag becomes the addon's version
+  string, and VersionCheck-1.0 compares only its digit groups, so guild
+  version checks across the two prefixes still order correctly.
 
 - **A Sent column on the Cooldowns tab** (operator, 2026-10-21: "add a column
   using the same frameworks as the other columns to annotate who we've sent

@@ -166,9 +166,10 @@ describe("every tab builds against real AceGUI, with data in it", function()
 		assert.equal(list, ns.CooldownsTab._rowList, "a redraw built a second list")
 	end)
 
-	it("Cooldowns' fixed columns leave the cooldown name at least 80 px in the locked window", function()
-		-- The window is locked at 720 wide for this tab; the tab content is
-		-- narrower still (660 here, less a 20 px scrollbar). Every other column
+	it("Cooldowns' fixed columns leave the cooldown name at least 80 px at the tab's 720 minimum", function()
+		-- 720 is the narrowest window this tab declares it fits (the shared
+		-- window floor is wider); the tab content is narrower still (660 here,
+		-- less a 20 px scrollbar). Every other column
 		-- is fixed, so the name gets what is left -- and must not be squeezed to
 		-- nothing, on TBC/Wrath least of all, where the spec-bonus column takes
 		-- its share too. The DECLARED widths are summed rather than the drawn

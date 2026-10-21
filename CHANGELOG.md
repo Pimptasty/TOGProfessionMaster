@@ -6,6 +6,98 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # TOG Profession Master Changelog
 
+## [v1.6.1] (2026-10-20) - Every tab is the same size; the Craft button is a plain button for trade skills; the close path runs once
+
+### Bug Fixes
+
+- **The Cooldowns and Guild tabs were smaller than the rest, so switching to
+  or from them made the window jump** (operator, in game 2026-10-20). Those two
+  tabs were locked at 720x500, while Crafting and the Profit Planner need at
+  least 820 and 920 wide, and the other tabs shared a resizable size of their
+  own. Every tab now uses one shared size, resizable, whose floor is the
+  largest minimum any tab declares (920x540 today), so a tab switch never moves
+  the window. Pinned by a new spec in `Tests/mainwindow_spec.lua`. Two
+  existing size specs there were moved to the new floor, because the change
+  made them fail (run 20261020-223619.605, red) rather than because they were
+  wrong: the "restores a saved size that fits" case now saves 960 wide instead
+  of 800 (below the new floor), with a new spec that a smaller saved size is
+  raised to the floor; and the uncapped shopping-list control uses ten recipes
+  instead of six, since 30 rows now fit in the taller tab. Green after the
+  edit on run 20261020-223845.589. Location:
+  `GUI/MainWindow.lua`, `GUI/CooldownsTab.lua`, `GUI/GuildTab.lua`.
+
+- **Clicking the main window's title bar closed the window** (operator, in
+  game 2026-10-19). The temporary chat trace never caught it: the one trace
+  captured (on WoW Forever) was an ordinary Close-button click. No cause was
+  identified. The operator reports it no longer happens in Classic Era
+  (2026-10-20). The temporary trace is removed. Location: `GUI/MainWindow.lua`,
+  `Modules/Crafting/CraftingEngine.lua`.
+
+- **Closing the window from code ran its close-down twice.** `Close()` releases
+  the AceGUI frame, and AceGUI hides it before clearing its callbacks, so the
+  frame's own close callback re-entered the release mid-way and the bottom-row
+  cleanup, the clamp restore, the Craft button re-check and the Crafting
+  engine's window-closed handler all ran a second time. On a close from code the
+  second run also undid the clamp restore, so the pooled frame always went back
+  to AceGUI unclamped whatever its earlier setting (the X button ran the
+  cleanup once and restored it correctly). The release path now returns at
+  once when AceGUI is already releasing the widget. Found by Peer Review by
+  reading. In `Tests/mainwindow_spec.lua`, two specs reproduce the bug and were
+  seen failing before the fix (one close for `Close()`; a frame clamped before
+  opening is still clamped after `Close()`), and one is a regression guard that
+  already passed (one close for a direct hide). Location: `GUI/MainWindow.lua`.
+
+- **The Craft button showed greyed and took no clicks for a trade skill**
+  (in game 2026-10-18), while the debug line reported it enabled and above the
+  window. The cause in the secure button was not found. Trade skills no longer
+  use it: Craft is now a plain button inside the detail panel, built like
+  Craft Max (which kept working), and crafts the selected recipe at the
+  stepper's quantity through the same engine call. A trade-skill craft needs
+  only the click, so nothing secure is required. The secure button now shows
+  for Enchanting alone, where the enchant goes through a secure `/cast`
+  (whether `DoCraft` itself is protected is not verified), and lost the
+  trade-skill crafting it no longer used. An enchant with no name to cast,
+  which got no button at all, now gets the plain button labelled Enchant, which
+  opens Blizzard's Craft window. Craft, Craft Max and the queue's Craft Next
+  and Craft All are disabled in combat, matching the Enchant button, which is
+  hidden then. An enchant picked during combat is what the Enchant button casts
+  once combat ends; it used to keep the one picked before. Craft Next and Craft
+  All also come back after combat when the selected recipe left the list during
+  it; they used to stay greyed until the queue next changed. Not yet seen in
+  game. Location: `GUI/CraftingTab.lua`, `Modules/Crafting/CraftingEngine.lua`.
+
+- **The Craft button stayed on screen after TOGPM's window closed, and looked
+  dimmed behind the window while it was open** (in game 2026-10-18). The button
+  is a secure frame kept outside the window on purpose, so it has to be told
+  when to hide. It now shows only while the window is open on the Crafting
+  tab, and closing the window re-checks it. Why the panel's own hide did not
+  already hide it was not found; the window check is a guard, not the
+  diagnosis. The placement watcher now also re-places the button when the
+  panel changes strata. Whether that caused the dimmed look is not
+  established: the button is disabled when nothing can be made, which looks
+  much the same. The window's own level is part of the placement check as well,
+  and the button is lifted above whichever of the panel and the window is
+  higher. Each placement now prints its strata, level, enabled state, alpha and
+  mouse state under `/togpm debug`. Uses only `GetFrameStrata`, a base frame method; checked
+  against the Classic Era client source, not the other flavours' trees.
+  Location: `GUI/CraftingTab.lua`, `GUI/MainWindow.lua`.
+
+### Improvements
+
+- **One recipe-id mapping instead of four copies.** Turning a recipe id read
+  from the client (the crafted item's id on Vanilla) into the spell id the
+  shipped data and the guild data key on was written out separately in the
+  scanner's merge, the crafter-set receive, the crafting engine and the
+  Crafting tab's Profit Planner jump, with slightly different guards and
+  nothing checking they agreed. All four now call `addon:CanonicalRecipeId`,
+  pinned by `Tests/canonicalrecipeid_spec.lua`. The Crafting tab's copy used
+  to try the crafted-item map even for a profession with no shipped data; that
+  map is built from the shipped data, so it was always empty there and nothing
+  a player sees changes. Location: `TOGProfessionMaster.lua`, `Scanner.lua`,
+  `Modules/Crafting/CraftingEngine.lua`, `GUI/CraftingTab.lua`.
+
+---
+
 ## [v1.6.0] (2026-10-17) - Allied guild tags; Reagent Tracker scale, opacity and background; cross-realm supply mail
 
 ### New Features
@@ -1451,222 +1543,4 @@
 
 ---
 
-## [v1.1.0] (2026-09-14) - Prices and the Auction House scan move to ItemDB; one mail per cooldown, every reagent split and attached from one click
-
-### New Features
-
-- **Every [Bank] button carries TOGBank's staleness dot.** The user, of the
-  green dots beside each banker in TOGBank's own Browse list: *"i would like
-  to add those dots next to the items in TOGPM as well if they have the bank
-  button available, so folks can tell at a glance if it's stale or not."* The
-  dot in front of [Bank] is TOGBank's own per-banker verdict
-  (`TOGBankClassic_Guild:GetAltStaleness`, the accessor its Browse and Bankers
-  lists read): green when our copy of that bank is current, red when a newer
-  copy is published and being fetched (or the copy is in the old format),
-  yellow when a peer has offered a newer copy, grey when the only newer copy
-  is on a client that cannot send it. One button stands for every banker
-  holding the item, so its dot is the WORST of theirs -- a red among greens
-  is what the glance is for -- and hovering the button lists each banker with
-  its count and status word. The colours are read from TOGBank's
-  `TOGBankClassic_UI_Browse.STATE_COLOR` / `STATE_TEXT` when that window is
-  present, so a palette change there reaches these dots without an edit here;
-  against a TOGBank that predates the accessor the button reads exactly as
-  before, with no dot. Every site that used to hard-code the green `[Bank]`
-  label now goes through one `addon.Bank.Decorate` (the Professions detail and
-  recipe rows, the shopping-list reagent rows, the Cooldowns main row and its
-  transmute popup, the Crafting tab's reagents, the Missing Recipes scrolls,
-  the Reagent Tracker, and the Shopping List's two AceGUI buttons); the
-  buttons are ~10px wider for the bullet. Location: `Compat.lua`
-  (`GetBanksWithItem` now carries `state`; `ItemState`, `StateColor`,
-  `StateText`, `ButtonText`, `Decorate`, `AddStatusLines`), the eight GUI
-  files above. Specs: `Tests/compat_spec.lua` ("the staleness dot on [Bank]",
-  nine examples -- worst-wins, the palette read-through and its fallback, the
-  no-dot degrade, that an AceGUI widget is never left carrying the item id,
-  and the tooltip rows).
-
-### Improvements
-
-- **The Cooldowns tab's mail button sends ONE mail per cooldown per character,
-  with every reagent of that cooldown on it.** The user's report: an Arcanite
-  transmute (Thorium Bar + Arcane Crystal) cost the sender two mails, because
-  the transmute popup drew a mail button on every reagent row and each one
-  mailed its own reagent. The reagent rows stay -- each keeps its own [AH] and
-  [Bank] request, which is what the rows are for -- but the mail button now
-  sits on the first row of each cooldown only and carries the whole reagent
-  list; the main (single-reagent) rows go through the same path with a
-  one-item list. In the user's words: *"split ALL the components for the
-  cooldown and attach ALL the components to the mail ... ONE mail/order
-  fulfill button"*, then *"it's the one shot button, but per character"*.
-
-  **One click does the whole thing.** The click plans every reagent against
-  the bags first and touches nothing until the plan is whole: a reagent that
-  cannot be covered blocks the send and EVERY shortfall is printed together
-  (not just the first), and a plan needing more stacks than a mail's twelve
-  slots is refused up front. Then every stack that needs splitting is split
-  from that click -- 0.25s apart, each piece placed into an empty bag slot
-  chosen before the first split (a placed piece is invisible to the container
-  API until its deferred pickup fires, so choosing per split would hand every
-  piece the same slot), 0.1s after its split so the cursor has cleared before
-  the next split loads it. The attach step runs after the last placement,
-  waits a few ticks for any piece that has not committed to its slot, and
-  then attaches the pieces and the whole stacks in order. The confirmation
-  popup ("Split N from stack of M?") and its "click Mail again" second click
-  are gone. The sequence is TOGBankClassic's fulfil path (MULTIFILL-002),
-  which is in players' hands.
-
-  **All-or-nothing at the attach too.** A stack the plan counted on that is no
-  longer where it was (moved between the click and the attach) fails its
-  pickup; rather than send the rest under a summary naming the whole plan,
-  everything already attached is taken back off the mail (the client's
-  right-click detach) and the click is reported as failed, so the next click
-  re-plans against the bags as they are. The occupancy test is
-  `HasSendMailItem` over every slot -- the client's own (Classic Era
-  `MailFrame.lua:881`); the old `if GetSendMailItem(1)` read the item NAME,
-  which is nil for an item the client has not cached, and read slot 1 only.
-  Locations: `GUI/CooldownsTab.lua` (`CdMail_PlanSupplyMail`,
-  `CdMail_PrepareSupplyMail`, `CdMail_AttachSupplyMail`, `ShowGroupPopup`),
-  `Locale/enUS.lua`, `docs/FEATURES.md`. Specs: `Tests/cooldownmail_spec.lua`
-  (new, 23 examples over the harness's real bags, cursor and send-mail
-  slots), `Tests/cooldowndraw_spec.lua` (a two-reagent transmute draws two
-  reagent rows and ONE mail button, and clicking it puts both on one mail).
-
-### Bug Fixes
-
-- **The mail body from the transmute popup named the spell where the product
-  belongs.** The user's first in-game mail read "Please use these materials to
-  make Transmute: Arcanite. Please send me the Transmute: Arcanite" -- the
-  popup handed the row's display name (the spell) to the body. It now resolves
-  the recipe's crafted item first ("Arcanite Bar") and falls back to the old
-  chain only for an entry with no recipe. Pinned in `Tests/cooldowndraw_spec.lua`.
-  Location: `GUI/CooldownsTab.lua` (`ShowGroupPopup`).
-- **The [Bank] button counted stock held by EX-bankers.** `addon.Bank.GetStock`
-  walked every record in TOGBankClassic's `Info.alts`, which keeps a
-  character's stored inventory after their bank note is removed -- so a
-  retired banker still holding 20 Linen Cloth lit the button and reported 20
-  in stock against a request nobody could fill. `GetBanksWithItem` already
-  walked `GetBanks()` (the current bankers); `GetStock` is now the sum of it,
-  one implementation. TOGBankClassic's peer review (thread 5eef0788, F2);
-  its F1 -- read through `GetAltItemTotal` rather than the legacy rows -- was
-  already in place since v1.0.10. Location: `Compat.lua`, `Tests/compat_spec.lua`.
-- **The planner's "nothing fits, split the largest" branch was dead, and
-  nothing pinned the property the split call depends on.** The branch before
-  it already returns for every case it handled (any stack larger than the
-  need qualifies there), so it could never run; removed. The split call
-  refuses `amount >= count`, and the mail path now leans on the planner never
-  asking for that -- so a spec walks every layout of up to four stacks of
-  1..6 against every need up to 12 (10,000+ cases) and asserts the split, when
-  there is one, is strictly inside its stack and the fulfilled total is exact.
-  Location: `GUI/CooldownsTab.lua` (`CdMail_CalculateFulfillmentPlan`),
-  `Tests/cooldownrows_spec.lua`.
-- **The "Attached ..." chat line was erroring on the zhTW, zhCN and koKR
-  clients.** Those three translations had the `%s` and `%dx %s` arguments in
-  the other order, so `string.format` was handed a name where it expected a
-  number. The line is now one list string ("Attached 1x Thorium Bar, 1x Arcane
-  Crystal for Bob.") under a new key that every locale falls back to enUS
-  for; the old key and the unused "no empty bag slot" key are removed from
-  all 13 locale files. Location: `Locale/*.lua`.
-
-- **The Crafting tab's "AH price" line for the crafted item ignored Auctioneer
-  and TSM.** It read `Price.Get` and then accepted the answer only when its
-  source id was Auctionator's or the own scan's, so a player whose only price
-  source was Auctioneer or TSM never saw a sale price or a profit there, while
-  the Profit Planner (which reads `GetSaleLive`) showed both. Found while
-  porting the ladder; the line now reads `GetSaleLive` like the planner does.
-  Location: `GUI/CraftingTab.lua` (`RefreshDetail`).
-
-### Price sources move to ItemDB
-
-- **Pricing, the AH scanner and every third-party price bridge now live in
-  ItemDB (LibItemDB-1.0 MINOR 25), and this addon reads them from there.**
-  The user's directive: *"we need to move those 3rd party integrations into
-  itemDB now"*, then, once ItemDB was tested in game (its scan priced 524
-  items; `/itemdb price` answered "Item 8952: 20 (TradeSkillMaster, Market
-  value)" on Old Blanchy), *"i think you can get the pricing data from ItemDB
-  now. also, the [AH] button funcitonality needs to tie into that for pricing
-  and seaching as well"*. One copy of the Auctionator / Auctioneer / TSM
-  adapters, one realm+faction scan store and one set of source toggles now
-  serve every TOG addon; TOGBankClassic's storefront reads the same numbers.
-  What this addon keeps is its POLICY over those numbers, which the library
-  deliberately does not carry: a vendor-sold reagent is costed at the vendor
-  price whatever the AH says (the 2026-09-11 directive), the crafting-cost
-  sum with its BoP exclusion and lower-bound / stale flags, the vendor SELL
-  row, and the source labels and colours every tab paints provenance with.
-  - `Modules/Price.lua` is a facade: `Get` / `GetSaleLive` /
-    `GetSaleHistorical` read `DB:GetPrice(id, "best" | "historical")`,
-    `GetVendorBuy` reads `DB:GetVendorBuyPrice`, `Money` uses
-    `DB:FormatMoney`. The three-return shape (copper, source, age) is
-    unchanged, so the ~20 call sites across the tabs did not move. Everything
-    is feature-gated on the METHOD, never a MINOR: against an older ItemDB the
-    AH tiers answer nil, the static vendor tier still answers through
-    `GetVendorBasePrice`, and nothing raises.
-  - `Modules/AHScanner.lua` is the `addon.AH` facade over ItemDB's scanner --
-    `IsOpen`, `SearchFor`, `StartScan`, `StartFullScan`, `CancelScan`, the
-    progress reads and `GetListingsFor` -- installed only when the ItemDB in
-    play carries `StartTargetedScan`, which is what every tab's `if addon.AH`
-    degrade was written for. **The per-row [AH] buttons therefore gate on
-    ItemDB's scan results and search through ItemDB**, and the shared Scan AH
-    button drives ItemDB's targeted scan. The two addon events the tabs
-    subscribe to (`AH_OPEN_STATE_CHANGED`, `AH_SCAN_COMPLETE`) are re-fired
-    from the library's `LibItemDB_AuctionHouse` / `LibItemDB_ScanComplete`
-    callbacks in one place. The "TOGPM Scan" button on the AH frame is gone
-    (ItemDB draws its own at the same anchor; the two had rendered on top of
-    each other in the user's screenshot). Two defects ItemDB's suite found
-    while porting went with the code: a cancelled targeted scan left its
-    next-item timer armed, and the Auctionator "historical" read reached for
-    an API that does not exist and silently fell back to the live price.
-  - **Settings: the nine price-source toggles and the scan delay are one
-    button, "Price sources (ItemDB)...", which opens ItemDB's own window
-    (`/itemdb`)** -- sources, precedence and statistic are set there once for
-    every TOG addon. **A player's earlier choices carry over on first login**:
-    `addon:MigratePriceSettingsToItemDB` writes each profile value that
-    differs from ItemDB's default into `DB:SetPriceSetting` (parents before
-    their fallbacks, since ItemDB turns a fallback off with its parent; never
-    a `false` for the TSM App Helper toggle, whose ItemDB default is ON and
-    which gates TSM's region-wide figures -- this addon's old default was
-    OFF, so a stored false was the default, not a choice), ONCE PER ACCOUNT
-    (stamped in `db.global`; ItemDB's settings are per account and ours were
-    per profile, so the first character to log in after the update is the
-    one whose choices carry), then clears the profile's copies and drops the
-    orphaned `factionrealm.ahPrices` / `vendorPrices` scan store. Scanned
-    prices are not migrated -- one scan refills ItemDB's store.
-  - The Profit Planner's source filter reads `DB:GetPriceSources()` -- the
-    library's registry, detection and enablement -- instead of probing the
-    third-party globals itself; the Historical subtab offers only sources that
-    carry a `historical` statistic. A filter saved by an older build folds its
-    per-statistic keys onto ItemDB's provider ids (`togpm-ah` -> `scan`,
-    `auctioneer-live` / `-cached` / `-app` -> `auctioneer`, `tsm-live` /
-    `-history` -> `tsm`, `auctionator-history` -> `auctionator`).
-    `addon.PriceSourceLabels` / `PriceSourceColors`, the Crafting tab's
-    `[SCAN]` / `[AUC]` / `[AUCN]` / `[TSM]` badges and the help-panel legend are
-    keyed by the same ids.
-  - Locations: `Modules/Price.lua`, `Modules/AHScanner.lua`,
-    `TOGProfessionMaster.lua` (source tables, `dumpprice`,
-    `MigratePriceSettingsToItemDB`), `GUI/Settings.lua`, `GUI/AHProfitTab.lua`,
-    `GUI/CraftingTab.lua`, `GUI/MainWindow.lua`, `Locale/*.lua` (sixteen
-    settings keys retired, two added), `docs/FEATURES.md`. Specs:
-    `Tests/price_spec.lua` (rewritten over the REAL ItemDB price files via the
-    new `env.priceDB()`; the bridge, store and merchant-capture cases moved to
-    ItemDB's `Tests/price_spec.lua` with the code), `Tests/pricefacade_spec.lua`
-    (new: the `addon.AH` facade, the migration, the Profit Planner's filter, the
-    Settings button), `Tests/craftingtab_spec.lua`; `Tests/ahfullscan_spec.lua`
-    and `Tests/ahscanner_spec.lua` deleted (65 examples in ItemDB's
-    `Tests/pricescan_spec.lua`). 100% line coverage on both modules.
-  - Requires ItemDB carrying LibItemDB-1.0 MINOR 25 for any auction price;
-    the [AH] buttons and the Scan AH button do not appear against an older
-    one. Contract threads with ItemDB: 6b52f51f (the trigger, quoting the
-    user's in-game test), 5bb73440 (the per-account stamp).
-
-### Test harness
-
-- **`Tests/wowapi` moves from `813f3d2` to `82eb99e`** (a month of Adoption
-  log). What it cost here: the harness now dispatches `OnSizeChanged`, so
-  `craftscroll_spec.lua`'s fixture -- which set a content height by hand on
-  an AceGUI ScrollFrame with no children -- had AceGUI's own layout reset the
-  height to 0 and four examples went red. The fixture now installs the no-op
-  `LayoutFinished` exactly as `CraftingTab:Draw` does before `FillList`; the
-  addon code was already right. The pin is what makes the cursor and send-mail
-  slots above available offline. Location: `Tests/craftscroll_spec.lua`.
-
----
-
-> Releases v1.0.10 and earlier are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).
+Older versions (v0.0.1 to v1.1.0) are in [CHANGELOG_ARCHIVE.md](CHANGELOG_ARCHIVE.md).

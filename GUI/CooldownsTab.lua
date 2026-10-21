@@ -198,12 +198,9 @@ local COL = {
     alert   = 18,
 }
 
--- Window size policy for this tab — read by MainWindow on tab switch
--- and on Open. `locked = true` means the resize grip is disabled and
--- the frame snaps to width/height. Cooldowns and Missing share the
--- SAME locked dimensions so switching between those two tabs produces
--- no visible jump (only switching to/from Browser changes the size).
-CooldownsTab.WINDOW_SIZE = { width = 720, height = 500, locked = true }
+-- The smallest window this tab's content fits. MainWindow:ApplyTabSize gives
+-- every tab one shared size whose floor is the largest such minimum.
+CooldownsTab.WINDOW_SIZE = { minWidth = 720, minHeight = 500 }
 
 -- Keep row height consistent with MissingRecipesTab so text baselines align
 -- visually the same across both locked-size tabs.

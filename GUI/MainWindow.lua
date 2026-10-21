@@ -497,18 +497,12 @@ end
 -- ---------------------------------------------------------------------------
 -- Per-tab window sizing
 -- ---------------------------------------------------------------------------
--- Each tab declares a WINDOW_SIZE table on its module:
---   { width=W, height=H, locked=true }       — resize disabled, snap to W×H
---   { minWidth=W, minHeight=H }              — resizable, with a floor
---
--- Locked tabs (Cooldowns, Guild) use IDENTICAL dimensions so switching
--- between them produces no visible jump. Each spec becomes a LibAceGUIWidgets
--- size profile (SetWindowProfile, MINOR 36, TOGPM contract 72e8dd4b): a locked
--- tab is its own profile, and the resizable tabs (Professions, Missing
--- Recipes, Crafting, Profit Planner) share RESIZABLE_PROFILE, whose size the library saves when it is left and
--- restores when it comes back. A locked tab's snapped size can never be
--- written into that save, which is what the old _suppressBrowserSize flag was
--- for. Every switch ends clamped to the screen.
+-- Each tab declares a WINDOW_SIZE table on its module: { minWidth=W,
+-- minHeight=H }, the smallest size its content fits. All tabs share one
+-- LibAceGUIWidgets size profile (SetWindowProfile, MINOR 36, TOGPM contract
+-- 72e8dd4b), RESIZABLE_PROFILE, whose floor is the largest of those minimums
+-- and whose size the library saves and restores. Every switch ends clamped to
+-- the screen.
 local _TAB_SIZE_LOOKUP = {
     browser   = function() return addon.BrowserTab        and addon.BrowserTab.WINDOW_SIZE        end,
     cooldowns = function() return addon.CooldownsTab      and addon.CooldownsTab.WINDOW_SIZE      end,
@@ -518,22 +512,35 @@ local _TAB_SIZE_LOOKUP = {
     ahprofit  = function() return addon.AHProfitTab       and addon.AHProfitTab.WINDOW_SIZE       end,
 }
 
+-- Every tab shares ONE size and ONE floor -- the largest minimum any tab
+-- declares -- so switching tabs never moves the window (operator, 2026-10-20:
+-- "why didn't you leave all the tabs the same size?"). Cooldowns and Guild
+-- used to be locked at 720x500 while Crafting and Profit Planner floor at
+-- 820-920 wide, so every switch to or from them jumped.
+local function sharedFloor()
+    local w, h = 600, 350
+    for _, lookup in pairs(_TAB_SIZE_LOOKUP) do
+        local spec = lookup()
+        if spec then
+            w = math.max(w, spec.minWidth or spec.width or 0)
+            h = math.max(h, spec.minHeight or spec.height or 0)
+        end
+    end
+    return w, h
+end
+MainWindow._SharedSizeFloor = sharedFloor
+
 function MainWindow:ApplyTabSize(tabKey)
     if not (self.frame and self.frame.frame) then return end
     local lookup = _TAB_SIZE_LOOKUP[tabKey]
     local spec = lookup and lookup()
     if not (spec and addon.W) then return end
 
-    if spec.locked then
-        addon.W:SetWindowProfile(self.frame, tabKey, {
-            width = spec.width, height = spec.height, resizable = false,
-        })
-    else
-        addon.W:SetWindowProfile(self.frame, RESIZABLE_PROFILE, {
-            width = 720, height = 500, resizable = true,
-            minWidth = spec.minWidth or 600, minHeight = spec.minHeight or 350,
-        })
-    end
+    local minW, minH = sharedFloor()
+    addon.W:SetWindowProfile(self.frame, RESIZABLE_PROFILE, {
+        width = minW, height = minH, resizable = true,
+        minWidth = minW, minHeight = minH,
+    })
 end
 
 -- Dim the stop icon while Questbook guides to nothing, full while it guides to
@@ -573,6 +580,12 @@ end
 --- parented to f.frame and ride the recycled widget into the next
 --- AceGUI:Create("Frame") caller (TOGBank, PersonalShopper, Grouper).
 function MainWindow:_ReleaseFrame(widget)
+    -- Close() reaches AceGUI:Release, which hides the frame before it clears
+    -- the callbacks (AceGUI-3.0.lua:173-189), so OnHide -> OnClose brings us
+    -- back here mid-release. Release has already flagged the widget
+    -- (AceGUI:IsReleasing, AceGUI-3.0.lua:213); the outer call finishes the
+    -- cleanup (Peer Review ce2c84ce).
+    if widget and AceGUI:IsReleasing(widget) then return end
     -- The help and gear icons hidden and the status bar put back. Opacity,
     -- scale, persistence, the Escape layer and the resize hook are all undone
     -- by the library on Release -- which also saves the resizable profile's
@@ -587,6 +600,10 @@ function MainWindow:_ReleaseFrame(widget)
     self.frame = nil
     self.tabs  = nil
     if widget then AceGUI:Release(widget) end
+    -- The Crafting tab's secure Craft button is not a child of this window (see
+    -- CraftingTab:BuildDetailPanel), so it is told the window has gone.
+    local CT = addon.CraftingTab
+    if CT and CT.SyncCraftButton then CT:SyncCraftButton() end
     -- WoW Forever: Blizzard's profession window may be open but invisible
     -- behind ours; closing ours closes it too (CraftingEngine.lua).
     local Engine = addon.CraftingEngine

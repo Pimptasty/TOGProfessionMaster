@@ -71,6 +71,38 @@ after_each(function()
 	if MW.Close then pcall(function() MW:Close() end) end
 end)
 
+-- Operator, 2026-10-20: "the cooldowns and the guild tabs are noticable smaller
+-- and it's jarring when you switch tothem because the screen moves". Every tab
+-- must apply the SAME size profile with the SAME floor.
+describe("tab sizes", function()
+	it("gives every tab one shared size profile and one floor, so a switch never moves the window", function()
+		local seen = {}
+		local real = ns.W.SetWindowProfile
+		ns.W.SetWindowProfile = function(lib, frame, name, spec)
+			seen[#seen + 1] = { name = name, minW = spec.minWidth, minH = spec.minHeight,
+			                    resizable = spec.resizable }
+			return real(lib, frame, name, spec)
+		end
+		local ok, err = pcall(function()
+			MW:Open("cooldowns")
+			for _, key in ipairs({ "browser", "cooldowns", "missing", "guild", "crafting", "ahprofit" }) do
+				MW:ApplyTabSize(key)
+			end
+		end)
+		ns.W.SetWindowProfile = real
+		if not ok then error(err, 0) end
+		assert.is_true(#seen >= 6)
+		local minW, minH = MW._SharedSizeFloor()
+		assert.equal(920, minW) -- Profit Planner's floor, the widest any tab needs
+		for _, call in ipairs(seen) do
+			assert.equal(seen[1].name, call.name)
+			assert.equal(minW, call.minW)
+			assert.equal(minH, call.minH)
+			assert.is_true(call.resizable)
+		end
+	end)
+end)
+
 describe("opening the window", function()
 	it("builds a frame with a tab group", function()
 		MW:Open()
@@ -96,6 +128,32 @@ describe("opening the window", function()
 		MW:Open()
 		MW:Close()
 		assert.has_no.errors(function() MW:Open() end)
+	end)
+
+	-- Peer Review ce2c84ce on thread bb693605: Close() releases the frame, and
+	-- AceGUI:Release hides it before clearing its callbacks, so the Frame's
+	-- OnHide -> OnClose ran the whole close path a second time.
+	it("runs the close path once for a programmatic Close()", function()
+		local Engine = ns.CraftingEngine
+		local real, closed = Engine.OnMainWindowClosed, 0
+		Engine.OnMainWindowClosed = function() closed = closed + 1 end
+		MW:Open()
+		local ok, err = pcall(function() MW:Close() end)
+		Engine.OnMainWindowClosed = real
+		if not ok then error(err, 0) end
+		assert.equal(1, closed)
+	end)
+
+	it("runs the close path once when the window is hidden, as the X button does", function()
+		local Engine = ns.CraftingEngine
+		local real, closed = Engine.OnMainWindowClosed, 0
+		Engine.OnMainWindowClosed = function() closed = closed + 1 end
+		MW:Open()
+		local ok, err = pcall(function() MW.frame.frame:Hide() end)
+		Engine.OnMainWindowClosed = real
+		if not ok then error(err, 0) end
+		assert.equal(1, closed)
+		assert.is_nil(MW.frame)
 	end)
 
 	-- Reported on Discord 2026-08-30: the title bar sat above the top of the
@@ -125,6 +183,23 @@ describe("opening the window", function()
 		assert.is_false(raw:IsClampedToScreen())
 	end)
 
+	-- Peer Review ffb53f3f on thread 31001deb: before the re-entry guard, a
+	-- Close() from code ran _ReleaseFrame twice, and the second run cleared the
+	-- clamp the first had just restored. A fresh harness frame starts unclamped,
+	-- so the spec above cannot tell the two apart; this one starts clamped.
+	it("hands a pooled frame that was clamped before back clamped after a Close() from code", function()
+		MW:Open()
+		local raw = MW.frame.frame
+		MW._priorClamp = true
+		local ok, err = pcall(function() MW:Close() end)
+		local clamped = raw:IsClampedToScreen()
+		-- The frame stays in AceGUI's pool for later specs; hand it back as found,
+		-- even when Close() threw.
+		raw:SetClampedToScreen(false)
+		if not ok then error(err, 0) end
+		assert.is_true(clamped)
+	end)
+
 	it("caps a saved Browser size at the screen instead of restoring it taller than the display", function()
 		-- 1024x768 harness screen; a size saved under a bigger coordinate space.
 		ns.lib.db.char.frames.mainWindow = { width = 720, height = 500,
@@ -135,11 +210,21 @@ describe("opening the window", function()
 	end)
 
 	it("restores a saved Browser size that fits, unchanged", function()
+		-- Above the shared 920x540 floor and inside the 1024x768 screen.
 		ns.lib.db.char.frames.mainWindow = { width = 720, height = 500,
-		                                     browserWidth = 800, browserHeight = 600 }
+		                                     browserWidth = 960, browserHeight = 600 }
 		MW:Open("browser")
 		assert.equal(600, MW.frame.frame:GetHeight())
-		assert.equal(800, MW.frame.frame:GetWidth())
+		assert.equal(960, MW.frame.frame:GetWidth())
+	end)
+
+	it("raises a saved size below the shared floor up to it", function()
+		ns.lib.db.char.frames.mainWindow = { width = 720, height = 500,
+		                                     browserWidth = 800, browserHeight = 500 }
+		MW:Open("browser")
+		local minW, minH = MW._SharedSizeFloor()
+		assert.equal(minW, MW.frame.frame:GetWidth())
+		assert.equal(minH, MW.frame.frame:GetHeight())
 	end)
 end)
 
@@ -270,10 +355,10 @@ end)
 -- end to end: the real window, the real Browser draw, the real InlineGroup,
 -- and the geometry a player would see.
 describe("a long shopping list inside the real window", function()
-	local function longList()
+	local function longList(recipes)
 		local sl = ns.lib.db.char.shoppingList
 		local expanded = {}
-		for i = 1, 6 do
+		for i = 1, recipes or 6 do
 			local rs = {}
 			for j = 1, 4 do rs[j] = { itemId = 1000 + j, count = j, name = "Reagent " .. j } end
 			sl[500 + i] = { name = ("Shadoweave %02d"):format(i), quantity = 1, reagents = rs }
@@ -397,15 +482,19 @@ describe("a long shopping list inside the real window", function()
 
 	it("REPRODUCES the report when the cap is taken away: the section outgrows the tab", function()
 		-- The control: the same window with the fix removed sizes the section
-		-- to every row, past the tab's own height.
-		longList()
+		-- to every row, past the tab's own height. Ten recipes (50 rows), not
+		-- six: since every tab shares the 920x540 floor (2026-10-20) the tab is
+		-- tall enough that 30 uncapped rows still fit inside it.
+		longList(10)
 		local real = ns.BrowserTab.ShoppingListMaxHeight
 		ns.BrowserTab.ShoppingListMaxHeight = function() return 100000 end
-		MW:Open("browser")
+		local ok, err = pcall(function() MW:Open("browser") end)
 		local BT = ns.BrowserTab
 		local sectionH, tabH = BT._slSection.frame:GetHeight(), BT._container.frame:GetHeight()
 		ns.BrowserTab.ShoppingListMaxHeight = real
-		assert.equal(30 * 14 + BT.SL_CHROME + BT.SL_SLACK, sectionH)
+		for i = 7, 10 do ns.lib.db.char.shoppingList[500 + i] = nil end
+		if not ok then error(err, 0) end
+		assert.equal(50 * 14 + BT.SL_CHROME + BT.SL_SLACK, sectionH)
 		assert.is_true(sectionH > tabH)
 	end)
 end)

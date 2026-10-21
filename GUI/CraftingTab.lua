@@ -561,18 +561,6 @@ function CraftingTab:RequestSelect(profId, recipeId)
     end
 end
 
--- Map an engine recipe id (the crafted ITEM id on Vanilla, a spell id elsewhere)
--- to the gdb/spell id the Profit Planner keys on, mirroring CraftingEngine's
--- recipeMeta remap so the two id spaces compare correctly.
-local function canonicalRecipeId(profId, rid)
-    if not rid then return rid end
-    if addon.recipeDB and addon.recipeDB[profId] and addon.recipeDB[profId][rid] then
-        return rid
-    end
-    local sid = addon.GetSpellIdForCraftedItem and addon:GetSpellIdForCraftedItem(profId, rid)
-    return sid or rid
-end
-
 function CraftingTab:TrySelectPending()
     local pend = self._pendingSelect
     if not (pend and self._rows and self._listLive) then return end
@@ -587,7 +575,7 @@ function CraftingTab:TrySelectPending()
     for _, e in ipairs(self._rows) do
         if e.kind == "recipe"
            and (e.recipeId == pend.recipeId
-                or canonicalRecipeId(info.profId, e.recipeId) == pend.recipeId) then
+                or addon:CanonicalRecipeId(info.profId, e.recipeId) == pend.recipeId) then
             self._selIndex      = e.index
             self._selId         = e.recipeId
             self._qty           = 1
@@ -811,16 +799,12 @@ function CraftingTab:BuildDetailPanel(parent)
     -- − and + buttons so the row looks full.
     local CR, CW = 12, DCTRL_W - 12
 
-    -- Craft is a SECURE action button so Enchanting can work: for the Vanilla/TBC
-    -- Craft window we set a "/cast <recipe>" macro on this button per selection
-    -- (RefreshDetail) and the click casts it securely; for ordinary trade skills
-    -- the macro is cleared and PreClick runs the normal Lua craft (DoTradeSkill,
-    -- which also supports batch quantity). PreClick is insecure but runs before
-    -- the secure cast, so the trade-skill path is unaffected.
-    --
-    -- The click registration is set per selection in RefreshDetail, NOT here --
-    -- see the note there. "LeftButtonUp" alone is the correct (and only safe)
-    -- default for the insecure trade-skill path.
+    -- Two Craft buttons share one slot. Trade skills use a plain panel button
+    -- (below, after Craft Max). Enchanting (the Vanilla/TBC Craft window) uses a
+    -- SECURE action button carrying a "/cast <recipe>" macro, set per selection
+    -- in RefreshDetail; it shows only for an enchant with a name to cast. The
+    -- secure route rests on DoCraft being protected, which is not verified -- see
+    -- the note in CraftingEngine:Craft.
     --
     -- The button is NOT parented into the panel. A frame with a secure child is
     -- itself protected, and so is every ancestor -- and the panel lives inside
@@ -830,7 +814,8 @@ function CraftingTab:BuildDetailPanel(parent)
     -- pooled frame would carry the protection to the next addon given it. So it
     -- lives on a holder of our own, parented to UIParent, only ANCHORED to the
     -- panel. A secure state driver hides the holder for the whole of combat --
-    -- nobody can craft in combat, and the driver is Blizzard's secure code, so it
+    -- TOGPM offers no crafting in combat (the plain buttons are disabled then,
+    -- see SyncPlainCraftEnabled), and the driver is Blizzard's secure code, so it
     -- may hide a protected frame then (SecureStateDriver.lua:98, classic_era).
     -- Everything else about the button's visibility, stacking and scale is
     -- synced out of combat by SyncCraftButton.
@@ -885,6 +870,28 @@ function CraftingTab:BuildDetailPanel(parent)
     rawTip(craftMaxBtn, function() return L["CraftMaxButton"] end, function() return L["CraftMaxButtonDesc"] end)
     self._dpCraftMax = craftMaxBtn
 
+    -- Craft, for trade skills: a plain button in the panel, like Craft Max.
+    -- Craft Max reaches DoTradeSkill from a plain OnClick (CraftQueue:CraftNext ->
+    -- Engine:Craft), so a click is all it needs. The secure button stays for
+    -- Enchanting alone (the secure /cast route; whether DoCraft is protected is
+    -- not verified). On 2026-10-18 the secure button showed greyed and took no
+    -- clicks for a trade skill while reporting itself enabled and topmost; the
+    -- cause was not found, and trade skills no longer depend on it. An enchant
+    -- with no name to cast also uses this button: Engine:Craft then opens
+    -- Blizzard's Craft window and says to click Create there.
+    local craftPlain = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    craftPlain:SetSize(CW, 24)
+    craftPlain:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -CR, -34)
+    craftPlain:SetText(L["CraftButton"])
+    craftPlain:SetScript("OnClick", function()
+        local sel = CraftingTab._dpSel
+        if sel and addon.CraftingEngine then
+            addon.CraftingEngine:Craft(sel.recipeId, sel.index, CraftingTab._qty or 1)
+        end
+    end)
+    rawTip(craftPlain, function() return L["CraftButton"] end, function() return L["CraftButtonDesc"] end)
+    self._dpCraftPlain = craftPlain
+
     -- Stepper row, aligned to the Craft button's edges (full width): − [qty] + MAX.
     -- The library's stepper has no upper bound here: Queue deliberately takes
     -- more than the materials on hand make. So its own MAX (which caps at `max`)
@@ -913,33 +920,32 @@ function CraftingTab:BuildDetailPanel(parent)
     self._dpStepper = stepper
 end
 
--- The secure Craft button, on the holder (never the panel -- see
+-- The secure Enchant button, on the holder (never the panel -- see
 -- BuildDetailPanel). The library's factory returns nil in combat, so this is
--- retried by SyncCraftButton after combat; every use checks for it. Nobody can
--- craft in combat, and the holder's state driver hides it then anyway.
+-- retried by SyncCraftButton after combat; every use checks for it. The holder's
+-- state driver hides it for all of combat. It only ever casts its /cast macro:
+-- trade skills craft from the plain button, so it has no PreClick.
 function CraftingTab:EnsureCraftButton()
     if self._dpCraft then return self._dpCraft end
     if not (self._dpCraftHolder and addon.W) then return nil end
     local craftBtn = addon.W:CreateSecureActionButton(self._dpCraftHolder, {
         name     = "TOGPMCraftButton",
-        text     = L["CraftButton"],
+        text     = L["CraftEnchantButton"],
         width    = self._dpCraftW or 218,
         height   = 24,
         tipTitle = L["CraftButton"],
         tipBody  = L["CraftButtonDesc"],
-        preClick = function()
-            if CraftingTab._craftIsSecure then return end  -- enchant: the secure /cast macro handles it
-            local sel = CraftingTab._dpSel
-            if sel and addon.CraftingEngine then
-                addon.CraftingEngine:Craft(sel.recipeId, sel.index, CraftingTab._qty or 1)
-            end
-        end,
     })
     if not craftBtn then return nil end
-    -- The factory registers both clicks, which the secure half needs (it acts on
-    -- exactly one of them); the insecure trade-skill PreClick would then craft
-    -- twice. So up-only until RefreshDetail picks the mode for the recipe.
-    craftBtn:RegisterForClicks("LeftButtonUp")
+    -- The secure handler acts on the down OR the up, by the ActionButtonUseKeyDown
+    -- CVar (ElvUI / Bartender4 and Blizzard's "use key down" option set it), so
+    -- both are registered and exactly one casts. Registered for "LeftButtonUp"
+    -- only, the button was dead for every player with that CVar on ("Enchanting is
+    -- the only profession that doesn't work"); TSM's SecureMacroActionButton
+    -- branches on the same CVar. Left button only: the factory's AnyUp/AnyDown
+    -- would also cast on a right-click. (The library's clicks = "up" mode is
+    -- MINOR 44; TOGPM accepts 36.)
+    craftBtn:RegisterForClicks("LeftButtonUp", "LeftButtonDown")
     craftBtn:Hide()
     self._dpCraft = craftBtn
     return craftBtn
@@ -963,12 +969,17 @@ function CraftingTab:RefreshDetail()
     -- protected in combat, so SyncCraftButton owns its visibility.
     local widgets = { self._dpIcon, self._dpNameBtn, self._dpReagHost,
                       self._dpStepper, self._dpMax,
-                      self._dpQueue, self._dpCraftMax }
+                      self._dpQueue, self._dpCraftMax, self._dpCraftPlain }
     if not sel then
         self._dpHint:Show()
         self._dpMiss:Hide()
         if self._dpCost then self._dpCost:Hide() end
         for _, w in ipairs(widgets) do w:Hide() end
+        -- The regen handler returns through here when the selection is gone, and
+        -- skips its own sync, so the queue's Craft Next / Craft All are set here
+        -- too (Peer Review, thread 578fcb89; pinned by the draw spec from thread
+        -- 0b7ff9c0).
+        self:SyncPlainCraftEnabled(InCombatLockdown and InCombatLockdown())
         self:SyncCraftButton()
         self._detailH = 56          -- compact: just the hint
         self:ApplyDetailHeight()
@@ -988,67 +999,41 @@ function CraftingTab:RefreshDetail()
         self._dpStepper:Refresh()
     end
     local canCraft = (sel.num or 0) > 0
-    -- The Craft button is SECURE (enchant /cast), so Enable/Disable is protected
-    -- during combat lockdown — guard it. _dpCraftMax is a normal button (safe).
-    -- It does not exist yet when the panel was first built in combat.
+    -- The secure button's Enable/Disable is protected in combat -- guard it. It
+    -- does not exist yet when the panel was first built in combat.
     local craft = self:EnsureCraftButton()
     if craft and not (InCombatLockdown and InCombatLockdown()) then
         craft:SetEnabled(canCraft)
     end
-    if self._dpCraftMax.SetEnabled then self._dpCraftMax:SetEnabled(canCraft) end
+    self:SyncPlainCraftEnabled(InCombatLockdown and InCombatLockdown())
 
-    -- Point the (secure) Craft button at this recipe. Enchanting (Craft window)
-    -- must be cast via a secure /cast macro since Lua DoCraft is protected; the
-    -- recipe name IS the spell name. Trade skills clear the macro and let the
-    -- PreClick do the normal Lua craft. SetAttribute is forbidden in combat, so
-    -- guard it (you can't craft in combat anyway).
+    -- Enchanting (Craft window) casts through the secure button's /cast macro;
+    -- the recipe name IS the spell name, so an enchant with no name cannot use
+    -- it and falls back to the plain button (Engine:Craft then opens Blizzard's
+    -- Craft window). Whether DoCraft is protected is not verified (see
+    -- CraftingEngine:Craft). SetAttribute is forbidden in combat, so guard it.
     self._craftIsSecure = (Engine._isCraftWindow and sel.name and sel.name ~= "") and true or false
-    if craft and not (InCombatLockdown and InCombatLockdown()) then
-        if self._craftIsSecure then
-            craft:SetAttribute("type", "macro")
-            craft:SetAttribute("macrotext", "/cast " .. sel.name)
-        else
-            craft:SetAttribute("type", nil)
-            craft:SetAttribute("macrotext", nil)
-        end
-        -- The secure half of this button ONLY fires if the registered click
-        -- matches Blizzard's key-down/key-up gate. SecureActionButton_OnClick
-        -- runs the action only when
-        --   (down and useOnKeyDown) or (not down and not useOnKeyDown)
-        -- where useOnKeyDown falls back to the `ActionButtonUseKeyDown` CVar
-        -- (ElvUI / Bartender4 and Blizzard's own "use key down" option set it).
-        -- Registered for "LeftButtonUp" ONLY, the button was therefore DEAD for
-        -- every player with that CVar on: the click dispatched, the secure gate
-        -- discarded it, and no enchant was ever cast — while trade skills kept
-        -- working because they craft from the insecure PreClick, which isn't
-        -- gated. That is exactly the reported "Enchanting is the only profession
-        -- that doesn't work". TSM's SecureMacroActionButton branches on the same
-        -- CVar for the same reason.
-        --
-        -- Registering BOTH clicks satisfies the gate whichever way the CVar is
-        -- set (and whichever variant of the gate the client ships), and exactly
-        -- one of the two passes it, so the enchant casts once. Only do it in
-        -- secure/enchant mode: PreClick fires on every registered click, so with
-        -- both registered the trade-skill path would craft twice per click.
-        if self._craftIsSecure then
-            craft:RegisterForClicks("LeftButtonUp", "LeftButtonDown")
-        else
-            craft:RegisterForClicks("LeftButtonUp")
-        end
+    if craft and self._craftIsSecure and not (InCombatLockdown and InCombatLockdown()) then
+        craft:SetAttribute("type", "macro")
+        craft:SetAttribute("macrotext", "/cast " .. sel.name)
     end
 
     -- Enchanting is applied one item at a time, so present a single "Enchant"
-    -- button: hide the quantity stepper, Craft Max and Queue, and pull Enchant up
-    -- to the top of the controls column. Trade skills keep "Craft" plus the full
-    -- stepper / Craft Max / Queue stack at their normal positions.
+    -- button at the top of the controls column: hide the quantity stepper, Craft
+    -- Max and Queue. Trade skills keep "Craft" plus the full stepper / Craft Max /
+    -- Queue stack at their normal positions.
     local isEnchant = Engine._isCraftWindow and true or false
-    if craft then craft:SetText(isEnchant and L["CraftEnchantButton"] or L["CraftButton"]) end
-    -- Where the (secure) button sits in the panel; SyncCraftButton places it
-    -- there, out of combat only.
+    -- Where the Craft button sits in the panel. SyncCraftButton places the secure
+    -- one there, out of combat only; the plain one is the panel's child.
     self._dpCraftY = isEnchant and -6 or -34
+    local plain = self._dpCraftPlain
+    plain:ClearAllPoints()
+    plain:SetPoint("TOPRIGHT", self._detailPanel, "TOPRIGHT", -(self._dpCraftRight or 12), self._dpCraftY)
+    plain:SetText(isEnchant and L["CraftEnchantButton"] or L["CraftButton"])
     if isEnchant then
         self._dpStepper:Hide(); self._dpMax:Hide()
         self._dpCraftMax:Hide(); self._dpQueue:Hide()
+        if self._craftIsSecure then plain:Hide() end
     end
     self:SyncCraftButton()
 
@@ -1269,13 +1254,7 @@ function CraftingTab:RefreshQueue()
     end
     if self._queueList then self._queueList:SetData(rows, true) end
 
-    local canCraftNext = addon.CraftQueue and addon.CraftQueue:CanCraftNext()
-    if self._craftNextBtn then
-        if canCraftNext then self._craftNextBtn:Enable() else self._craftNextBtn:Disable() end
-    end
-    if self._craftAllBtn then
-        if canCraftNext then self._craftAllBtn:Enable() else self._craftAllBtn:Disable() end
-    end
+    self:SyncPlainCraftEnabled(InCombatLockdown and InCombatLockdown())
 end
 
 -- ===========================================================================
@@ -1301,10 +1280,21 @@ end
 local CRAFT_BTN_LEVEL_ABOVE = 100
 
 -- Where and how the button was last placed: position, scale and stacking. Any
--- change re-places it.
+-- change re-places it. The STRATA is part of it, so a panel that changes strata
+-- at an unchanged level still re-places the button. Added after the button was
+-- seen dimmed behind the window (in game 2026-10-18); whether a strata change
+-- caused that is NOT established -- under UIParent the host has no anchors, so
+-- the panel has no rect there and the button is not placed. The placement debug
+-- line in SyncCraftButton is what will tell.
+-- The WINDOW's level is in it too (Peer Review, thread 435f7185): the window is
+-- Toplevel, and a Raise that lifted it without moving the panel's level would
+-- otherwise leave the button under the window's own textures, unnoticed.
 local function craftBtnKey(panel, right, top)
-    return string.format("%.2f:%.2f:%.4f:%d", right, top,
-        panel:GetEffectiveScale(), panel:GetFrameLevel())
+    local mw = addon.MainWindow
+    local win = mw and mw.frame and mw.frame.frame
+    return string.format("%.2f:%.2f:%.4f:%d:%s:%d", right, top,
+        panel:GetEffectiveScale(), panel:GetFrameLevel(), panel:GetFrameStrata() or "",
+        win and win.GetFrameLevel and win:GetFrameLevel() or -1)
 end
 
 function CraftingTab:SyncCraftButton()
@@ -1317,7 +1307,17 @@ function CraftingTab:SyncCraftButton()
         if btn and self._dpSel then return self:RefreshDetail() end
     end
     if not (btn and holder and panel) then return end
-    local want = panel:IsVisible() and self._dpSel ~= nil
+    -- Only while TOGPM's window is open on the Crafting tab, not merely while the
+    -- panel reports itself visible: the button stayed on screen after the window
+    -- closed (in game 2026-10-18), so the window's own state is checked too.
+    -- KNOWN GAP: this is a guard, not the diagnosis. Reading the release path,
+    -- the panel's OnHide should already hide the button; why it did not was
+    -- never found, and the panel was never shown to stay visible.
+    local mw = addon.MainWindow
+    -- Enchanting with a castable name only: everything else crafts from the
+    -- plain button in the panel.
+    local want = panel:IsVisible() and self._dpSel ~= nil and self._craftIsSecure == true
+        and mw ~= nil and mw.frame ~= nil and mw.activeTab == "crafting"
     local right, top = panel:GetRight(), panel:GetTop()
     if want and right and top then
         holder:SetFrameStrata(panel:GetFrameStrata())
@@ -1328,12 +1328,29 @@ function CraftingTab:SyncCraftButton()
         -- its descendant. The button then sat dimmed under the panel and took no
         -- clicks (Discord, 2026-09-29, Enchanting). So the level is part of the
         -- watcher's key, and the margin clears the panel's own children.
-        btn:SetFrameLevel(panel:GetFrameLevel() + CRAFT_BTN_LEVEL_ABOVE)
+        local win = mw.frame.frame
+        local base = panel:GetFrameLevel()
+        if win and win.GetFrameLevel and win:GetFrameLevel() > base then base = win:GetFrameLevel() end
+        btn:SetFrameLevel(base + CRAFT_BTN_LEVEL_ABOVE)
         btn:ClearAllPoints()
         btn:SetPoint("TOPRIGHT", holder, "BOTTOMLEFT",
             right - (self._dpCraftRight or 12), top + (self._dpCraftY or -34))
         btn:Show()
         self._craftBtnPlacedAt = craftBtnKey(panel, right, top)
+        -- In game 2026-10-18 the button looked dimmed behind the window. Either
+        -- draw order or the disabled look (no materials) fits the screenshot, so
+        -- each placement is logged under /togpm debug to tell them apart.
+        if addon.DebugPrint then
+            -- Alpha and mouse too: on 2026-10-18 the button logged enabled and
+            -- above the panel, yet looked dim and took no clicks.
+            addon:DebugPrint(string.format(
+                "Craft button placed: enabled=%s btn %s/%d holder %s, panel %s/%d, window %s/%d, alpha=%.2f mouse=%s",
+                tostring(btn:IsEnabled()), tostring(btn:GetFrameStrata()), btn:GetFrameLevel(),
+                tostring(holder:GetFrameStrata()), tostring(panel:GetFrameStrata()), panel:GetFrameLevel(),
+                tostring(win and win:GetFrameStrata()), win and win:GetFrameLevel() or -1,
+                btn.GetEffectiveAlpha and btn:GetEffectiveAlpha() or -1,
+                tostring(btn.IsMouseEnabled and btn:IsMouseEnabled())))
+        end
     else
         btn:Hide()
         self._craftBtnPlacedAt = nil
@@ -1362,9 +1379,40 @@ watcher:SetScript("OnUpdate", function()
 end)
 CraftingTab._craftBtnWatcher = watcher
 
+-- Every plain button that crafts -- Craft, Craft Max, and the queue's Craft
+-- Next and Craft All -- follows the same rule as the secure holder, which a
+-- state driver hides for all of combat: no crafting from TOGPM in combat. They
+-- are disabled rather than hidden, so the layout keeps its shape. Whether the
+-- client refuses DoTradeSkill in combat is not verified; this keeps every route
+-- consistent either way (Peer Review N3 and NEW-1, thread 98ed0622).
+-- `inCombat` is passed in: PLAYER_REGEN_DISABLED is the moment combat starts,
+-- and InCombatLockdown is not relied on to agree inside that event.
+function CraftingTab:SyncPlainCraftEnabled(inCombat)
+    local sel = self._dpSel
+    local on = sel ~= nil and (sel.num or 0) > 0 and not inCombat
+    if self._dpCraftPlain then self._dpCraftPlain:SetEnabled(on) end
+    if self._dpCraftMax then self._dpCraftMax:SetEnabled(on) end
+    local queueOn = (addon.CraftQueue and addon.CraftQueue:CanCraftNext() and not inCombat) and true or false
+    if self._craftNextBtn then self._craftNextBtn:SetEnabled(queueOn) end
+    if self._craftAllBtn then self._craftAllBtn:SetEnabled(queueOn) end
+end
+
+-- Leaving combat re-runs RefreshDetail when a recipe is selected: in combat it
+-- skipped the secure button's SetEnabled and SetAttribute but still moved the
+-- selection, so without this the Enchant button would come back casting the
+-- enchant picked before the fight (Peer Review NEW-2, thread 98ed0622).
+-- RefreshDetail ends in SyncCraftButton, which re-places the button.
 local regenFrame = CreateFrame("Frame")
 regenFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-regenFrame:SetScript("OnEvent", function() CraftingTab:SyncCraftButton() end)
+regenFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+regenFrame:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_REGEN_ENABLED" and CraftingTab._dpSel and CraftingTab._detailPanel then
+        return CraftingTab:RefreshDetail()
+    end
+    CraftingTab:SyncPlainCraftEnabled(event == "PLAYER_REGEN_DISABLED")
+    if event == "PLAYER_REGEN_ENABLED" then CraftingTab:SyncCraftButton() end
+end)
+CraftingTab._regenFrame = regenFrame
 
 function CraftingTab:OnQueueChanged()
     local mw = addon.MainWindow

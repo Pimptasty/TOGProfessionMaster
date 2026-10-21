@@ -559,17 +559,11 @@ end
 -- UPDATE in an infinite loop.
 -- Shipped recipe metadata for (profId, recipeId), with the Vanilla item→spell
 -- remap: on Vanilla, ExtractTradeSkillId returns the crafted item id but
--- addon.recipeDB is keyed by spell id, so fall back through
--- GetSpellIdForCraftedItem (same remap Scanner:MergeRecipesIntoGdb uses).
+-- addon.recipeDB is keyed by spell id, so the id goes through
+-- addon:CanonicalRecipeId (the remap Scanner:MergeRecipesIntoGdb uses too).
 local function recipeMeta(profId, rid)
     if not (profId and rid and addon.recipeDB and addon.recipeDB[profId]) then return nil end
-    local m = addon.recipeDB[profId][rid]
-    if m then return m end
-    if addon.GetSpellIdForCraftedItem then
-        local sid = addon:GetSpellIdForCraftedItem(profId, rid)
-        if sid then return addon.recipeDB[profId][sid] end
-    end
-    return nil
+    return addon.recipeDB[profId][addon:CanonicalRecipeId(profId, rid)]
 end
 
 -- Item-quality colour hex (e.g. "ff1eff00") from the crafted item's link, used
@@ -823,11 +817,11 @@ function Engine:Craft(recipeId, index, qty)
     -- arg — so the queue should expect a single success there, not `qty`.
     --
     -- The interactive enchant path does NOT come through here: the Crafting tab's
-    -- Craft button is a secure action button that casts "/cast <recipe>" itself
-    -- (see GUI/CraftingTab.lua) and its PreClick returns early for enchants. This
-    -- branch is only reached by a QUEUED enchant (Craft Next / Craft All), so it
-    -- pops Blizzard's own Craft window for the player to click Create, and says so
-    -- once.
+    -- Enchant button is a secure action button that casts "/cast <recipe>" itself
+    -- (see GUI/CraftingTab.lua). This branch is reached by a QUEUED enchant (Craft
+    -- Next / Craft All) and by an enchant with no name to cast, which the tab hands
+    -- to its plain Craft button; it pops Blizzard's own Craft window for the
+    -- player to click Create, and says so once.
     -- NOTE for future work: v0.8.3 introduced the secure-cast path on the premise
     -- that `DoCraft` is a protected function. That premise was never validated and
     -- looks wrong — TradeSkillMaster calls `DoCraft(index)` straight from a plain,

@@ -392,6 +392,10 @@ function M.boot()
 	for _, path in ipairs(M.CORE) do
 		wow.loadAddonFile(path, "TOGProfessionMaster", ns)
 	end
+	-- The addon's own Print, taken before any spec can replace it. Many specs
+	-- silence ns.Print and do not put it back, so a spec that saves ns.Print in
+	-- before_each can save another file's stub; restore this one instead.
+	M.addonPrint = ns.Print
 
 	booted = ns
 	return ns
@@ -687,6 +691,28 @@ function M.loadModule(path)
 	return result
 end
 
+--- The Crafting tab and everything it reads, in TOC order. One list for every
+--- Crafting tab spec, so the specs cannot load different module sets (Peer
+--- Review, thread 05fbaa28). Returns the tab.
+function M.loadCraftingTab()
+	for _, path in ipairs({
+		"Data/CooldownIds.lua",
+		"Modules/HashManager.lua",
+		"Scanner.lua",
+		"Modules/Price.lua",
+		"Modules/ReagentWatch.lua",
+		"Modules/AHScanner.lua",
+		"Modules/Crafting/CraftingEngine.lua",
+		"Modules/Crafting/CraftQueue.lua",
+		"GUI/SharedWidgets.lua",
+		"GUI/MainWindow.lua",
+		"GUI/CraftingTab.lua",
+	}) do
+		M.loadModule(path)
+	end
+	return M.boot().CraftingTab
+end
+
 local dbInit
 
 --- Run the addon's REAL `Ace:OnInitialize()` once — the AceDB SavedVariables,
@@ -865,6 +891,9 @@ end
 --- that goes through `addon:GetGuildDb()` rather than a passed-in table.
 function M.resetDb()
 	local ns = M.initDb()
+	-- Many specs silence ns.Print and never put it back; every reset starts
+	-- from the addon's own, so one file's stub cannot reach the next file.
+	ns.Print = M.addonPrint
 	local g  = ns.guildDb.global
 	for key, value in pairs(g) do
 		if type(value) == "table" then

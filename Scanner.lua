@@ -1758,15 +1758,10 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
     -- addon.recipeDB is keyed by spell ID universally. Remap item-IDs to
     -- spell-IDs here so storage lands at the key everything else reads
     -- from. addon.recipeDB on other clients (TBC+) keys directly by spell
-    -- and the lookup is a no-op (profMeta[recipeId] hits, no remap).
-    local profMeta = addon.recipeDB and addon.recipeDB[profId]
+    -- and the lookup is a no-op (the id is already known, no remap).
     local newSet = {}
     for recipeId in pairs(recipeIds) do
-        local effectiveId = recipeId
-        if profMeta and not profMeta[recipeId] then
-            local spellId = addon:GetSpellIdForCraftedItem(profId, recipeId)
-            if spellId then effectiveId = spellId end
-        end
+        local effectiveId = addon:CanonicalRecipeId(profId, recipeId)
         local rd = gdb.recipes[profId][effectiveId]
         if not rd then
             rd = { crafters = {} }
@@ -3329,11 +3324,7 @@ function Scanner:MergeCraftersIntoGdb(gdb, profId, crafters, senderKey, senderCl
             -- HC) may broadcast crafter sets keyed by crafted-item-ID
             -- instead of spell-ID. Resolve to spell-ID before storing so
             -- the cross-reference with addon.recipeDB works.
-            local effectiveId = recipeId
-            if localProfDB and not localProfDB[recipeId] then
-                local spellId = addon:GetSpellIdForCraftedItem(profId, recipeId)
-                if spellId then effectiveId = spellId end
-            end
+            local effectiveId = addon:CanonicalRecipeId(profId, recipeId)
             if not localProfDB or localProfDB[effectiveId] then
                 local existing = profRecipes[effectiveId]
                 if not existing then

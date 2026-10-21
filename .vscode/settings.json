@@ -214,6 +214,12 @@
     "GOLD_AMOUNT_TEXTURE_STRING",
     "GOLD_AMOUNT_TEXTURE",
     "UIDropDownMenu_SetSelectedValue",
-    "AuctionHouseFrame"
+    "AuctionHouseFrame",
+    "RunNextFrame",
+    "SCROLL_FRAME_SCROLL_BAR_TEMPLATE",
+    "SCROLL_FRAME_SCROLL_BAR_OFFSET_LEFT",
+    "SCROLL_FRAME_SCROLL_BAR_OFFSET_TOP",
+    "SCROLL_FRAME_SCROLL_BAR_OFFSET_BOTTOM",
+    "Settings"
   ]
 }

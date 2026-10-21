@@ -24,9 +24,9 @@ local L      = LibStub("AceLocale-3.0"):GetLocale("TOGProfessionMaster")
 local GuildTab = {}
 addon.GuildTab = GuildTab
 
--- Locked to the same dimensions as Cooldowns / Missing so tab switches don't
--- resize the window.
-GuildTab.WINDOW_SIZE = { width = 720, height = 500, locked = true }
+-- The smallest window this tab's content fits. MainWindow:ApplyTabSize gives
+-- every tab one shared size whose floor is the largest such minimum.
+GuildTab.WINDOW_SIZE = { minWidth = 720, minHeight = 500 }
 
 -- At scale 1.0. The list scales its count column by LibAceGUIWidgets' scale
 -- (one setting shared by every addon on the client), so the headers go through

@@ -3301,6 +3301,21 @@ function addon:GetSpellIdForCraftedItem(profId, craftedItemId)
     return profMap[craftedItemId]
 end
 
+-- The id addon.recipeDB and the gdb key a recipe under (the spell id) for a
+-- recipe id read from the client, which is the crafted ITEM id on Vanilla /
+-- Classic Hardcore. An id the shipped data already knows is kept as it is; an
+-- unknown one is mapped through GetSpellIdForCraftedItem; anything else (no
+-- shipped data for the profession, or no mapping) comes back unchanged. The
+-- one place this step lives: the scanner's merge, the crafter-set receive, the
+-- crafting engine's metadata lookup and the Crafting tab's pending select all
+-- call it, so the id spaces cannot drift apart.
+function addon:CanonicalRecipeId(profId, recipeId)
+    if not (profId and recipeId) then return recipeId end
+    local profMeta = self.recipeDB and self.recipeDB[profId]
+    if not profMeta or profMeta[recipeId] then return recipeId end
+    return self:GetSpellIdForCraftedItem(profId, recipeId) or recipeId
+end
+
 -- v0.7.2: walk gdb.cooldowns and strip any spell IDs that aren't in the
 -- explicit whitelist (data.cooldowns + data.transmutes + groupBySpell +
 -- saltShakerItem). Used to evict stale junk like Impact 12360 (a Fire

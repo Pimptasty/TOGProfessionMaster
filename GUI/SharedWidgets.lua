@@ -1872,6 +1872,33 @@ function addon.GUI.ToolbarSearch(parent, opts)
     return slot, search
 end
 
+--- A toolbar push button: AceGUI's Button, its click through SetCallback (so
+--- the pool's release clears it). Takes a labelled control's height with the
+--- button along the bottom, so it lines up with the dropdowns beside it.
+--- opts: text, width, onClick(), tipTitle, tipBody. Returns the slot and button.
+function addon.GUI.ToolbarButton(parent, opts)
+    local width = opts.width or 110
+    local slot = AceGUI:Create("SimpleGroup")
+    slot:SetLayout("List")
+    slot:SetAutoAdjustHeight(false)
+    slot:SetWidth(width)
+    slot:SetHeight(TOOLBAR_H)
+    local spacer = AceGUI:Create("SimpleGroup")
+    spacer:SetAutoAdjustHeight(false)
+    spacer:SetFullWidth(true)
+    spacer:SetHeight(TOOLBAR_H - TOOLBAR_CTL_H)
+    slot:AddChild(spacer)
+    local btn = AceGUI:Create("Button")
+    btn:SetText(opts.text or "")
+    btn:SetWidth(width)
+    btn:SetHeight(TOOLBAR_CTL_H)
+    btn:SetCallback("OnClick", function() runHandler(opts.onClick) end)
+    if opts.tipTitle then addon.GUI.AttachTooltip(btn, opts.tipTitle, opts.tipBody) end
+    slot:AddChild(btn)
+    addToToolbar(parent, slot)
+    return slot, btn
+end
+
 --- A toolbar check box: the library's, bound to `get()` / `set(checked)`.
 --- `aligned` gives it a labelled control's height, the box along the bottom.
 function addon.GUI.ToolbarCheckbox(owner, key, parent, opts)

@@ -6,6 +6,43 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # Ultimate Profession Master Changelog (formerly TOG Profession Master)
 
+## [v1.8.0] (2026-10-21) - Share the shopping list between accounts and friends
+
+### New Features
+
+- **Shopping list import and export** (asked for on Discord 2026-10-21 by a
+  player on three paid accounts who wants one list any of their characters
+  can search the AH with). A **Share List** button on the Recipes toolbar
+  opens a window holding the list as one block of text, selected and ready to
+  copy. Pasting a shared list there and pressing **Import** adds it to the
+  current character's list and never replaces it. Each entry remembers which
+  other character wants how many: the shopping list shows "for Name" after
+  the recipe and its tooltip lists everyone with their counts, so a pattern
+  found on the AH can be mailed to the right character. A character's share
+  is replaced on import, never added again, so importing the same list twice
+  or your own list back changes nothing. Your own counts in an imported list
+  are restored (raised to the imported count, never lowered), so a list
+  exported, deleted and imported back on one character comes back whole;
+  the first build dropped them, which the operator caught in game. A list
+  passed through several accounts keeps crediting each item to the character
+  who asked for it. Only
+  the recipe ids and who wants how many travel (operator, 2026-10-21: "we
+  don't need to import/export the recipies, just the items/count on the list.
+  everything needed to repopulate it is in the addon"): the text is plain
+  `UPMSL1:<recipe>:<Name-Realm>=<count>,...;...`, and the name, icon, crafted
+  item and reagents are rebuilt from the addon's own recipe data with the same
+  calls and client gate the recipe list uses. A recipe this game version does
+  not have is skipped and counted in the window's status line. The text holds
+  no Discord markup character, and line breaks a chat client adds are
+  ignored. Character names and counts from an import are checked and clamped
+  (1-999, at most 64 characters, no `|`), at most 500 entries. Location:
+  `GUI/BrowserTab.lua` (ExportShoppingList, ImportShoppingList,
+  ShoppingEntryFor, OpenShareDialog), `GUI/SharedWidgets.lua` (new
+  `addon.GUI.ToolbarButton`), `Locale/enUS.lua`. Spec:
+  `Tests/shoppingshare_spec.lua`.
+
+---
+
 ## [v1.7.0] (2026-10-21) - Renamed to Ultimate Profession Master; supply mail sends from the Mail button and is marked Sent; Guild tab + clicks land; Missing Recipes Sources sort no longer stalls
 
 ### New Features

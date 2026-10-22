@@ -473,6 +473,21 @@ L["AlertReadyAllFormat"]    = "|cff00ff00Ready to craft:|r %s \195\151 %d  (all 
 -- Shopping list crafter alert
 L["ShoppingAlertEnable"]               = "Enable crafter alert for this recipe"
 L["ShoppingAlertDisable"]              = "Disable crafter alert for this recipe"
+
+-- Shopping list sharing (import / export)
+L["ShoppingShareButton"]               = "Share List"
+L["ShoppingShareTitle"]                = "Share Shopping List"
+L["ShoppingShareTipBody"]              = "Copy your shopping list to another account or a friend, or paste theirs in. Importing adds to your list and never replaces it."
+L["ShoppingShareHelp"]                 = "To share: copy the text below (Ctrl+A, then Ctrl+C) and paste it on your other account or send it to a friend.\nTo import: paste a shared list over it and press Import. Items are added to your list, never replaced, and each one remembers which character wants it."
+L["ShoppingShareImport"]               = "Import"
+L["ShoppingShareCopyHint"]             = "Your list is selected, ready to copy."
+L["ShoppingShareEmpty"]                = "Your shopping list is empty. Paste a shared list to import it."
+L["ShoppingShareBad"]                  = "That is not a shared shopping list. Copy the whole text and try again."
+L["ShoppingShareNothing"]              = "Nothing new to add: your list already has everything in that one."
+L["ShoppingShareDone"]                 = "Imported: %d new, %d updated."
+L["ShoppingShareSkipped"]              = "%d skipped: not on this game version."
+L["ShoppingWantedBy"]                  = "for %s"
+L["ShoppingWantedByTip"]               = "Wanted by:"
 L["AlertCrafterOnline"]                = "|cffFFD700[UPM]|r %s is online — can craft: %s"
 L["AlertCrafterOnlineAlt"]             = "|cffFFD700[UPM]|r %s is online (alt of %s) — can craft: %s"
 

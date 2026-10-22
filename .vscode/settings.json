@@ -225,6 +225,7 @@
     "SendMailFrame_EnableSendMailButton",
     "SendMailFrame_SendMail",
     "AddonCompartmentFrame",
-    "hash_SlashCmdList"
+    "hash_SlashCmdList",
+    "ChatFrameUtil"
   ]
 }

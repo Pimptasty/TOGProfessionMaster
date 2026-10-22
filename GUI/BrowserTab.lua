@@ -1014,6 +1014,17 @@ function BrowserTab:Draw(container)
                 .. "still needs to cover."),
     })
 
+    -- Copy the shopping list to another account or a friend, or paste one in.
+    -- On the toolbar rather than the list's own section, because that section
+    -- only exists while the list has something on it, and an empty list is
+    -- exactly when a player wants to import one.
+    addon.GUI.ToolbarButton(toolbar, {
+        width    = 100,
+        text     = L["ShoppingShareButton"],
+        onClick  = function() self:OpenShareDialog() end,
+        tipTitle = L["ShoppingShareTitle"],
+        tipBody  = L["ShoppingShareTipBody"],
+    })
 
     -- ---- Shopping list (below toolbar) -------------------------------------
     if hasSL then
@@ -1247,11 +1258,7 @@ function BrowserTab:BuildShoppingList(host)
             { key = "name",
               format = function(_, e)
                   if e.kind == "reagent" then return addon:ResolveReagentName(e.r) end
-                  local ent  = e.ent
-                  local name = (ent and ent.name) or tostring(e.sid)
-                  local hex  = addon.ItemLink and addon.ItemLink.QualityHex
-                      and addon.ItemLink.QualityHex(ent and ent.itemLink, ent and ent.craftedItemId)
-                  return hex and ("|c" .. hex .. name .. "|r") or name
+                  return BrowserTab.ShoppingRecipeName(e.ent, e.sid)
               end },
             { key = "count", width = 44, align = "RIGHT", sortable = false,
               format = function(_, e)
@@ -1327,14 +1334,300 @@ function BrowserTab:ShowShoppingTooltip(e, owner)
         return
     end
     local link = e.ent and (e.ent.itemLink or e.ent.recipeLink)
+    local shown = false
     if link then
         addon.Tooltip.Owner(owner)
         GameTooltip:SetHyperlink(link)
-        GameTooltip:Show()
+        shown = true
     elseif type(e.sid) == "number" then
         addon.Tooltip.Owner(owner)
-        if SetSpellTooltip(GameTooltip, e.sid) then GameTooltip:Show() end
+        shown = SetSpellTooltip(GameTooltip, e.sid) and true or false
     end
+    if not shown then return end
+    -- Who wants how many, once another character's list has been imported.
+    local ent = e.ent
+    if ent and ent.wantedBy and next(ent.wantedBy) then
+        local me = addon:GetCharacterKey()
+        local lines = {}
+        local own = (ent.quantity or 1) - BrowserTab.ShoppingOthersWant(ent, me)
+        if own > 0 then lines[#lines + 1] = { (me:match("^[^%-]+")) or me, own } end
+        for who, q in pairs(ent.wantedBy) do
+            if who ~= me then lines[#lines + 1] = { (who:match("^[^%-]+")) or who, q } end
+        end
+        table.sort(lines, function(a, b) return a[1] < b[1] end)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(addon.UI.Brand(L["ShoppingWantedByTip"]), 1, 1, 1, true)
+        for _, l in ipairs(lines) do
+            GameTooltip:AddLine(l[1] .. "  x" .. l[2], 1, 1, 1, true)
+        end
+    end
+    GameTooltip:Show()
+end
+
+-- ---------------------------------------------------------------------------
+-- Shopping list sharing (import / export)
+-- ---------------------------------------------------------------------------
+-- Asked for on Discord 2026-10-21 by a player on three paid accounts: one
+-- shopping list any of their characters can search the AH with, without
+-- logging one character in on each account. An export is one block of plain
+-- text the player copies into another account's import box, or sends a friend
+-- over Discord. Importing ADDS to the list and never replaces it.
+--
+-- Each entry remembers who wants how many (`wantedBy`, character key ->
+-- quantity, other characters only), so a pattern found on the AH can be mailed
+-- to the right character. A character's share is REPLACED on import, never
+-- added to, so importing the same list twice does not double anything. The
+-- importing character's own count is restored (raised, never lowered), so a
+-- list exported, deleted and imported back on one character comes back whole.
+--
+-- Only the recipe ids and who wants how many travel (operator, 2026-10-21:
+-- "we don't need to import/export the recipies, just the items/count on the
+-- list. everything needed to repopulate it is in the addon."). The name, icon,
+-- crafted item and reagents are rebuilt from the addon's own recipe data, the
+-- same calls the recipe list uses, so nothing another player typed is ever
+-- shown. A recipe this game version does not have is skipped and counted.
+--
+-- The text is plain: UPMSL1:<recipe>:<Name-Realm>=<count>,...;<recipe>:...
+-- It holds no character that is Discord markup (no * _ ~ ` |), so it survives
+-- being pasted into a chat message and copied back out, and whitespace or line
+-- breaks a chat client adds are ignored on import.
+
+local SHARE_PREFIX    = "UPMSL1:"
+local SHARE_MAX_ITEMS = 500
+local SHARE_MAX_QTY   = 999
+BrowserTab.SHARE_PREFIX    = SHARE_PREFIX
+BrowserTab.SHARE_MAX_QTY   = SHARE_MAX_QTY
+BrowserTab.SHARE_MAX_ITEMS = SHARE_MAX_ITEMS
+
+-- A whole number from 1 to `max`, or nil.
+local function cleanCount(v, max)
+    v = tonumber(v)
+    if not v or v ~= v then return nil end
+    v = math.floor(v)
+    if v < 1 then return nil end
+    return math.min(v, max)
+end
+
+-- A shopping-list entry for this recipe, built from the addon's own data the
+-- way the recipe list builds its rows, or nil when this client has no such
+-- recipe (another game version's, or not a recipe id at all).
+function BrowserTab.ShoppingEntryFor(sid)
+    for profId, recipes in pairs(addon.recipeDB or {}) do
+        local meta = recipes[sid]
+        if meta and addon.RecipeGate:IsValidOnClient(profId, sid, meta) then
+            local crafted = addon:GetRecipeCraftedItemId(profId, sid)
+            return {
+                name          = addon:GetRecipeName(profId, sid) or tostring(sid),
+                icon          = addon:GetRecipeIcon(profId, sid),
+                craftedItemId = crafted,
+                itemLink      = crafted and select(2, addon.Item.GetInfo(crafted)) or nil,
+                reagents      = addon:GetRecipeReagents(profId, sid),
+            }
+        end
+    end
+    return nil
+end
+
+-- How many of this entry other characters want (everyone but `me`).
+function BrowserTab.ShoppingOthersWant(ent, me)
+    local n = 0
+    for who, q in pairs((ent and ent.wantedBy) or {}) do
+        if who ~= me then n = n + (tonumber(q) or 0) end
+    end
+    return n
+end
+
+-- The other characters wanting this entry, short names, sorted.
+function BrowserTab.ShoppingWantedBy(ent)
+    local names = {}
+    if not (ent and ent.wantedBy) then return names end
+    local me = addon:GetCharacterKey()
+    for who in pairs(ent.wantedBy) do
+        if who ~= me then names[#names + 1] = (who:match("^[^%-]+")) or who end
+    end
+    table.sort(names)
+    return names
+end
+
+-- A shopping-list recipe row's name: coloured by the crafted item's quality
+-- (falling back to ItemDB's shipped quality when the link is not cached, so
+-- pieces of one set do not render in different colours), then, in grey, the
+-- other characters who want it, so a pattern found on the AH can be mailed to
+-- the right one.
+function BrowserTab.ShoppingRecipeName(ent, sid)
+    local name = (ent and ent.name) or tostring(sid)
+    local hex  = addon.ItemLink and addon.ItemLink.QualityHex
+        and addon.ItemLink.QualityHex(ent and ent.itemLink, ent and ent.craftedItemId)
+    local text = hex and ("|c" .. hex .. name .. "|r") or name
+    local others = BrowserTab.ShoppingWantedBy(ent)
+    if #others > 0 then
+        text = text .. " |cff888888" .. L["ShoppingWantedBy"]:format(table.concat(others, ", ")) .. "|r"
+    end
+    return text
+end
+
+-- The current character's shopping list as share text, or nil when empty.
+-- Each item carries who wants how many: everyone in `wantedBy`, plus this
+-- character for whatever is left of the quantity.
+function BrowserTab.ExportShoppingList()
+    local me = addon:GetCharacterKey()
+    local sids = {}
+    for sid in pairs(Ace.db.char.shoppingList) do
+        if type(sid) == "number" then sids[#sids + 1] = sid end
+    end
+    table.sort(sids)
+    local items = {}
+    for _, sid in ipairs(sids) do
+        local ent = Ace.db.char.shoppingList[sid]
+        local who = {}
+        for k, q in pairs(ent.wantedBy or {}) do
+            if k ~= me then who[#who + 1] = k .. "=" .. q end
+        end
+        local own = (ent.quantity or 1) - BrowserTab.ShoppingOthersWant(ent, me)
+        if own > 0 then who[#who + 1] = me .. "=" .. own end
+        if #who > 0 then
+            table.sort(who)
+            items[#items + 1] = sid .. ":" .. table.concat(who, ",")
+        end
+    end
+    if #items == 0 then return nil end
+    return SHARE_PREFIX .. table.concat(items, ";")
+end
+
+-- Merge share text into the current character's list. Returns the number of
+-- entries added, updated and skipped (a recipe this game version does not
+-- have), or nil when the text holds no shared list at all.
+function BrowserTab.ImportShoppingList(text)
+    if type(text) ~= "string" then return nil end
+    local at = text:find(SHARE_PREFIX, 1, true)
+    if not at then return nil end
+    local body = text:sub(at + #SHARE_PREFIX):gsub("%s", "")
+    local me = addon:GetCharacterKey()
+    local bl = Ace.db.char.shoppingList
+    local added, updated, skipped, seen = 0, 0, 0, 0
+    for item in body:gmatch("[^;]+") do
+        if seen >= SHARE_MAX_ITEMS then break end
+        local sidText, people = item:match("^(%d+):(.+)$")
+        local sid = cleanCount(sidText, 2 ^ 31)
+        local w, mine = {}, nil
+        if sid then
+            for pair in people:gmatch("[^,]+") do
+                local who, q = pair:match("^([^=:|]+)=(%d+)$")
+                q = cleanCount(q, SHARE_MAX_QTY)
+                if who and q and #who <= 64 then
+                    if who == me then mine = q else w[who] = q end
+                end
+            end
+        end
+        local any = mine or next(w)
+        if any then seen = seen + 1 end
+        local ent   = sid and bl[sid]
+        local fresh = any and not ent and BrowserTab.ShoppingEntryFor(sid)
+        if any and not ent and not fresh then
+            skipped = skipped + 1
+        elseif any then
+            local isNew = ent == nil
+            if isNew then
+                ent = fresh
+                ent.quantity = 0
+            end
+            if next(w) then ent.wantedBy = ent.wantedBy or {} end
+            local qty     = isNew and 0 or (ent.quantity or 1)
+            local changed = false
+            for who, q in pairs(w) do
+                if ent.wantedBy[who] ~= q then
+                    qty = qty + q - (ent.wantedBy[who] or 0)
+                    ent.wantedBy[who] = q
+                    changed = true
+                end
+            end
+            -- This character's own share (a list exported here and imported
+            -- back, e.g. after deleting it) is restored, never lowered: the
+            -- share is raised to the imported count when it is below it.
+            if mine then
+                local own = qty - BrowserTab.ShoppingOthersWant(ent, me)
+                if own < mine then
+                    qty = qty + mine - math.max(own, 0)
+                    changed = true
+                end
+            end
+            ent.quantity = math.max(1, math.min(qty, SHARE_MAX_QTY))
+            if isNew then
+                bl[sid] = ent
+                added = added + 1
+            elseif changed then
+                updated = updated + 1
+            end
+        end
+    end
+    if seen == 0 then return nil end
+    return added, updated, skipped
+end
+
+-- The share window: the list as text to copy, and the box to paste one into.
+-- Created once and hidden on close, never released (a persistent window).
+function BrowserTab:OpenShareDialog()
+    local win = self._shareWin
+    if not win then
+        win = AceGUI:Create("Frame")
+        win:SetTitle(L["ShoppingShareTitle"])
+        win:SetLayout("List")
+        win:SetWidth(480)
+        win:SetHeight(320)
+        win:SetCallback("OnClose", function(w) w:Hide() end)
+        local help = AceGUI:Create("Label")
+        help:SetFullWidth(true)
+        help:SetText(L["ShoppingShareHelp"])
+        win:AddChild(help)
+        local eb = AceGUI:Create("MultiLineEditBox")
+        eb:SetLabel(" ")
+        eb:SetFullWidth(true)
+        eb:SetNumLines(7)
+        -- AceGUI has no setter for the button's text ("Accept"), so it is set
+        -- on the raw button, and put back if the widget is ever released into
+        -- the pool, so the next owner does not inherit "Import".
+        local btn = eb.button
+        if btn then
+            local oldText, oldWidth = btn:GetText(), btn:GetWidth()
+            btn:SetText(L["ShoppingShareImport"])
+            btn:SetWidth(math.max(oldWidth or 0, 90))
+            if addon.W then
+                addon.W:OnWidgetRelease(eb, "togpm:shareImportBtn", function(w)
+                    w.button:SetText(oldText)
+                    w.button:SetWidth(oldWidth)
+                end)
+            end
+        end
+        eb:SetCallback("OnEnterPressed", function(_, _, text) self:RunShareImport(text) end)
+        win:AddChild(eb)
+        win._eb = eb
+        self._shareWin = win
+    end
+    local text = BrowserTab.ExportShoppingList()
+    win._eb:SetText(text or "")
+    win:SetStatusText(text and L["ShoppingShareCopyHint"] or L["ShoppingShareEmpty"])
+    win:Show()
+    win._eb:SetFocus()
+    if text then win._eb:HighlightText() end
+end
+
+function BrowserTab:RunShareImport(text)
+    local win = self._shareWin
+    local added, updated, skipped = BrowserTab.ImportShoppingList(text)
+    local status
+    if not added then
+        status = "|cffff4444" .. L["ShoppingShareBad"] .. "|r"
+    elseif added + updated == 0 then
+        status = L["ShoppingShareNothing"]
+    else
+        status = L["ShoppingShareDone"]:format(added, updated)
+        if addon.ReagentTracker then addon.ReagentTracker:QueueRefresh() end
+        self:RefreshShoppingList()
+    end
+    if skipped and skipped > 0 then
+        status = status .. " " .. L["ShoppingShareSkipped"]:format(skipped)
+    end
+    if win then win:SetStatusText(status) end
 end
 
 -- Fill the shopping-list section. The list is a RowList on a host the tab owns

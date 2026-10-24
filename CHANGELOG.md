@@ -6,6 +6,50 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # Ultimate Profession Master Changelog (formerly TOG Profession Master)
 
+## [v1.9.0] (2026-10-24) - Share missing recipes between accounts
+
+### New Features
+
+- **Missing Recipes import and export** (asked for on Discord 2026-10-24 for
+  a player with characters on several accounts who wants every character's
+  missing recipe scrolls in one place to buy at any Auction House; operator:
+  "it needs to be between accounts, so it needs to be exportable, like we did
+  with the copy/paste for the shopping list, but we need it for the missing
+  recipes"). A **Share List** button on the Missing Recipes tab (My Character
+  view) opens a window holding every character this account knows as text:
+  its own characters' missing scrolls, computed live with the toolbar at its
+  defaults, plus any characters shared in earlier, so a list passes along a
+  chain of accounts. Only scrolls travel; a trainer-only recipe is nothing to
+  buy. Pasting a list there and pressing **Import** stores each character in
+  it account-wide (`TOGPM_Settings` `global.missingShared`), replacing that
+  character's earlier share, so a re-import after they learn a recipe drops
+  it and importing twice changes nothing. This account's own characters in
+  an import are ignored, because their list is live. Shared characters
+  appear in the Character dropdown marked "(shared)", with a **Forget**
+  button, and **All characters** lists every scroll any character needs, once
+  each, with "for Name, Name" after it. The skill, spec, "Can learn now" and
+  "Show All" filters do not apply to a shared character, since the other
+  account already applied them and no skill is held for them here. The text
+  is plain `UPMMR1:<Name-Realm>=<spell>,<spell>,...;...` with no Discord
+  markup character; whitespace a chat client adds is ignored; names are
+  checked (must hold a realm, at most 64 characters, no `|`) and capped at 50
+  characters and 3000 recipes each; a recipe this game version does not have
+  is skipped and counted in the window's status line. Kept separate from the
+  Recipes-tab shopping list on purpose: that list holds recipes a character
+  crafts, with reagents, and a scroll to buy has none. Location:
+  `GUI/MissingRecipesTab.lua` (MakeEntry, ExportMissing, ImportMissing,
+  ForgetShared, BuildFor, OpenShareDialog), `TOGProfessionMaster.lua`,
+  `Locale/enUS.lua`. Spec: `Tests/missingshare_spec.lua`.
+
+### Improvements
+
+- **One share window for both lists.** The copy/paste window the shopping
+  list's Share List opened is now `addon.GUI.ShareDialog`, used by the
+  Recipes tab and Missing Recipes alike, so the two cannot drift apart.
+  Location: `GUI/SharedWidgets.lua`, `GUI/BrowserTab.lua`.
+
+---
+
 ## [v1.8.0] (2026-10-21) - Share the shopping list between accounts and friends
 
 ### New Features

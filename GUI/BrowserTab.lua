@@ -1564,51 +1564,16 @@ function BrowserTab.ImportShoppingList(text)
     return added, updated, skipped
 end
 
--- The share window: the list as text to copy, and the box to paste one into.
--- Created once and hidden on close, never released (a persistent window).
+-- The share window (addon.GUI.ShareDialog, shared with Missing Recipes).
 function BrowserTab:OpenShareDialog()
-    local win = self._shareWin
-    if not win then
-        win = AceGUI:Create("Frame")
-        win:SetTitle(L["ShoppingShareTitle"])
-        win:SetLayout("List")
-        win:SetWidth(480)
-        win:SetHeight(320)
-        win:SetCallback("OnClose", function(w) w:Hide() end)
-        local help = AceGUI:Create("Label")
-        help:SetFullWidth(true)
-        help:SetText(L["ShoppingShareHelp"])
-        win:AddChild(help)
-        local eb = AceGUI:Create("MultiLineEditBox")
-        eb:SetLabel(" ")
-        eb:SetFullWidth(true)
-        eb:SetNumLines(7)
-        -- AceGUI has no setter for the button's text ("Accept"), so it is set
-        -- on the raw button, and put back if the widget is ever released into
-        -- the pool, so the next owner does not inherit "Import".
-        local btn = eb.button
-        if btn then
-            local oldText, oldWidth = btn:GetText(), btn:GetWidth()
-            btn:SetText(L["ShoppingShareImport"])
-            btn:SetWidth(math.max(oldWidth or 0, 90))
-            if addon.W then
-                addon.W:OnWidgetRelease(eb, "togpm:shareImportBtn", function(w)
-                    w.button:SetText(oldText)
-                    w.button:SetWidth(oldWidth)
-                end)
-            end
-        end
-        eb:SetCallback("OnEnterPressed", function(_, _, text) self:RunShareImport(text) end)
-        win:AddChild(eb)
-        win._eb = eb
-        self._shareWin = win
-    end
-    local text = BrowserTab.ExportShoppingList()
-    win._eb:SetText(text or "")
-    win:SetStatusText(text and L["ShoppingShareCopyHint"] or L["ShoppingShareEmpty"])
-    win:Show()
-    win._eb:SetFocus()
-    if text then win._eb:HighlightText() end
+    addon.GUI.ShareDialog(self, "_shareWin", {
+        title     = L["ShoppingShareTitle"],
+        help      = L["ShoppingShareHelp"],
+        getText   = BrowserTab.ExportShoppingList,
+        copyHint  = L["ShoppingShareCopyHint"],
+        emptyHint = L["ShoppingShareEmpty"],
+        onImport  = function(text) self:RunShareImport(text) end,
+    })
 end
 
 function BrowserTab:RunShareImport(text)

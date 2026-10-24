@@ -598,6 +598,13 @@ local SETTINGS_DEFAULTS = {
         -- and both fields are then nil. No default, for the same reason as
         -- guild.sisterRosters above.
     },
+    -- Account-wide.
+    global = {
+        -- Missing Recipes shared in from another account (the tab's Share List
+        -- window): [Name-Realm] = { spells = { [spellId] = profId }, at = time }.
+        -- A character's entry is replaced whole by every import of it.
+        missingShared = {},
+    },
     -- Realm-scoped: shared across every character on the same realm. Guild-only
     -- sync mode is a per-SERVER capability (some private/emulated servers — e.g.
     -- Whitemane — never deliver addon messages over WHISPER), so it belongs to

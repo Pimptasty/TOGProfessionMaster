@@ -1899,6 +1899,60 @@ function addon.GUI.ToolbarButton(parent, opts)
     return slot, btn
 end
 
+--- The share window: a list as text to copy, and the box to paste one into,
+--- whose button reads "Import". Created once per owner, stored as
+--- `owner[key]` (with the edit box as `._eb`), hidden on close and never
+--- released (a persistent window). Every open re-reads the text.
+--- opts: title, help, getText() -> text or nil, copyHint, emptyHint,
+--- onImport(text) -- which writes its own result to the window's status.
+--- Used by the Recipes tab's shopping list and by Missing Recipes, so the two
+--- windows cannot drift apart.
+function addon.GUI.ShareDialog(owner, key, opts)
+    local win = owner[key]
+    if not win then
+        win = AceGUI:Create("Frame")
+        win:SetTitle(opts.title)
+        win:SetLayout("List")
+        win:SetWidth(480)
+        win:SetHeight(320)
+        win:SetCallback("OnClose", function(w) w:Hide() end)
+        local help = AceGUI:Create("Label")
+        help:SetFullWidth(true)
+        help:SetText(opts.help)
+        win:AddChild(help)
+        local eb = AceGUI:Create("MultiLineEditBox")
+        eb:SetLabel(" ")
+        eb:SetFullWidth(true)
+        eb:SetNumLines(7)
+        -- AceGUI has no setter for the button's text ("Accept"), so it is set
+        -- on the raw button, and put back if the widget is ever released into
+        -- the pool, so the next owner does not inherit "Import".
+        local btn = eb.button
+        if btn then
+            local oldText, oldWidth = btn:GetText(), btn:GetWidth()
+            btn:SetText(L["ShoppingShareImport"])
+            btn:SetWidth(math.max(oldWidth or 0, 90))
+            if addon.W then
+                addon.W:OnWidgetRelease(eb, "togpm:shareImportBtn", function(w)
+                    w.button:SetText(oldText)
+                    w.button:SetWidth(oldWidth)
+                end)
+            end
+        end
+        eb:SetCallback("OnEnterPressed", function(_, _, text) opts.onImport(text) end)
+        win:AddChild(eb)
+        win._eb = eb
+        owner[key] = win
+    end
+    local text = opts.getText()
+    win._eb:SetText(text or "")
+    win:SetStatusText(text and opts.copyHint or opts.emptyHint)
+    win:Show()
+    win._eb:SetFocus()
+    if text then win._eb:HighlightText() end
+    return win
+end
+
 --- A toolbar check box: the library's, bound to `get()` / `set(checked)`.
 --- `aligned` gives it a labelled control's height, the box along the bottom.
 function addon.GUI.ToolbarCheckbox(owner, key, parent, opts)

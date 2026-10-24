@@ -285,6 +285,41 @@ local function RankBookGrantedCap(requiredSkill)
 end
 MissingRecipesTab._RankBookGrantedCap = RankBookGrantedCap
 
+-- One result row. Built here for BuildMissingList and for a character shared
+-- in from another account (SharedMissingList), so both look the same.
+local function MakeEntry(profId, spellId, data, includeTrainer, known)
+    local srcEntry = addon.sourceDB and addon.sourceDB[profId] and addon.sourceDB[profId][spellId]
+    return {
+        spellId       = spellId,
+        -- The profession this row belongs to. Every row in one build is one
+        -- profession's. Needed by the recipe-detail tooltip block, which looks
+        -- the recipe up by (profId, spellId).
+        profId        = profId,
+        itemId        = data.itemId,  -- recipe-scroll item id (nil for trainer-only)
+        craftedItemId = data.craftedItemId,  -- crafted (produced) item id; used for icon
+        teaches       = data.teaches,
+        -- requiredSkill: nil when neither the recipe scroll's
+        -- RequiredSkillRank nor the trainer SQL's ReqSkillRank
+        -- supplied a value. UI renders "-" so the data gap is
+        -- visible. Do NOT default to 0 here — that would let
+        -- the sort treat "unknown" as "lowest skill" and bury
+        -- those recipes at the top of the list.
+        requiredSkill = data.requiredSkill,
+        tiers         = data.difficulty,  -- {orange,yellow,green,grey} skill breakpoints
+        -- Crafted gear/consumable stats (LibItemDB) win; the enchant
+        -- effect (ProfessionDB) is the fallback.
+        effect        = addon:GetCraftedItemStatText(data.craftedItemId) or data.effect,
+        known         = known or false,
+        sources       = srcEntry,
+        -- Shown only because its "never implemented" flag is
+        -- another flavour's (WoW Forever): the row and its tooltip
+        -- mark it unconfirmed (RecipeGate:IsUnconfirmed).
+        unconfirmed   = addon.RecipeGate:IsUnconfirmed(spellId) or nil,
+        sourcesText   = FormatSources(srcEntry, includeTrainer,
+                            addon.IsBorrowedValue(spellId, "sources")),
+    }
+end
+
 -- Build the missing-recipe list for (charKey, profId). Returns the full
 -- unfiltered set sorted by required skill — search filtering is applied at
 -- render time via GetItemInfoInstant (which does NOT trigger an async load),
@@ -538,40 +573,11 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
             if isTrainerOnly and not includeTrainer then
                 -- skip — trainer-only entries are hidden when the toggle is off
             else
-                table.insert(out, {
-                    spellId       = spellId,
-                    -- The profession this row belongs to. Unambiguous here in a
-                    -- way it is not in the browser: BuildMissingList takes ONE
-                    -- profId and returns {} for 0, so every row in a build is
-                    -- that profession's. Needed by the recipe-detail tooltip
-                    -- block, which looks the recipe up by (profId, spellId).
-                    profId        = profId,
-                    itemId        = data.itemId,  -- recipe-scroll item id (nil for trainer-only)
-                    craftedItemId = data.craftedItemId,  -- crafted (produced) item id; used for icon
-                    teaches       = data.teaches,
-                    -- requiredSkill: nil when neither the recipe scroll's
-                    -- RequiredSkillRank nor the trainer SQL's ReqSkillRank
-                    -- supplied a value. UI renders "-" so the data gap is
-                    -- visible. Do NOT default to 0 here — that would let
-                    -- the sort treat "unknown" as "lowest skill" and bury
-                    -- those recipes at the top of the list.
-                    requiredSkill = data.requiredSkill,
-                    tiers         = data.difficulty,  -- {orange,yellow,green,grey} skill breakpoints
-                    -- Crafted gear/consumable stats (LibItemDB) win; the enchant
-                    -- effect (ProfessionDB) is the fallback.
-                    effect        = addon:GetCraftedItemStatText(data.craftedItemId) or data.effect,
-                    known         = knownByChar(spellId)
-                                    or (data.teaches and knownByChar(data.teaches))
-                                    or (data.craftedItemId and knownByChar(data.craftedItemId))
-                                    or false,
-                    sources       = srcEntry,
-                    -- Shown only because its "never implemented" flag is
-                    -- another flavour's (WoW Forever): the row and its tooltip
-                    -- mark it unconfirmed (RecipeGate:IsUnconfirmed).
-                    unconfirmed   = addon.RecipeGate:IsUnconfirmed(spellId) or nil,
-                    sourcesText   = FormatSources(srcEntry, includeTrainer,
-                                        addon.IsBorrowedValue(spellId, "sources")),
-                })
+                table.insert(out, MakeEntry(profId, spellId, data, includeTrainer,
+                    knownByChar(spellId)
+                    or (data.teaches and knownByChar(data.teaches))
+                    or (data.craftedItemId and knownByChar(data.craftedItemId))
+                    or false))
             end
         end
     end
@@ -590,6 +596,296 @@ local function BuildMissingList(charKey, profId, includeTrainer, canLearnOnly, s
         return a.spellId < b.spellId
     end)
     return out
+end
+
+-- ---------------------------------------------------------------------------
+-- Sharing between accounts
+--
+-- Asked for on Discord 2026-10-24 (operator: "it needs to be between accounts,
+-- so it needs to be exportable, like we did with the copy/paste for the
+-- shopping list, but we need it for the missing recipes"): a player with
+-- characters on several accounts wants every character's missing recipe
+-- scrolls in one place, so one character at any Auction House can buy them.
+--
+-- Share List exports every character this account knows -- its own, computed
+-- live, and any shared in earlier -- as the recipe scrolls each one is
+-- missing. Importing stores each character from the text, REPLACING that
+-- character's earlier share (so a re-import after they learn something drops
+-- it), and the character picker then offers them beside this account's own,
+-- plus "All characters": every scroll anyone wants, each row naming who.
+--
+-- Only recipe spell ids travel; the rows are rebuilt from the addon's recipe
+-- data, so nothing another player typed is shown but a character name, which
+-- is checked. A recipe this game version does not have is skipped and counted.
+-- This account's own characters in an import are ignored: their list is live.
+--
+-- The text is plain: UPMMR1:<Name-Realm>=<spell>,<spell>,...;<Name-Realm>=...
+-- No Discord markup character (* _ ~ ` |), and whitespace is ignored on import.
+-- ---------------------------------------------------------------------------
+
+local SHARE_PREFIX       = "UPMMR1:"
+local SHARE_MAX_CHARS    = 50
+local SHARE_MAX_RECIPES  = 3000
+local ALL_CHARS          = "*all"
+MissingRecipesTab.SHARE_PREFIX      = SHARE_PREFIX
+MissingRecipesTab.SHARE_MAX_CHARS   = SHARE_MAX_CHARS
+MissingRecipesTab.SHARE_MAX_RECIPES = SHARE_MAX_RECIPES
+MissingRecipesTab.ALL_CHARS         = ALL_CHARS
+
+local function SharedStore()
+    local db = Ace and Ace.db
+    if not db then return {} end
+    db.global.missingShared = db.global.missingShared or {}
+    return db.global.missingShared
+end
+
+-- Characters shared in from another account, sorted. An entry for one of this
+-- account's own characters is ignored (its live data wins).
+local function GetSharedCharacters()
+    local out = {}
+    for ck, rec in pairs(SharedStore()) do
+        if type(rec) == "table" and not addon:IsMyCharacter(ck) then out[#out + 1] = ck end
+    end
+    table.sort(out)
+    return out
+end
+
+local function IsShared(charKey)
+    return charKey ~= nil and charKey ~= ALL_CHARS and not addon:IsMyCharacter(charKey)
+        and type(SharedStore()[charKey]) == "table"
+end
+
+-- The profession a recipe belongs to on this client, or nil when this client
+-- has no such recipe (another game version's, or not a recipe at all).
+local function ProfessionOfRecipe(spellId)
+    for profId, recipes in pairs(addon.recipeDB or {}) do
+        local data = recipes[spellId]
+        if data and addon.IsProfessionAvailable(profId)
+           and addon.RecipeGate:IsValidOnClient(profId, spellId, data) then
+            return profId
+        end
+    end
+    return nil
+end
+
+-- A shared character's professions: the ones their stored scrolls belong to.
+local function GetSharedProfessions(charKey)
+    local rec, seen, out = SharedStore()[charKey], {}, {}
+    for _, profId in pairs((rec and rec.spells) or {}) do
+        if not seen[profId] and addon.recipeDB and addon.recipeDB[profId]
+           and addon.IsProfessionAvailable(profId) then
+            seen[profId] = true
+            out[#out + 1] = profId
+        end
+    end
+    table.sort(out, function(a, b)
+        return (addon.PROF_NAMES[a] or tostring(a)) < (addon.PROF_NAMES[b] or tostring(b))
+    end)
+    return out
+end
+
+-- A shared character's missing list for one profession: their stored scrolls,
+-- as rows. Nothing is filtered by skill or spec -- their account did that.
+local function SharedMissingList(charKey, profId)
+    local rec = SharedStore()[charKey]
+    local recipes = addon.recipeDB and addon.recipeDB[profId]
+    if not (rec and rec.spells and recipes) then return {} end
+    local out = {}
+    for spellId, pid in pairs(rec.spells) do
+        local data = recipes[spellId]
+        if pid == profId and data then
+            out[#out + 1] = MakeEntry(profId, spellId, data, false, false)
+        end
+    end
+    table.sort(out, function(a, b) return a.spellId < b.spellId end)
+    return out
+end
+
+-- The recipe scrolls one of this account's characters is missing, across all
+-- their professions, as { [spellId] = profId }. Same rules as the tab with its
+-- toolbar at the defaults; only rows with a scroll item, since a trainer
+-- recipe is not something to buy.
+local function OwnMissingScrolls(charKey)
+    local out = {}
+    for _, profId in ipairs(GetProfessionsForCharacter(charKey)) do
+        for _, e in ipairs(BuildMissingList(charKey, profId, false, false, false, "personal")) do
+            if e.itemId then out[e.spellId] = profId end
+        end
+    end
+    return out
+end
+
+-- Every character this account can share, as { [charKey] = { [spellId] = profId } }.
+local function ShareableCharacters()
+    local out = {}
+    for _, ck in ipairs(GetCharactersWithProfessions()) do
+        if #GetProfessionsForCharacter(ck) > 0 then out[ck] = OwnMissingScrolls(ck) end
+    end
+    for _, ck in ipairs(GetSharedCharacters()) do
+        out[ck] = SharedStore()[ck].spells or {}
+    end
+    return out
+end
+
+-- The share text, or nil when this account has no character to share.
+function MissingRecipesTab.ExportMissing()
+    local chars, keys = ShareableCharacters(), {}
+    for ck in pairs(chars) do keys[#keys + 1] = ck end
+    if #keys == 0 then return nil end
+    table.sort(keys)
+    local parts = {}
+    for _, ck in ipairs(keys) do
+        local ids = {}
+        for sid in pairs(chars[ck]) do ids[#ids + 1] = sid end
+        table.sort(ids)
+        parts[#parts + 1] = ck .. "=" .. table.concat(ids, ",")
+    end
+    return SHARE_PREFIX .. table.concat(parts, ";")
+end
+
+-- Store the characters in share text. Returns how many characters were added,
+-- updated and how many recipes were skipped (not on this game version), or
+-- nil when the text holds no shared list at all.
+function MissingRecipesTab.ImportMissing(text)
+    if type(text) ~= "string" then return nil end
+    local at = text:find(SHARE_PREFIX, 1, true)
+    if not at then return nil end
+    local body = text:sub(at + #SHARE_PREFIX):gsub("%s", "")
+    local store = SharedStore()
+    local added, updated, skipped, seen = 0, 0, 0, 0
+    for part in body:gmatch("[^;]+") do
+        if seen >= SHARE_MAX_CHARS then break end
+        local who, ids = part:match("^([^=:;,|]+)=([%d,]*)$")
+        if who and #who <= 64 and who:find("-", 1, true) then
+            seen = seen + 1
+            if not addon:IsMyCharacter(who) then
+                local spells, n = {}, 0
+                for idText in ids:gmatch("%d+") do
+                    if n >= SHARE_MAX_RECIPES then break end
+                    local sid = tonumber(idText)
+                    local profId = sid and sid > 0 and ProfessionOfRecipe(sid)
+                    if profId then
+                        if not spells[sid] then spells[sid] = profId; n = n + 1 end
+                    else
+                        skipped = skipped + 1
+                    end
+                end
+                local old = store[who]
+                local same = type(old) == "table" and type(old.spells) == "table"
+                if same then
+                    for sid, pid in pairs(spells) do
+                        if old.spells[sid] ~= pid then same = false; break end
+                    end
+                    for sid in pairs(old.spells) do
+                        if not spells[sid] then same = false; break end
+                    end
+                end
+                if not same then
+                    if type(old) == "table" then updated = updated + 1 else added = added + 1 end
+                    store[who] = { spells = spells, at = time() }
+                end
+            end
+        end
+    end
+    if seen == 0 then return nil end
+    return added, updated, skipped
+end
+
+-- Forget a character shared in from another account.
+function MissingRecipesTab.ForgetShared(charKey)
+    if IsShared(charKey) then SharedStore()[charKey] = nil end
+end
+
+-- "All characters": every scroll any character wants, one row each, naming
+-- who wants it (`entry.forChars`, short names, sorted). This account's own
+-- characters follow the toolbar's trainer filter; scrolls only.
+local function CombinedMissingList(profId, includeTrainer)
+    local byId, out = {}, {}
+    local function add(e, ck)
+        if not e.itemId then return end
+        local row = byId[e.spellId]
+        if not row then
+            row = e
+            row.forChars = {}
+            byId[e.spellId] = row
+            out[#out + 1] = row
+        end
+        row.forChars[#row.forChars + 1] = CharShortName(ck)
+    end
+    for _, ck in ipairs(GetCharactersWithProfessions()) do
+        if addon.recipeDB and addon.recipeDB[profId] then
+            for _, e in ipairs(BuildMissingList(ck, profId, includeTrainer, false, false, "personal")) do
+                add(e, ck)
+            end
+        end
+    end
+    for _, ck in ipairs(GetSharedCharacters()) do
+        for _, e in ipairs(SharedMissingList(ck, profId)) do add(e, ck) end
+    end
+    for _, row in ipairs(out) do table.sort(row.forChars) end
+    table.sort(out, function(a, b) return a.spellId < b.spellId end)
+    return out
+end
+
+-- The professions the character picker's selection has: an own character's
+-- tracked skills, a shared character's stored scrolls, or for "All
+-- characters" the union of every character's.
+local function ProfessionsFor(charKey)
+    if charKey == ALL_CHARS then
+        local seen, out = {}, {}
+        local function take(list)
+            for _, pid in ipairs(list) do
+                if not seen[pid] then seen[pid] = true; out[#out + 1] = pid end
+            end
+        end
+        for _, ck in ipairs(GetCharactersWithProfessions()) do take(GetProfessionsForCharacter(ck)) end
+        for _, ck in ipairs(GetSharedCharacters()) do take(GetSharedProfessions(ck)) end
+        table.sort(out, function(a, b)
+            return (addon.PROF_NAMES[a] or tostring(a)) < (addon.PROF_NAMES[b] or tostring(b))
+        end)
+        return out
+    end
+    if IsShared(charKey) then return GetSharedProfessions(charKey) end
+    return GetProfessionsForCharacter(charKey)
+end
+
+-- The rows for the tab's current selection and one profession.
+function MissingRecipesTab:BuildFor(profId)
+    if self._scope ~= "guild" then
+        if self._charKey == ALL_CHARS then return CombinedMissingList(profId, self._includeTrainer) end
+        if IsShared(self._charKey) then return SharedMissingList(self._charKey, profId) end
+    end
+    return BuildMissingList(self._charKey, profId, self._includeTrainer,
+                            self._canLearnOnly, self._showAll, self._scope)
+end
+
+-- The share window (addon.GUI.ShareDialog, shared with the Recipes tab).
+function MissingRecipesTab:OpenShareDialog()
+    addon.GUI.ShareDialog(self, "_shareWin", {
+        title     = L["MissingShareTitle"],
+        help      = L["MissingShareHelp"],
+        getText   = MissingRecipesTab.ExportMissing,
+        copyHint  = L["ShoppingShareCopyHint"],
+        emptyHint = L["MissingShareEmpty"],
+        onImport  = function(text) self:RunShareImport(text) end,
+    })
+end
+
+function MissingRecipesTab:RunShareImport(text)
+    local added, updated, skipped = MissingRecipesTab.ImportMissing(text)
+    local status
+    if not added then
+        status = "|cffff4444" .. L["MissingShareBad"] .. "|r"
+    elseif added + updated == 0 then
+        status = L["MissingShareNothing"]
+    else
+        status = L["MissingShareDone"]:format(added, updated)
+        self:Refresh()
+    end
+    if skipped and skipped > 0 then
+        status = status .. " " .. L["ShoppingShareSkipped"]:format(skipped)
+    end
+    if self._shareWin then self._shareWin:SetStatusText(status) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -693,8 +989,11 @@ function MissingRecipesTab:DrawScope(container)
             self._charKey = addon:GetCharacterKey()
         end
         chars = GetCharactersWithProfessions()
+        -- Characters shared in from another account follow this account's own.
+        local shared = GetSharedCharacters()
+        for _, ck in ipairs(shared) do chars[#chars + 1] = ck end
         -- Validate the persisted selection still exists in our roster.
-        local stillValid = false
+        local stillValid = (self._charKey == ALL_CHARS and #shared > 0)
         for _, ck in ipairs(chars) do
             if ck == self._charKey then stillValid = true; break end
         end
@@ -720,11 +1019,20 @@ function MissingRecipesTab:DrawScope(container)
     if not guildScope then
         local charList, charOrder = {}, {}
         local myKey = addon:GetCharacterKey()
+        -- "All characters" is offered once another account's characters are
+        -- shared in: it is the list to take to the Auction House.
+        if #GetSharedCharacters() > 0 then
+            charList[ALL_CHARS] = L["MissingAllCharacters"]
+            table.insert(charOrder, ALL_CHARS)
+        end
         for _, ck in ipairs(chars) do
             local short = CharShortName(ck)
-            local label = (ck == myKey)
-                and (short .. " |cffaaaaaa(" .. L["You"] .. ")|r")
-                or  short
+            local label = short
+            if ck == myKey then
+                label = short .. " |cffaaaaaa(" .. L["You"] .. ")|r"
+            elseif IsShared(ck) then
+                label = short .. " |cffaaaaaa(" .. L["MissingSharedTag"] .. ")|r"
+            end
             charList[ck] = label
             table.insert(charOrder, ck)
         end
@@ -749,8 +1057,36 @@ function MissingRecipesTab:DrawScope(container)
 
     -- Profession dropdown — personal: the selected char's tracked skills;
     -- guild: every profession the guild practices.
+    -- Share List (personal scope): copy every character's missing scrolls to
+    -- another account, or paste theirs in. Before the profession check, so a
+    -- character with nothing yet can still import.
+    if not guildScope then
+        addon.GUI.ToolbarButton(toolbar, {
+            width    = 100,
+            text     = L["ShoppingShareButton"],
+            onClick  = function() self:OpenShareDialog() end,
+            tipTitle = L["MissingShareTitle"],
+            tipBody  = L["MissingShareTipBody"],
+        })
+        if IsShared(self._charKey) then
+            addon.GUI.ToolbarButton(toolbar, {
+                width    = 80,
+                text     = L["MissingForget"],
+                onClick  = function()
+                    MissingRecipesTab.ForgetShared(self._charKey)
+                    self._charKey = nil
+                    setChar(nil)
+                    self:Refresh()
+                end,
+                tipTitle = L["MissingForget"],
+                tipBody  = L["MissingForgetDesc"],
+            })
+        end
+        local spS = AceGUI:Create("Label"); spS:SetWidth(8); toolbar:AddChild(spS)
+    end
+
     local profIds = guildScope and GetGuildProfessions()
-                                or GetProfessionsForCharacter(self._charKey)
+                                or ProfessionsFor(self._charKey)
     if #profIds == 0 then
         -- Nothing to show — render a scope-appropriate hint below the toolbar.
         local lblProf = AceGUI:Create("Label")
@@ -823,15 +1159,23 @@ function MissingRecipesTab:DrawScope(container)
         })
     end
 
-    filterBox("trainer", "_includeTrainer", 160, "MissingIncludeTrainer", "MissingIncludeTrainerDesc")
+    -- A character shared in from another account, and "All characters", are
+    -- lists of scrolls to buy that the other account already filtered: none
+    -- of these toolbar filters applies to them (we hold no skill for them).
+    local ownChar = guildScope or not (self._charKey == ALL_CHARS or IsShared(self._charKey))
+    if ownChar or self._charKey == ALL_CHARS then
+        filterBox("trainer", "_includeTrainer", 160, "MissingIncludeTrainer", "MissingIncludeTrainerDesc")
+    end
     -- "Can learn now" -- strict skillRank >= requiredSkill. Personal scope
     -- only: guild scope has no single character's skill to gate on.
-    if not guildScope then
+    if not guildScope and ownChar then
         filterBox("canLearn", "_canLearnOnly", 140, "MissingCanLearnOnly", "MissingCanLearnOnlyDesc")
     end
     -- "Show All" -- include recipes the character already knows, so the list
     -- becomes every recipe for the selected profession (known marked with a tick).
-    filterBox("showAll", "_showAll", 110, "MissingShowAll", "MissingShowAllDesc")
+    if ownChar then
+        filterBox("showAll", "_showAll", 110, "MissingShowAll", "MissingShowAllDesc")
+    end
 
     -- ---- Result section ----------------------------------------------------
     -- Takes the rest of the tab's height. It holds either a hint label or the
@@ -963,6 +1307,10 @@ function MissingRecipesTab:RowDisplay(entry)
     -- cross-profession list stays readable.
     if self._profId == "all" and entry.profName then
         nmText = "|cff888888[" .. entry.profName .. "]|r " .. nmText
+    end
+    -- "All characters": who wants this scroll, so it can be mailed to them.
+    if entry.forChars and #entry.forChars > 0 then
+        nmText = nmText .. " |cff888888" .. L["ShoppingWantedBy"]:format(table.concat(entry.forChars, ", ")) .. "|r"
     end
 
     d = { name = nmText, icon = icon or 134400, itemName = itemName, itemLink = itemLink }
@@ -1457,12 +1805,11 @@ function MissingRecipesTab:FillList()
         -- SortList below (profession-first in this view).
         local guildScope = (self._scope == "guild")
         local profIds = guildScope and GetGuildProfessions()
-                                    or GetProfessionsForCharacter(self._charKey)
+                                    or ProfessionsFor(self._charKey)
         fullList = {}
         for _, pid in ipairs(profIds) do
             if addon.recipeDB and addon.recipeDB[pid] then
-                local sub   = BuildMissingList(self._charKey, pid, self._includeTrainer,
-                                               self._canLearnOnly, self._showAll, self._scope)
+                local sub   = self:BuildFor(pid)
                 local pname = addon.PROF_NAMES[pid] or tostring(pid)
                 for _, e in ipairs(sub) do
                     e.profId   = pid
@@ -1479,8 +1826,7 @@ function MissingRecipesTab:FillList()
             section:AddChild(lbl)
             return
         end
-        fullList = BuildMissingList(self._charKey, self._profId, self._includeTrainer,
-                                    self._canLearnOnly, self._showAll, self._scope)
+        fullList = self:BuildFor(self._profId)
     end
 
     -- Apply search filter using GetItemInfo — its first return IS the item

@@ -197,6 +197,41 @@ local PROF_NAME_TO_ID = {
     ["Tailoring"]      = 197,
 }
 
+-- The same professions keyed by the CLIENT'S OWN name, from
+-- C_TradeSkillUI.GetTradeSkillDisplayName(skillLineID) (Classic Era has it:
+-- Blizzard_APIDocumentationGenerated/TradeSkillUIDocumentation.lua). Era has no
+-- GetProfessions, so the English map above was the only name->id path and a
+-- German client resolved nothing: GetTradeSkillLine() says "Schneiderei", the
+-- scan returned early and stored nothing (Discord 2026-10-24, deDE Era: "the
+-- German client don't scan the profession"). Built on first use, and again
+-- while it is still empty, in case the API answers nothing at load.
+local localProfNameToId
+
+local function LocalizedProfessionId(name)
+    if not localProfNameToId or next(localProfNameToId) == nil then
+        localProfNameToId = {}
+        local api = C_TradeSkillUI and C_TradeSkillUI.GetTradeSkillDisplayName
+        if api then
+            for _, id in pairs(PROF_NAME_TO_ID) do
+                local ok, display = pcall(api, id)
+                if ok and type(display) == "string" and display ~= "" then
+                    localProfNameToId[display] = id
+                end
+            end
+        end
+    end
+    return localProfNameToId[name]
+end
+
+-- Offline-test seam: forget the built map so a spec's API stub is read.
+function Scanner._ResetLocalizedProfessionNames() localProfNameToId = nil end
+
+-- Name -> skill line id: the English map, then the client's own names.
+local function ProfessionIdFromName(name)
+    if not name then return nil end
+    return PROF_NAME_TO_ID[name] or LocalizedProfessionId(name)
+end
+
 -- ---------------------------------------------------------------------------
 -- Cross-guild sister ROSTERS: LibGuildRoster's, not ours
 -- ---------------------------------------------------------------------------
@@ -1809,11 +1844,11 @@ function Scanner:ExtractTradeSkillId(index)
     end
     -- Classic Era: GetTradeSkillItemLink returns enchant:SPELLID for Enchanting,
     -- or item:ITEMID (the crafted product) for all other professions.
-    link = GetTradeSkillItemLink(index)
-    if link then
-        local id = tonumber(link:match("enchant:(%d+)"))
+    local itemLink = GetTradeSkillItemLink(index)
+    if itemLink then
+        local id = tonumber(itemLink:match("enchant:(%d+)"))
         if id then return id, true end
-        id = tonumber(link:match("item:(%d+)"))
+        id = tonumber(itemLink:match("item:(%d+)"))
         if id then return id, false end
     end
     return nil, nil
@@ -1903,8 +1938,8 @@ function Scanner:ResolveProfessionId(name)
         end
     end
 
-    -- Fall back to the static English map.
-    return PROF_NAME_TO_ID[name]
+    -- Fall back to the static English map, then the client's own names.
+    return ProfessionIdFromName(name)
 end
 
 -- ---------------------------------------------------------------------------
@@ -2033,10 +2068,14 @@ local function enumerateHeldProfessions()
             -- name(1), isHeader(2), isExpanded(3), rank(4), _, _, maxRank(7)
             local name, isHeader, _, rank, _, _, maxRank = GetSkillLineInfo(i)
             if name and not isHeader then
-                local profId = PROF_NAME_TO_ID[name]
+                local profId = ProfessionIdFromName(name)
                 if profId then held[profId] = { rank = rank or 0, max = maxRank or 0 } end
             end
         end
+        -- Removal stays English-only even though non-English names now
+        -- resolve: the localized map comes from the trade-skill display name,
+        -- and nothing proves the character panel spells every skill line the
+        -- same way, so a miss there must not delete a profession.
         local loc = (GetLocale and GetLocale()) or "enUS"
         if next(held) and loc:sub(1, 2) == "en" then reliable = true end
     end

@@ -12,7 +12,7 @@ read_globals = {
 	"GetTradeSkillItemLink", "GetTradeSkillRecipeLink", "GetTradeSkillReagentItemLink",
 	"GetCraftInfo", "GetNumCrafts", "GetCraftItemLink", "GetCraftDisplaySkillLine",
 	"GetGameMessageInfo",
-	"GetNormalizedRealmName", "UnitName", "UnitFactionGroup", "IsShiftKeyDown",
+	"GetNormalizedRealmName", "UnitName", "UnitFactionGroup", "GetFactionInfoByID", "C_Reputation", "IsShiftKeyDown",
 	"IsModifiedClick", "GameTooltip_ShowCompareItem", "GameTooltip_HideShoppingTooltips",
 	"ChatFrameUtil", "HandleModifiedItemClick", "GetCVarBool",
 	"ChatEdit_InsertLink", "ChatEdit_GetActiveWindow", "UIDropDownMenu_SetWidth",

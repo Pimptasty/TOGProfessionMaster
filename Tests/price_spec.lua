@@ -570,6 +570,83 @@ describe("a vendor-sold reagent's cost", function()
 	end)
 end)
 
+-- Discord 2026-10-24: after an ItemDB scan, the Missing Recipes tab showed
+-- nothing for a scroll that was listed, because the [AH] button only answers
+-- while the Auction House is open. GetLastScanListing reads the scan STORE.
+describe("Price.GetLastScanListing -- the last scan, after the AH closes", function()
+	local SCROLL = 6271  -- Pattern: Red Linen Robe, the reported scroll
+
+	after_each(function() ns.AH = nil end)
+
+	it("answers from the store for an item the last full scan saw", function()
+		env.serverTime = 5000
+		DB:StoreScannedPrice(SCROLL, 225, 5)
+		DB:_PriceRecordScan(1)
+		env.serverTime = 5600
+		local copper, count, age = Price.GetLastScanListing(SCROLL)
+		assert.equal(225, copper)
+		assert.equal(5, count)
+		assert.equal(600, age)
+	end)
+
+	-- No private-store fallback: an ItemDB older than MINOR 47 has no
+	-- GetScanRecord, and its internal store is not read.
+	it("is nil on an ItemDB without GetScanRecord, even when its store has the item", function()
+		env.serverTime = 5003
+		local store = { lastScanAt = 5003, ah = { [SCROLL] = { p = 225, at = 5003, n = 1 } } }
+		standIn({ GetPrice = function() end, _PriceStore = function() return store end })
+		assert.is_nil(Price.GetLastScanListing(SCROLL))
+	end)
+
+	it("is nil for an item an EARLIER scan saw and the last one did not", function()
+		env.serverTime = 5000
+		DB:StoreScannedPrice(SCROLL, 225, 1)
+		DB:_PriceRecordScan(1)
+		env.serverTime = 5000 + 3600
+		DB:_PriceRecordScan(0)
+		assert.is_nil(Price.GetLastScanListing(SCROLL))
+	end)
+
+	it("is nil before any full scan, and for a non-number", function()
+		DB:StoreScannedPrice(SCROLL, 225, 1)
+		assert.is_nil(Price.GetLastScanListing(SCROLL))
+		assert.is_nil(Price.GetLastScanListing("6271"))
+	end)
+
+	it("prefers the live session while the AH is open, including 'nobody is selling it'", function()
+		env.serverTime = 5000
+		DB:StoreScannedPrice(SCROLL, 225, 1)
+		DB:_PriceRecordScan(1)
+		local live
+		ns.AH = { IsOpen = function() return true end, GetListingsFor = function() return live end }
+		live = { count = 3, lowestBuyout = 199 }
+		local copper, count, age = Price.GetLastScanListing(SCROLL)
+		assert.equal(199, copper); assert.equal(3, count); assert.equal(0, age)
+		live = { count = 0 }
+		assert.is_nil(Price.GetLastScanListing(SCROLL))
+		live = nil
+		assert.equal(225, (Price.GetLastScanListing(SCROLL)))
+	end)
+
+	it("uses the library's public GetScanRecord when it has one", function()
+		standIn({ GetPrice = function() end, GetScanRecord = function(_, id)
+			if id == SCROLL then return 300, 2, 60 end
+		end })
+		local copper, count, age = Price.GetLastScanListing(SCROLL)
+		assert.equal(300, copper); assert.equal(2, count); assert.equal(60, age)
+		assert.is_nil(Price.GetLastScanListing(ORE))
+	end)
+
+	it("is nil with no price library, or one whose GetScanRecord raises", function()
+		standIn(nil)
+		assert.is_nil(Price.GetLastScanListing(SCROLL))
+		standIn({ GetPrice = function() end })
+		assert.is_nil(Price.GetLastScanListing(SCROLL))
+		standIn({ GetPrice = function() end, GetScanRecord = function() error("boom") end })
+		assert.is_nil(Price.GetLastScanListing(SCROLL))
+	end)
+end)
+
 describe("Money", function()
 	it("is the library's formatter when the library has one -- one rule, one copy", function()
 		_G.GetCoinTextureString = function(c) return "COIN:" .. c end

@@ -215,6 +215,39 @@ function Price.GetSaleHistorical(itemId)
     return p, src
 end
 
+--- An item as the player's most recent ItemDB Auction House scan saw it: the
+--- cheapest per-unit buyout, how many listings, and how old that is. nil when
+--- that scan did not see it listed, or when no scan has run here.
+---
+--- Asked for on Discord 2026-10-24: the Missing Recipes [AH] button only shows
+--- while the Auction House is OPEN (ItemDB's GetScanListings answers from the
+--- live session), so after scanning and walking away a player saw nothing.
+--- This reads the scan STORE, which survives the AH closing and a reload.
+---
+--- While the AH is open the live session answers first (a targeted scan's
+--- "looked, nobody is selling it" is a real answer). Otherwise ItemDB's public
+--- GetScanRecord (ItemDB MINOR 47); an older ItemDB has none, so nil.
+--- @return number|nil copper  lowest per-unit buyout
+--- @return number|nil count   listings seen
+--- @return number|nil ageSeconds
+function Price.GetLastScanListing(itemId)
+    if type(itemId) ~= "number" then return nil end
+    if addon.AH and addon.AH.IsOpen() then
+        local live = addon.AH.GetListingsFor(itemId)
+        if live then
+            if (live.count or 0) > 0 and type(live.lowestBuyout) == "number" then
+                return live.lowestBuyout, live.count, 0
+            end
+            return nil
+        end
+    end
+    local DB = priceDB()
+    if not (DB and type(DB.GetScanRecord) == "function") then return nil end
+    local ok, copper, count, age = pcall(DB.GetScanRecord, DB, itemId)
+    if ok and type(copper) == "number" and copper > 0 then return copper, count, age end
+    return nil
+end
+
 -- ---------------------------------------------------------------------------
 -- Crafting cost -- TOGPM policy
 -- ---------------------------------------------------------------------------

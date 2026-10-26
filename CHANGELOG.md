@@ -6,6 +6,53 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # Ultimate Profession Master Changelog (formerly TOG Profession Master)
 
+## [v1.10.0] (2026-10-26) - Missing Recipes shows Auction House prices and a Vendor only filter; German clients scan professions
+
+### New Features
+
+- **On AH column on Missing Recipes** (Discord 2026-10-24: a player ran an
+  ItemDB scan, closed the AH and saw nothing for a listed Pattern: Red Linen
+  Robe, because the [AH] button answers from the live AH session only). A
+  sortable column shows each scroll's cheapest buyout at the last ItemDB
+  scan, read through `Price.GetLastScanListing`, which answers from the live
+  session while the AH is open and otherwise from ItemDB's public
+  `GetScanRecord` (LibItemDB MINOR 47, inbox contract a583dabb). The row
+  tooltip adds the listing count and the scan's age. A scroll the scan did
+  not see sorts last in both directions. No read of ItemDB's private price
+  store: with an ItemDB older than MINOR 47 the column is blank. Location:
+  `GUI/MissingRecipesTab.lua` (AHPrice, BuildRowList, SortList,
+  ShowRowTooltip), `Modules/Price.lua`, `Locale/enUS.lua`. Specs:
+  `Tests/price_spec.lua`, `Tests/missingrecipes_spec.lua`.
+- **Vendor only filter on Missing Recipes** (Discord 2026-10-24: "filter
+  missing recipes to just the ones you can run around and buy from a vendor
+  and if they are faction vendors, only show if you have the faction to get
+  them"). Keeps a scroll when LibItemDB's places for the player's faction
+  include a vendor; a scroll only the other faction's vendors sell is
+  dropped; with no LibItemDB vendor at all, ProfessionDB's vendor source
+  decides. With LibItemDB `GetRequiredReputation` (MINOR 47, inbox contract
+  e1313d35), a scroll that needs reputation passes only once the
+  character's standing (`C_Reputation.GetFactionDataByID` reaction, else
+  `GetFactionInfoByID` standingID) reaches the requirement; a faction the
+  character has never met counts as not reached. Location:
+  `GUI/MissingRecipesTab.lua` (SoldByVendor, whereRowsFor, FillList,
+  DrawScope). Spec: `Tests/missingrecipes_spec.lua`.
+
+### Bug Fixes
+
+- **German (and other non-English) Classic Era clients stored no recipes**
+  (Discord 2026-10-24, deDE Era). Era has no `GetProfessions`, so the
+  English name map was the only name-to-id path: `GetTradeSkillLine()`
+  returned "Schneiderei", the scan bailed and stored nothing. Profession
+  names now also resolve through the client's own
+  `C_TradeSkillUI.GetTradeSkillDisplayName(skillLineID)`. Removing a dropped
+  profession stays English-only, because nothing proves the character panel
+  spells every skill line the same as the trade-skill window, and a miss
+  there must not delete a profession. Not yet confirmed on a German client.
+  Location: `Scanner.lua` (LocalizedProfessionId, ProfessionIdFromName).
+  Spec: `Tests/scanner_scan_spec.lua`.
+
+---
+
 ## [v1.9.0] (2026-10-24) - Share missing recipes between accounts
 
 ### New Features

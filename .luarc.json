@@ -53,6 +53,8 @@
         "GetNormalizedRealmName",
         "UnitName",
         "UnitFactionGroup",
+        "GetFactionInfoByID",
+        "C_Reputation",
         "UnitLevel",
         "GetServerTime",
         "GetTime",

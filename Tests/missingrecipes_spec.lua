@@ -739,3 +739,203 @@ describe("the Recipe column gets the room", function()
 		assert.is_true(source.autoFit)
 	end)
 end)
+
+-- Discord 2026-10-24: "filter missing recipes to just the ones you can run
+-- around and buy from a vendor and if they are faction vendors, only show if
+-- you have the faction to get them".
+describe("the Vendor only filter", function()
+	local savedIdb, savedFaction
+	-- Places per scroll: [itemId] = { both = rows, Alliance = rows, Horde = rows }
+	local places
+
+	before_each(function()
+		savedIdb, savedFaction = ns._itemDB, _G.UnitFactionGroup
+		_G.UnitFactionGroup = function() return "Alliance" end
+		places = {}
+		ns._itemDB = { BuildWhereRows = function(_, id, faction)
+			local p = places[id] or {}
+			return p[faction or "both"] or {}
+		end }
+	end)
+
+	after_each(function()
+		ns._itemDB, _G.UnitFactionGroup = savedIdb, savedFaction
+	end)
+
+	local vendor, drop = { { kind = "Vendor" } }, { { kind = "Drop" } }
+
+	it("keeps a scroll a vendor of my faction sells", function()
+		places[7001] = { both = vendor, Alliance = vendor }
+		assert.is_true(M:SoldByVendor({ spellId = 1, itemId = 7001 }))
+	end)
+
+	it("drops a scroll only the other faction's vendors sell", function()
+		places[7002] = { both = vendor, Alliance = drop }
+		assert.is_false(M:SoldByVendor({ spellId = 1, itemId = 7002 }))
+	end)
+
+	it("drops a drop-only scroll", function()
+		places[7003] = { both = drop, Alliance = drop }
+		assert.is_false(M:SoldByVendor({ spellId = 1, itemId = 7003 }))
+	end)
+
+	it("falls back to the recipe data's vendor source when ItemDB has no vendor", function()
+		assert.is_true(M:SoldByVendor({ spellId = 1, itemId = 7004, sources = { vendor = true } }))
+		assert.is_false(M:SoldByVendor({ spellId = 1, itemId = 7004, sources = { drop = true } }))
+		ns._itemDB = false
+		assert.is_true(M:SoldByVendor({ spellId = 1, itemId = 7004, sources = { vendor = true } }))
+	end)
+
+	it("never keeps a trainer recipe, which has no scroll", function()
+		assert.is_false(M:SoldByVendor({ spellId = 1, sources = { vendor = true } }))
+	end)
+
+	describe("a reputation-gated scroll", function()
+		local savedInfo, savedRep
+		local standing -- [factionID] = standingID; nil = never met
+
+		before_each(function()
+			savedInfo, savedRep = _G.GetFactionInfoByID, _G.C_Reputation
+			_G.C_Reputation = nil
+			standing = {}
+			_G.GetFactionInfoByID = function(id)
+				if standing[id] == nil then return nil end
+				return "Faction" .. id, "", standing[id]
+			end
+			places[7010] = { both = vendor, Alliance = vendor }
+			-- Cenarion Circle (609), Honored (6), as LibItemDB answers it.
+			ns._itemDB.GetRequiredReputation = function(_, id)
+				if id == 7010 then return 609, 6 end
+				return nil
+			end
+		end)
+
+		after_each(function()
+			_G.GetFactionInfoByID, _G.C_Reputation = savedInfo, savedRep
+		end)
+
+		it("is kept once my standing has reached it", function()
+			standing[609] = 6
+			assert.is_true(M:SoldByVendor({ spellId = 1, itemId = 7010 }))
+			standing[609] = 8
+			assert.is_true(M:SoldByVendor({ spellId = 1, itemId = 7010 }))
+		end)
+
+		it("is dropped while my standing is below it", function()
+			standing[609] = 5
+			assert.is_false(M:SoldByVendor({ spellId = 1, itemId = 7010 }))
+		end)
+
+		it("is dropped for a faction I have never met", function()
+			assert.is_false(M:SoldByVendor({ spellId = 1, itemId = 7010 }))
+		end)
+
+		it("reads the standing from C_Reputation where the client has it", function()
+			_G.GetFactionInfoByID = nil
+			_G.C_Reputation = { GetFactionDataByID = function(id)
+				return id == 609 and { reaction = 7 } or nil
+			end }
+			assert.is_true(M:SoldByVendor({ spellId = 1, itemId = 7010 }))
+			_G.C_Reputation.GetFactionDataByID = function() return { reaction = 4 } end
+			assert.is_false(M:SoldByVendor({ spellId = 1, itemId = 7010 }))
+		end)
+
+		it("leaves a scroll with no requirement to the vendor check", function()
+			places[7011] = { both = vendor, Alliance = vendor }
+			assert.is_true(M:SoldByVendor({ spellId = 1, itemId = 7011 }))
+		end)
+
+		it("is not gated by an ItemDB without the reputation read, or one that raises", function()
+			ns._itemDB.GetRequiredReputation = nil
+			assert.is_true(M:SoldByVendor({ spellId = 1, itemId = 7010 }))
+			ns._itemDB.GetRequiredReputation = function() error("boom") end
+			assert.is_true(M:SoldByVendor({ spellId = 1, itemId = 7010 }))
+		end)
+	end)
+end)
+
+-- Discord 2026-10-24: "Could we add a column in the Missing Recipes column
+-- that indicates if the Recipe is available in the Item DB Scan of the
+-- Auction House?" The [AH] button only showed with the AH open; this column
+-- reads the last scan, so it stays after the player walks away.
+describe("the On AH column", function()
+	local SEEN, UNSEEN = 6271, 6272
+	local savedGet, savedCol, savedAsc, savedProf, savedIdb
+
+	local function column()
+		local list = M:BuildRowList(CreateFrame("Frame", nil, UIParent))
+		for _, col in ipairs(list.columns) do
+			if col.key == "ahPrice" then return col end
+		end
+		error("the Missing Recipes list has no On AH column")
+	end
+
+	before_each(function()
+		savedGet = ns.Price.GetLastScanListing
+		savedCol, savedAsc, savedProf = M._sortCol, M._sortAsc, M._profId
+		savedIdb = ns._itemDB
+		ns.Price.GetLastScanListing = function(id)
+			if id == SEEN then return 225, 5, 7200 end
+			return nil
+		end
+	end)
+
+	after_each(function()
+		ns.Price.GetLastScanListing = savedGet
+		M._sortCol, M._sortAsc, M._profId = savedCol, savedAsc, savedProf
+		ns._itemDB = savedIdb
+	end)
+
+	it("shows the last scan's price, and nothing for a scroll it did not see", function()
+		local col = column()
+		assert.equal(L["MissingColAH"], col.header)
+		assert.equal(ns.Price.Money(225), col.format(nil, { spellId = 1, itemId = SEEN }))
+		assert.equal("", col.format(nil, { spellId = 2, itemId = UNSEEN }))
+		-- A trainer-only recipe has no scroll to buy.
+		assert.equal("", col.format(nil, { spellId = 3 }))
+	end)
+
+	it("sorts by price, cheapest first, with unlisted scrolls last both ways", function()
+		ns.Price.GetLastScanListing = function(id)
+			return ({ [10] = 500, [11] = 100 })[id]
+		end
+		local list = {
+			{ spellId = 1, itemId = 12 }, { spellId = 2, itemId = 10 }, { spellId = 3, itemId = 11 },
+		}
+		M._profId, M._sortCol = ALCHEMY, "ahPrice"
+		M._sortAsc = true
+		M:SortList(list)
+		assert.same({ 11, 10, 12 }, { list[1].itemId, list[2].itemId, list[3].itemId })
+		M._sortAsc = false
+		M:SortList(list)
+		assert.same({ 10, 11, 12 }, { list[1].itemId, list[2].itemId, list[3].itemId })
+	end)
+
+	-- Whether the row tooltip for `entry` carries the line `want`.
+	local function tooltipHas(entry, want)
+		local tip, lines = _G.GameTooltip, {}
+		local savedAdd = tip.AddLine
+		tip.AddLine = function(t, text, ...)
+			lines[#lines + 1] = text
+			return savedAdd(t, text, ...)
+		end
+		M:ShowRowTooltip(entry, UIParent)
+		tip.AddLine = savedAdd
+		for _, t in ipairs(lines) do if t == want then return true end end
+		return false
+	end
+
+	it("spells out the price, listings and scan age on the row tooltip", function()
+		ns._itemDB = { FormatPriceAge = function(_, s) return (s / 3600) .. "h" end,
+		               GetName = function() return nil end, GetLink = function() return nil end }
+		local want = L["MissingAHSeenFormat"]:format(L["MissingAHAgoFormat"]:format("2h"),
+		                                             ns.Price.Money(225), 5)
+		assert.is_true(tooltipHas({ spellId = 1, itemId = SEEN }, want))
+	end)
+
+	it("says 'just now' for a scan under a minute old", function()
+		ns.Price.GetLastScanListing = function() return 225, 1, 0 end
+		local want = L["MissingAHSeenFormat"]:format(L["MissingAHJustNow"], ns.Price.Money(225), 1)
+		assert.is_true(tooltipHas({ spellId = 1, itemId = SEEN }, want))
+	end)
+end)

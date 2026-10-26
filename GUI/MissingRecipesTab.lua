@@ -50,6 +50,7 @@ MissingRecipesTab._searchText      = ""
 MissingRecipesTab._includeTrainer  = false
 MissingRecipesTab._canLearnOnly    = false
 MissingRecipesTab._showAll         = false   -- show every recipe (known + missing)
+MissingRecipesTab._vendorOnly      = false   -- only scrolls a vendor of my faction sells
 -- Sort state for the clickable Recipe / Skill / Sources headers. Defaults to
 -- skill ascending, which matches BuildMissingList's natural order (and shows the
 -- arrow on the Skill column on first open). "recipe" sorts by display name,
@@ -1176,6 +1177,8 @@ function MissingRecipesTab:DrawScope(container)
     if ownChar then
         filterBox("showAll", "_showAll", 110, "MissingShowAll", "MissingShowAllDesc")
     end
+    -- "Vendor only" -- every view: it narrows to scrolls to go and buy.
+    filterBox("vendorOnly", "_vendorOnly", 120, "MissingVendorOnly", "MissingVendorOnlyDesc")
 
     -- ---- Result section ----------------------------------------------------
     -- Takes the rest of the tab's height. It holds either a hint label or the
@@ -1380,6 +1383,21 @@ function MissingRecipesTab:ShowRowTooltip(entry, owner)
     -- What the row's "(unconfirmed)" means.
     addon.ItemLink.AppendUnconfirmed(tip, entry.unconfirmed)
 
+    -- The On AH cell, spelled out: price, listings and how old the scan is.
+    local copper, listings, age = self:AHPrice(entry)
+    if copper then
+        local idb = addon.GetItemDB and addon:GetItemDB()
+        local when
+        if (age or 0) < 60 or not (idb and idb.FormatPriceAge) then
+            when = L["MissingAHJustNow"]
+        else
+            when = L["MissingAHAgoFormat"]:format(idb:FormatPriceAge(age))
+        end
+        tip:AddLine(" ")
+        tip:AddLine(L["MissingAHSeenFormat"]:format(when, addon.Price.Money(copper), listings or 1),
+                    0.53, 0.8, 1, true)
+    end
+
     tip:AddLine(" ")
     tip:AddLine(L["MissingRowTooltipShift"], 0.7, 0.7, 0.7, true)
     tip:Show()
@@ -1419,6 +1437,19 @@ end
 -- faction, which the window's own-faction setting can change mid-session.
 local whereCache = setmetatable({}, { __mode = "k" })
 
+-- LibItemDB's places for a scroll, for `faction` (nil = both), cached as above.
+local function whereRowsFor(idb, itemId, faction)
+    local byIdb = whereCache[idb]
+    if not byIdb then byIdb = {}; whereCache[idb] = byIdb end
+    local key = itemId .. ":" .. (faction or "")
+    local rows = byIdb[key]
+    if not rows then
+        rows = idb:BuildWhereRows(itemId, faction) or {}
+        byIdb[key] = rows
+    end
+    return rows
+end
+
 function MissingRecipesTab:HasWhere(entry)
     if not entry.itemId then return false end
     local d = self:RowDisplay(entry)
@@ -1428,21 +1459,61 @@ function MissingRecipesTab:HasWhere(entry)
         local faction = ok and idb.GetWhereOwnFactionOnly and idb:GetWhereOwnFactionOnly()
             and UnitFactionGroup and UnitFactionGroup("player") or nil
         if ok then
-            local byIdb = whereCache[idb]
-            if not byIdb then byIdb = {}; whereCache[idb] = byIdb end
-            local key = entry.itemId .. ":" .. (faction or "")
-            local rows = byIdb[key]
-            if not rows then
-                rows = idb:BuildWhereRows(entry.itemId, faction) or {}
-                byIdb[key] = rows
-            end
-            d.whereRows = rows
+            d.whereRows = whereRowsFor(idb, entry.itemId, faction)
         else
             d.whereRows = {}
         end
         d.hasWhere = #d.whereRows > 0
     end
     return d.hasWhere
+end
+
+-- Whether the row's scroll can be bought from a vendor THIS character's faction
+-- can use -- the "Vendor only" filter (Discord 2026-10-24: "filter missing
+-- recipes to just the ones you can run around and buy from a vendor"). LibItemDB
+-- knows each vendor's side: a vendor among the places for the player's faction
+-- passes; a scroll whose only vendors serve the other faction does not. With no
+-- LibItemDB vendor at all, ProfessionDB's "vendor" source decides (it carries no
+-- side). A scroll that needs reputation (LibItemDB GetRequiredReputation,
+-- feature-detected) passes only once this character's standing with that
+-- faction has reached it ("if they are faction vendors, only show if you have
+-- the faction to get them").
+local function standingWith(factionID)
+    if C_Reputation and C_Reputation.GetFactionDataByID then
+        local ok, data = pcall(C_Reputation.GetFactionDataByID, factionID)
+        if ok and type(data) == "table" then return tonumber(data.reaction) end
+    end
+    if GetFactionInfoByID then
+        local ok, _, _, standingID = pcall(GetFactionInfoByID, factionID)
+        if ok then return tonumber(standingID) end
+    end
+    return nil
+end
+
+local function reputationReached(idb, itemId)
+    if not (idb and idb.GetRequiredReputation) then return true end
+    local ok, factionID, minStanding = pcall(idb.GetRequiredReputation, idb, itemId)
+    if not (ok and factionID and type(minStanding) == "number") then return true end
+    -- A faction the character has never met answers no standing: not reached.
+    return (standingWith(factionID) or 0) >= minStanding
+end
+
+function MissingRecipesTab:SoldByVendor(entry)
+    if not entry.itemId then return false end
+    local idb = addon.GetItemDB and addon:GetItemDB()
+    if not reputationReached(idb, entry.itemId) then return false end
+    if idb and idb.BuildWhereRows then
+        local function hasVendor(rows)
+            for _, r in ipairs(rows) do
+                if r.kind == "Vendor" then return true end
+            end
+            return false
+        end
+        local faction = UnitFactionGroup and UnitFactionGroup("player") or nil
+        if hasVendor(whereRowsFor(idb, entry.itemId, faction)) then return true end
+        if faction and hasVendor(whereRowsFor(idb, entry.itemId, nil)) then return false end
+    end
+    return entry.sources ~= nil and entry.sources.vendor ~= nil
 end
 
 -- Whether Questbook is installed and can be handed a place. The route itself is
@@ -1566,6 +1637,13 @@ function MissingRecipesTab:OpenWhere(entry)
     if idb and idb.OpenWhereWindow and entry.itemId then idb:OpenWhereWindow(entry.itemId) end
 end
 
+-- The row's scroll as the last ItemDB scan saw it: copper, listings, age.
+-- nil for a trainer-only recipe (no scroll) or one the scan did not see.
+function MissingRecipesTab:AHPrice(entry)
+    if not (entry.itemId and addon.Price and addon.Price.GetLastScanListing) then return nil end
+    return addon.Price.GetLastScanListing(entry.itemId)
+end
+
 local function headerTip(desc)
     return desc and (desc .. " " .. (L["CraftSortHint"] or "Click to sort.")) or nil
 end
@@ -1595,6 +1673,16 @@ function MissingRecipesTab:BuildRowList(host)
             { key = "source", header = L["MissingColSource"], autoFit = true, minWidth = 60, gapBefore = 12,
               headerTip = headerTip(L["MissingHdrSourceDesc"]),
               format = function(_, e) return "|cffbfbfbf" .. self:SourcesText(e) .. "|r" end },
+            -- On AH: the scroll's cheapest buyout at the last ItemDB scan,
+            -- read from the scan store so it stays after the AH closes
+            -- (Discord, 2026-10-24). Not cached on the row: a scan finishing
+            -- repaints the list (SetAHRefresh) without rebuilding the rows.
+            { key = "ahPrice", header = L["MissingColAH"], width = 90, align = "RIGHT", gapBefore = 8,
+              headerTip = headerTip(L["MissingHdrAHDesc"]),
+              format = function(_, e)
+                  local copper = self:AHPrice(e)
+                  return copper and addon.Price.Money(copper) or ""
+              end },
             -- [Bank]: only when TOGBankClassic reports stock for this recipe
             -- scroll (trainer-only recipes have no scroll to bank).
             { key = "bankBtn", width = 60, button = true, sortable = false,
@@ -1727,7 +1815,12 @@ function MissingRecipesTab:SortList(list)
     end
 
     local key
-    if col == "recipe" or col == "source" then
+    if col == "ahPrice" then
+        -- Copper, resolved once per sort; a scroll the scan did not see sorts
+        -- last in both directions, like an unknown skill.
+        key = {}
+        for _, e in ipairs(list) do key[e] = self:AHPrice(e) or false end
+    elseif col == "recipe" or col == "source" then
         key = {}
         local idb = addon.GetItemDB and addon:GetItemDB()
         for _, e in ipairs(list) do
@@ -1771,6 +1864,13 @@ function MissingRecipesTab:SortList(list)
                 if ar == nil then return false end  -- unknown skill always last
                 if br == nil then return true end
                 return cmp(ar, br)
+            end
+        elseif col == "ahPrice" then
+            local ka, kb = key[a], key[b]
+            if ka ~= kb then
+                if not ka then return false end  -- not on the AH always last
+                if not kb then return true end
+                return cmp(ka, kb)
             end
         else
             local ka, kb = key[a], key[b]
@@ -1859,6 +1959,14 @@ function MissingRecipesTab:FillList()
                 list[#list + 1] = entry
             end
         end
+    end
+
+    if self._vendorOnly then
+        local kept = {}
+        for _, entry in ipairs(list) do
+            if self:SoldByVendor(entry) then kept[#kept + 1] = entry end
+        end
+        list = kept
     end
 
     self:SortList(list)

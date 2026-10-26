@@ -166,6 +166,68 @@ describe("ScanGatheringProfessions", function()
 		assert.is_true(gdb.skills[ME][182] ~= nil)
 	end)
 
+	-- Discord 2026-10-24, German Era client: "the German client don't scan the
+	-- profession". Era has no GetProfessions, so names went through the English
+	-- map only; the client's own names now resolve through
+	-- C_TradeSkillUI.GetTradeSkillDisplayName.
+	describe("on a non-English client", function()
+		local saved, savedLocale
+		local GERMAN = { [171] = "Alchimie", [182] = "Kräuterkunde", [197] = "Schneiderei",
+		                 [333] = "Verzauberkunst" }
+
+		before_each(function()
+			saved, savedLocale = _G.C_TradeSkillUI, _G.GetLocale
+			_G.C_TradeSkillUI = { GetTradeSkillDisplayName = function(id) return GERMAN[id] end }
+			_G.GetLocale = function() return "deDE" end
+			S._ResetLocalizedProfessionNames()
+		end)
+
+		after_each(function()
+			_G.C_TradeSkillUI, _G.GetLocale = saved, savedLocale
+			S._ResetLocalizedProfessionNames()
+		end)
+
+		it("resolves the client's own profession names to their ids", function()
+			assert.equal(197, S:ResolveProfessionId("Schneiderei"))
+			assert.equal(333, S:ResolveProfessionId("Verzauberkunst"))
+			assert.equal(171, S:ResolveProfessionId("Alchemy"))     -- English still works
+			assert.is_nil(S:ResolveProfessionId("Verteidigung"))    -- Defense: not a profession
+		end)
+
+		it("records the professions a German character holds", function()
+			setSkills({
+				{ name = "Berufe", header = true },
+				{ name = "Kräuterkunde", rank = 225, max = 300 },
+				{ name = "Alchimie",     rank = 300, max = 300 },
+			})
+			S:ScanGatheringProfessions()
+			assert.same({ skillRank = 225, skillMax = 300 }, gdb.skills[ME][182])
+			assert.same({ skillRank = 300, skillMax = 300 }, gdb.skills[ME][171])
+		end)
+
+		it("still never deletes from a non-English read", function()
+			gdb.skills[ME] = { [182] = { skillRank = 225, skillMax = 300 } }
+			setSkills({ { name = "Alchimie", rank = 300, max = 300 } })
+			S:ScanGatheringProfessions()
+			S._scanningGather = nil
+			S:ScanGatheringProfessions()
+			assert.is_true(gdb.skills[ME][182] ~= nil)
+		end)
+
+		it("resolves nothing extra when the client lacks the API", function()
+			_G.C_TradeSkillUI = nil
+			S._ResetLocalizedProfessionNames()
+			assert.is_nil(S:ResolveProfessionId("Schneiderei"))
+			assert.equal(197, S:ResolveProfessionId("Tailoring"))
+		end)
+
+		it("survives the API raising", function()
+			_G.C_TradeSkillUI = { GetTradeSkillDisplayName = function() error("boom") end }
+			S._ResetLocalizedProfessionNames()
+			assert.is_nil(S:ResolveProfessionId("Schneiderei"))
+		end)
+	end)
+
 	it("uses the locale-independent ids where the client offers them", function()
 		-- Cata+ hands over skillLine ids directly, which is always trustworthy.
 		_G.GetProfessions = function() return 1, 2 end

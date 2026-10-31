@@ -204,10 +204,17 @@ describe("the detail panel's reagent list", function()
 	end)
 end)
 
+-- The Enchant button is LibAceGUIWidgets' overlay button (MINOR 48). Offline
+-- nothing runs OnUpdate, so the panel's new rect or strata is handed to it the
+-- way its own watcher would, through its public Sync.
+local function syncCraft()
+	if CT._dpCraft then CT._dpCraft:Sync() end
+end
+
 -- In game 2026-09-26: closing TOGPM in combat raised ADDON_ACTION_BLOCKED
 -- "Frame:Hide()" from AceGUIContainer-Frame. The secure Craft button made every
 -- ancestor protected, and its ancestors were AceGUI's pooled window. It now lives
--- on a UIParent holder and only follows the panel.
+-- on the library's UIParent holder and only follows the panel.
 describe("the secure Craft button", function()
 	local realLockdown
 
@@ -236,7 +243,7 @@ describe("the secure Craft button", function()
 		panel:ClearAllPoints()
 		panel:SetPoint("TOPLEFT", _G.UIParent, "TOPLEFT", 100, -100)
 		panel:SetSize(400, 120)
-		CT._craftBtnWatcher:GetScript("OnUpdate")(CT._craftBtnWatcher, 0)
+		syncCraft()
 	end
 
 	it("is not inside the detail panel or the AceGUI window", function()
@@ -250,8 +257,11 @@ describe("the secure Craft button", function()
 		for _, ancestor in ipairs(chain) do
 			assert.are_not.equal(panel, ancestor)
 		end
-		assert.equal(CT._dpCraftHolder, btn:GetParent())
-		assert.equal(_G.UIParent, CT._dpCraftHolder:GetParent())
+		-- The library's holder; whatever UIParent it was built under (the named
+		-- button lives for the session), it is a top-level frame, not ours.
+		local holder = btn:GetParent()
+		assert.are_not.equal(panel, holder)
+		assert.is_nil(holder:GetParent() and holder:GetParent().obj)
 	end)
 
 	it("is anchored to nothing but its holder -- never to the panel", function()
@@ -262,8 +272,14 @@ describe("the secure Craft button", function()
 		assert.is_true(btn:GetNumPoints() >= 1)
 		for i = 1, btn:GetNumPoints() do
 			local _, relativeTo = btn:GetPoint(i)
-			assert.equal(CT._dpCraftHolder, relativeTo)
+			assert.equal(btn:GetParent(), relativeTo)
 		end
+	end)
+
+	it("comes from LibAceGUIWidgets, not a holder of TOGPM's own", function()
+		selectCraftable()
+		assert.is_function(CT._dpCraft.SetOverlayPoint)
+		assert.is_function(CT._dpCraft.Sync)
 	end)
 
 	it("lands at the panel's top-right, where it was when it was the panel's child", function()
@@ -279,7 +295,7 @@ describe("the secure Craft button", function()
 		local p, rel, rp, x, y = panel:GetPoint(1)
 		panel:ClearAllPoints()
 		panel:SetPoint(p, rel, rp, (x or 0) + 50, (y or 0) - 30)
-		CT._craftBtnWatcher:GetScript("OnUpdate")(CT._craftBtnWatcher, 0)
+		syncCraft()
 		assert.is_near(panel:GetRight() - 12, btn:GetRight(), 0.01)
 		assert.is_near(panel:GetTop() - 6, btn:GetTop(), 0.01)
 		-- A trade skill's Craft button sits 34 below the panel's top and, being
@@ -292,14 +308,27 @@ describe("the secure Craft button", function()
 	-- Discord 2026-09-29: the Enchant button sat dimmed under the panel and took
 	-- no clicks. The window is Toplevel, so a click Raises it above the button,
 	-- which is not its descendant; the watcher only followed the panel's rect.
-	it("stays above the panel when the window is raised", function()
+	-- Discord 2026-10-30: still dim on every enchant. Re-lifting the button over
+	-- each Raise made the two climb levels together; a strata above cannot be
+	-- reached by a Raise at any level, and the button's level no longer chases.
+	it("draws in the strata above the panel, whatever the panel's level", function()
 		selectCraftable()
 		local btn, panel = CT._dpCraft, CT._detailPanel
-		assert.is_true(btn:GetFrameLevel() > panel:GetFrameLevel())
-		panel:SetFrameLevel(btn:GetFrameLevel() + 5)
-		CT._craftBtnWatcher:GetScript("OnUpdate")(CT._craftBtnWatcher, 0)
-		assert.is_true(btn:GetFrameLevel() > panel:GetFrameLevel(),
-			("button %d, panel %d"):format(btn:GetFrameLevel(), panel:GetFrameLevel()))
+		panel:SetFrameStrata("FULLSCREEN_DIALOG")
+		syncCraft()
+		assert.equal("TOOLTIP", btn:GetFrameStrata())
+		local level = btn:GetFrameLevel()
+		panel:SetFrameLevel(level + 500)
+		syncCraft()
+		assert.equal("TOOLTIP", btn:GetFrameStrata())
+		assert.equal(level, btn:GetFrameLevel())
+	end)
+
+	it("stays in TOOLTIP when the panel is already there", function()
+		selectCraftable()
+		CT._detailPanel:SetFrameStrata("TOOLTIP")
+		syncCraft()
+		assert.equal("TOOLTIP", CT._dpCraft:GetFrameStrata())
 	end)
 
 	it("shows with a recipe selected and hides with none", function()
@@ -325,6 +354,37 @@ describe("the secure Craft button", function()
 		assert.is_false(CT._dpCraft:IsShown())
 	end)
 
+	-- LibAceGUIWidgets 48ef6be4 follow-up: the button's width and offsets follow
+	-- the library's size scale, so the reagent list must make room for it.
+	it("leaves the reagent list clear of the button at a larger size scale", function()
+		local W = ns.W
+		local saved = W:GetScale()
+		local ok, err = pcall(function()
+			selectCraftable()
+			W:SetScale(1.5)
+			syncCraft()
+			local btn, host = CT._dpCraft, CT._dpReagHost
+			assert.is_true(host:GetRight() <= btn:GetLeft(),
+				("reagents end %.1f, button starts %.1f"):format(host:GetRight(), btn:GetLeft()))
+			assert.is_near(CT._detailPanel:GetRight() - W:ScaledSize(12), btn:GetRight(), 0.01)
+		end)
+		W:SetScale(saved)
+		assert(ok, err)
+	end)
+
+	-- LibAceGUIWidgets 48ef6be4 follow-up: the library detaches the button when
+	-- the widget around the panel is released (a tab switch). The panel lives
+	-- for the session, so the next draw must hand it back.
+	it("comes back on the next draw after the library let it go", function()
+		selectCraftable()
+		local btn = CT._dpCraft
+		btn:Detach()
+		assert.is_false(btn:IsShown())
+		selectCraftable()
+		assert.equal(btn, CT._dpCraft)
+		assert.is_true(btn:IsShown())
+	end)
+
 	it("hides when the window switches to another tab", function()
 		selectCraftable()
 		ns.MainWindow.activeTab = "browser"
@@ -337,31 +397,35 @@ describe("the secure Craft button", function()
 	-- strata; a move that kept the level never re-placed the button.
 	it("follows the panel into a new strata at the same level", function()
 		selectCraftable()
-		-- The holder's strata is what is set; the button inherits it in game.
-		local holder, panel = CT._dpCraftHolder, CT._detailPanel
+		local panel, btn = CT._detailPanel, CT._dpCraft
+		local holder = btn:GetParent()
 		panel:SetFrameStrata("MEDIUM")
-		CT._craftBtnWatcher:GetScript("OnUpdate")(CT._craftBtnWatcher, 0)
+		syncCraft()
+		assert.equal("HIGH", btn:GetFrameStrata())
 		local level = panel:GetFrameLevel()
 		panel:SetFrameStrata("FULLSCREEN_DIALOG")
 		panel:SetFrameLevel(level)
-		CT._craftBtnWatcher:GetScript("OnUpdate")(CT._craftBtnWatcher, 0)
-		assert.equal("FULLSCREEN_DIALOG", holder:GetFrameStrata())
+		syncCraft()
+		assert.equal("TOOLTIP", holder:GetFrameStrata())
+		assert.equal("TOOLTIP", btn:GetFrameStrata())
 	end)
 
-	-- Peer Review, thread 435f7185: a Raise that lifts the window without moving
-	-- the panel's level must still re-place the button above the window.
-	it("re-places above the window when only the window's level changes", function()
+	-- Peer Review, thread 435f7185, re-answered 2026-10-30: a Raise of the window
+	-- must not leave the button under it -- and must not lift the button either,
+	-- which is what made the two climb together.
+	it("does not chase the window's level when the window is raised", function()
 		selectCraftable()
 		local win = _G.CreateFrame("Frame", nil, _G.UIParent)
 		win:SetFrameStrata("FULLSCREEN_DIALOG")
 		win:SetFrameLevel(1)
 		ns.MainWindow.frame = { frame = win }
-		CT._craftBtnWatcher:GetScript("OnUpdate")(CT._craftBtnWatcher, 0)
+		syncCraft()
 		local btn = CT._dpCraft
-		win:SetFrameLevel(btn:GetFrameLevel() + 50)
-		CT._craftBtnWatcher:GetScript("OnUpdate")(CT._craftBtnWatcher, 0)
-		assert.is_true(btn:GetFrameLevel() > win:GetFrameLevel(),
-			("button %d, window %d"):format(btn:GetFrameLevel(), win:GetFrameLevel()))
+		local level = btn:GetFrameLevel()
+		win:SetFrameLevel(level + 50)
+		syncCraft()
+		assert.equal(level, btn:GetFrameLevel())
+		assert.equal("TOOLTIP", btn:GetFrameStrata())
 	end)
 
 	-- Peer Review F2, thread 98ed0622: it only ever casts its macro, so it has
@@ -403,7 +467,7 @@ describe("the trade-skill Craft button", function()
 		panel:ClearAllPoints()
 		panel:SetPoint("TOPLEFT", _G.UIParent, "TOPLEFT", 100, -100)
 		panel:SetSize(400, 120)
-		CT._craftBtnWatcher:GetScript("OnUpdate")(CT._craftBtnWatcher, 0)
+		syncCraft()
 	end
 
 	it("is a child of the panel, not a secure frame", function()
@@ -633,19 +697,56 @@ describe("the plain craft buttons in combat", function()
 		assert.is_false(CT._dpCraft:IsEnabled())
 	end)
 
-	-- The library's factory refuses in combat, so a panel drawn mid-fight has no
-	-- Enchant button; the first sync after combat builds it and gives it the
-	-- selected enchant's /cast.
+	-- The library's factory returns nil when first asked in combat and builds
+	-- the button after combat, calling onCreate (its documented contract). A
+	-- named button is built once per session, so that path is driven here by
+	-- standing in for the factory exactly as documented: TOGPM asks once, not
+	-- per redraw, and onCreate attaches the button and gives it the /cast.
 	it("build the Enchant button after a panel drawn in combat", function()
-		ns.CraftingEngine._isCraftWindow = true
-		_G.InCombatLockdown = function() return true end
-		CT._dpCraft = nil
-		selectCraftable()
-		assert.is_nil(CT._dpCraft)
-		_G.InCombatLockdown = realLockdown
-		CT:SyncCraftButton()
-		assert.is_truthy(CT._dpCraft)
-		assert.equal("/cast Healing Potion", CT._dpCraft:GetAttribute("macrotext"))
+		local W = ns.W
+		local real = W.CreateSecureOverlayButton
+		local calls, pendingOpts = 0, nil
+		local ok, err = pcall(function()
+			ns.CraftingEngine._isCraftWindow = true
+			W.CreateSecureOverlayButton = function(_, _, opts)
+				calls = calls + 1
+				pendingOpts = opts
+				return nil
+			end
+			CT._dpCraft, CT._dpCraftPending = nil, nil
+			selectCraftable()
+			CT:RefreshDetail()
+			assert.is_nil(CT._dpCraft)
+			assert.equal(1, calls)
+			assert.is_true(CT._dpCraftPending)
+			W.CreateSecureOverlayButton = real
+			pendingOpts.onCreate()
+			-- Built at all proves the pending flag cleared: EnsureCraftButton
+			-- returns nothing while it is set.
+			assert.is_truthy(CT._dpCraft)
+			assert.equal("/cast Healing Potion", CT._dpCraft:GetAttribute("macrotext"))
+		end)
+		W.CreateSecureOverlayButton = real
+		CT._dpCraftPending = nil
+		assert(ok, err)
+	end)
+
+	-- A LibAceGUIWidgets older than MINOR 48 has no overlay button: enchants
+	-- craft from the plain button, which opens Blizzard's Craft window.
+	it("fall back to the plain button without the library's overlay button", function()
+		local W = ns.W
+		local real = W.CreateSecureOverlayButton
+		local ok, err = pcall(function()
+			W.CreateSecureOverlayButton = nil
+			ns.CraftingEngine._isCraftWindow = true
+			CT._dpCraft = nil
+			selectCraftable()
+			assert.is_nil(CT._dpCraft)
+			assert.is_false(CT._craftIsSecure)
+			assert.is_true(CT._dpCraftPlain:IsShown())
+		end)
+		W.CreateSecureOverlayButton = real
+		assert(ok, err)
 	end)
 end)
 

@@ -289,6 +289,11 @@ function CraftingTab:Draw(container)
     host:SetPoint("BOTTOMRIGHT", cc, "BOTTOMRIGHT", 0, 0)
     host:Show()
     addon.W:AttachRawFrames(toolbar, host)
+    -- The library lets the Enchant button go when the AceGUI widget around the
+    -- panel is released (a tab switch, a window close); the panel itself lives
+    -- for the session, so it is handed back on every draw, now that it sits
+    -- inside this draw's widgets.
+    if self._dpCraft then self._dpCraft:SetPanel(self._detailPanel) end
     self._listLive = true
     addon.W:OnWidgetRelease(toolbar, "togpm:craftList", function()
         self._listLive = nil
@@ -731,6 +736,33 @@ function CraftingTab:BuildReagentList(host)
     })
 end
 
+-- The controls column's width at the library's size scale. The Enchant button
+-- is LibAceGUIWidgets' and its width and offsets follow that scale (MINOR 48,
+-- thread 48ef6be4), so a fixed column let it run over the reagent list above
+-- a scale of about 1.06.
+local function controlsWidth()
+    local W = addon.W
+    return (W and W.ScaledSize) and W:ScaledSize(DCTRL_W) or DCTRL_W
+end
+
+-- Where the reagent list and the cost line end: left of the controls column.
+-- Re-run on a scale change, which also re-places the Enchant button.
+function CraftingTab:ApplyControlsWidth()
+    local w, panel = controlsWidth(), self._detailPanel
+    if not panel then return end
+    if self._dpCost then
+        self._dpCost:ClearAllPoints()
+        self._dpCost:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(w + 16), -8)
+    end
+    local host = self._dpReagHost
+    if host then
+        host:ClearAllPoints()
+        host:SetPoint("TOPLEFT",  panel, "TOPLEFT",  10,         -DREAG_TOP)
+        host:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(w + 14),  -DREAG_TOP)
+    end
+    self:SyncCraftButton()
+end
+
 function CraftingTab:BuildDetailPanel(parent)
     local panel = CreateFrame("Frame", nil, parent, BackdropTemplateMixin and "BackdropTemplate" or nil)
     if panel.SetBackdrop then
@@ -784,7 +816,6 @@ function CraftingTab:BuildDetailPanel(parent)
     -- addon.Price (vendor price for a vendor-sold reagent, else ItemDB's
     -- price ladder in the order the user set in /itemdb).
     local cost = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    cost:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(DCTRL_W + 16), -8)
     cost:SetJustifyH("RIGHT")
     self._dpCost = cost
     headerTip(cost, true, 110, L["CraftCostLabel"], L["CraftCostDesc"])
@@ -794,10 +825,18 @@ function CraftingTab:BuildDetailPanel(parent)
     -- (fitContent) so the panel can size itself to the taller column. Its host
     -- is a child of this panel, which lives for the session.
     local host = CreateFrame("Frame", nil, panel)
-    host:SetPoint("TOPLEFT",  panel, "TOPLEFT",  10,               -DREAG_TOP)
-    host:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(DCTRL_W + 14),  -DREAG_TOP)
     host:SetHeight(1)
     self._dpReagHost = host
+    self:ApplyControlsWidth()
+    -- The Enchant button is the library's, and grows with its size scale; the
+    -- reagent list and cost line make room for it (ApplyControlsWidth). The
+    -- listener takes the tab as its owner, not a closure: the library's
+    -- listener table is weak-keyed (same as BrowserTab).
+    local W = addon.W
+    if W and W.OnScaleChanged and not self._ctrlScaleHooked then
+        self._ctrlScaleHooked = true
+        W:OnScaleChanged(self, function(_, _, owner) owner:ApplyControlsWidth() end)
+    end
     self._dpReagList = self:BuildReagentList(host)
     -- "Missing Materials" sits IN the list's header bar, right-aligned and
     -- vertically centred on it, over the [Bank] / [AH] / count columns that
@@ -821,35 +860,17 @@ function CraftingTab:BuildDetailPanel(parent)
     -- secure route rests on DoCraft being protected, which is not verified -- see
     -- the note in CraftingEngine:Craft.
     --
-    -- The button is NOT parented into the panel. A frame with a secure child is
-    -- itself protected, and so is every ancestor -- and the panel lives inside
-    -- AceGUI's pooled window. Up to v1.1.1 that made TOGPM's whole window
-    -- protected, so closing it in combat failed with ADDON_ACTION_BLOCKED
-    -- "Frame:Hide()" (blamed on Ace3; reported in game 2026-09-26), and the
-    -- pooled frame would carry the protection to the next addon given it. So it
-    -- lives on a holder of our own, parented to UIParent, only ANCHORED to the
-    -- panel. A secure state driver hides the holder for the whole of combat --
-    -- TOGPM offers no crafting in combat (the plain buttons are disabled then,
-    -- see SyncPlainCraftEnabled), and the driver is Blizzard's secure code, so it
-    -- may hide a protected frame then (SecureStateDriver.lua:98, classic_era).
-    -- Everything else about the button's visibility, stacking and scale is
-    -- synced out of combat by SyncCraftButton.
-    local holder = CreateFrame("Frame", "TOGPMCraftButtonHolder", UIParent)
-    holder:SetAllPoints(UIParent)
-    if RegisterStateDriver then RegisterStateDriver(holder, "visibility", "[combat] hide; show") end
-    self._dpCraftHolder = holder
-    self._dpCraft = nil
-    -- NOT anchored to the panel either: protection also carries to "any frames
-    -- they are anchored to" (warcraft.wiki.gg Secure_Execution_and_Tainting,
-    -- quoted by Peer Review 2026-09-26). SyncCraftButton places it at the panel's
-    -- screen position, relative to the holder only. These are its panel-relative
-    -- coordinates: CR in from the right edge, _dpCraftY down from the top.
+    -- The secure button is LibAceGUIWidgets' overlay button (MINOR 48, inbox
+    -- 48ef6be4): the library keeps it OFF the pooled window (a secure child
+    -- would protect the whole window -- ADDON_ACTION_BLOCKED closing it in
+    -- combat, 2026-09-26), draws it in the strata above the panel so the
+    -- Toplevel window's Raise cannot cover it (Discord 2026-10-30, dim and dead
+    -- on every enchant), follows the panel, hides it for combat, and lets go when
+    -- the window is released. TOGPM's own copy of all that broke three times and
+    -- is gone. Panel-relative placement: CR in from the right, _dpCraftY down.
     self._dpCraftRight, self._dpCraftY, self._dpCraftW = CR, -34, CW
+    self._dpCraft = nil
     self:EnsureCraftButton()
-    -- Follow the panel: when the window closes, switches tab or reopens, the
-    -- button (which is not the panel's child) has to be told.
-    panel:HookScript("OnShow", function() CraftingTab:SyncCraftButton() end)
-    panel:HookScript("OnHide", function() CraftingTab:SyncCraftButton() end)
 
     local queueBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     queueBtn:SetSize(CW, 24)
@@ -935,33 +956,66 @@ function CraftingTab:BuildDetailPanel(parent)
     self._dpStepper = stepper
 end
 
--- The secure Enchant button, on the holder (never the panel -- see
--- BuildDetailPanel). The library's factory returns nil in combat, so this is
--- retried by SyncCraftButton after combat; every use checks for it. The holder's
--- state driver hides it for all of combat. It only ever casts its /cast macro:
--- trade skills craft from the plain button, so it has no PreClick.
+-- Whether the library can draw the secure Enchant button. Without it (a
+-- LibAceGUIWidgets older than MINOR 48) enchants use the plain button, which
+-- opens Blizzard's Craft window (CraftingEngine:Craft).
+function CraftingTab:HasSecureCraft()
+    return addon.W and addon.W.CreateSecureOverlayButton and true or false
+end
+
+-- The library's isWanted: only on TOGPM's Crafting tab with a castable enchant
+-- selected. The library itself checks the panel is visible.
+local function craftButtonWanted()
+    local mw = addon.MainWindow
+    return CraftingTab._dpSel ~= nil and CraftingTab._craftIsSecure == true
+        and mw ~= nil and mw.frame ~= nil and mw.activeTab == "crafting"
+end
+
+-- The secure Enchant button over the detail panel. The library's factory
+-- returns nil in combat and builds it on leaving combat, calling onCreate;
+-- every use checks for it. It only ever casts its /cast macro: trade skills
+-- craft from the plain button, so it has no PreClick. The name is the
+-- library's key, so a panel rebuilt for a new window gets the same button.
 function CraftingTab:EnsureCraftButton()
     if self._dpCraft then return self._dpCraft end
-    if not (self._dpCraftHolder and addon.W) then return nil end
-    local craftBtn = addon.W:CreateSecureActionButton(self._dpCraftHolder, {
+    if not (self._detailPanel and self:HasSecureCraft()) then return nil end
+    if self._dpCraftPending then return nil end
+    local craftBtn = addon.W:CreateSecureOverlayButton(self._detailPanel, {
         name     = "TOGPMCraftButton",
         text     = L["CraftEnchantButton"],
         width    = self._dpCraftW or 218,
         height   = 24,
         tipTitle = L["CraftButton"],
         tipBody  = L["CraftButtonDesc"],
+        point    = "TOPRIGHT",
+        x        = -(self._dpCraftRight or 12),
+        y        = self._dpCraftY or -34,
+        isWanted = craftButtonWanted,
+        -- Built after combat for the panel of the moment it was asked for; the
+        -- panel may have been rebuilt since, so ask again by name, which hands
+        -- back this button attached to the current panel.
+        onCreate = function()
+            CraftingTab._dpCraftPending = nil
+            CraftingTab._dpCraft = nil
+            if CraftingTab:EnsureCraftButton() and CraftingTab._dpSel then CraftingTab:RefreshDetail() end
+        end,
     })
-    if not craftBtn then return nil end
+    if not craftBtn then
+        self._dpCraftPending = true
+        return nil
+    end
+    return self:AdoptCraftButton(craftBtn)
+end
+
+function CraftingTab:AdoptCraftButton(craftBtn)
     -- The secure handler acts on the down OR the up, by the ActionButtonUseKeyDown
     -- CVar (ElvUI / Bartender4 and Blizzard's "use key down" option set it), so
     -- both are registered and exactly one casts. Registered for "LeftButtonUp"
     -- only, the button was dead for every player with that CVar on ("Enchanting is
     -- the only profession that doesn't work"); TSM's SecureMacroActionButton
     -- branches on the same CVar. Left button only: the factory's AnyUp/AnyDown
-    -- would also cast on a right-click. (The library's clicks = "up" mode is
-    -- MINOR 44; TOGPM accepts 36.)
+    -- would also cast on a right-click. Its visibility is the library's.
     craftBtn:RegisterForClicks("LeftButtonUp", "LeftButtonDown")
-    craftBtn:Hide()
     self._dpCraft = craftBtn
     return craftBtn
 end
@@ -1027,7 +1081,8 @@ function CraftingTab:RefreshDetail()
     -- it and falls back to the plain button (Engine:Craft then opens Blizzard's
     -- Craft window). Whether DoCraft is protected is not verified (see
     -- CraftingEngine:Craft). SetAttribute is forbidden in combat, so guard it.
-    self._craftIsSecure = (Engine._isCraftWindow and sel.name and sel.name ~= "") and true or false
+    self._craftIsSecure = (Engine._isCraftWindow and sel.name and sel.name ~= ""
+        and self:HasSecureCraft()) and true or false
     if craft and self._craftIsSecure and not (InCombatLockdown and InCombatLockdown()) then
         craft:SetAttribute("type", "macro")
         craft:SetAttribute("macrotext", "/cast " .. sel.name)
@@ -1275,124 +1330,16 @@ end
 -- ===========================================================================
 -- Cleanup + refresh hooks
 -- ===========================================================================
--- Show the secure Craft button exactly when the detail panel is on screen with a
--- recipe selected, placed over the panel at the window's strata and scale. The
--- button lives on TOGPMCraftButtonHolder (UIParent) and is anchored to nothing
--- but that holder -- see BuildDetailPanel -- so it does not follow the panel by
--- itself: this reads the panel's rect and places it. The holder's scale is set
--- to the panel's, so the panel's own coordinates are the holder's coordinates
--- (the holder fills UIParent from the screen's bottom-left).
---
--- Everything here is protected on a secure frame, so it runs only out of combat.
--- In combat the holder's state driver has hidden the button; PLAYER_REGEN_ENABLED
--- re-syncs it, so a window closed mid-fight does not leave the button behind.
--- KNOWN GAP (not verified in a client): if the driver re-shows the holder before
--- PLAYER_REGEN_ENABLED fires, a button for a window closed in combat can show
--- until that event, expected to be the same frame.
--- How far above the panel the button is stacked: the panel's own children (the
--- reagent list's rows and header) sit a few levels above it. Same margin the
--- Cooldowns popup uses over the window.
-local CRAFT_BTN_LEVEL_ABOVE = 100
-
--- Where and how the button was last placed: position, scale and stacking. Any
--- change re-places it. The STRATA is part of it, so a panel that changes strata
--- at an unchanged level still re-places the button. Added after the button was
--- seen dimmed behind the window (in game 2026-10-18); whether a strata change
--- caused that is NOT established -- under UIParent the host has no anchors, so
--- the panel has no rect there and the button is not placed. The placement debug
--- line in SyncCraftButton is what will tell.
--- The WINDOW's level is in it too (Peer Review, thread 435f7185): the window is
--- Toplevel, and a Raise that lifted it without moving the panel's level would
--- otherwise leave the button under the window's own textures, unnoticed.
-local function craftBtnKey(panel, right, top)
-    local mw = addon.MainWindow
-    local win = mw and mw.frame and mw.frame.frame
-    return string.format("%.2f:%.2f:%.4f:%d:%s:%d", right, top,
-        panel:GetEffectiveScale(), panel:GetFrameLevel(), panel:GetFrameStrata() or "",
-        win and win.GetFrameLevel and win:GetFrameLevel() or -1)
-end
-
+-- Tell the library's Enchant button what changed: its place in the panel
+-- (enchants sit higher than trade skills) and whether it is wanted (selection,
+-- tab). Placement, strata, following the panel and combat are the library's
+-- (W:CreateSecureOverlayButton); in combat this is recorded and the library
+-- re-syncs on leaving combat.
 function CraftingTab:SyncCraftButton()
-    if InCombatLockdown and InCombatLockdown() then return end
-    local btn, holder, panel = self._dpCraft, self._dpCraftHolder, self._detailPanel
-    if not btn and holder then
-        -- The panel was built in combat, when the factory refuses: build it now,
-        -- and give it the selected recipe's attributes (RefreshDetail calls back).
-        btn = self:EnsureCraftButton()
-        if btn and self._dpSel then return self:RefreshDetail() end
-    end
-    if not (btn and holder and panel) then return end
-    -- Only while TOGPM's window is open on the Crafting tab, not merely while the
-    -- panel reports itself visible: the button stayed on screen after the window
-    -- closed (in game 2026-10-18), so the window's own state is checked too.
-    -- KNOWN GAP: this is a guard, not the diagnosis. Reading the release path,
-    -- the panel's OnHide should already hide the button; why it did not was
-    -- never found, and the panel was never shown to stay visible.
-    local mw = addon.MainWindow
-    -- Enchanting with a castable name only: everything else crafts from the
-    -- plain button in the panel.
-    local want = panel:IsVisible() and self._dpSel ~= nil and self._craftIsSecure == true
-        and mw ~= nil and mw.frame ~= nil and mw.activeTab == "crafting"
-    local right, top = panel:GetRight(), panel:GetTop()
-    if want and right and top then
-        holder:SetFrameStrata(panel:GetFrameStrata())
-        local uiScale = UIParent:GetEffectiveScale()
-        if uiScale and uiScale > 0 then holder:SetScale(panel:GetEffectiveScale() / uiScale) end
-        -- The window is Toplevel (AceGUIContainer-Frame.lua:194): every click on
-        -- it Raises it within FULLSCREEN_DIALOG, above this button, which is not
-        -- its descendant. The button then sat dimmed under the panel and took no
-        -- clicks (Discord, 2026-09-29, Enchanting). So the level is part of the
-        -- watcher's key, and the margin clears the panel's own children.
-        local win = mw.frame.frame
-        local base = panel:GetFrameLevel()
-        if win and win.GetFrameLevel and win:GetFrameLevel() > base then base = win:GetFrameLevel() end
-        btn:SetFrameLevel(base + CRAFT_BTN_LEVEL_ABOVE)
-        btn:ClearAllPoints()
-        btn:SetPoint("TOPRIGHT", holder, "BOTTOMLEFT",
-            right - (self._dpCraftRight or 12), top + (self._dpCraftY or -34))
-        btn:Show()
-        self._craftBtnPlacedAt = craftBtnKey(panel, right, top)
-        -- In game 2026-10-18 the button looked dimmed behind the window. Either
-        -- draw order or the disabled look (no materials) fits the screenshot, so
-        -- each placement is logged under /togpm debug to tell them apart.
-        if addon.DebugPrint then
-            -- Alpha and mouse too: on 2026-10-18 the button logged enabled and
-            -- above the panel, yet looked dim and took no clicks.
-            addon:DebugPrint(string.format(
-                "Craft button placed: enabled=%s btn %s/%d holder %s, panel %s/%d, window %s/%d, alpha=%.2f mouse=%s",
-                tostring(btn:IsEnabled()), tostring(btn:GetFrameStrata()), btn:GetFrameLevel(),
-                tostring(holder:GetFrameStrata()), tostring(panel:GetFrameStrata()), panel:GetFrameLevel(),
-                tostring(win and win:GetFrameStrata()), win and win:GetFrameLevel() or -1,
-                btn.GetEffectiveAlpha and btn:GetEffectiveAlpha() or -1,
-                tostring(btn.IsMouseEnabled and btn:IsMouseEnabled())))
-        end
-    else
-        btn:Hide()
-        self._craftBtnPlacedAt = nil
-    end
-    -- The watcher runs whenever the button is WANTED, not only while it is
-    -- shown: a panel not laid out yet has no rect, the button stays hidden, and
-    -- only the watcher will notice the rect arriving and place it.
-    if self._craftBtnWatcher then
-        if want then self._craftBtnWatcher:Show() else self._craftBtnWatcher:Hide() end
-    end
+    local btn = self._dpCraft
+    if not btn then return end
+    btn:SetOverlayPoint("TOPRIGHT", -(self._dpCraftRight or 12), self._dpCraftY or -34)
 end
-
--- The panel moves with the window (a drag, a resize, a window-scale change) and
--- nothing tells the button. While the button is shown, this plain frame checks
--- the panel's rect each frame and re-places the button when it changed -- out of
--- combat only; in combat the button is hidden and need not follow.
-local watcher = CreateFrame("Frame")
-watcher:Hide()
-watcher:SetScript("OnUpdate", function()
-    if InCombatLockdown and InCombatLockdown() then return end
-    local panel = CraftingTab._detailPanel
-    local right, top = panel and panel:GetRight(), panel and panel:GetTop()
-    if not (right and top) then return end
-    local key = craftBtnKey(panel, right, top)
-    if key ~= CraftingTab._craftBtnPlacedAt then CraftingTab:SyncCraftButton() end
-end)
-CraftingTab._craftBtnWatcher = watcher
 
 -- Every plain button that crafts -- Craft, Craft Max, and the queue's Craft
 -- Next and Craft All -- follows the same rule as the secure holder, which a
@@ -1416,7 +1363,7 @@ end
 -- skipped the secure button's SetEnabled and SetAttribute but still moved the
 -- selection, so without this the Enchant button would come back casting the
 -- enchant picked before the fight (Peer Review NEW-2, thread 98ed0622).
--- RefreshDetail ends in SyncCraftButton, which re-places the button.
+-- The button's own placement is re-synced by the library on the same event.
 local regenFrame = CreateFrame("Frame")
 regenFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 regenFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -1425,7 +1372,6 @@ regenFrame:SetScript("OnEvent", function(_, event)
         return CraftingTab:RefreshDetail()
     end
     CraftingTab:SyncPlainCraftEnabled(event == "PLAYER_REGEN_DISABLED")
-    if event == "PLAYER_REGEN_ENABLED" then CraftingTab:SyncCraftButton() end
 end)
 CraftingTab._regenFrame = regenFrame
 

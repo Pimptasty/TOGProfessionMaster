@@ -1566,6 +1566,57 @@ function MissingRecipesTab:HasGuide(entry)
     return self:PickGuideRow(self:RowDisplay(entry).whereRows) ~= nil
 end
 
+-- The scroll a [Guide] click is guiding to, and how many the bags held then.
+-- Questbook never clears a place on arrival (Questbook Modules/Tracker.lua:
+-- the target stays until ActiveQuest:Stop), so after the scroll was bought the
+-- HUD kept guiding to the vendor (Discord report, 2026-10-30: "will not quit
+-- after you talk to the vendor and buy"). The guide is ours, so we end it the
+-- moment the scroll lands in the bags.
+MissingRecipesTab._guided = nil   -- { itemId, count }
+
+local function bagCount(itemId)
+    local get = addon.Item and addon.Item.GetCount
+    return get and tonumber(get(itemId)) or 0
+end
+
+local guideBagWatch
+local function watchGuidedBags(on)
+    if on and not guideBagWatch then
+        guideBagWatch = CreateFrame("Frame")
+        guideBagWatch:SetScript("OnEvent", function() MissingRecipesTab:OnGuidedBagsChanged() end)
+    end
+    if not guideBagWatch then return end
+    if on then
+        guideBagWatch:RegisterEvent("BAG_UPDATE_DELAYED")
+    else
+        guideBagWatch:UnregisterEvent("BAG_UPDATE_DELAYED")
+    end
+end
+
+-- Bags changed while a [Guide] was running. Questbook no longer guiding (the
+-- player stopped it, or picked something else and stopped that) ends the
+-- watch without touching Questbook; the scroll arriving stops the guide.
+-- KNOWN COST: Questbook has no public "what is guided" read, so a track the
+-- player started in Questbook after our [Guide] is the one this stops.
+function MissingRecipesTab:OnGuidedBagsChanged()
+    local g = self._guided
+    if not g then return watchGuidedBags(false) end
+    if not self:IsGuiding() then
+        self._guided = nil
+        return watchGuidedBags(false)
+    end
+    if bagCount(g.itemId) <= g.count then return end
+    self._guided = nil
+    watchGuidedBags(false)
+    local idb = addon.GetItemDB and addon:GetItemDB()
+    if idb and idb.WhereStopTracking and idb:WhereStopTracking() then
+        addon:Print(L["GuideArrived"])
+        if addon.MainWindow and addon.MainWindow.ShowGuideState then
+            addon.MainWindow:ShowGuideState()
+        end
+    end
+end
+
 -- Hand the best place to Questbook through LibItemDB, and say where.
 function MissingRecipesTab:Guide(entry)
     local idb = addon.GetItemDB and addon:GetItemDB()
@@ -1575,6 +1626,10 @@ function MissingRecipesTab:Guide(entry)
         local where = (row.name ~= "" and row.name or row.kind)
         if row.zone and row.zone ~= "" then where = where .. ", " .. row.zone end
         addon:Print(L["GuideStartedFormat"]:format(where))
+        if entry.itemId then
+            self._guided = { itemId = entry.itemId, count = bagCount(entry.itemId) }
+            watchGuidedBags(true)
+        end
         return true
     end
     addon:Print(L["GuideFailed"])
@@ -1583,6 +1638,8 @@ end
 
 -- Stop whatever Questbook is guiding to (its universal stop, via LibItemDB).
 function MissingRecipesTab:StopGuide()
+    self._guided = nil
+    watchGuidedBags(false)
     local idb = addon.GetItemDB and addon:GetItemDB()
     if idb and idb.WhereStopTracking and idb:WhereStopTracking() then
         addon:Print(L["GuideStopped"])

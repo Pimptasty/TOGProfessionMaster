@@ -708,6 +708,67 @@ describe("the [Guide] button", function()
 		assert.is_true(M:StopGuide())
 		assert.equal(L["GuideStopped"], printed[1])
 	end)
+
+	it("says nothing when there was nothing to stop", function()
+		itemDB({})
+		ns._itemDB.WhereStopTracking = function() return false end
+		assert.is_false(M:StopGuide())
+		assert.equal(0, #printed)
+	end)
+
+	-- Discord report, 2026-10-30: "takes you to the vendor but will not quit
+	-- after you talk to the vendor and buy." Questbook keeps a place until it is
+	-- stopped, so the guide we started has to end when the scroll arrives.
+	describe("once the scroll is in the bags", function()
+		local count, stops, tracking
+
+		before_each(function()
+			count, stops, tracking = 1, 0, true
+			env.itemAPI("GetItemCount", function(id) return id == SCROLL and count or 0 end)
+			AceAddon.addons["Questbook"] = {
+				TrackPlace = function() end,
+				IsTracking = function() return tracking end,
+			}
+			itemDB({ place("Vendor", 1412) })
+			ns._itemDB.WhereStopTracking = function() stops = stops + 1; tracking = false; return true end
+		end)
+
+		after_each(function() M:StopGuide() end)
+
+		it("stops the guide when one more scroll arrives, through the bag event", function()
+			assert.is_true(M:Guide({ spellId = B, itemId = SCROLL }))
+			assert.same({ itemId = SCROLL, count = 1 }, M._guided)
+			package.loaded["env.frames"].fireEvent("BAG_UPDATE_DELAYED")
+			assert.equal(0, stops)                 -- the scroll already held does not count
+			count = 2
+			package.loaded["env.frames"].fireEvent("BAG_UPDATE_DELAYED")
+			assert.equal(1, stops)
+			assert.equal(L["GuideArrived"], printed[#printed])
+			assert.is_nil(M._guided)
+			count = 3
+			package.loaded["env.frames"].fireEvent("BAG_UPDATE_DELAYED")
+			assert.equal(1, stops)                 -- the watch ended with the guide
+		end)
+
+		it("leaves Questbook alone once it has stopped guiding by other means", function()
+			M:Guide({ spellId = B, itemId = SCROLL })
+			assert.same({ itemId = SCROLL, count = 1 }, M._guided)
+			tracking = false
+			count = 2
+			M:OnGuidedBagsChanged()
+			assert.equal(0, stops)
+			assert.is_nil(M._guided)
+		end)
+
+		it("forgets the scroll when the player stops the guide", function()
+			M:Guide({ spellId = B, itemId = SCROLL })
+			assert.same({ itemId = SCROLL, count = 1 }, M._guided)
+			M:StopGuide()
+			assert.is_nil(M._guided)
+			M:OnGuidedBagsChanged()                -- nothing to watch: a no-op
+			assert.equal(1, stops)
+		end)
+	end)
 end)
 
 -- Discord report, 2026-10-07: "I cannot read what the recipe is without

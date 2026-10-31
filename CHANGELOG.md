@@ -6,6 +6,47 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # Ultimate Profession Master Changelog (formerly TOG Profession Master)
 
+## [v1.10.1] (2026-10-31) - Enchant button clickable again; Guide stops once the scroll is bought
+
+### Bug Fixes
+
+- **The Enchant button on the Crafting tab was dim and took no clicks, on
+  every enchant** (Discord 2026-10-30, Classic Hardcore, with a screenshot of
+  Agility 7 boots selected and materials for two). The secure button lives
+  off the pooled window on a UIParent holder, and the AceGUI Frame is
+  Toplevel, so a click on the window Raised it above the button. TOGPM's own
+  placement code for that button (holder, strata and level sync, the OnUpdate
+  watcher, the placement key, the regen re-sync) broke three times and is
+  deleted. The button is now LibAceGUIWidgets'
+  `W:CreateSecureOverlayButton` (MINOR 48, LibAceGUIWidgets v0.10.0, inbox
+  contract 48ef6be4), which draws it in the strata above the panel, follows
+  the panel, hides it for combat and detaches it when the window or tab is
+  released. The draw re-attaches it with `SetPanel` after parking the
+  session-lifetime detail panel, because the library now detaches on the
+  innermost widget's release (a tab switch). Feature-detected: with a
+  LibAceGUIWidgets older than MINOR 48 enchants use the plain button, which
+  opens the game's Enchanting window. The reagent list and cost line now end
+  at `W:ScaledSize(230)`, re-applied on `OnScaleChanged`, because the
+  library's button grows with its size slider and would have run over the
+  reagent list above a scale of about 1.06 (arithmetic, not seen in game).
+  Location: `GUI/CraftingTab.lua` (EnsureCraftButton, AdoptCraftButton,
+  HasSecureCraft, SyncCraftButton, ApplyControlsWidth, Draw). Spec:
+  `Tests/craftingtab_draw_spec.lua`.
+- **[Guide] on Missing Recipes kept guiding to the vendor after the scroll
+  was bought** (Discord 2026-10-30: "will not quit after you talk to the
+  vendor and buy"). Questbook never clears a place on arrival, so the guide
+  is now ended by TOGPM: [Guide] records the scroll's bag count and watches
+  `BAG_UPDATE_DELAYED`; when the count rises it stops the guide through
+  `WhereStopTracking` and says so. If Questbook is no longer guiding, the
+  watch just ends. KNOWN COST: Questbook has no public read of what it is
+  guiding, so a track the player started in Questbook after our [Guide] is
+  the one this stops. The start message now says the guide stops by itself.
+  Location: `GUI/MissingRecipesTab.lua` (Guide, StopGuide,
+  OnGuidedBagsChanged), `Locale/enUS.lua`. Spec:
+  `Tests/missingrecipes_spec.lua`.
+
+---
+
 ## [v1.10.0] (2026-10-26) - Missing Recipes shows Auction House prices and a Vendor only filter; German clients scan professions
 
 ### New Features

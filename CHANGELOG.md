@@ -6,6 +6,40 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # Ultimate Profession Master Changelog (formerly TOG Profession Master)
 
+## [v1.10.2] (2026-11-05) - Retail: no more error when a system message arrives
+
+### Bug Fixes
+
+- **Retail: "attempt to index local 'message' (a secret string value, while
+  execution tainted by 'TOGProfessionMaster')"** (Discord 2026-11-05). Retail
+  sometimes hands addons a `CHAT_MSG_SYSTEM` payload as a secret value;
+  `type()` still answers "string", so the learned-recipe handler's guard let
+  it through and `message:match` raised. `OnLearnMessage` now returns early
+  when `issecretvalue(message)` is true, read through `_G` because the global
+  exists only on the live client (FrameScriptDocumentation.lua), so every
+  Classic flavour skips the check. The "No player named X is currently
+  playing" chat filter read the same payload with `message:find` and gets the
+  same guard, plus a `type()` check where it only tested for nil. A recipe
+  learned while the message is secret is still recorded by the trade-skill
+  scan the next time that profession window opens. Location: `Scanner.lua`
+  (OnLearnMessage, InstallChatFilter). Specs: `Tests/scanner_learn_spec.lua`,
+  new `Tests/scanner_chatfilter_spec.lua` (the filter had no spec before).
+
+### Improvements
+
+- **README rebranded and reorganised** -- a "Works even better with" section
+  near the top, Ultimate Bank and Ultimate Questbook integrations as their own
+  sections, and the cooldown ready alerts and Missing Recipes' Can learn now
+  filter, both shipped features, now described. Location: `README.md`.
+- **Dev replication script reaches the new WoW Forever install** --
+  `_forever_` added to the target list, and a target is picked when its
+  version folder exists rather than its `Interface\AddOns`, so a fresh install
+  without an AddOns folder is no longer skipped silently; `-DryRun` no longer
+  creates folders. Dev-only, not shipped. Location:
+  `wow-version-replication.ps1`.
+
+---
+
 ## [v1.10.1] (2026-10-31) - Enchant button clickable again; Guide stops once the scroll is bought
 
 ### Bug Fixes

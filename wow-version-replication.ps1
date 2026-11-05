@@ -55,18 +55,22 @@ if (-not $DryRun) {
     }
 }
 
-# _classic_beta_ is the WoW Forever client (installed 2026-09-27). _retail_ is
-# Retail (the _Mainline TOC, added 2026-10-04); skipped like any other flavour
-# when that install is not on disk.
-$WowVersions = @("_classic_era_", "_classic_", "_anniversary_", "_classic_beta_", "_retail_")
+# _forever_ is WoW Forever's own install folder (seen 2026-11-04 with its own
+# Wow.exe); _classic_beta_ is the earlier Forever build (installed 2026-09-27),
+# kept while it is still installed. _retail_ is Retail (the _Mainline TOC, added
+# 2026-10-04); skipped like any other flavour when that install is not on disk.
+$WowVersions = @("_classic_era_", "_classic_", "_anniversary_", "_classic_beta_", "_forever_", "_retail_")
 
-# Build list of addon install directories that actually exist on disk
+# Build list of addon install directories. Keyed on the VERSION folder existing,
+# not Interface\AddOns: a freshly installed client has no AddOns folder until an
+# addon is put there, so testing AddOns skipped a new install silently. The
+# AddOns folder is created along with the addon folder below.
 # Exclude the version that contains the source folder to avoid copying to itself
 $Destinations = foreach ($ver in $WowVersions) {
-    $addonsDir = Join-Path $WowBase "$ver\Interface\AddOns"
-    $dest = Join-Path $addonsDir $AddonName
-    if ((Test-Path $addonsDir) -and ($Source -notlike "$dest*")) {
-        if (-not (Test-Path $dest)) {
+    $verDir = Join-Path $WowBase $ver
+    $dest = Join-Path $verDir "Interface\AddOns\$AddonName"
+    if ((Test-Path $verDir) -and ($Source -notlike "$dest*")) {
+        if (-not (Test-Path $dest) -and -not $DryRun) {
             New-Item -ItemType Directory -Path $dest -Force | Out-Null
         }
         $dest

@@ -660,7 +660,10 @@ local function InstallChatFilter()
     if _chatFilterInstalled or not ChatFrame_AddMessageEventFilter then return end
     _chatFilterInstalled = true
     ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(_self, _event, message)
-        if not message then return false end
+        if type(message) ~= "string" then return false end
+        -- Same Retail secret-value hazard as OnLearnMessage below.
+        local isSecret = _G.issecretvalue
+        if isSecret and isSecret(message) then return false end
         if message:find("No player named ", 1, true) then
             if message:match("^No player named .+ is currently playing%.$") then
                 return true  -- suppress
@@ -1178,6 +1181,13 @@ end
 --- professions share cannot be credited to one the character does not have.
 function Scanner:OnLearnMessage(message)
     if type(message) ~= "string" then return false end
+    -- Retail (Midnight) hands addons chat payloads as secret values in some
+    -- contexts; type() still says "string" but indexing one errors (player
+    -- report, 2026-11-05). issecretvalue is a live-client global only, so the
+    -- Classic flavours skip the check. A secret message is never a learn line
+    -- we could read anyway.
+    local isSecret = _G.issecretvalue
+    if isSecret and isSecret(message) then return false end
     local pattern = getLearnRecipePattern()
     if not pattern then return false end
     local name = message:match(pattern)

@@ -110,6 +110,18 @@ describe("the 'You have learned how to create a new item' system message", funct
 		assert.is_nil(crafterOf(BOLT))
 	end)
 
+	-- Player report, 2026-11-05 (Retail): "attempt to index local 'message' (a
+	-- secret string value, while execution tainted by 'TOGProfessionMaster')".
+	-- type() of a secret string is still "string"; only issecretvalue tells.
+	it("leaves a secret message alone instead of indexing it", function()
+		local secret = "You have learned how to create a new item: Bolt of Mageweave."
+		_G.issecretvalue = function(v) return v == secret end
+		finally(function() _G.issecretvalue = nil end)
+		assert.is_false(S:OnLearnMessage(secret))
+		assert.is_nil(crafterOf(BOLT))
+		assert.equal(0, #fired)
+	end)
+
 	it("follows the client's own wording, rebuilt when the string differs", function()
 		_G.ERR_LEARN_RECIPE_S = "Vous avez appris à créer un nouvel objet : %s."
 		assert.is_true(S:OnLearnMessage("Vous avez appris à créer un nouvel objet : Bolt of Mageweave."))

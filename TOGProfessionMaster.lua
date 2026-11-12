@@ -953,6 +953,23 @@ function Ace:OnPlayerEnteringWorld(_event, isInitialLogin, isReloadingUi)
     if staleName and ac[staleName .. "-"] then
         ac[staleName .. "-"] = nil
     end
+    -- Self-heal (WoW Forever): this character's key used to be "First-Realm"
+    -- (see GetCharacterKey). Drop it from the account set and hand it to the
+    -- pending purge, whose roster-gated sweep deletes its data -- the roster
+    -- cannot vouch for that spelling -- so it does not linger as a phantom alt.
+    -- This character's data is re-recorded under the new key by its own scans.
+    local realmNow = GetNormalizedRealmName and GetNormalizedRealmName()
+    if staleName and realmNow and realmNow ~= "" then
+        local legacyKey = staleName .. "-" .. realmNow
+        if legacyKey ~= myKey and ac[legacyKey] then
+            ac[legacyKey] = nil
+            local gdbNow = addon:GetGuildDb()
+            if gdbNow then
+                gdbNow.pendingPurge = gdbNow.pendingPurge or {}
+                gdbNow.pendingPurge[legacyKey] = true
+            end
+        end
+    end
 
     -- v0.7.0: legacy "Faction-Realm-GuildName" → "Faction-GuildName" bucket
     -- migration removed. gdb.guilds tree was wiped by MigrateGuildDb at
@@ -1417,7 +1434,11 @@ function addon:DumpTransmuteDiag()
     local total = 0
     for spellId, name in pairs(data.transmutes) do
         total = total + 1
-        local start, duration = addon.Spell.GetCooldown(spellId)
+        local start, duration, _, _, secret = addon.Spell.GetCooldown(spellId)
+        if secret then
+            Ace:Print("  [API] cooldowns are hidden from addons right now (combat) -- try again out of combat")
+            return
+        end
         if start and start > 0 and duration and duration > 1.5 then
             local remaining = (start + duration) - GetTime()
             apiActive[spellId] = { name = name, start = start, duration = duration, remaining = remaining }
@@ -2189,7 +2210,23 @@ end
 -- Format: "Name-NormalizedRealm" — GetNormalizedRealmName() is the same for
 -- all realms in a connected-realm cluster, so cross-realm guild mates share
 -- consistent keys.
+--
+-- WoW Forever (regionally unique names) is the exception: a character is
+-- "First Last" with NO realm, and UnitName's second return is the surname.
+-- The old key there was "First-Realm", which matches no roster entry
+-- (LibGuildRoster keys Forever members by full name) and which the receive
+-- path's NormalizeName cut down to "First" -- so every guildmate's data was
+-- filed under a name the roster gate rejected, and no guildmate ever showed
+-- (Discord report, 2026-11-08). The player's own key comes from the library
+-- there, so it is spelled exactly as the roster and the wire spell it.
 function addon:GetCharacterKey(name, realm)
+    if not name and not realm then
+        local GR = LibStub and LibStub("LibGuildRoster-1.0", true)
+        if GR and GR.RegionalNames and GR:RegionalNames() and GR.GetNormalizedPlayer then
+            local key = GR:GetNormalizedPlayer()
+            if key then return key end
+        end
+    end
     local r = realm or (GetNormalizedRealmName and GetNormalizedRealmName()) or ""
     return (name or UnitName("player")) .. "-" .. r
 end

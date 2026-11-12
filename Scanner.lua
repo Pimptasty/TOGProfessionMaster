@@ -892,8 +892,12 @@ function addon:PrintStatus()
 
     local gdb = addon:GetGuildDb()
     if gdb then
+        -- Members = characters with a profession record. gdb.guildData, which
+        -- this used to count, has no writer, so it said 0 and every online
+        -- member "(no data)" on every client -- misleading in the one report
+        -- (WoW Forever, 2026-11-08) where the status output was the evidence.
         local memberCount, profCount, cdCount = 0, 0, 0
-        for _ in pairs(gdb.guildData  or {}) do memberCount = memberCount + 1 end
+        for _ in pairs(gdb.skills     or {}) do memberCount = memberCount + 1 end
         for _ in pairs(gdb.recipes    or {}) do profCount   = profCount   + 1 end
         for _ in pairs(gdb.cooldowns  or {}) do cdCount     = cdCount     + 1 end
         addon:Print("  Stored members=" .. memberCount
@@ -919,7 +923,7 @@ function addon:PrintStatus()
         local online = GuildRoster:GetOnlineMembers()
         addon:Print("Online guild members: " .. #online)
         for _, name in ipairs(online) do
-            local inGdb = gdb and gdb.guildData and gdb.guildData[name]
+            local inGdb = gdb and gdb.skills and gdb.skills[name]
             addon:Print("  " .. name .. (inGdb and "" or "  |cffff4444(no data)|r"))
         end
     end
@@ -1241,6 +1245,12 @@ function Scanner:OnTrainerShow()
         addon:DebugPrint("  GetNumTrainerServices unavailable on this client")
         return
     end
+    -- Profession trainers only. A class trainer's spells were being matched
+    -- into the observations and a summary printed after every spell learned
+    -- (player report, 2026-11-07, WoW Forever). IsTradeskillTrainer is in
+    -- GlobalAPI on every flavour; a client without it keeps the old behaviour.
+    local isTradeskillTrainer = _G.IsTradeskillTrainer
+    if isTradeskillTrainer and not isTradeskillTrainer() then return end
     local gdb = addon:GetGuildDb()
     if not gdb then
         addon:DebugPrint("  GetGuildDb returned nil (not in a guild?)")
@@ -1358,16 +1368,12 @@ function Scanner:OnTrainerShow()
 
     local total = 0
     for _ in pairs(gdb.trainerObservations) do total = total + 1 end
-    -- Full diagnostic stays on DebugPrint (visible with /togpm debug).
-    -- The one-line summary on captures stays user-facing — small,
-    -- informative, fires once per trainer visit (the early no-services
-    -- fires now return at the top so they don't print at all).
+    -- Diagnostic only (visible with /togpm debug). The user-facing summary
+    -- that used to print here re-fired on every TRAINER_UPDATE, i.e. after
+    -- every service learned, and was chat spam to players.
     addon:DebugPrint(("Scanner: trainerObs captured=%d updated=%d refreshed=%d"
         .. " skipped(header)=%d skipped(no-spell)=%d total=%d"):format(
         captured, updated, refreshed, skipped_header, skipped_no_spell, total))
-    if captured > 0 or updated > 0 then
-        addon:Print(("Trainer scan: %d new, %d updated (%d total recorded)"):format(captured, updated, total))
-    end
 end
 
 function Scanner:OnBagCooldownEvent()
@@ -2297,7 +2303,11 @@ function Scanner:ScanCooldowns()
 
     local transmuteExpiry, activeTransmuteId = nil, nil
     for spellId in pairs(data.transmutes) do
-        local start, duration = addon.Spell.GetCooldown(spellId)
+        local start, duration, _, _, secret = addon.Spell.GetCooldown(spellId)
+        -- Cooldowns are restricted right now (Retail combat); a nil read
+        -- would seed "Ready" over a real cooldown, so keep what is stored
+        -- and let the next scan out of combat catch up.
+        if secret then return end
         if start and start > 0 and duration and duration > 1.5 then
             local remaining = (start + duration) - GetTime()
             if remaining > 0 and remaining < 691200 then
@@ -2335,8 +2345,12 @@ function Scanner:ScanCooldowns()
     -- ---- Non-transmute cooldowns -------------------------------------------
 
     for spellId in pairs(data.cooldowns) do
-        local start, duration = addon.Spell.GetCooldown(spellId)
-        if start and start > 0 and duration and duration > 1.5 then
+        local start, duration, _, _, secret = addon.Spell.GetCooldown(spellId)
+        if secret then
+            -- Restricted read: leave the stored entry exactly as it is. Not a
+            -- return -- the transmute stores above are already written and the
+            -- change detection below must still see them.
+        elseif start and start > 0 and duration and duration > 1.5 then
             local remaining = GetCooldownLeft(start, duration)
             if remaining > 0 and remaining < 2592000 then
                 stored[spellId] = math.floor(now + remaining)

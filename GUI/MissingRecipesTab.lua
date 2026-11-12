@@ -1422,8 +1422,9 @@ end
 
 -- Whether LibItemDB can say where to get the row's recipe scroll: a scroll
 -- item, a LibItemDB with the "Where to get it" window (MINOR 36), and at least
--- one known source -- a button that opens "No known source" is a dead end, and
--- WoW Forever's ItemDB ships no places data. Worked out once per entry (cached
+-- one known source -- a button that opens "No known source" is a dead end (an
+-- older ItemDB shipped no WoW Forever places at all; v1.9.0 loads Forever's own
+-- ItemPlaces in the same format as Vanilla's). Worked out once per entry (cached
 -- on its display table, which FillList rebuilds) because the list asks on every
 -- paint. The faction is the window's own: by default it hides the other
 -- faction's vendors, so a scroll only they sell would open on an empty list.

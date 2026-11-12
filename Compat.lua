@@ -297,11 +297,21 @@ addon.Item.GetCooldown     = itemAPI("GetItemCooldown",     "GetItemCooldown")
 -- ---------------------------------------------------------------------------
 addon.Spell = addon.Spell or {}
 
+-- Retail (Midnight) marks C_Spell.GetSpellCooldown SecretWhenCooldownsRestricted
+-- (SpellDocumentation.lua:271 in the live tree): in combat and encounters the
+-- start/duration come back as secret numbers, and comparing one from tainted
+-- code errors (player report, 2026-11-07, ScanCooldowns). Such a read answers
+-- nil with a 5th return of true, so a caller can tell "restricted right now"
+-- from "not on cooldown". issecretvalue exists on the live client only.
 function addon.Spell.GetCooldown(spellId)
     local ns = C_Spell and C_Spell.GetSpellCooldown
     if ns then
         local info, duration, enabled, modRate = ns(spellId)
         if type(info) == "table" then
+            local isSecret = _G.issecretvalue
+            if isSecret and (isSecret(info.startTime) or isSecret(info.duration)) then
+                return nil, nil, nil, nil, true
+            end
             return info.startTime, info.duration, info.isEnabled, info.modRate
         end
         -- A client whose C_Spell form still answers the classic list.
@@ -418,11 +428,44 @@ end
 -- Whether Forever has GetAllRecipeIDs is NOT verified (its source tree never
 -- calls it), so the filtered call is the fallback. Dummy and gathering entries
 -- are not crafts.
+--
+-- On that fallback a filtered window answers NOTHING rather than a partial
+-- list: the Scanner treats the list as the character's whole profession and
+-- removes them from every recipe missing from it, then shares that as
+-- authoritative. An empty answer makes the scan skip (count == 0) until the
+-- filters are cleared and the next list update re-scans. The player's filters
+-- are left alone -- resetting them under the player would be worse.
+function addon:ModernRecipeListFiltered()
+    local T = C_TradeSkillUI
+    if not T then return false end
+    -- Same reads as Blizzard's Professions.IsUsingDefaultFilters and
+    -- GetCurrentFilterSet (forever Blizzard_Professions.lua:1091, :1171),
+    -- minus the unlearned toggle and skill line, which cannot hide a learned
+    -- recipe of the open line.
+    local name = T.GetRecipeItemNameFilter and T.GetRecipeItemNameFilter()
+    if type(name) == "string" and name ~= "" then return true end
+    if T.GetShowLearned and not T.GetShowLearned() then return true end
+    if T.GetOnlyShowMakeableRecipes and T.GetOnlyShowMakeableRecipes() then return true end
+    if T.GetOnlyShowSkillUpRecipes and T.GetOnlyShowSkillUpRecipes() then return true end
+    if T.GetOnlyShowFirstCraftRecipes and T.GetOnlyShowFirstCraftRecipes() then return true end
+    if T.AreAnyInventorySlotsFiltered and T.AreAnyInventorySlotsFiltered() then return true end
+    if T.AnyRecipeCategoriesFiltered and T.AnyRecipeCategoriesFiltered() then return true end
+    local petJournal = _G.C_PetJournal
+    local pj = petJournal and petJournal.GetNumPetSources
+    if pj and T.IsAnyRecipeFromSource and T.IsRecipeSourceTypeFiltered then
+        for i = 1, pj() or 0 do
+            if T.IsAnyRecipeFromSource(i) and T.IsRecipeSourceTypeFiltered(i) then return true end
+        end
+    end
+    return false
+end
+
 function addon:GetModernLearnedRecipeIDs()
     local T = C_TradeSkillUI
     local listFn = T and (T.GetAllRecipeIDs or T.GetFilteredRecipeIDs)
     local out = {}
     if not listFn then return out end
+    if not T.GetAllRecipeIDs and self:ModernRecipeListFiltered() then return out end
     for _, id in ipairs(listFn() or {}) do
         local r = T.GetRecipeInfo(id)
         if r and r.learned and not r.isDummyRecipe and not r.isGatheringRecipe then

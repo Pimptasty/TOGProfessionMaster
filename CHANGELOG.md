@@ -6,6 +6,65 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # Ultimate Profession Master Changelog (formerly TOG Profession Master)
 
+## [v1.10.3] (2026-11-12) - WoW Forever: guild sync works, no combat error, no trainer spam
+
+### Bug Fixes
+
+- **WoW Forever: no guildmate's professions ever showed, on any client**
+  (Discord 2026-11-08, with a status screenshot reading sends=24 rcvs=176, so
+  data was flowing). Forever names are regionally unique "First Last" with no
+  realm, and `UnitName`'s second return there is the SURNAME. The character
+  key was `UnitName("player") .. "-" .. realm`, i.e. "First-Realm", while
+  LibGuildRoster keys Forever members "First Last" and its `NormalizeName`
+  cuts an incoming "First-Realm" down to "First". Every guildmate's data was
+  filed under a key no roster entry matched and the roster gate hid it; the
+  own-echo check never matched either. `GetCharacterKey()` now returns
+  `LibGuildRoster:GetNormalizedPlayer()` when the library's `RegionalNames()`
+  is on, so the key matches the roster and the wire; every other client keeps
+  "Name-Realm". At login on Forever the old "First-Realm" own key leaves the
+  account-character set and goes to the roster-gated pending purge, so it
+  does not linger as a phantom alt. A Forever player re-records their recipes
+  by opening each profession window once. Location: `TOGProfessionMaster.lua`
+  (GetCharacterKey, OnPlayerEnteringWorld). Spec: new
+  `Tests/forevernames_spec.lua`.
+- **WoW Forever: a search or filter in the Professions window stripped
+  recipes from your character.** Forever has no `GetAllRecipeIDs`, only the
+  window's filtered list, and the scan treats its list as the whole
+  profession, so a filtered window removed the character from every recipe
+  it did not show and shared that shortened set as authoritative. The scan
+  now skips while any filter is active (the same reads as Blizzard's
+  `Professions.IsUsingDefaultFilters`) and re-scans on the next list update.
+  Location: `Compat.lua` (ModernRecipeListFiltered,
+  GetModernLearnedRecipeIDs). Spec: `Tests/scanner_scan_spec.lua`.
+- **WoW Forever / Retail: "attempt to compare local 'start' (a secret number
+  value)" from the cooldown scan** (Discord 2026-11-07). `C_Spell.GetSpellCooldown`
+  is `SecretWhenCooldownsRestricted`, so in combat its fields are secret.
+  `addon.Spell.GetCooldown` now answers nil values plus a fifth `true` for a
+  secret read; the scan skips that pass instead of mistaking "unreadable" for
+  "ready", and the transmute diagnostic says to try again out of combat.
+  Location: `Compat.lua`, `Scanner.lua` (ScanCooldowns),
+  `TOGProfessionMaster.lua` (DumpTransmuteDiag). Specs:
+  `Tests/compat_spec.lua`, `Tests/scanner_cooldowns_spec.lua`.
+- **"Trainer scan: 0 new, 4 updated" printed after every spell learned at a
+  class trainer** (Discord 2026-11-07). The trainer scan ran at any trainer
+  and re-fired on each `TRAINER_UPDATE`. It now runs only where
+  `IsTradeskillTrainer()` is true, and its summary is debug output only.
+  Location: `Scanner.lua` (OnTrainerShow). Spec: new
+  `Tests/scanner_trainer_spec.lua`.
+- **`/togpm status` said every online guildmate had "(no data)" and 0 stored
+  members, on every client.** It counted `gdb.guildData`, which nothing
+  writes. It now reads the profession registry (`gdb.skills`). Location:
+  `Scanner.lua` (PrintStatus).
+
+### Improvements
+
+- **Missing Recipes is ready for ItemDB's WoW Forever vendor locations.** No
+  code change was needed: the where-to-get rows, the Vendor only filter and
+  [Guide] read the same rows on Forever as on Classic; two comments that said
+  Forever has no places were corrected. Location: `GUI/MissingRecipesTab.lua`.
+
+---
+
 ## [v1.10.2] (2026-11-05) - Retail: no more error when a system message arrives
 
 ### Bug Fixes

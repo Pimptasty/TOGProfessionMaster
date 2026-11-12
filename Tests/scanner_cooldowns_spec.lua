@@ -180,6 +180,42 @@ describe("ScanCooldowns", function()
 		assert.equal(1, #fired)
 	end)
 
+	-- Retail combat: the client hands cooldowns back as secret values, which the
+	-- Compat shim turns into nil plus a restricted flag (player report,
+	-- 2026-11-07, "attempt to compare local 'start' (a secret number value").
+	local function restrictCooldowns(which)
+		local real = ns.Spell.GetCooldown
+		ns.Spell.GetCooldown = function(spellId)
+			if which(spellId) then return nil, nil, nil, nil, true end
+			return real(spellId)
+		end
+		---@diagnostic disable-next-line: undefined-global -- busted's finally
+		finally(function() ns.Spell.GetCooldown = real end)
+	end
+
+	it("keeps every stored cooldown when the reads are restricted", function()
+		local spellId, transmute = plainCooldown(), anyTransmute()
+		env.wow.knownSpells[spellId] = true
+		gdb.recipes[171] = { [1] = { spellId = transmute, crafters = { [ME] = "tag" } } }
+		gdb.cooldowns[ME] = { [spellId] = NOW + 900, [transmute] = NOW + 1800 }
+		restrictCooldowns(function() return true end)
+		S:ScanCooldowns()
+		assert.equal(NOW + 900, gdb.cooldowns[ME][spellId])
+		assert.equal(NOW + 1800, gdb.cooldowns[ME][transmute])
+	end)
+
+	it("leaves a restricted plain cooldown alone and still stores the rest", function()
+		local spellId = plainCooldown()
+		env.wow.knownSpells[spellId] = true
+		gdb.cooldowns[ME] = { [spellId] = NOW + 900 }
+		local active = anyTransmute()
+		running[active] = 7200
+		restrictCooldowns(function(id) return id == spellId end)
+		S:ScanCooldowns()
+		assert.equal(NOW + 900, gdb.cooldowns[ME][spellId])
+		assert.equal(NOW + 7200, gdb.cooldowns[ME][active])
+	end)
+
 	it("copes with no database at all", function()
 		local saved = ns.guildDb
 		ns.guildDb = { global = nil }

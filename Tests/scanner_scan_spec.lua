@@ -353,6 +353,58 @@ describe("ScanModernTradeSkillInto (WoW Forever)", function()
 		S:ScanModernTradeSkillInto(ME)
 		assert.is_not_nil(gdb.recipes[COOK][2663].crafters[ME])
 	end)
+
+	-- Forever has no GetAllRecipeIDs, only the window's filtered list. A search
+	-- or filter in the window made the scan treat a partial list as the whole
+	-- profession: the character was removed from every recipe it did not show,
+	-- and that shortened set was shared with the guild as authoritative.
+	describe("on the filtered list (no GetAllRecipeIDs)", function()
+		local T
+		before_each(function()
+			T = _G.C_TradeSkillUI
+			T.GetAllRecipeIDs = nil
+			T.GetFilteredRecipeIDs = function() return { 2538 } end
+			-- A first, unfiltered scan already recorded 2538 and another
+			-- Cooking recipe the filtered list will not show.
+			gdb.recipes[COOK] = { [2539] = { crafters = { [ME] = "home" } } }
+		end)
+
+		it("re-derives the profession when no filter is active", function()
+			S:ScanModernTradeSkillInto(ME)
+			assert.is_not_nil(gdb.recipes[COOK][2538].crafters[ME])
+			assert.is_nil(gdb.recipes[COOK][2539].crafters[ME])
+		end)
+
+		local FILTERS = {
+			["a search term"]          = function() T.GetRecipeItemNameFilter = function() return "Spice" end end,
+			["learned recipes hidden"] = function() T.GetShowLearned = function() return false end end,
+			["only makeable"]          = function() T.GetOnlyShowMakeableRecipes = function() return true end end,
+			["only skill-ups"]         = function() T.GetOnlyShowSkillUpRecipes = function() return true end end,
+			["only first crafts"]      = function() T.GetOnlyShowFirstCraftRecipes = function() return true end end,
+			["an inventory slot"]      = function() T.AreAnyInventorySlotsFiltered = function() return true end end,
+			["a category"]             = function() T.AnyRecipeCategoriesFiltered = function() return true end end,
+			["a source type"]          = function()
+				_G.C_PetJournal = { GetNumPetSources = function() return 2 end }
+				T.IsAnyRecipeFromSource = function() return true end
+				T.IsRecipeSourceTypeFiltered = function(i) return i == 2 end
+			end,
+		}
+		for label, apply in pairs(FILTERS) do
+			it("leaves the stored set alone while " .. label .. " filters the window", function()
+				apply()
+				finally(function() _G.C_PetJournal = nil end)
+				S:ScanModernTradeSkillInto(ME)
+				assert.equal("home", gdb.recipes[COOK][2539].crafters[ME])
+				assert.is_nil(gdb.recipes[COOK][2538])
+			end)
+		end
+
+		it("is not filtered by an empty search box", function()
+			T.GetRecipeItemNameFilter = function() return "" end
+			T.GetShowLearned = function() return true end
+			assert.is_false(ns:ModernRecipeListFiltered())
+		end)
+	end)
 end)
 
 --- A LINKED trade skill -- someone in the guild has linked their window to you.

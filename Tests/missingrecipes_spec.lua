@@ -396,8 +396,8 @@ describe("the [Where] button", function()
 	end)
 
 	it("is not offered when LibItemDB knows no source for the scroll", function()
-		-- WoW Forever's ItemDB ships no places data; a button that opens
-		-- "No known source" is a dead end.
+		-- A scroll ItemDB has no places for (an older ItemDB had none for WoW
+		-- Forever at all); a button that opens "No known source" is a dead end.
 		itemDB(0)
 		assert.is_false(whereColumn().show({ spellId = B, itemId = SCROLL }))
 	end)

@@ -433,6 +433,22 @@ describe("the spell API helpers", function()
 		assert.equal(10, duration)
 	end)
 
+	it("answers nil plus a restricted flag when the cooldown is a secret value", function()
+		local secretStart = {}
+		_G.C_Spell = { GetSpellCooldown = function()
+			return { startTime = secretStart, duration = 3600, isEnabled = true, modRate = 1 }
+		end }
+		_G.issecretvalue = function(v) return v == secretStart end
+		---@diagnostic disable-next-line: undefined-global -- busted's finally
+		finally(function() _G.issecretvalue = nil end)
+		local start, duration, enabled, modRate, secret = ns.Spell.GetCooldown(11479)
+		assert.is_nil(start)
+		assert.is_nil(duration)
+		assert.is_nil(enabled)
+		assert.is_nil(modRate)
+		assert.is_true(secret)
+	end)
+
 	it("answers nil, not an error, on a client with neither", function()
 		_G.C_Spell, _G.GetSpellCooldown = nil, nil
 		assert.is_nil((ns.Spell.GetCooldown(1)))

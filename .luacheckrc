@@ -104,6 +104,12 @@ read_globals = {
 	"C_Spell", "C_SpellBook",
 	-- The trade-skill API WoW Forever reads and crafts through (CraftingEngine.lua).
 	"C_TradeSkillUI",
+	-- A vendor cost's currency name (SharedWidgets.lua FormatVendorCost; Merchant's
+	-- Favor on WoW Forever, CurrencyInfoDocumentation.lua in the forever tree).
+	"C_CurrencyInfo", "UnitFactionGroup", "GetCoinTextureString",
+	-- The player's talent spec, per client family (Compat.lua ReadPlayerTalentSpec).
+	"C_SpecializationInfo", "C_Traits", "C_ClassTalents", "GetNumTalentTabs",
+	"GetNumTalentGroups", "GetNumSpecGroups", "IsInitialSpec",
 	-- The player's map, for the Missing Recipes [Guide] pick (feature-detected).
 	"C_Map",
 	-- Key bindings: the K key uncloaks WoW Forever's ProfessionsFrame (CraftingEngine.lua).

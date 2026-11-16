@@ -199,7 +199,11 @@ function Engine:IsOpen()
 end
 
 -- Gathering professions have no craftable window, so they never belong in the
--- crafting dropdown: Fishing (356), Herbalism (182), Skinning (393).
+-- crafting dropdown: Fishing (356), Herbalism (182), Skinning (393). This holds
+-- on WoW Forever too, although their camp objects are recipes there
+-- (addon.IsRecipeProfession): that Forever opens a recipe window for these
+-- lines through OpenTradeSkill is not verified, so the tab does not offer to
+-- open them until it is seen working in game.
 local NO_CRAFT_WINDOW = { [356] = true, [182] = true, [393] = true }
 
 -- The player's own craftable professions, available WITHOUT any window open so
@@ -231,13 +235,11 @@ function Engine:GetKnownProfessions()
         }
     end
 
-    -- Cata/MoP path.
+    -- Cata/MoP/Forever path (addon.GetProfessionSlots skips the empty slots).
     if GetProfessions then
-        for _, idx in ipairs({ GetProfessions() }) do
-            if idx then
-                local name, _icon, rank, max, _, _, skillLine = GetProfessionInfo(idx)
-                tryAdd(name, rank, max, skillLine)
-            end
+        for _, idx in ipairs(addon.GetProfessionSlots()) do
+            local name, _icon, rank, max, _, _, skillLine = GetProfessionInfo(idx)
+            tryAdd(name, rank, max, skillLine)
         end
     end
 
@@ -463,7 +465,11 @@ function Engine:OpenProfession(name, how)
         end
         if not skillLine then return false end
     end
-    if UnitAffectingCombat and UnitAffectingCombat("player") then
+    -- InCombatLockdown is the client's gate for protected calls; checking
+    -- UnitAffectingCombat alone let a tab click in a dungeon reach
+    -- OpenTradeSkill (3x ADDON_ACTION_BLOCKED, operator 2026-11-15).
+    if (InCombatLockdown and InCombatLockdown())
+       or (UnitAffectingCombat and UnitAffectingCombat("player")) then
         addon:Print(addon.L and addon.L["CraftCantOpenInCombat"] or "Can't open a profession in combat.")
         return false
     end
@@ -528,7 +534,20 @@ local TIER_HEX = { "ffff8040", "ffffff00", "ff40c040", "ff808080" }  -- orange/y
 -- borrowed requiredSkill does not anchor the tiers, and the lone-requiredSkill
 -- fallback is marked unconfirmed. Without it the output is exactly as before.
 function addon.FormatSkillTiers(tiers, requiredSkill, recipeId)
-    if addon.IsUnanchoredDifficulty(tiers, requiredSkill, recipeId) then return "-" end
+    -- Unanchored: ProfessionDB's rule says only the ORANGE tier is a
+    -- placeholder. Yellow / green / grey are this build's own TrivialLow /
+    -- midpoint / TrivialHigh and are real, so they print, with "?" for orange.
+    -- Hiding the whole row left most WoW Forever recipes showing "-" (operator,
+    -- in game 2026-11-13: Embossed Leather Boots ships {1, 80, 95, 110} with a
+    -- borrowed requiredSkill). Only all-placeholder tiers fall back to "-".
+    if addon.IsUnanchoredDifficulty(tiers, requiredSkill, recipeId) then
+        local parts = { "|c" .. TIER_HEX[1] .. "?|r" }
+        for i = 2, 4 do
+            local v = tiers[i]
+            if v and v > 1 then parts[#parts + 1] = "|c" .. TIER_HEX[i] .. tostring(v) .. "|r" end
+        end
+        return (#parts > 1) and table.concat(parts, " ") or "-"
+    end
     if not tiers then
         if not requiredSkill then return "-" end
         local s = "|c" .. TIER_HEX[1] .. requiredSkill .. "|r"

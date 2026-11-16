@@ -863,6 +863,7 @@ local OPTIONS = {
                     gdb.cooldowns       = {}
                     gdb.syncTimes       = {}
                     gdb.specializations = {}
+                    gdb.talents         = {}
                     gdb.factions        = {}
                     Ace.db.char.shoppingList   = {}
                     Ace.db.char.shoppingAlerts = {}
@@ -912,6 +913,7 @@ local OPTIONS = {
                     gdb.cooldowns[charKey]        = nil
                     gdb.syncTimes[charKey]        = nil
                     gdb.specializations[charKey]  = nil
+                    if gdb.talents then gdb.talents[charKey] = nil end
                     gdb.factions[charKey]         = nil
                     -- Drop the leaf hashes too, or they become orphans that keep
                     -- being advertised and (for cooldowns) inflate our request

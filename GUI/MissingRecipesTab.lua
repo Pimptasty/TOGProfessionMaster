@@ -1638,6 +1638,40 @@ function MissingRecipesTab:Guide(entry)
 end
 
 -- Stop whatever Questbook is guiding to (its universal stop, via LibItemDB).
+-- Personal Shopper's public API (PersonalShopperAPI version 1), read at call
+-- time: Personal Shopper lists this addon as an optional dependency, so it
+-- loads AFTER this file and a load-time read would always find nothing.
+local function shopperAPI()
+    local api = _G.PersonalShopperAPI
+    if type(api) == "table" and type(api.AddToShoppingList) == "function" then return api end
+    return nil
+end
+
+-- [List] is offered for a row with a recipe scroll to buy, when Personal
+-- Shopper is loaded.
+function MissingRecipesTab:CanShopList(entry)
+    return entry ~= nil and entry.itemId ~= nil and shopperAPI() ~= nil
+end
+
+-- Adds the row's recipe scroll to Personal Shopper's shopping list, filed under
+-- "<Profession> Recipes" as Personal Shopper's own finder did, and says in
+-- chat whether it worked; on a refusal, Personal Shopper's own reason.
+function MissingRecipesTab:AddToShoppingList(entry)
+    local api = shopperAPI()
+    if not (api and entry and entry.itemId) then return false end
+    local d = self:RowDisplay(entry)
+    local label = d.itemLink or d.itemName or addon:ItemDisplayName(entry.itemId)
+    local profName = entry.profId and addon.PROF_NAMES[entry.profId]
+    local category = profName and L["ShopListRecipesFormat"]:format(profName) or nil
+    local ok, err = api.AddToShoppingList(entry.itemId, 1, category)
+    if ok then
+        addon:Print(L["ShopListAddedFormat"]:format(label))
+    else
+        addon:Print(L["ShopListFailedFormat"]:format(label, tostring(err or "?")))
+    end
+    return ok and true or false
+end
+
 function MissingRecipesTab:StopGuide()
     self._guided = nil
     watchGuidedBags(false)
@@ -1781,6 +1815,14 @@ function MissingRecipesTab:BuildRowList(host)
               text = function() return "|cFFFFD100" .. L["GuideBtn"] .. "|r" end,
               tip  = function() return L["TooltipGuideTitle"], L["TooltipGuideDesc"] end,
               onClick = function(e) self:Guide(e) end },
+            -- [List]: adds the scroll to Personal Shopper's shopping list
+            -- (PersonalShopper inbox d9ef2c52). Only with Personal Shopper's
+            -- API present and a scroll to buy; trainer-only rows have none.
+            { key = "listBtn", width = 44, button = true, sortable = false,
+              show = function(e) return self:CanShopList(e) end,
+              text = function() return "|cFFFFFFFF" .. L["ShopListBtn"] .. "|r" end,
+              tip  = function() return L["TooltipShopListTitle"], L["TooltipShopListDesc"] end,
+              onClick = function(e) self:AddToShoppingList(e) end },
         },
         onRowEnter = function(e, _, _, rowFrame) self:ShowRowTooltip(e, rowFrame) end,
         onRowLeave = function()

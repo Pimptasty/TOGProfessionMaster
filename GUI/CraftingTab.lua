@@ -160,7 +160,11 @@ function CraftingTab:Draw(container)
     -- auto-open below and the wrong-profession switch share the one-shot gate.
     local allowAuto = self._autoOpenOnUserNav
     self._autoOpenOnUserNav = nil
-    local inCombat  = UnitAffectingCombat and UnitAffectingCombat("player")
+    -- InCombatLockdown is the gate the client applies to protected calls;
+    -- UnitAffectingCombat alone let a dungeon tab click through to
+    -- OpenTradeSkill and drew 3x ADDON_ACTION_BLOCKED (operator, 2026-11-15).
+    local inCombat  = (InCombatLockdown and InCombatLockdown())
+                      or (UnitAffectingCombat and UnitAffectingCombat("player"))
 
     -- Wrong profession already open for a pending jump → switch to the target.
     -- This Draw runs synchronously inside the jump's hardware event, so the cast

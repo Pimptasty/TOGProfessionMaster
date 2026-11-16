@@ -174,9 +174,23 @@ function MainWindow:Open(tabKey)
     -- AceGUI's own OnSizeChanged runs first.
     local origSizeChanged = f.frame:GetScript("OnSizeChanged")
     local _resizeTimer
+    local libSavesResize = (select(2, LibStub:GetLibrary("LibAceGUIWidgets-1.0", true)) or 0) >= 52
     addon.AceGUIFrameScripts(f, {
         OnSizeChanged = function(frame, w, h, ...)
             if origSizeChanged then origSizeChanged(frame, w, h, ...) end
+            -- Keep the shared resizable profile's size current on EVERY resize.
+            -- SetWindowProfile restores from saved.profiles[RESIZABLE_PROFILE]
+            -- but the library writes it only on a profile switch or on close,
+            -- so a /reload with the window open lost the size the player chose
+            -- (operator, in game 2026-11-13). Same shape the library saves.
+            -- Only for a LibAceGUIWidgets older than MINOR 52, which saves on
+            -- every resize itself through a watcher frame of its own laid over
+            -- the window, so this window's script restore on Release cannot
+            -- remove it (LibAceGUIWidgets inbox 5afaa472).
+            if not libSavesResize and w and h and w > 0 and h > 0 then
+                saved.profiles = type(saved.profiles) == "table" and saved.profiles or {}
+                saved.profiles[RESIZABLE_PROFILE] = { width = w, height = h }
+            end
             if _resizeTimer then _resizeTimer:Cancel() end
             _resizeTimer = C_Timer.NewTimer(0.15, function()
                 _resizeTimer = nil
@@ -815,12 +829,16 @@ end
 -- member kept showing on the Professions and Cooldowns tabs after a reload.
 -- crafting / ahprofit are excluded on purpose: they render YOUR OWN craftables
 -- and aren't roster-filtered.
+-- `skills` belongs to every tab that SHOWS a rank: the Guild tab, the Crafting
+-- tab's "Cooking (22/75)" dropdown, and Missing Recipes ("Can learn now" and
+-- the profession's rank). Without it a skill-up left the old rank on screen
+-- until the window was reopened (operator, in game 2026-11-13).
 local TAB_SCOPES = {
     browser   = { recipes = true, altgroups = true, roster = true },
     cooldowns = { cooldowns = true, roster = true },
-    missing   = { recipes = true, altgroups = true, roster = true },
+    missing   = { recipes = true, altgroups = true, roster = true, skills = true },
     guild     = { skills = true, recipes = true, altgroups = true, roster = true },
-    crafting  = { recipes = true },
+    crafting  = { recipes = true, skills = true },
     ahprofit  = { recipes = true },
 }
 

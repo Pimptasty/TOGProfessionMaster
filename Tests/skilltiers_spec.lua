@@ -41,8 +41,15 @@ describe("IsUnanchoredDifficulty", function()
 end)
 
 describe("FormatSkillTiers", function()
-	it("shows unanchored tiers as unknown, not as thresholds", function()
-		assert.equal("-", ns.FormatSkillTiers({ 1, 25, 37, 50 }, nil))
+	-- Only the ORANGE tier is unknown when unanchored; yellow / green / grey are
+	-- the build's own thresholds (operator, Forever, 2026-11-13: most recipes
+	-- showed "-" while their colours were known).
+	it("shows unanchored tiers with orange unknown and the other three as data", function()
+		assert.equal("? 25 37 50", plain(ns.FormatSkillTiers({ 1, 25, 37, 50 }, nil)))
+	end)
+
+	it("shows '-' when every unanchored tier is a placeholder", function()
+		assert.equal("-", ns.FormatSkillTiers({ 1, 1, 1, 1 }, nil))
 	end)
 
 	it("shows anchored tiers with no requiredSkill", function()

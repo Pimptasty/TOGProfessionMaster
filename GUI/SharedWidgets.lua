@@ -469,6 +469,54 @@ ItemLink.SOURCE_LABELS = {
 }
 ItemLink.SOURCE_ORDER = { "vendor", "drop", "quest", "crafted", "container", "fishing", "trainer" }
 
+--- A vendor cost as ProfessionDB MINOR 14 ships it -- a list of parts, each
+--- { currencyID, amount }, { itemID, amount } or { copper } -- as one readable
+--- string ("45 Merchant's Favor"), or nil for an empty or unreadable cost.
+--- Currency and item names are resolved from the client, which is what
+--- ProfessionDB asks for (it ships ids only); an unresolved one falls back to
+--- its id so the amount is never dropped.
+function ItemLink.FormatVendorCost(cost)
+    if type(cost) ~= "table" then return nil end
+    local parts = {}
+    for _, p in ipairs(cost) do
+        if type(p) == "table" then
+            if p.currencyID and p.amount then
+                local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo
+                             and C_CurrencyInfo.GetCurrencyInfo(p.currencyID)
+                local name = type(info) == "table" and info.name or nil
+                parts[#parts + 1] = p.amount .. " " .. ((name and name ~= "") and name
+                                    or ("currency " .. p.currencyID))
+            elseif p.itemID and p.amount then
+                local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(p.itemID)
+                parts[#parts + 1] = p.amount .. " x " .. (name or ("item " .. p.itemID))
+            elseif p.copper then
+                parts[#parts + 1] = GetCoinTextureString and GetCoinTextureString(p.copper)
+                                    or (p.copper .. "c")
+            end
+        end
+    end
+    if #parts == 0 then return nil end
+    return table.concat(parts, " + ")
+end
+
+-- The vendor-kind lines for a recipe: one "Vendor: <npc> (<cost>)" per vendor
+-- that carries a cost (WoW Forever's Merchant's Favor vendors, ProfessionDB
+-- MINOR 14), skipping a vendor of the other faction. Nil when no vendor has a
+-- cost, so the caller falls back to the single "Vendor" word as before.
+local function vendorCostLines(vendors, label)
+    if type(vendors) ~= "table" then return nil end
+    local myFaction = UnitFactionGroup and UnitFactionGroup("player") or nil
+    local out
+    for _, v in ipairs(vendors) do
+        local cost = type(v) == "table" and ItemLink.FormatVendorCost(v.cost) or nil
+        if cost and not (v.faction and myFaction and v.faction ~= myFaction) then
+            out = out or {}
+            out[#out + 1] = label .. ": " .. (v.name or ("#" .. tostring(v.id))) .. " (" .. cost .. ")"
+        end
+    end
+    return out
+end
+
 --- The recipe-detail block's DATA: skill-up difficulty, and where the recipe
 --- comes from. Pure -- returns values, renders nothing -- so the shape can be
 --- asserted without a tooltip.
@@ -519,7 +567,12 @@ function ItemLink.RecipeDetails(profId, recipeId)
                 local key   = ItemLink.SOURCE_LABELS[kind]
                 local label = (key and L[key]) or kind
                 sources = sources or {}
-                sources[#sources + 1] = label
+                local priced = kind == "vendor" and vendorCostLines(npcs, label) or nil
+                if priced then
+                    for _, line in ipairs(priced) do sources[#sources + 1] = line end
+                else
+                    sources[#sources + 1] = label
+                end
             end
         end
     end

@@ -910,7 +910,7 @@ function M.resetDb()
 	-- model "this client has never scanned"), and AceDB does not put it back —
 	-- so without this the NEXT test inherits a missing table and fails somewhere
 	-- unrelated to what it is testing.
-	for _, key in ipairs({ "recipes", "skills", "cooldowns", "specializations",
+	for _, key in ipairs({ "recipes", "skills", "cooldowns", "specializations", "talents",
 	                       "altClaims", "accountChars", "lastScan",
 	                       "hashes", "pendingPurge", "guildRegistry" }) do
 		if type(g[key]) ~= "table" then g[key] = {} end
@@ -933,6 +933,7 @@ function M.newGdb()
 		skills          = {},
 		cooldowns       = {},
 		specializations = {},
+		talents         = {},
 		altGroups       = {},
 		altClaims       = {},
 		accountChars    = {},

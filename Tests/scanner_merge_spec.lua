@@ -106,6 +106,22 @@ describe("MergeRecipesIntoGdb", function()
 		assert.same({ skillRank = 0, skillMax = 0 }, gdb.skills["Alice-Realm"][171])
 	end)
 
+	-- The window scan often records a skill-up before SKILL_LINES_CHANGED's scan
+	-- runs, so the merge itself must announce it, once, and only on a change.
+	it("announces a rank change as a skills update, and an unchanged rank not at all", function()
+		local gdb = gdbWith()
+		local fired, listener = {}, {}
+		ns.RegisterCallback(listener, "GUILD_DATA_UPDATED", function(_, ck, scopes)
+			fired[#fired + 1] = { ck = ck, scopes = scopes }
+		end)
+		Scanner:MergeRecipesIntoGdb(gdb, "Alice-Realm", 185, 22, 75, { [2538] = true })
+		Scanner:MergeRecipesIntoGdb(gdb, "Alice-Realm", 185, 23, 75, { [2538] = true })
+		Scanner:MergeRecipesIntoGdb(gdb, "Alice-Realm", 185, 23, 75, { [2538] = true })
+		ns.UnregisterCallback(listener, "GUILD_DATA_UPDATED")
+		assert.equal(2, #fired)
+		assert.same({ ck = "Alice-Realm", scopes = { skills = true } }, fired[2])
+	end)
+
 	it("tags the crafter with the current guild", function()
 		local gdb = gdbWith()
 		Scanner:MergeRecipesIntoGdb(gdb, "Alice-Realm", 171, 300, 300, { [2330] = true })

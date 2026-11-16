@@ -493,6 +493,131 @@ function addon.Spell.IsKnown(spellId, isPet)
     return false
 end
 
+-- The character's profession indices from GetProfessions (TBC-era API onward;
+-- nil on clients without it), as a dense array. GetProfessions returns fixed
+-- positional slots -- prof1, prof2, arch, fish, cook, firstAid -- with nil for
+-- an empty one (Blizzard_ProfessionsBook reads them positionally), so
+-- ipairs({ GetProfessions() }) stops at the first gap and a character with
+-- one primary profession lost Cooking and everything after it.
+function addon.GetProfessionSlots()
+    local out = {}
+    if not GetProfessions then return out end
+    local n = select("#", GetProfessions())
+    local slots = { GetProfessions() }
+    for i = 1, n do
+        if slots[i] then out[#out + 1] = slots[i] end
+    end
+    return out
+end
+
+-- ---------------------------------------------------------------------------
+-- The player's own talent specialization, for the public API's GetSpec
+-- (Ultimate Guild Roster's guild notes, inbox cfb23d25, 2026-11-13).
+--
+-- Returns { a = activeName, ai = activeId, o = otherName, oi = otherId }:
+-- o / oi only where the client has a second talent group, and a field is
+-- absent when that group has no spec (an empty table = read fine, nothing
+-- spent). Returns nil when this client has no talent API we know or its
+-- talent data is not loaded yet -- "unknown", which the caller must not store.
+--
+-- Three client families, call shapes from each flavour's own Blizzard UI in
+-- F:\Blizzard API Docs (not yet verified in game on any of them):
+--   * Talent tabs (Era, TBC Anniversary): the spec is the tab with the most
+--     points. classic_era Classic\Blizzard_TalentUI.lua:515/:524 call
+--     GetNumTalentTabs and C_SpecializationInfo.GetSpecializationInfo(i, false,
+--     false, nil, nil, group) -- id is return 1, name 2, pointsSpent 7.
+--   * Specializations (MoP Classic, Retail): C_SpecializationInfo.
+--     GetSpecialization(false, false, group) then GetSpecializationInfo(idx)
+--     (Mists\Blizzard_TalentUI.lua:1040/:306; live PaperDollFrame.lua:445-451).
+--     MoP's pointsSpent is unsupported (Deprecated_Specialization_Mists.lua),
+--     hence a separate path. Retail shows one spec only.
+--   * Trait trees (WoW Forever): no GetNumTalentTabs; each tree GROUP is a
+--     tab, named by C_Traits.GetGroupDisplayInfoByTreeID and scored by the
+--     points C_Traits.GetGroupCurrencyInfo reports spent (forever Camelot\
+--     ClassTalents\Blizzard_ClassTalentsFrame.lua:87-100, :112-124, :336-339).
+--     Forever's build number falls in the Vanilla range, so it is told apart
+--     by that missing GetNumTalentTabs, not by addon.isVanilla.
+local function otherGroup(active) return active == 1 and 2 or 1 end
+
+local function tabSpec(SI, group)
+    local bestName, bestId, bestPts = nil, nil, 0
+    for i = 1, (GetNumTalentTabs(false, false) or 0) do
+        local id, name, _, _, _, _, pts = SI.GetSpecializationInfo(i, false, false, nil, nil, group)
+        pts = tonumber(pts) or 0
+        if name and pts > bestPts then bestName, bestId, bestPts = name, id, pts end
+    end
+    return bestName, bestId
+end
+
+local function indexSpec(SI, group)
+    local idx = SI.GetSpecialization(false, false, group)
+    if not idx or idx <= 0 then return nil end
+    if _G.IsInitialSpec and _G.IsInitialSpec(idx) then return nil end
+    local id, name = SI.GetSpecializationInfo(idx, false, false)
+    return name, id
+end
+
+local function traitSpec(configID)
+    local T = C_Traits
+    local info = configID and T.GetConfigInfo(configID)
+    local treeID = info and info.treeIDs and info.treeIDs[1]
+    if not treeID then return nil end
+    local groups, ids = T.GetGroupDisplayInfoByTreeID(treeID) or {}, {}
+    for _, g in ipairs(groups) do ids[#ids + 1] = g.groupID end
+    if #ids == 0 then return nil end
+    local spent = {}
+    for _, c in ipairs(T.GetGroupCurrencyInfo(configID, ids) or {}) do
+        local ci = c.currencyInfos and c.currencyInfos[1]
+        if c.traitNodeGroupID and ci then spent[c.traitNodeGroupID] = tonumber(ci.spent) or 0 end
+    end
+    local bestName, bestId, bestPts = nil, nil, 0
+    for _, g in ipairs(groups) do
+        local pts = spent[g.groupID] or 0
+        if g.displayName and pts > bestPts then bestName, bestId, bestPts = g.displayName, g.groupID, pts end
+    end
+    return bestName, bestId
+end
+
+function addon.ReadPlayerTalentSpec()
+    local SI = C_SpecializationInfo
+    if not SI then return nil end
+    if SI.IsInitialized and not SI.IsInitialized() then return nil end
+    local out = {}
+
+    if (addon.isMoP or addon.isRetail) and SI.GetSpecialization and SI.GetSpecializationInfo then
+        local active = SI.GetActiveSpecGroup and SI.GetActiveSpecGroup(false) or 1
+        out.a, out.ai = indexSpec(SI, active)
+        if addon.isMoP and _G.GetNumSpecGroups and (_G.GetNumSpecGroups(false) or 1) > 1 then
+            out.o, out.oi = indexSpec(SI, otherGroup(active))
+        end
+        return out
+    end
+
+    if _G.GetNumTalentTabs and SI.GetSpecializationInfo then
+        local active = SI.GetActiveSpecGroup and SI.GetActiveSpecGroup(false, false) or 1
+        out.a, out.ai = tabSpec(SI, active)
+        if _G.GetNumTalentGroups and (_G.GetNumTalentGroups(false, false) or 1) > 1 then
+            out.o, out.oi = tabSpec(SI, otherGroup(active))
+        end
+        return out
+    end
+
+    if C_Traits and C_Traits.GetConfigInfo and C_Traits.GetGroupDisplayInfoByTreeID
+       and C_Traits.GetGroupCurrencyInfo and SI.GetCombatConfigIDForSpecGroup then
+        local active = SI.GetActiveSpecGroup and SI.GetActiveSpecGroup(false) or 1
+        local activeConfig = C_ClassTalents and C_ClassTalents.GetActiveConfigID
+                             and C_ClassTalents.GetActiveConfigID()
+                             or SI.GetCombatConfigIDForSpecGroup(active)
+        out.a, out.ai = traitSpec(activeConfig)
+        if _G.GetNumSpecGroups and (_G.GetNumSpecGroups(false) or 1) > 1 then
+            out.o, out.oi = traitSpec(SI.GetCombatConfigIDForSpecGroup(otherGroup(active)))
+        end
+        return out
+    end
+
+    return nil
+end
+
 -- ---------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------
 -- Tooltip anchor helper

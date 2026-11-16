@@ -232,6 +232,21 @@ local function ProfessionIdFromName(name)
     return PROF_NAME_TO_ID[name] or LocalizedProfessionId(name)
 end
 
+-- Skill line id -> display name, the reverse of the above: the client's own
+-- name (C_TradeSkillUI.GetTradeSkillDisplayName) where it answers, else the
+-- English key of PROF_NAME_TO_ID, else nil. Read by the public API.
+function Scanner.ProfessionName(profId)
+    local api = C_TradeSkillUI and C_TradeSkillUI.GetTradeSkillDisplayName
+    if api then
+        local ok, display = pcall(api, profId)
+        if ok and type(display) == "string" and display ~= "" then return display end
+    end
+    for name, id in pairs(PROF_NAME_TO_ID) do
+        if id == profId then return name end
+    end
+    return nil
+end
+
 -- ---------------------------------------------------------------------------
 -- Cross-guild sister ROSTERS: LibGuildRoster's, not ours
 -- ---------------------------------------------------------------------------
@@ -725,6 +740,19 @@ function Scanner:Init()
     -- Archaeology have no trade-skill window, so the recipe scan never sees them).
     -- SKILL_LINES_CHANGED fires whenever a skill is learned or ranks up.
     Ace:RegisterEvent("SKILL_LINES_CHANGED", function() Scanner:ScanGatheringProfessions() end)
+
+    -- The player's talent spec (Scanner:ScanTalentSpec). Which of these a client
+    -- fires differs by family (Era / TBC Anniversary: the first three; MoP adds
+    -- PLAYER_SPECIALIZATION_CHANGED; Retail and Forever the trait ones, per
+    -- each flavour's Blizzard UI registrations), so every one is tryRegister'd.
+    -- SPELLS_CHANGED covers login: it fires once the spellbook, and with it the
+    -- talent data, has loaded, where a read at PLAYER_ENTERING_WORLD can be early.
+    for _, ev in ipairs({ "CHARACTER_POINTS_CHANGED", "PLAYER_TALENT_UPDATE",
+                          "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_SPECIALIZATION_CHANGED",
+                          "ACTIVE_PLAYER_SPECIALIZATION_CHANGED", "TRAIT_CONFIG_UPDATED",
+                          "ACTIVE_COMBAT_CONFIG_CHANGED", "SPELLS_CHANGED" }) do
+        tryRegister(ev, function() Scanner:ScanTalentSpec() end)
+    end
 
     -- Trainer window. When a player opens a profession trainer, capture
     -- the EXACT ReqSkillRank Blizzard's server enforces for every offered
@@ -1771,6 +1799,18 @@ function Scanner:MergeRecipesIntoGdb(gdb, charKey, profId, skillRank, skillMax, 
     local prevRec = gdb.skills[charKey][profId]
     gdb.skills[charKey][profId] = { skillRank = skillRank, skillMax = skillMax or skillRank,
                                     lines = prevRec and prevRec.lines or nil }
+    -- A skill-up: tell the open window. The window scan often records the new
+    -- rank BEFORE SKILL_LINES_CHANGED's ScanGatheringProfessions runs, which
+    -- then sees no change and fires nothing, so without this the Crafting
+    -- tab's "Cooking (22/75)" stayed stale while crafting (operator, in game
+    -- 2026-11-13). The caller only refreshes when the RECIPE set changed.
+    if not prevRec or prevRec.skillRank ~= skillRank
+       or prevRec.skillMax ~= (skillMax or skillRank) then
+        if addon.callbacks then
+            addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey, { skills = true })
+        end
+        if addon.API then addon.API:_FireCharacterChanged(charKey) end
+    end
 
     -- Compute the current guild tag once. Tag is "personal" when guildless,
     -- so own scans on a no-guild alt still get stored (and visible to that
@@ -1944,12 +1984,10 @@ function Scanner:ResolveProfessionId(name)
     -- at all. Absent → fall through to the static name map, same as a slot walk
     -- that finds nothing.
     if GetProfessions and GetProfessionInfo then
-        for _, idx in ipairs({ GetProfessions() }) do
-            if idx then
-                local pName, _, _, _, _, _, skillLine = GetProfessionInfo(idx)
-                if pName == name then
-                    return skillLine
-                end
+        for _, idx in ipairs(addon.GetProfessionSlots()) do
+            local pName, _, _, _, _, _, skillLine = GetProfessionInfo(idx)
+            if pName == name then
+                return skillLine
             end
         end
     end
@@ -2063,13 +2101,11 @@ local function enumerateHeldProfessions()
     -- Cata/MoP path — locale-independent skillLine IDs.
     if GetProfessions then
         local anySlot = false
-        for _, idx in ipairs({ GetProfessions() }) do
-            if idx then
-                local _n, _i, rank, max, _, _, skillLine = GetProfessionInfo(idx)
-                if skillLine then
-                    held[skillLine] = { rank = rank or 0, max = max or 0 }
-                    anySlot = true
-                end
+        for _, idx in ipairs(addon.GetProfessionSlots()) do
+            local _n, _i, rank, max, _, _, skillLine = GetProfessionInfo(idx)
+            if skillLine then
+                held[skillLine] = { rank = rank or 0, max = max or 0 }
+                anySlot = true
             end
         end
         if anySlot then reliable = true end
@@ -2211,12 +2247,60 @@ function Scanner:ScanGatheringProfessions()
                 if pruned then scopes.recipes = true end
                 addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey, scopes)
             end
+            if addon.API then addon.API:_FireCharacterChanged(charKey) end
             addon:DebugPrint("Scanner: professions updated for", charKey,
                 "(reliable=", tostring(reliable), " dropped=", tostring(dropped), ")")
         end
     end
 
     self._scanningGather = false
+end
+
+-- The player's own talent spec (v1.11.0, for the public API's GetSpec). Read
+-- through addon.ReadPlayerTalentSpec, stored at gdb.talents[charKey], and
+-- shipped as the `t` key of the owner-minted professions:<charKey> snapshot
+-- (HashManager allProfessionSkills). pcall'd: the three client paths are read
+-- from Blizzard's UI source, not yet verified in game, and a throw here must
+-- not break the event handler that called it.
+--
+-- Called straight from the talent events (no timer: an unchanged read returns
+-- before writing anything, so a burst of events costs a few reads, and a
+-- timer must not reach the WoW API).
+--
+-- Re-mints the professions leaf ONLY when we already hold an authoritative
+-- snapshot for ourselves (lastScan.professions, set by a reliable profession
+-- read). Without one, minting would assert a profession set we cannot vouch
+-- for; the spec is still stored and rides the next reliable mint.
+function Scanner:ScanTalentSpec()
+    local gdb, charKey = addon:GetGuildDb(), addon:GetCharacterKey()
+    if not gdb or not charKey then return end
+    local ok, spec = pcall(addon.ReadPlayerTalentSpec)
+    if not ok then
+        addon:DebugPrint("Scanner: talent read failed:", tostring(spec))
+        return
+    end
+    if type(spec) ~= "table" then return end   -- unknown / not loaded yet
+    if not gdb.talents then gdb.talents = {} end
+    local prev = gdb.talents[charKey]
+    if type(prev) == "table" and prev.a == spec.a and prev.ai == spec.ai
+       and prev.o == spec.o and prev.oi == spec.oi then
+        return
+    end
+    gdb.talents[charKey] = spec
+    addon:DebugPrint("Scanner: talent spec", tostring(spec.a), "/", tostring(spec.o))
+
+    local ls = gdb.lastScan and gdb.lastScan[charKey]
+    if ls and ls.professions and self.DS then
+        -- Strictly newer than the last mint, or peers holding the old copy
+        -- treat an equal timestamp as nothing new and never adopt it.
+        ls.professions = math.max(GetServerTime(), ls.professions + 1)
+        addon.HashManager:InvalidateCharProfessions(self.DS, gdb, charKey)
+        self:ScheduleBroadcast()
+    end
+    if addon.callbacks then
+        addon.callbacks:Fire("GUILD_DATA_UPDATED", charKey, { talents = true })
+    end
+    if addon.API then addon.API:_FireCharacterChanged(charKey) end
 end
 
 -- Prune crafter rows for ONE owner against their AUTHORITATIVE profession snapshot.
@@ -3716,6 +3800,9 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
     -- leaf loop we prune their crafter rows against the new set (drops recipes for
     -- professions they no longer have). Set by the skills: leaf branch.
     local reconcileOwners  = nil
+    -- Characters whose professions or talent spec this merge changed, for the
+    -- public API's per-character callback (GUILD_DATA_UPDATED names the SENDER).
+    local changedChars     = {}
     -- Our own charKey — we are the sole authority for our own cooldowns, so a peer
     -- (even a relay holding a stale/drifted copy) must never overwrite them.
     local ownKey = addon:GetCharacterKey()
@@ -3906,6 +3993,22 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                             end
                         end
                         gdb.skills[owner] = newset
+                        -- Talent spec (v1.11.0, HashManager allProfessionSkills
+                        -- `t`). Absent means the sender has none to give -- an
+                        -- owner with nothing recorded, or a relay on a build
+                        -- before v1.11.0 that dropped it -- so the spec we hold
+                        -- is kept rather than erased.
+                        local t = leafData.t
+                        if type(t) == "table" then
+                            if not gdb.talents then gdb.talents = {} end
+                            gdb.talents[owner] = {
+                                a  = type(t.a) == "string" and t.a or nil,
+                                ai = tonumber(t.ai),
+                                o  = type(t.o) == "string" and t.o or nil,
+                                oi = tonumber(t.oi),
+                            }
+                        end
+                        changedChars[owner] = true
                         if not gdb.lastScan[owner] then gdb.lastScan[owner] = {} end
                         -- `.professions` marks that we hold a COMPLETE authoritative
                         -- snapshot for this owner — the reconcile + resurrection guards
@@ -3951,6 +4054,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                                     lines     = existing and existing.lines or nil,
                                 }
                                 changedSkills = true
+                                changedChars[owner] = true
                             end
                         end
                     end
@@ -4002,6 +4106,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                                             lines     = existing.lines,
                                         }
                                         changedCrafters = true
+                                        changedChars[ck] = true
                                     end
                                 elseif not (gdb.lastScan[ck] and gdb.lastScan[ck].professions) then
                                     -- No authoritative snapshot for this char yet (an
@@ -4012,6 +4117,7 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
                                         skillMax  = sk.skillMax or incomingRank,
                                     }
                                     changedCrafters = true
+                                    changedChars[ck] = true
                                 end
                                 -- else: we hold a complete authoritative snapshot that
                                 -- omitted this profession → it was dropped; ignore the
@@ -4097,6 +4203,9 @@ function Scanner:OnGuildDataReceived(sender, data, bytes)
             if changedSkills    then scopes.skills    = true end
             addon.callbacks:Fire("GUILD_DATA_UPDATED", senderKey, scopes)
         end
+    end
+    if addon.API then
+        for ck in pairs(changedChars) do addon.API:_FireCharacterChanged(ck) end
     end
 
     local leafN = 0

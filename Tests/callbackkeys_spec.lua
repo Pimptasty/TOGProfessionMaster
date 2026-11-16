@@ -79,6 +79,22 @@ describe("GUILD_DATA_UPDATED after the real OnEnable", function()
 		assert.equal(1, warmed, "BrowserTab's re-warm was replaced by another subscriber")
 		assert.equal(1, queued, "MainWindow's refresh did not run")
 	end)
+
+	-- A skill-up must redraw every tab that shows a rank, or "Cooking (22/75)"
+	-- stays on screen while crafting (operator, in game 2026-11-13).
+	for _, tab in ipairs({ "crafting", "missing", "guild" }) do
+		it("a skills change redraws the " .. tab .. " tab", function()
+			ns.MainWindow.activeTab = tab
+			ns.callbacks:Fire("GUILD_DATA_UPDATED", "Testchar-Testrealm", { skills = true })
+			assert.equal(1, queued)
+		end)
+	end
+
+	it("a skills change does not redraw a tab that shows no rank", function()
+		ns.MainWindow.activeTab = "cooldowns"
+		ns.callbacks:Fire("GUILD_DATA_UPDATED", "Testchar-Testrealm", { skills = true })
+		assert.equal(0, queued)
+	end)
 end)
 
 describe("TOGPM's LibGuildRoster subscriptions are keyed by TOGPM", function()

@@ -240,6 +240,13 @@
         "GetCooldownLeft",
         "GetProfessionInfo",
         "GetProfessions",
+        "C_SpecializationInfo",
+        "C_Traits",
+        "C_ClassTalents",
+        "GetNumTalentTabs",
+        "GetNumTalentGroups",
+        "GetNumSpecGroups",
+        "IsInitialSpec",
         "C_Engraving",
         "GetItemCount",
         "GetItemIcon",
@@ -279,7 +286,8 @@
         "teardown",
         "before_each",
         "after_each",
-        "pending"
+        "pending",
+        "finally"
     ],
     "diagnostics.disable": [
         "need-check-nil",

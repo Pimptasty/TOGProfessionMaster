@@ -196,6 +196,22 @@ describe("session ownership", function()
 		assert.is_false(Engine._tabDriven)
 	end)
 
+	-- Combat lockdown is the client's gate for protected calls, and it can hold
+	-- while UnitAffectingCombat says false: a dungeon tab click got through on
+	-- that and drew 3x ADDON_ACTION_BLOCKED (operator, 2026-11-15).
+	it("does not cast under combat lockdown even when the player is not flagged in combat", function()
+		local saved = _G.InCombatLockdown
+		_G.InCombatLockdown = function() return true end
+		local casts = 0
+		_G.CastSpellByName = function() casts = casts + 1 end
+		ns.Print = function() end
+		local ok = Engine:OpenProfession("Tailoring")
+		_G.InCombatLockdown = saved
+		assert.is_false(ok)
+		assert.equal(0, casts)
+		assert.is_false(Engine._tabDriven)
+	end)
+
 	-- A client with neither the classic trade-skill API nor C_TradeSkillUI.
 	it("never casts on a client with no trade-skill API at all", function()
 		local casts = 0
@@ -208,7 +224,7 @@ describe("session ownership", function()
 
 	it("releases the claim when the user asks for the native window", function()
 		Engine._sessionOpen, Engine._tabDriven = true, true
-		_G.UIParent_OnEvent = function() end
+		_G.UIParent_OnEvent = function(_, _) end   -- (self, event): the LSP reads stubs as the signature
 		Engine:ShowDefaultUI()
 		assert.is_false(Engine._tabDriven)
 	end)
@@ -282,8 +298,22 @@ describe("WoW Forever (C_TradeSkillUI)", function()
 		assert.is_true(Engine:UsesModernAPI())
 		installGlobals()   -- the classic trade-skill globals are back
 		_G.GetNumTradeSkills = function() return 0 end
-		_G.GetTradeSkillInfo = function() end
+		_G.GetTradeSkillInfo = function(_) end
 		assert.is_false(Engine:UsesModernAPI())
+	end)
+
+	-- GetProfessions returns positional slots (prof1, prof2, arch, fish, cook,
+	-- firstAid) with nil for empty ones. One primary profession and Cooking
+	-- left Cooking out of the dropdown (in game 2026-11-13, Forever).
+	it("lists every profession past an empty slot", function()
+		_G.GetProfessions = function() return 1, nil, nil, nil, 5, nil end
+		_G.GetProfessionInfo = function(idx)
+			if idx == 1 then return "Leatherworking", nil, 34, 75, nil, nil, 165 end
+			if idx == 5 then return "Cooking", nil, 20, 75, nil, nil, 185 end
+		end
+		local names = {}
+		for _, p in ipairs(Engine:GetKnownProfessions()) do names[#names + 1] = p.name end
+		assert.same({ "Leatherworking", "Cooking" }, names)
 	end)
 
 	it("opens a profession with OpenTradeSkill on its skill line, never a cast", function()

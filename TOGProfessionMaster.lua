@@ -374,6 +374,7 @@ local GUILD_DB_DEFAULTS = {
         cooldowns       = {},  -- [charKey] = { [spellId] = expiresAt }
         skills          = {},  -- [charKey][profId] = { skillRank, skillMax }
         specializations = {},  -- [charKey][profId] = spellSpecId (v0.6.3)
+        talents         = {},  -- [charKey] = { a, ai, o, oi } talent spec (v1.11.0)
         factions        = {},  -- [charKey] = "Alliance"|"Horde"
         syncTimes       = {},  -- [charKey] = timestamp
 
@@ -1086,6 +1087,33 @@ addon.CRAFTING_PROFS = {
     [755] = true,  -- Jewelcrafting (TBC+)
     [773] = true,  -- Inscription (Wrath+)
 }
+
+-- Gathering professions that DO have recipes on WoW Forever: its camp objects.
+-- ProfessionDB reads them from Forever's SkillLineAbility as real rows on these
+-- lines -- Herbalism 182 (Greenhouse, Incense Candle, Seed Hybridizer), Skinning
+-- 393 (Camp Chair, Field Guide, Trapper's Workbench), Fishing 356 (Fish Bowl,
+-- Fishing Hut, Fishing Rack) -- so they are crafted from a profession window
+-- there like any other recipe.
+--
+-- Kept OUT of CRAFTING_PROFS on purpose: that table also decides what the
+-- gathering skills: sync leaf carries (HashManager gatheringSkills), and that
+-- leaf is frozen so un-updated peers keep agreeing on its hash. Every "does
+-- this profession have a recipe list here" question asks IsRecipeProfession
+-- instead.
+addon.FOREVER_RECIPE_GATHERING = { [182] = true, [393] = true, [356] = true }
+
+local function isForeverClient()
+    local lib = LibStub and LibStub("LibProfessionDB-1.0", true)
+    return lib ~= nil and lib.IsGameVersion ~= nil and lib:IsGameVersion("Forever")
+end
+
+--- True when this profession has learnable recipes worth listing on this
+--- client: every crafting profession, plus Herbalism / Skinning / Fishing on
+--- WoW Forever.
+function addon.IsRecipeProfession(profId)
+    if addon.CRAFTING_PROFS[profId] then return true end
+    return addon.FOREVER_RECIPE_GATHERING[profId] == true and isForeverClient()
+end
 
 function addon:OnCrafterCameOnline(charKey)
     if not Ace.db.profile.crafterAlert then return end
@@ -3030,6 +3058,7 @@ function addon:RunPendingPurge()
             if gdb.cooldowns       then gdb.cooldowns[charKey]       = nil end
             if gdb.skills          then gdb.skills[charKey]          = nil end
             if gdb.specializations then gdb.specializations[charKey] = nil end
+            if gdb.talents         then gdb.talents[charKey]         = nil end
             if gdb.factions        then gdb.factions[charKey]        = nil end
             if gdb.syncTimes       then gdb.syncTimes[charKey]       = nil end
             if gdb.altGroups then

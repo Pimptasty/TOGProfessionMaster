@@ -133,8 +133,8 @@ describe("the unanchored rule with a borrowed requiredSkill", function()
 end)
 
 describe("FormatSkillTiers with a borrowed requiredSkill", function()
-	it("shows the borrowed recipe's placeholder tiers as unknown", function()
-		assert.equal("-", ns.FormatSkillTiers({ 1, 30, 45, 60 }, 85, BORROWED))
+	it("shows the borrowed recipe's orange as unknown and its own yellow / green / grey", function()
+		assert.equal("? 30 45 60", plain(ns.FormatSkillTiers({ 1, 30, 45, 60 }, 85, BORROWED)))
 	end)
 
 	it("still shows an own recipe's tiers", function()
@@ -195,8 +195,12 @@ describe("the recipe-detail block marks borrowed sources", function()
 		assert.is_false(ownBorrowed)
 	end)
 
-	it("does not print the borrowed recipe's placeholder tiers", function()
-		assert.is_nil((IL.RecipeDetails(LEATHER, BORROWED)))
+	-- Only the borrowed recipe's ORANGE tier is a placeholder; the other three
+	-- are this build's own (operator, Forever, 2026-11-13).
+	it("prints the borrowed recipe's tiers with orange unknown", function()
+		local borrowed = IL.RecipeDetails(LEATHER, BORROWED)
+		assert.is_truthy(borrowed)
+		assert.equal("?", plain(borrowed):match("^(%S+)"))
 		assert.is_truthy((IL.RecipeDetails(LEATHER, OWN)))
 	end)
 

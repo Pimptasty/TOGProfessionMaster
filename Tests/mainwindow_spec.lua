@@ -209,6 +209,24 @@ describe("opening the window", function()
 		assert.equal(1024, MW.frame.frame:GetWidth())
 	end)
 
+	-- A /reload never closes the window, so a size saved only on close was lost
+	-- (operator, in game 2026-11-13). Every resize must reach the saved table,
+	-- and a fresh Open must come back at it.
+	it("saves a resize at once, so a reload with the window open keeps the size", function()
+		ns.lib.db.char.frames.mainWindow = { width = 720, height = 500 }
+		MW:Open("browser")
+		local fr = MW.frame.frame
+		fr:SetSize(980, 640)
+		fr:GetScript("OnSizeChanged")(fr, 980, 640)
+		local saved = ns.lib.db.char.frames.mainWindow
+		assert.same({ width = 980, height = 640 }, saved.profiles.browse)
+		-- What the next session sees: the same saved table, a brand-new window.
+		MW.frame, MW.tabs = nil, nil
+		MW:Open("browser")
+		assert.equal(980, MW.frame.frame:GetWidth())
+		assert.equal(640, MW.frame.frame:GetHeight())
+	end)
+
 	it("restores a saved Browser size that fits, unchanged", function()
 		-- Above the shared 920x540 floor and inside the 1024x768 screen.
 		ns.lib.db.char.frames.mainWindow = { width = 720, height = 500,

@@ -35,7 +35,7 @@ local function installGlobals()
 	-- The rest of the classic trade-skill API a TBC client has, which the real
 	-- Compat.lua checks to keep the engine off WoW Forever's path.
 	_G.GetNumTradeSkills = function() return 0 end
-	_G.GetTradeSkillInfo = function() return nil end
+	_G.GetTradeSkillInfo = function(_) return nil end
 end
 
 --- Beast Training's answer: no skill line at all.

@@ -42,6 +42,7 @@ Data\SourceDB.lua
 Scanner.lua
 Modules\RecipeGate.lua
 Modules\HashManager.lua
+Modules\API.lua
 Modules\ReagentWatch.lua
 Modules\SyncLog.lua
 Modules\CommTest.lua

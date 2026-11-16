@@ -6,6 +6,141 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # Ultimate Profession Master Changelog (formerly TOG Profession Master)
 
+## [v1.11.0] (2026-11-15) - Talent specs for every guildmate, WoW Forever camp recipes and Merchant's Favor vendors, a Shopping List button
+
+### New Features
+
+- **Talent specs are recorded and synced for every guildmate.** Each
+  character's own client reads its talent spec at login and whenever talents
+  change -- the main spec and, where the client has dual spec, the off spec --
+  and it reaches the guild with the rest of that character's data. Three client
+  families, call shapes read from each flavour's Blizzard UI source (not yet
+  verified in game on any): talent tabs on Era / TBC Anniversary (the tab with
+  the most points, through `C_SpecializationInfo.GetSpecializationInfo` with the
+  talent group), specializations on MoP / Retail
+  (`C_SpecializationInfo.GetSpecialization`; Retail reports one spec), trait
+  trees on WoW Forever (the tree group with the most points spent, through
+  `C_Traits`). Stored at `gdb.talents[charKey] = { a, ai, o, oi }` and shipped as
+  the `t` key of the owner-minted `professions:<charKey>` snapshot, so a spec
+  change re-mints and propagates like a skill-up. Every reader before v1.11.0
+  walks that snapshot through `tonumber(key)` and skips `t`, and a character
+  with no spec recorded mints exactly the hash it did before. The owner
+  re-mints only when it already holds an authoritative profession snapshot,
+  with a strictly newer timestamp. KNOWN COST: a relay on an older build
+  rebuilds the snapshot without `t` under the owner's token, so a receiver
+  keeps the spec it already holds (never erases it) and can be one change
+  behind until the owner's next re-mint. A character whose professions have
+  never had a reliable read (for example none at all on Era) does not ship its
+  spec. Location: `Compat.lua` (ReadPlayerTalentSpec), `Scanner.lua`
+  (ScanTalentSpec, the talent events, the professions receive),
+  `Modules/HashManager.lua`. Spec: `Tests/talents_api_spec.lua`.
+- **Public read API, `TOGPM.API` version 1**, for other addons (asked for by
+  Ultimate Guild Roster for its guild notes, so it stops reading
+  `TOGPM_GuildDB`): `GetCharacterKey`, `GetCharacters`, `HasData`,
+  `GetProfessions(charKey)` (`{ profId, name, skillRank, skillMax, isPrimary }`,
+  primaries first), `GetSpec(charKey)` (`{ active, activeId, other, otherId }`)
+  and a `CharacterChanged(charKey)` callback that names the CHARACTER whose
+  professions or spec changed, from their own scan or from guild sync --
+  `GUILD_DATA_UPDATED` names the sender. Every result is a fresh copy. New file
+  in all seven TOCs. `Scanner.ProfessionName` gives the client's own profession
+  name, else the English one. Location: `Modules/API.lua`, `Scanner.lua`,
+  every `.toc`.
+- **WoW Forever camp objects: Herbalism, Skinning and Fishing are recipe
+  professions there.** Forever's camp system gives each of them craftable
+  objects (Greenhouse / Incense Candle / Seed Hybridizer, Camp Chair / Field
+  Guide / Trapper's Workbench, Fish Bowl / Fishing Hut / Fishing Rack), which
+  ProfessionDB reads from Forever's SkillLineAbility (Herbalism and Skinning
+  from ProfessionDB v1.10.0). New `addon.IsRecipeProfession(profId)`: every
+  crafting profession, plus those three on Forever only (ProfessionDB's
+  `IsGameVersion("Forever")`). The Browse dropdown and the guild-sync
+  placeholder padding (so a Forever player pulls a guildmate's camp recipes)
+  use it. `CRAFTING_PROFS` is unchanged, because it also shapes the gathering
+  `skills:` sync leaf, which stays frozen. Missing Recipes already followed
+  ProfessionDB's data and needed no change. The Crafting tab's profession list
+  does NOT take them: whether Forever opens a recipe window for these lines
+  through `OpenTradeSkill` is not verified in game. Location: `TOGProfessionMaster.lua`,
+  `GUI/BrowserTab.lua`, `Modules/HashManager.lua`,
+  `Modules/Crafting/CraftingEngine.lua`. Spec:
+  `Tests/forevergathering_spec.lua`.
+- **WoW Forever Merchant's Favor vendors in the recipe Sources.** ProfessionDB
+  MINOR 14 ships the Azeroth Commerce Authority's recipe vendors with each
+  recipe's price (a currency, item or copper cost) and the vendor's faction.
+  The recipe-detail block now reads "Vendor: Nina Surefire (45 Merchant's
+  Favor)" instead of the bare word, names the currency through
+  `C_CurrencyInfo.GetCurrencyInfo` (ProfessionDB ships only its id), and leaves
+  out a vendor of the other faction. A vendor with no cost, and every vendor on
+  an older ProfessionDB, still reads "Vendor". Only the Alliance vendors are
+  captured so far. Location: `GUI/SharedWidgets.lua` (FormatVendorCost,
+  RecipeDetails). Spec: `Tests/vendorcost_spec.lua`.
+- **[List] on Missing Recipes adds the recipe scroll to Personal Shopper's
+  shopping list** (asked for by Personal Shopper, which dropped its own
+  missing-recipe finder in favour of this tab). Shown only on a row with a
+  scroll to buy, and only when Personal Shopper's `PersonalShopperAPI` is
+  loaded -- read at click time, since Personal Shopper loads after this addon.
+  Calls `AddToShoppingList(scrollItemId, 1, "<Profession> Recipes")` and prints
+  whether it worked, with Personal Shopper's own reason on a refusal (Bind on
+  Pickup, not yet cached). Location: `GUI/MissingRecipesTab.lua`,
+  `Locale/enUS.lua`. Spec: `Tests/shoplist_spec.lua`.
+
+### Bug Fixes
+
+- **Clicking the Crafting tab during a fight raised 3x `ADDON_ACTION_BLOCKED`**
+  (operator, in game 2026-11-15, in a dungeon). The tab's automatic
+  profession open skipped combat only on `UnitAffectingCombat("player")`, but
+  the client gates protected calls on combat lockdown, and the two can
+  disagree; so `C_TradeSkillUI.OpenTradeSkill` ran under lockdown. The tab and
+  `CraftingEngine:OpenProfession` now also check `InCombatLockdown()`.
+  Location: `GUI/CraftingTab.lua`, `Modules/Crafting/CraftingEngine.lua`.
+  Spec: `Tests/craftsuppress_spec.lua`.
+- **The window forgot its size after a `/reload`** (operator, in game
+  2026-11-13). Every tab shares one resizable size profile, which
+  LibAceGUIWidgets' `SetWindowProfile` restores from
+  `saved.profiles.browse` but writes only on a profile switch or on close, and
+  a `/reload` with the window open never closes it. The window's
+  `OnSizeChanged` script now writes that entry on every resize, but only with
+  a LibAceGUIWidgets older than MINOR 52; MINOR 52 saves on every resize
+  itself, through a watcher frame of its own over the window. Location:
+  `GUI/MainWindow.lua`. Spec: `Tests/mainwindow_spec.lua`.
+- **Most WoW Forever recipes showed "-" in the Skill column** (operator, in
+  game 2026-11-13: Embossed Leather Boots, Handstitched Leather Belt and more).
+  Forever's ProfessionDB data carries an orange tier of 1 with a borrowed
+  `requiredSkill` for them, which is ProfessionDB's UNANCHORED case, and
+  `FormatSkillTiers` hid all four numbers. The rule says only the orange tier
+  is a placeholder; yellow, green and grey are the build's own thresholds. The
+  column (and the recipe tooltip's block) now reads `? 80 95 110`, falling
+  back to "-" only when every tier is a placeholder. Location:
+  `Modules/Crafting/CraftingEngine.lua`. Specs: `Tests/skilltiers_spec.lua`,
+  `Tests/borrowed_spec.lua`.
+- **A skill-up did not show in the open window until it was reopened**
+  (operator, in game 2026-11-13: the Crafting tab kept "Cooking (22/75)" while
+  crafting to 37). Two causes. The Crafting and Missing Recipes tabs redrew
+  only for `recipes` changes, not `skills`, though both show a rank (the
+  profession dropdown; "Can learn now"). And a window scan usually records the
+  new rank before `SKILL_LINES_CHANGED`'s profession scan runs, which then sees
+  no change and announced nothing; the scan's caller refreshes only when the
+  recipe SET changed. `MergeRecipesIntoGdb` now fires `GUILD_DATA_UPDATED` with
+  `{ skills = true }` whenever the rank or cap it records changes, and both
+  tabs redraw on `skills`. Location: `Scanner.lua`, `GUI/MainWindow.lua`.
+  Specs: `Tests/callbackkeys_spec.lua`, `Tests/scanner_merge_spec.lua`.
+- **Cooking (and any profession after an empty slot) was missing from the
+  Crafting tab's profession dropdown** on clients with `GetProfessions` (WoW
+  Forever, in game 2026-11-13; also TBC-era and later flavours). It returns
+  fixed positional slots -- prof1, prof2, archaeology, fishing, cooking,
+  first aid -- with nil for an empty one, and three sites walked it with
+  `ipairs({ GetProfessions() })`, which stops at the first nil. A character
+  with one primary profession therefore saw only that one; Cooking could only
+  be opened through the game's own window. The same walk fed
+  `ResolveProfessionId` (so the open Cooking window resolved through the
+  fallback name map only) and `enumerateHeldProfessions`, which marks its read
+  reliable -- and since the gap was the same on every read, the
+  two-consecutive-reads guard dropped Cooking (and anything after the gap)
+  from the character's profession registry. All three now
+  use the new `addon.GetProfessionSlots()`, which walks every slot by count.
+  Location: `Compat.lua`, `Modules/Crafting/CraftingEngine.lua`,
+  `Scanner.lua`. Spec: `Tests/craftsuppress_spec.lua`.
+
+---
+
 ## [v1.10.3] (2026-11-12) - WoW Forever: guild sync works, no combat error, no trainer spam
 
 ### Bug Fixes

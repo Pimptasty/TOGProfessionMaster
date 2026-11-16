@@ -138,8 +138,19 @@ end
 --- hash and the shipped payload are byte-identical to before. A reader that
 --- predates `l` decodes only `r` / `m` (Scanner's professions: receive) and
 --- ignores the extra key.
+---
+--- TALENT SPEC rides here too (v1.11.0), as the snapshot key `t` =
+--- gdb.talents[charKey] ({ a, ai, o, oi }, Compat ReadPlayerTalentSpec). It is
+--- per CHARACTER, not per profession, so it sits beside the profession ids
+--- rather than inside one. Every reader before v1.11.0 walks this map through
+--- tonumber(key) and skips a key that is not a number, so `t` reaches them as
+--- nothing; the owner still mints the hash over it, so a spec change re-mints
+--- and propagates like a skill-up. A character with no recorded spec emits no
+--- `t`, leaving its hash exactly what it was before v1.11.0.
 local function allProfessionSkills(gdb, charKey)
     local out = {}
+    local t = gdb.talents and gdb.talents[charKey]
+    if type(t) == "table" then out.t = { a = t.a, ai = t.ai, o = t.o, oi = t.oi } end
     local s = gdb.skills and gdb.skills[charKey]
     if s then
         for profId, rec in pairs(s) do
@@ -726,7 +737,15 @@ function HashManager:PadMissingProfessionPlaceholders(DS, map)
     -- peer's real entry on whichever revision they share. A V1-only placeholder
     -- against a V2-carrying peer would fall back to revision 1 unnecessarily.
     local phHash, phHashV2 = mint(DS, {})
-    for profId in pairs(addon.CRAFTING_PROFS) do
+    -- Every profession with a recipe list on this client: the crafting ones,
+    -- plus WoW Forever's camp-object gathering lines (IsRecipeProfession), or a
+    -- Forever player would never pull a guildmate's Greenhouse or Camp Chair.
+    local wanted = {}
+    for profId in pairs(addon.CRAFTING_PROFS) do wanted[profId] = true end
+    for profId in pairs(addon.FOREVER_RECIPE_GATHERING or {}) do
+        if addon.IsRecipeProfession and addon.IsRecipeProfession(profId) then wanted[profId] = true end
+    end
+    for profId in pairs(wanted) do
         local available = (not addon.IsProfessionAvailable)
                        or addon.IsProfessionAvailable(profId)
         if available then

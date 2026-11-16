@@ -253,17 +253,18 @@ end
 -- master list so a profession added to addon.PROF_NAMES (in
 -- TOGProfessionMaster.lua) automatically appears here on the right
 -- versions. Filters by:
---   • addon.CRAFTING_PROFS — Browser shows craftable recipes only,
+--   • addon.IsRecipeProfession — Browser shows craftable recipes only,
 --     skipping pure gathering professions (Herbalism / Skinning /
---     Fishing) and Smelting (which is a sub-skill of Mining).
+--     Fishing, except on WoW Forever where their camp objects are
+--     recipes) and Smelting (which is a sub-skill of Mining).
 --   • addon.IsProfessionAvailable — hide professions that don't exist
 --     on this client version (Jewelcrafting on Vanilla, Inscription on
 --     Vanilla / TBC).
 local function GetProfDropdownEntries()
     local entries = { { profId = 0, name = L["AllProfessions"] } }
     local crafting = {}
-    for profId in pairs(addon.CRAFTING_PROFS or {}) do
-        if addon.IsProfessionAvailable(profId) then
+    for profId in pairs(addon.PROF_NAMES) do
+        if addon.IsRecipeProfession(profId) and addon.IsProfessionAvailable(profId) then
             crafting[#crafting + 1] = profId
         end
     end

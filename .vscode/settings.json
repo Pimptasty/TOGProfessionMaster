@@ -472,6 +472,13 @@
     "GlowEmitterMixin",
     "TALENT_BUTTON_TOOLTIP_COST_ENTRY_FORMAT",
     "TALENT_BUTTON_TOOLTIP_COST_ENTRY_SEPARATOR",
-    "IconDataProviderMixin"
+    "IconDataProviderMixin",
+    "ClassTrainerFrame",
+    "ScrollBoxConstants",
+    "RAID_CLASS_COLORS",
+    "TooltipDataProcessor",
+    "CreateTreeDataProvider",
+    "ClassTrainerTrainButton",
+    "ClassTrainerFrame_Update"
   ]
 }

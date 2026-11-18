@@ -85,6 +85,51 @@ describe("RecipeGate:Client", function()
 	end)
 end)
 
+-- WoW Forever reports Interface 16001, so addon.isVanilla is true there -- and
+-- the gate treated it as Classic Era. The SoD id floor then hid every recipe
+-- Forever added: operator, 2026-11-17, Brawler's Leather Gloves (1255130,
+-- ProfessionDB Data/Forever/_core/Leatherworking.lua) shown in the Crafting
+-- tab but missing from the Professions tab.
+describe("RecipeGate:IsValidOnClient — WoW Forever", function()
+	local savedIsForever
+	before_each(function()
+		savedIsForever = ns.IsForeverClient
+		ns.IsForeverClient = function() return true end
+	end)
+	after_each(function() ns.IsForeverClient = savedIsForever end)
+
+	-- The exact row ProfessionDB ships for it.
+	local BRAWLERS = { craftedItemId = 252494, itemId = 252777, requiredSkill = 75,
+	                   reagents = { [1210] = 2, [2318] = 12, [2321] = 1, [4231] = 3, [249427] = 2 } }
+
+	it("keeps a Forever-added recipe above the Season of Discovery id floor", function()
+		env.spellsExist(1255130)
+		local ok, why = gate(165, 1255130, BRAWLERS)
+		assert.is_true(ok, why)
+	end)
+
+	it("applies none of the 1.15 Era table heuristics (no-spell, untagged high id)", function()
+		-- Forever's data comes from its own DBC, so a spell the resolver cannot
+		-- see yet is not evidence the recipe is from another expansion.
+		local ok, why = gate(165, 1255130, BRAWLERS)
+		assert.is_true(ok, why)
+	end)
+
+	it("still rejects a recipe with no row in the recipe DB", function()
+		local ok, why = gate(165, 1255130, nil)
+		assert.is_false(ok)
+		assert.equal("nometa", why)
+	end)
+
+	it("still treats a 1.15 Era client as Era when Forever is not detected", function()
+		ns.IsForeverClient = function() return false end
+		env.spellsExist(1255130)
+		local ok, why = gate(165, 1255130, BRAWLERS)
+		assert.is_false(ok)
+		assert.equal("sod", why)
+	end)
+end)
+
 describe("RecipeGate:IsValidOnClient — Classic Era", function()
 	it("passes an ordinary Vanilla recipe", function()
 		env.spellsExist(2330)

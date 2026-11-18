@@ -700,6 +700,29 @@ describe("the reagent rows' Bank and AH buttons", function()
 		assert.is_false(GameTooltip:IsShown())
 	end)
 
+	-- In game 2026-11-17: shift-clicking a reagent on the Crafting tab did
+	-- nothing; the list had no click handler at all.
+	it("link a reagent on a left click, and ignore a right click", function()
+		local clicked = {}
+		stub(ns.ItemLink, "Click", function(link) clicked[#clicked + 1] = link; return true end)
+		local e = reagentRow()
+		CT._dpReagList.onRowClick(e, nil, nil, "RightButton")
+		assert.same({}, clicked)
+		CT._dpReagList.onRowClick(e, nil, nil, "LeftButton")
+		assert.same({ RECIPES[2].reagents[1].link }, clicked)
+	end)
+
+	it("link the crafted item from the recipe name, and nothing with none selected", function()
+		local clicked = {}
+		stub(ns.ItemLink, "Click", function(link) clicked[#clicked + 1] = link; return true end)
+		select(2)
+		CT._dpNameBtn:GetScript("OnClick")(CT._dpNameBtn, "LeftButton")
+		assert.same({ RECIPES[2].link }, clicked)
+		CT._dpSel = nil
+		CT._dpNameBtn:GetScript("OnClick")(CT._dpNameBtn, "LeftButton")
+		assert.same({ RECIPES[2].link }, clicked)
+	end)
+
 	it("draw the reagent icon, with a fallback", function()
 		local icon = column(CT._dpReagList, "_icon").icon
 		assert.equal(134400, icon({ r = {} }))

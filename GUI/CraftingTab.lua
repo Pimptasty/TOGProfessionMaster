@@ -737,6 +737,11 @@ function CraftingTab:BuildReagentList(host)
             addon.ItemLink.EndHover(GameTooltip)
             GameTooltip:Hide()
         end,
+        -- Shift-click a reagent: its link into chat (or the dressing room, per
+        -- the player's bindings), same as the Browser tab's reagent rows.
+        onRowClick = function(e, _, _, button)
+            if button == "LeftButton" then addon.ItemLink.Click(ReagentLink(e.r)) end
+        end,
     })
 end
 
@@ -804,6 +809,10 @@ function CraftingTab:BuildDetailPanel(parent)
         if sel then CraftingTab:ShowItemTooltip(nameBtn, sel.index, sel.link, sel.recipeId) end
     end)
     nameBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    nameBtn:SetScript("OnClick", function()
+        local sel = CraftingTab._dpSel
+        if sel then addon.ItemLink.Click(sel.link) end
+    end)
     self._dpNameBtn = nameBtn
 
     -- Sits on the same row / font size as the "Reagents" header, right-aligned

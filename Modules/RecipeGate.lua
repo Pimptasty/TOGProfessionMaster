@@ -132,7 +132,13 @@ function RecipeGate:IsValidOnClient(profId, recipeId, meta)
 	local clientExp = self:Client()
 	-- Era means "a Vanilla client that is not running Season of Discovery".
 	-- IsSoD() only ever RELAXES these gates; this addon does not support SoD.
+	-- WoW Forever is NOT Era even though its Interface (16001) makes isVanilla
+	-- true: every Era gate below is a heuristic about the 1.15 client's shared
+	-- spell tables, and Forever's data is built from its own DBC. Treated as
+	-- Era, the SoD id floor hid every Forever-added recipe -- Brawler's Leather
+	-- Gloves (1255130) missing from the Professions tab, operator 2026-11-17.
 	local isEra = (clientExp == 1) and not addon:IsSoD()
+		and not (addon.IsForeverClient and addon.IsForeverClient())
 
 	if isEra and recipeId >= SOD_RECIPE_ID_MIN then
 		return false, "sod"

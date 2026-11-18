@@ -32,13 +32,17 @@ local dataObj = LDB:GetDataObjectByName("TOGProfessionMaster") or LDB:NewDataObj
     -- into LibDBIcon's 17px slot it came out small inside the dark backing
     -- (operator, in game 2026-10-21: "the rest of the icons aren't squished
     -- like mine"). LibDBIcon crops by dataObject.iconCoords (LibDBIcon-1.0
-    -- updateCoord); zoom past the margin so the disc fills the slot. The
-    -- window spans 0.69 of the art, so one pixel of the 17px slot is ~0.04;
-    -- it sits off-centre to centre the coin, tuned in game by the operator
-    -- ("needs to go down 1px and right 1px", then "about 50% of that back
-    -- up and left" -> net window up and left 0.02).
+    -- updateCoord); zoom past the margin so the disc fills the slot.
+    -- MEASURED from the art (Tests/minimap_spec.lua, Tests/tga_bounds.lua):
+    -- the coin's drawn pixels are x 4..59, y 2..58 of the 64x64 file, so the
+    -- window is the 58 px square x 3..61, y 2..60 (one pixel spare round it).
+    -- The art was rescaled 2026-11-18 from a coin at x 10..53 / y 7..52 to the
+    -- same box UGR's and UTr's coins fill, because Ultimate Tools' square
+    -- button bag draws the whole file and ignores this crop (TOGTools
+    -- Modules/QoL/QoL.lua BagIconCoord) -- the old art drew visibly smaller
+    -- than its siblings there (operator: "it's super small").
     -- Order is { left, right, top, bottom }.
-    iconCoords = { 0.135, 0.825, 0.105, 0.795 },
+    iconCoords = { 3 / 64, 61 / 64, 2 / 64, 60 / 64 },
 
     OnClick = function(_self, button)
         if button == "LeftButton" then

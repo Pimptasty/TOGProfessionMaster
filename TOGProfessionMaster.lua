@@ -1102,10 +1102,16 @@ addon.CRAFTING_PROFS = {
 -- instead.
 addon.FOREVER_RECIPE_GATHERING = { [182] = true, [393] = true, [356] = true }
 
+--- True on WoW Forever. Its Interface number (16001) sits inside the Vanilla
+--- range, so addon.isVanilla is true there too; anything that means "the 1.15
+--- Classic Era client" specifically must also check this (Modules/RecipeGate.lua).
+--- ProfessionDB's own detection is the authority, the same one that decides
+--- which Data tree loads.
 local function isForeverClient()
     local lib = LibStub and LibStub("LibProfessionDB-1.0", true)
     return lib ~= nil and lib.IsGameVersion ~= nil and lib:IsGameVersion("Forever")
 end
+addon.IsForeverClient = isForeverClient
 
 --- True when this profession has learnable recipes worth listing on this
 --- client: every crafting profession, plus Herbalism / Skinning / Fishing on

@@ -410,7 +410,11 @@ local blockWatch = CreateFrame("Frame")
 pcall(blockWatch.RegisterEvent, blockWatch, "ADDON_ACTION_BLOCKED")
 pcall(blockWatch.RegisterEvent, blockWatch, "ADDON_ACTION_FORBIDDEN")
 blockWatch:SetScript("OnEvent", function(_, event, who, func)
-    if not (tostring(func):find("OpenTradeSkill", 1, true) or tostring(func):find("CastSpell", 1, true)) then return end
+    -- The client names a protected call made from inside OpenTradeSkill
+    -- "UNKNOWN()" (operator's BugSack, 2026-11-19), so while an open is in
+    -- flight any name counts; outside one only the two open calls do.
+    if not (Engine._opening or tostring(func):find("OpenTradeSkill", 1, true)
+            or tostring(func):find("CastSpell", 1, true)) then return end
     if who ~= "TOGProfessionMaster" then
         -- Peer Review: a block naming another addon means the taint came in
         -- through shared code, not through this call.
@@ -477,6 +481,19 @@ function Engine:OpenProfession(name, how)
     self._ownOpenAt = GetTime and GetTime() or nil
     if skillLine then
         local rec = self:_LogOpenAttempt(how, skillLine)
+        -- Blizzard loads the profession window BEFORE OpenTradeSkill
+        -- (ProfessionsUtil.lua:84, forever tree). Without it the first open of
+        -- a session loads Blizzard_Professions inside OpenTradeSkill, and that
+        -- is the one difference from Blizzard's caller the 2026-11-19 block
+        -- (UNKNOWN(), from a real tab click, out of combat) is consistent
+        -- with -- Peer Review's H4. With this in place the first tab click
+        -- after a /reload raised no error (operator, in game 2026-11-20).
+        -- rec.loaded above records whether a click was the loading one.
+        if _G.ProfessionsFrame_LoadUI then
+            pcall(_G.ProfessionsFrame_LoadUI)
+        elseif C_AddOns and C_AddOns.LoadAddOn then
+            pcall(C_AddOns.LoadAddOn, "Blizzard_Professions")
+        end
         local wasShown = _G.ProfessionsFrame and _G.ProfessionsFrame:IsShown()
         self._opening = rec
         local ok, opened = pcall(C_TradeSkillUI.OpenTradeSkill, skillLine)

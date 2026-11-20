@@ -351,6 +351,31 @@ describe("WoW Forever (C_TradeSkillUI)", function()
 		assert.are_not.equal(during, Engine._opening)
 	end)
 
+	-- Blizzard loads its profession window before OpenTradeSkill
+	-- (ProfessionsUtil.lua:84); a block from a tab click (2026-11-19) fits the
+	-- first open loading it inside the call instead.
+	it("loads the profession window before calling OpenTradeSkill", function()
+		local order = {}
+		local savedLoad = _G.ProfessionsFrame_LoadUI
+		_G.ProfessionsFrame_LoadUI = function() order[#order + 1] = "load" end
+		_G.C_TradeSkillUI.OpenTradeSkill = function() order[#order + 1] = "open"; return true end
+		Engine:OpenProfession("Blacksmithing", "tab")
+		_G.ProfessionsFrame_LoadUI = savedLoad
+		assert.same({ "load", "open" }, order)
+	end)
+
+	-- The client reported that block as "UNKNOWN()", which the watcher used to
+	-- drop for not naming OpenTradeSkill, so it never reached the attempt log.
+	it("pins a block the client names UNKNOWN() on the open in flight", function()
+		Engine._openLog, Engine._openCount = {}, 0
+		_G.C_TradeSkillUI.OpenTradeSkill = function()
+			env.frames.fireEvent("ADDON_ACTION_BLOCKED", "TOGProfessionMaster", "UNKNOWN()")
+			return true
+		end
+		Engine:OpenProfession("Blacksmithing", "tab")
+		assert.equal("BLOCKED", Engine._openLog[1].blocked)
+	end)
+
 	-- A switch lands on a list update once the new data source is built, not on
 	-- TRADE_SKILL_SHOW (Blizzard_ProfessionsFrame.lua:138-161). The dropdown drew
 	-- the old profession's tab on in game (2026-09-29) because this only

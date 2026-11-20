@@ -6,6 +6,29 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # Ultimate Profession Master Changelog (formerly TOG Profession Master)
 
+## [v1.11.2] (2026-11-20) - WoW Forever: Crafting tab profession open
+
+### Bug Fixes
+
+- **Clicking the Crafting tab on WoW Forever still raised
+  `ADDON_ACTION_BLOCKED` ("UNKNOWN()")** (operator's BugSack, 2026-11-13 to
+  2026-11-19, 2x per click from both `OpenTradeSkill` calls). My v1.11.0 fix
+  blamed combat and added an `InCombatLockdown()` gate; that was the wrong
+  cause -- these blocks came from ordinary tab clicks with the gate already in
+  place. Blizzard's own caller loads the profession window
+  (`ProfessionsFrame_LoadUI`) BEFORE `OpenTradeSkill`
+  (`Blizzard_FrameXMLUtil/ProfessionsUtil.lua:84`, forever tree) and ours did
+  not, so a first open loaded Blizzard_Professions inside the call. The engine
+  now loads it first, in Blizzard's order. This is Peer Review's H4 from
+  2026-09-29; the operator's first tab click after a `/reload` raised no
+  error with it in place (in game, 2026-11-20). The block watcher also dropped
+  every block not named `OpenTradeSkill`/`CastSpell`, so this one never reached
+  `/upm opendebug`; while an open is in flight it now records a block under any
+  name. Specs in `Tests/craftsuppress_spec.lua`. Location:
+  `Modules/Crafting/CraftingEngine.lua`.
+
+---
+
 ## [v1.11.1] (2026-11-18) - WoW Forever's new recipes on the Professions tab, shift-click links in the Crafting tab, a full-size minimap icon
 
 ### Bug Fixes

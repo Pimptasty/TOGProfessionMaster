@@ -504,7 +504,12 @@ function Engine:OpenProfession(name, how)
         -- cascade's casts all went through inside the same click, so a second
         -- call inside it is expected to as well; not verified, and the block
         -- watcher reports it if not.
-        if ok and opened and not wasShown then
+        -- Never ask again after the client blocked the first call: every
+        -- in-game block so far came in pairs, this call and the retry, both
+        -- on one click (BugSack 2026-11-13 to 2026-11-20), and the retry only
+        -- added a second error. That holds only if the client fires the block
+        -- inside the call; not verified.
+        if ok and opened and not wasShown and not rec.blocked then
             local T = C_TradeSkillUI
             local base = T.GetBaseProfessionInfo and T.GetBaseProfessionInfo()
             if base and base.professionID ~= skillLine then
@@ -516,10 +521,21 @@ function Engine:OpenProfession(name, how)
         rec.result = (ok and tostring(opened) or ("error: " .. tostring(opened)))
             .. (rec.retried and " (asked twice)" or "")
         addon:DebugPrint("Crafting: " .. self:_FormatOpenAttempt(rec))
-        if ok and opened then return true end
+        -- A block counts as a failure even when the call returned true: in
+        -- game it did exactly that, "-> true BLOCKED(BLOCKED)", and nothing
+        -- opened (operator, 2026-11-21).
+        if ok and opened and not rec.blocked then return true end
         -- Nothing opened, so no show event will consume the claim.
         self._forceTakeoverOnce, self._tabDriven = false, false
-        return false
+        -- Second value "blocked": the client refused the call. Another
+        -- Forever addon found it blocked from addon code
+        -- (cjber/commissions-forever#194); here it passes most clicks and is
+        -- blocked on some, including the first click after a login (operator,
+        -- 2026-11-21), the cause of which is not known. (The API doc's
+        -- SecretArguments = "AllowedWhenUntainted" is not it: issecretvalue
+        -- carries the same flag; it only limits passing secret values.) The
+        -- tab uses this to say what to do instead of drawing blank.
+        return false, rec.blocked and "blocked" or nil
     end
     if CastSpellByName then CastSpellByName(name) end
     return true

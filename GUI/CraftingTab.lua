@@ -223,13 +223,16 @@ function CraftingTab:Draw(container)
             container:AddChild(note)
             return
         end
+        local blocked
         if allowAuto and Engine and activeEntry and not inCombat then
-            Engine:OpenProfession(activeEntry.castName or active, "tab")
+            local _, why = Engine:OpenProfession(activeEntry.castName or active, "tab")
+            blocked = (why == "blocked")
         end
 
         local prompt = AceGUI:Create("Label")
         prompt:SetFullWidth(true)
-        prompt:SetText("\n" .. Color("ffffffff", L["CraftOpenToView"]:format(active or "")))
+        prompt:SetText("\n" .. Color("ffffffff",
+            L[blocked and "CraftOpenBlocked" or "CraftOpenToView"]:format(active or "")))
         container:AddChild(prompt)
         -- WoW Forever: no Open button (operator, 2026-09-29: "you should not
         -- have added the button"). The tab click and the dropdown open it.

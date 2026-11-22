@@ -534,6 +534,62 @@ describe("WoW Forever (C_TradeSkillUI)", function()
 		_G.ProfessionsFrame = nil
 	end)
 
+	it("does not ask again when the client blocked the first open", function()
+		local w = professionsWindow()
+		w._shown = false
+		_G.ProfessionsFrame = w
+		_G.C_TradeSkillUI.GetBaseProfessionInfo = function()
+			return { professionID = 356, professionName = "x" }
+		end
+		local asked = 0
+		_G.C_TradeSkillUI.OpenTradeSkill = function()
+			asked = asked + 1
+			w._shown = true
+			Engine._opening.blocked = "BLOCKED"   -- what the block watcher records
+			return true
+		end
+		Engine._openLog = {}
+		Engine:OpenProfession("Blacksmithing", "tab")
+		assert.equal(1, asked)
+		assert.is_nil(Engine._openLog[1].retried)
+		_G.ProfessionsFrame = nil
+	end)
+
+	-- A blocked open used to leave the Crafting tab showing only "Open X to
+	-- view" with no way forward named (operator, 2026-11-21).
+	it("tells the caller the open was blocked, so the tab can say so", function()
+		_G.C_TradeSkillUI.OpenTradeSkill = function()
+			Engine._opening.blocked = "BLOCKED"   -- what the block watcher records
+			return nil
+		end
+		Engine._openLog = {}
+		local opened, why = Engine:OpenProfession("Blacksmithing", "tab")
+		assert.is_false(opened)
+		assert.equal("blocked", why)
+	end)
+
+	-- In game the blocked call still returned true (operator's log,
+	-- 2026-11-21: "-> true BLOCKED(BLOCKED)") and nothing opened.
+	it("treats a blocked open as failed even when the call returned true", function()
+		_G.C_TradeSkillUI.OpenTradeSkill = function()
+			Engine._opening.blocked = "BLOCKED"
+			return true
+		end
+		Engine._openLog = {}
+		local opened, why = Engine:OpenProfession("Blacksmithing", "tab")
+		assert.is_false(opened)
+		assert.equal("blocked", why)
+		assert.is_false(Engine._tabDriven)   -- no show will consume the claim
+	end)
+
+	it("gives no reason when nothing opened and nothing was blocked", function()
+		_G.C_TradeSkillUI.OpenTradeSkill = function() return false end
+		Engine._openLog = {}
+		local opened, why = Engine:OpenProfession("Blacksmithing", "tab")
+		assert.is_false(opened)
+		assert.is_nil(why)
+	end)
+
 	it("records an OpenTradeSkill that raises instead of letting it escape", function()
 		Engine._openLog = {}
 		local during

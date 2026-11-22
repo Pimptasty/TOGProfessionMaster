@@ -6,6 +6,41 @@
      v1.0.8 on use -- and -> . Added 2026-08-19. -->
 # Ultimate Profession Master Changelog (formerly TOG Profession Master)
 
+## [v1.11.3] (2026-11-21) - WoW Forever: a blocked Crafting tab says what to do
+
+### Bug Fixes
+
+- **A blocked profession open on WoW Forever left the Crafting tab blank.**
+  The client still sometimes refuses `C_TradeSkillUI.OpenTradeSkill` from the
+  tab click (`ADDON_ACTION_BLOCKED` "UNKNOWN()", operator's BugSack and taint
+  log 2026-11-21: the block is on the call itself, and it happens even on the
+  first open after a login). My v1.11.2 note that a first click after a
+  `/reload` is safe was wrong. The cause is still not known; another WoW
+  Forever addon found the same call blocked from addon code
+  (cjber/commissions-forever#194). The tab now says "The game blocked opening
+  X this time. Pick it from the menu above, or open it from your spellbook."
+  instead of the plain "Open X to view" prompt. `Engine:OpenProfession` returns
+  `false, "blocked"` when the block watcher saw a block, and counts a blocked
+  call as failed even when it returned `true` -- in game it did exactly that
+  (`-> true BLOCKED(BLOCKED)`). Location: `Modules/Crafting/CraftingEngine.lua`,
+  `GUI/CraftingTab.lua`, `Locale/enUS.lua` (`CraftOpenBlocked`).
+- **One click raised the block error twice.** After the first call, the engine
+  asked again when Blizzard's window had just been shown and the wrong
+  profession came up; when the first call was blocked, that retry only added a
+  second error. It no longer asks again after a block (one BugSack entry per
+  click since, in game 2026-11-21). Location:
+  `Modules/Crafting/CraftingEngine.lua`.
+
+### Improvements
+
+- **Specs** for the blocked open: no retry after a block, the `"blocked"`
+  reason, a blocked call that returned `true`, and no reason when nothing
+  opened without a block. Location: `Tests/craftsuppress_spec.lua`.
+- **`Locale/enUS.lua`**: two locale lines that had been written on one line
+  are split back onto their own lines.
+
+---
+
 ## [v1.11.2] (2026-11-20) - WoW Forever: Crafting tab profession open
 
 ### Bug Fixes
